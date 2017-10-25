@@ -9,16 +9,19 @@ using byte = unsigned char;
 
 struct Buffer {
   byte *start;
-  std::size_t length;
-  byte *pos;
+  const std::size_t length;
+  std::size_t pos;
 
   Buffer(byte *, std::size_t) noexcept;
+
   template <std::size_t SIZE>
-  explicit Buffer(byte (&buff)[SIZE]) noexcept
-      : Buffer(buff, SIZE) {
+  explicit Buffer(byte (&buffer)[SIZE]) noexcept
+      : Buffer(buffer, SIZE) {
   }
+
+  byte &operator[](std::size_t) noexcept;
 };
 
-} // namespace shared
+} // namespace sp
 
 #endif
