@@ -1,0 +1,16 @@
+-x
+c++
+-DSP_TEST
+-I..
+-I../external/googletest/googletest/include
+-Iexternal
+-Wall
+-Wconversion
+-Wextra
+-Wpedantic
+-Wpointer-arith
+-Wshadow
+-std=c++14
+-std=gnu++14
+-isystem
+../include

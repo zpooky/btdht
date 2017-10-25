@@ -1,0 +1,12 @@
+[
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -o build/main.o main.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/main.cpp"
+    },
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -o build/app.o app.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/app.cpp"
+    }
+]
