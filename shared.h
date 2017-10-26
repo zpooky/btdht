@@ -9,7 +9,8 @@ using byte = unsigned char;
 
 struct Buffer {
   byte *start;
-  const std::size_t length;
+  const std::size_t capacity;
+  std::size_t length;
   std::size_t pos;
 
   Buffer(byte *, std::size_t) noexcept;
@@ -21,6 +22,9 @@ struct Buffer {
 
   byte &operator[](std::size_t) noexcept;
 };
+
+void
+flip(Buffer &) noexcept;
 
 } // namespace sp
 

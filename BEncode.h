@@ -25,6 +25,16 @@ encode(sp::Buffer &, const char (&)[SIZE], std::size_t) noexcept;
 bool
 encodeList(sp::Buffer &, bool (*)(sp::Buffer &)) noexcept;
 
+bool
+encodeDict(sp::Buffer &, bool (*)(sp::Buffer &)) noexcept;
+
+//----------------------------------
+bool
+decode(sp::Buffer &, std::uint32_t &) noexcept;
+
+bool
+decode(sp::Buffer &, std::int32_t &) noexcept;
+
 } // namespace bencode
 
 #endif
