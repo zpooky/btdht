@@ -115,27 +115,30 @@ encodeList(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
 }
 
 //-----------------------------
-bool
-encodeDict(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
+
+template <typename V>
+static bool
+generic_encodePair(sp::Buffer &buffer, const char *key, V value) {
   const std::size_t before = buffer.pos;
-  std::size_t &i = buffer.pos;
-  if (buffer.pos + 1 > buffer.capacity) {
-    return false;
-  }
-  buffer.start[i++] = 'd';
-
-  if (!f(buffer)) {
+  if (!encode(buffer, key)) {
     buffer.pos = before;
     return false;
   }
-
-  if (buffer.pos + 1 > buffer.capacity) {
+  if (!encode(buffer, value)) {
     buffer.pos = before;
     return false;
   }
-  buffer.start[i++] = 'e';
-
   return true;
+}
+
+bool
+encodePair(sp::Buffer &buffer, const char *key, const char *value) noexcept {
+  return generic_encodePair(buffer, key, value);
+}
+
+bool
+encodePair(sp::Buffer &buffer, const char *key, std::uint32_t value) noexcept {
+  return generic_encodePair(buffer, key, value);
 }
 //-----------------------------
 

@@ -2,7 +2,6 @@
 #define SP_MAINLINE_DHT_BENCODE_H
 
 #include "shared.h"
-#include <cstdint>
 
 namespace bencode {
 
@@ -25,8 +24,35 @@ encode(sp::Buffer &, const char (&)[SIZE], std::size_t) noexcept;
 bool
 encodeList(sp::Buffer &, bool (*)(sp::Buffer &)) noexcept;
 
+template <typename F>
+static bool
+encodeDict(sp::Buffer &buffer, F f) noexcept {
+  const std::size_t before = buffer.pos;
+  std::size_t &i = buffer.pos;
+  if (buffer.pos + 1 > buffer.capacity) {
+    return false;
+  }
+  buffer.start[i++] = 'd';
+
+  if (!f(buffer)) {
+    buffer.pos = before;
+    return false;
+  }
+
+  if (buffer.pos + 1 > buffer.capacity) {
+    buffer.pos = before;
+    return false;
+  }
+  buffer.start[i++] = 'e';
+
+  return true;
+}
+
 bool
-encodeDict(sp::Buffer &, bool (*)(sp::Buffer &)) noexcept;
+encodePair(sp::Buffer &, const char *, const char *) noexcept;
+
+bool
+encodePair(sp::Buffer &, const char *, std::uint32_t) noexcept;
 
 //----------------------------------
 bool

@@ -6,6 +6,14 @@
 namespace dht {
 /*mainline dht*/
 using infohash = kadmelia::Key;
+using NodeId = kadmelia::Key;
+
+struct Contact {
+
+};
+struct RoutingTable {
+
+};
 
 void
 get_peers(const infohash &);

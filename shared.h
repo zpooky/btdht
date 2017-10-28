@@ -2,6 +2,7 @@
 #define SP_MAINLINE_DHT_SHARED_H
 
 #include <cstddef>
+#include <cstdint>
 
 namespace sp {
 
