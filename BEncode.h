@@ -14,12 +14,8 @@ bool
 encode(sp::Buffer &, const char *) noexcept;
 bool
 encode(sp::Buffer &, const char *, std::size_t) noexcept;
-template <std::size_t SIZE>
 bool
-encode(sp::Buffer &, const char (&)[SIZE]) noexcept;
-template <std::size_t SIZE>
-bool
-encode(sp::Buffer &, const char (&)[SIZE], std::size_t) noexcept;
+encode(sp::Buffer &, const sp::byte *, std::size_t) noexcept;
 
 bool
 encodeList(sp::Buffer &, bool (*)(sp::Buffer &)) noexcept;
@@ -49,10 +45,14 @@ encodeDict(sp::Buffer &buffer, F f) noexcept {
 }
 
 bool
-encodePair(sp::Buffer &, const char *, const char *) noexcept;
+encodePair(sp::Buffer &, const char *key, const char *value) noexcept;
 
 bool
-encodePair(sp::Buffer &, const char *, std::uint32_t) noexcept;
+encodePair(sp::Buffer &, const char *key, std::uint32_t value) noexcept;
+
+bool
+encodePair(sp::Buffer &, const char *key, const sp::byte *value,
+           std::size_t length) noexcept;
 
 //----------------------------------
 bool

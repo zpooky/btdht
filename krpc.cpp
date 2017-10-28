@@ -43,21 +43,19 @@ message(sp::Buffer &buf, const char *mt, const char *q, F f) noexcept {
 
 namespace request {
 bool
-ping(sp::Buffer &buf, const char *id) noexcept {
+ping(sp::Buffer &buf, const NodeId &sender) noexcept {
   using namespace bencode;
-  return message(buf, "q", "ping", [id](sp::Buffer &b) { //
+  return message(buf, "q", "ping", [&sender](sp::Buffer &b) { //
     if (!encode(b, "a")) {
       return false;
     }
 
-    return encodeDict(b,
-                      [id](sp::Buffer &b) { //
-
-                        if (!encodePair(b, "id", id)) {
-                          return false;
-                        }
-                        return true;
-                      });
+    return encodeDict(b, [&sender](sp::Buffer &b) {
+      if (!encodePair(b, "id", sender.id, sizeof(sender.id))) {
+        return false;
+      }
+      return true;
+    });
   });
 } // request::ping()
 

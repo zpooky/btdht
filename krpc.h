@@ -13,9 +13,15 @@ enum class Error {
   method_unknown = 204
 };
 
+struct NodeId
+
+{
+  sp::byte id[20];
+};
+
 namespace request {
 bool
-ping(sp::Buffer &, const char *id) noexcept;
+ping(sp::Buffer &, const NodeId &sender) noexcept;
 
 bool
 find_node(sp::Buffer &, const char *id, const char *target) noexcept;
@@ -31,7 +37,7 @@ announce_peer(sp::Buffer &, const char *id, bool implied_port,
 
 namespace response {
 bool
-ping(sp::Buffer &, const char *id) noexcept;
+ping(sp::Buffer &, const NodeId &receiver) noexcept;
 
 bool
 find_node(sp::Buffer &, const char *id, const char *target) noexcept;

@@ -60,13 +60,9 @@ encode(sp::Buffer &buffer, std::int32_t in) noexcept {
   return encode_integer(buffer, "%d", in);
 }
 //-----------------------------
+template <typename T>
 bool
-encode(sp::Buffer &buffer, const char *str) noexcept {
-  return encode(buffer, str, std::strlen(str));
-}
-
-bool
-encode(sp::Buffer &buffer, const char *str, std::size_t length) noexcept {
+encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
   const std::size_t before = buffer.pos;
   if (!encode_numeric(buffer, "%u", length)) {
     buffer.pos = before;
@@ -85,10 +81,18 @@ encode(sp::Buffer &buffer, const char *str, std::size_t length) noexcept {
   return true;
 }
 
-template <std::size_t SIZE>
 bool
-encode(sp::Buffer &buffer, const char (&str)[SIZE]) noexcept {
-  return encode(buffer, str, SIZE);
+encode(sp::Buffer &buffer, const char *str) noexcept {
+  return encode(buffer, str, std::strlen(str));
+}
+
+bool
+encode(sp::Buffer &buffer, const char *str, std::size_t length) noexcept {
+  return encode_raw(buffer, str, length);
+}
+bool
+encode(sp::Buffer &buffer, const sp::byte *str, std::size_t length) noexcept {
+  return encode_raw(buffer, str, length);
 }
 //-----------------------------
 bool
@@ -139,6 +143,22 @@ encodePair(sp::Buffer &buffer, const char *key, const char *value) noexcept {
 bool
 encodePair(sp::Buffer &buffer, const char *key, std::uint32_t value) noexcept {
   return generic_encodePair(buffer, key, value);
+}
+
+bool
+encodePair(sp::Buffer &buffer, const char *key, const sp::byte *value,
+           std::size_t length) noexcept {
+  const std::size_t before = buffer.pos;
+  if (!encode(buffer, key)) {
+    buffer.pos = before;
+    return false;
+  }
+
+  if (!encode(buffer, value, length)) {
+    buffer.pos = before;
+    return false;
+  }
+  return true;
 }
 //-----------------------------
 
