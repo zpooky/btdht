@@ -3,6 +3,6 @@
 
 int
 main() {
-  dht::infohash checksum;
+  // dht::infohash checksum;
   return 0;
 }

@@ -94,6 +94,7 @@ bool
 encode(sp::Buffer &buffer, const sp::byte *str, std::size_t length) noexcept {
   return encode_raw(buffer, str, length);
 }
+
 //-----------------------------
 bool
 encodeList(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {

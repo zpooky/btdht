@@ -6,10 +6,12 @@ void
 FIND_VALUE(const Key &) {
 }
 
-static std::uint32_t
-distance(std::uint32_t a, std::uint32_t b) {
+static void
+distance(const Key &a, const Key &b, Key &result) {
   // distance(A,B) = |A xor B| Smaller values are closer.
-  return a ^ b;
+  for (std::size_t i = 0; i < sizeof(Key); ++i) {
+    result[i] = a[i] ^ b[i];
+  }
 }
 
 } // namespace kadmelia

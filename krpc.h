@@ -24,13 +24,13 @@ bool
 ping(sp::Buffer &, const NodeId &sender) noexcept;
 
 bool
-find_node(sp::Buffer &, const char *id, const char *target) noexcept;
+find_node(sp::Buffer &, const NodeId &id, const char *target) noexcept;
 
 bool
-get_peers(sp::Buffer &, const char *id, const char *infohash) noexcept;
+get_peers(sp::Buffer &, const NodeId &id, const char *infohash) noexcept;
 
 bool
-announce_peer(sp::Buffer &, const char *id, bool implied_port,
+announce_peer(sp::Buffer &, const NodeId &id, bool implied_port,
               const char *infohash, std::uint16_t port,
               const char *token) noexcept;
 } // namespace request
@@ -40,7 +40,10 @@ bool
 ping(sp::Buffer &, const NodeId &receiver) noexcept;
 
 bool
-find_node(sp::Buffer &, const char *id, const char *target) noexcept;
+find_node(sp::Buffer &, const NodeId &id, const char *target) noexcept;
+
+bool
+announce_peer(sp::Buffer &, const NodeId &) noexcept;
 } // namespace response
 
 } // namespace krpc

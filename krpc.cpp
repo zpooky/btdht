@@ -60,7 +60,7 @@ ping(sp::Buffer &buf, const NodeId &sender) noexcept {
 } // request::ping()
 
 bool
-find_node(sp::Buffer &buf, const char *id, const char *target) noexcept {
+find_node(sp::Buffer &buf, const NodeId &id, const char *target) noexcept {
   using namespace bencode;
   return message(buf, "q", "find_node", [id, target](sp::Buffer &b) { //
     if (!encode(b, "a")) {
@@ -69,7 +69,7 @@ find_node(sp::Buffer &buf, const char *id, const char *target) noexcept {
 
     return encodeDict(b,                            //
                       [id, target](sp::Buffer &b) { //
-                        if (!encodePair(b, "id", id)) {
+                        if (!encodePair(b, "id", id.id, sizeof(id.id))) {
                           return false;
                         }
 
@@ -82,7 +82,7 @@ find_node(sp::Buffer &buf, const char *id, const char *target) noexcept {
 } // request::find_node()
 
 bool
-get_peers(sp::Buffer &buf, const char *id, const char *infohash) noexcept {
+get_peers(sp::Buffer &buf, const NodeId &id, const char *infohash) noexcept {
   using namespace bencode;
   return message(buf, "q", "get_peers", [id, infohash](sp::Buffer &b) { //
     if (!encode(b, "a")) {
@@ -91,7 +91,7 @@ get_peers(sp::Buffer &buf, const char *id, const char *infohash) noexcept {
 
     return encodeDict(b,                              //
                       [id, infohash](sp::Buffer &b) { //
-                        if (!encodePair(b, "id", id)) {
+                        if (!encodePair(b, "id", id.id, sizeof(id.id))) {
                           return false;
                         }
 
@@ -104,7 +104,7 @@ get_peers(sp::Buffer &buf, const char *id, const char *infohash) noexcept {
 } // request::get_peers()
 
 bool
-announce_peer(sp::Buffer &buf, const char *id, bool implied_port,
+announce_peer(sp::Buffer &buf, const NodeId &id, bool implied_port,
               const char *infohash, std::uint16_t port,
               const char *token) noexcept {
 
@@ -118,7 +118,7 @@ announce_peer(sp::Buffer &buf, const char *id, bool implied_port,
                    return encodeDict(
                        b,                     //
                        [&](sp::Buffer &buf) { //
-                         if (!encodePair(buf, "id", id)) {
+                         if (!encodePair(buf, "id", id.id, sizeof(id.id))) {
                            return false;
                          }
 
@@ -146,7 +146,7 @@ announce_peer(sp::Buffer &buf, const char *id, bool implied_port,
 
 namespace response {
 bool
-ping(sp::Buffer &buf, const char *id) noexcept {
+ping(sp::Buffer &buf, const NodeId &id) noexcept {
   using namespace bencode;
   return message(buf, "r", "ping", [id](sp::Buffer &b) { //
     return encodeDict(b,
@@ -155,15 +155,16 @@ ping(sp::Buffer &buf, const char *id) noexcept {
                           return false;
                         }
 
-                        if (!encodePair(b, "id", id)) {
+                        if (!encodePair(b, "id", id.id, sizeof(id.id))) {
                           return false;
                         }
                         return true;
                       });
   });
 } // response::ping()
+
 bool
-find_node(sp::Buffer &buf, const char *id, const char *target) noexcept {
+find_node(sp::Buffer &buf, const NodeId &id, const char *target) noexcept {
   using namespace bencode;
   return message(buf, "r", "find_node", [id, target](sp::Buffer &b) { //
     return encodeDict(b,                                              //
@@ -172,7 +173,7 @@ find_node(sp::Buffer &buf, const char *id, const char *target) noexcept {
                           return false;
                         }
 
-                        if (!encodePair(b, "id", id)) {
+                        if (!encodePair(b, "id", id.id, sizeof(id.id))) {
                           return false;
                         }
 
@@ -183,6 +184,24 @@ find_node(sp::Buffer &buf, const char *id, const char *target) noexcept {
                       });
   });
 } // response::find_node()
+
+bool
+announce_peer(sp::Buffer &buf, const NodeId &id) noexcept {
+  using namespace bencode;
+  return message(buf, "r", "announce_peerid", [id](sp::Buffer &b) { //
+    return encodeDict(b,                                            //
+                      [id](sp::Buffer &b) {                         //
+                        if (!encode(b, "r")) {
+                          return false;
+                        }
+
+                        if (!encodePair(b, "id", id.id, sizeof(id.id))) {
+                          return false;
+                        }
+                        return true;
+                      });
+  });
+} // response::announce_peer()
 
 } // namespace response
 

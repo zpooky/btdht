@@ -5,7 +5,7 @@
 
 namespace kadmelia {
 /*Kadmelia*/
-using Sha1 = sp::byte[8];
+using Sha1 = sp::byte[20];
 using Key = Sha1;
 
 void
