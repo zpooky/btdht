@@ -1,7 +1,7 @@
 #ifndef SP_MAINLINE_DHT_MAINLINE_DHT_H
 #define SP_MAINLINE_DHT_MAINLINE_DHT_H
 
-#include "kadmelia.h"
+#include "shared.h"
 
 // #Terminology
 // - Peer implements Bittorrent protocol
@@ -9,11 +9,14 @@
 
 namespace dht {
 /*mainline dht*/
-using infohash = kadmelia::Key;
+
+using Sha1 = sp::byte[20];
+using Key = Sha1;
+using infohash = Key;
 
 //- Each node has a globally unique identifier known as the nodeID
 //- Node IDs are chosen at random
-using NodeId = kadmelia::Key;
+using NodeId = Key;
 
 struct Peer {
   std::uint32_t ip;
@@ -27,18 +30,35 @@ using Timestamp = std::uint32_t; // TODO
 // 15 min refresh
 struct Contact {
   Timestamp last_activity;
-  bool outstanding_ping;
   Peer peer;
+  bool outstanding_ping;
+
   Contact();
 };
 
 /*Bucket*/
 struct Bucket {
   Contact contacts[8];
-  Bucket *higher;
-  Bucket *lower;
+
   Bucket();
   ~Bucket();
+};
+
+/*Tree*/
+enum class NodeType { NODE, LEAF };
+struct Tree {
+  union {
+    struct {
+      Tree *higher;
+      Tree *lower;
+      Key middle;
+    } node;
+    Bucket bucket;
+  };
+  NodeType type;
+
+  Tree(Tree *h, const Key &middle, Tree *l);
+  Tree();
 };
 
 void
@@ -58,18 +78,5 @@ struct RoutingTable {
   ~RoutingTable();
 };
 
-// When a node wants to find peers for a torrent, it uses the distance metric to
-// compare the infohash of the torrent with the IDs of the nodes in its own
-// routing table.
-// It then contacts the nodes it knows about with IDs closest to
-// the infohash and asks them for the contact information of peers currently
-// downloading the torrent.
-// If a contacted node knows about peers for the
-// torrent, the peer contact information is returned with the response.
-// Otherwise, the contacted node must respond with the contact information of
-// the nodes in its routing table that are closest to the infohash of the
-// torrent.
-void
-get_peers(const infohash &);
 } // namespace dht
 #endif

@@ -85,3 +85,44 @@ TEST(BEncodeTest, dict) {
   ASSERT_TRUE(EQ("d1:ai42e3:abci-42ee", buff));
   buff.pos = 0;
 }
+
+static bool
+lt(const std::uint8_t *a, const std::uint8_t *b) {
+  for (std::size_t i = 0; i < sizeof(std::uint64_t); ++i) {
+    // printf("%lu|%lu\n", a[i], b[i]);
+    if (a[i] < b[i]) {
+      return true;
+    }
+    if (a[i] > b[i]) {
+      return false;
+    }
+  }
+  return false;
+}
+
+template <std::size_t SIZE>
+static bool
+convert(std::uint64_t i, std::uint8_t (&buf)[SIZE]) {
+  static_assert(sizeof(i) == SIZE, "");
+  std::size_t shift = (sizeof(i) * 8) - 8;
+  for (std::size_t idx = 0; idx < sizeof(i); ++idx) {
+    buf[idx] = std::uint8_t(std::uint64_t(i >> shift) & 0xff);
+    // printf("(%lu >> %zu) & 0xff=%u\n", i, shift, buf[idx]);
+    shift -= 8;
+  }
+}
+
+TEST(BEncodeTest, generic) {
+  std::uint64_t a = 0;
+  std::uint64_t b = 0;
+  while (b++ < std::uint16_t(~0)) {
+    // printf("%lu < %lu\n", a, b);
+    std::uint8_t aBuff[sizeof(std::uint64_t)];
+    convert(a, aBuff);
+    std::uint8_t bBuff[sizeof(std::uint64_t)];
+    convert(b, bBuff);
+    ASSERT_TRUE(lt(aBuff, bBuff));
+    ASSERT_TRUE(a < b);
+    a++;
+  }
+}
