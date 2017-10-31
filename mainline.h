@@ -10,8 +10,7 @@
 namespace dht {
 /*mainline dht*/
 
-using Sha1 = sp::byte[20];
-using Key = Sha1;
+using Key = sp::byte[20];
 using infohash = Key;
 
 //- Each node has a globally unique identifier known as the nodeID
@@ -21,62 +20,82 @@ using NodeId = Key;
 struct Peer {
   std::uint32_t ip;
   std::uint16_t port;
+  // {
+  Peer *next;
+  // }
+  Peer();
 };
 
 using Token = int;               // TODO
 using Timestamp = std::uint32_t; // TODO
 
+/*lookup*/
+struct KeyValue {
+  KeyValue *next;
+  Peer *peers;
+  infohash id;
+  //
+  KeyValue();
+};
+
 /*Contact*/
 // 15 min refresh
 struct Contact {
   Timestamp last_activity;
+  NodeId id;
   Peer peer;
   bool outstanding_ping;
 
+  // {
+  Contact *next;
+  // }
+
   Contact();
+
+  explicit operator bool() const noexcept {
+    // TODO
+    return true;
+  }
 };
 
 /*Bucket*/
 struct Bucket {
-  Contact contacts[8];
+  static constexpr std::size_t K = 8;
+  Contact contacts[K];
 
   Bucket();
   ~Bucket();
 };
 
-/*Tree*/
+/*RoutingTable*/
 enum class NodeType { NODE, LEAF };
-struct Tree {
+struct RoutingTable {
   union {
     struct {
-      Tree *higher;
-      Tree *lower;
+      RoutingTable *higher;
+      RoutingTable *lower;
       Key middle;
     } node;
     Bucket bucket;
   };
   NodeType type;
 
-  Tree(Tree *h, const Key &middle, Tree *l);
-  Tree();
-};
-
-void
-split(Bucket *);
-
-/*RoutingTable*/
-// Nodes maintain a routing table containing the contact information for a
-// small number of other nodes.
-// The routing table becomes more detailed as IDs get closer to the node's own
-// ID. Nodes know about many other nodes in the DHT that have IDs that are
-// "close" to their own but have only a handful of contacts with IDs that are
-// very far away from their own.
-struct RoutingTable {
-  Bucket *base;
-
+  RoutingTable(RoutingTable *h, RoutingTable *l);
   RoutingTable();
   ~RoutingTable();
 };
+
+/*DHT*/
+struct DHT {
+  const NodeId id;
+  KeyValue *kv;
+  RoutingTable *root;
+
+  DHT();
+};
+
+const Peer *
+lookup(const DHT &, const infohash &) noexcept;
 
 } // namespace dht
 #endif
