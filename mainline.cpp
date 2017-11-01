@@ -242,8 +242,8 @@ merge_children(DHT &dht, RoutingTable *parent) noexcept {
   parent->~RoutingTable();
   parent = new (parent) RoutingTable;
 
-  copy(lower->bucket, parent->bucket);
-  copy(higher->bucket, parent->bucket);
+  assert(copy(lower->bucket, parent->bucket));
+  assert(copy(higher->bucket, parent->bucket));
 
   dealloc(dht, lower);
   dealloc(dht, higher);
