@@ -1,4 +1,4 @@
-#include "BEncode.h"
+#include <BEncode.h>
 #include "gtest/gtest.h"
 #include <string.h>
 

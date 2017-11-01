@@ -12,10 +12,10 @@ namespace dht {
 
 using Key = sp::byte[20];
 using infohash = Key;
-
-//- Each node has a globally unique identifier known as the nodeID
-//- Node IDs are chosen at random
 using NodeId = Key;
+
+void
+randomize(NodeId &) noexcept;
 
 struct Peer {
   std::uint32_t ip;
@@ -52,10 +52,7 @@ struct Contact {
 
   Contact();
 
-  explicit operator bool() const noexcept {
-    // TODO
-    return true;
-  }
+  explicit operator bool() const noexcept;
 };
 
 /*Bucket*/
@@ -87,7 +84,7 @@ struct RoutingTable {
 
 /*DHT*/
 struct DHT {
-  const NodeId id;
+  NodeId id;
   KeyValue *kv;
   RoutingTable *root;
 

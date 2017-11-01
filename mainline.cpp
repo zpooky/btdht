@@ -1,10 +1,26 @@
 #include "mainline.h"
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <new>
 
 namespace dht {
+
+void
+randomize(NodeId &id) noexcept {
+  sp::byte *it = id;
+  std::size_t remaining = sizeof(id);
+
+  while (remaining > 0) {
+    const int r = rand();
+    std::size_t length = std::min(sizeof(int), remaining);
+
+    std::memcpy(it, &r, length);
+    remaining -= length;
+    it += length;
+  }
+}
 
 /*KeyValue*/
 KeyValue::KeyValue()
@@ -16,12 +32,13 @@ KeyValue::KeyValue()
 /*Peer*/
 Peer::Peer()
     : ip(0)
-    , port()
+    , port(0)
     , next(nullptr) {
 }
 
 static KeyValue *
 find_kv(KeyValue *current, const infohash &id) noexcept {
+  // TODO tree?
 start:
   if (current) {
     if (std::memcmp(id, current->id, sizeof(id)) == 0) {
@@ -51,6 +68,10 @@ Contact::Contact()
     , next(nullptr) {
 }
 
+Contact::operator bool() const noexcept {
+  return peer.ip == 0;
+}
+
 /*Bucket*/
 Bucket::Bucket()
     : contacts() {
@@ -76,6 +97,8 @@ RoutingTable::~RoutingTable() {
     bucket.~Bucket();
   } else {
     // TODO reclaim
+    // dealloc(dht,lower);
+    // dealloc(dht,higher);
   }
 }
 
@@ -89,22 +112,23 @@ distance(const Key &a, const Key &b, Key &result) {
 }
 
 static bool
-bit(const Key &key, std::size_t bitIdx) noexcept {
-  std::size_t byte = bitIdx / 8;
-  std::size_t bit = bitIdx % 8;
-  return key[byte] & bit;
+bit(const Key &key, std::size_t idx) noexcept {
+  const std::size_t byte = idx / 8;
+  const std::uint8_t bit = idx % 8;
+  const std::uint8_t bitMask = std::uint8_t(0b1000'0000) >> bit;
+  return key[byte] & bitMask;
 }
 
 static RoutingTable *
 find_closest(DHT &dht, const Key &key, bool &inTree,
-             std::size_t &bitIdx) noexcept {
+             std::size_t &idx) noexcept {
   RoutingTable *root = dht.root;
-  bitIdx = 0;
+  idx = 0;
 start:
   if (root->type == NodeType::NODE) {
-    bool high = bit(key, bitIdx);
+    bool high = bit(key, idx);
     // inTree true if share same prefix
-    inTree &= bit(dht.id, bitIdx) == high;
+    inTree &= bit(dht.id, idx) == high;
 
     if (high) {
       root = root->node.higher;
@@ -112,12 +136,18 @@ start:
       root = root->node.lower;
     }
 
-    ++bitIdx;
+    ++idx;
     goto start;
   }
   return root;
 }
 
+template <typename T>
+static void
+dealloc(DHT &, T *reclaim) {
+  reclaim->~T();
+  free(reclaim);
+}
 template <typename T>
 static T *
 alloc(DHT &) {
@@ -139,14 +169,14 @@ insert(Bucket &bucket, const Contact &c) noexcept {
 }
 
 static void
-split(DHT &dht, RoutingTable *parent, std::size_t bitIdx) {
+split(DHT &dht, RoutingTable *parent, std::size_t idx) {
   auto higher = alloc<RoutingTable>(dht);
   auto lower = alloc<RoutingTable>(dht);
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Contact &contact = parent->bucket.contacts[i];
     if (contact) {
-      bool high = bit(contact.id, bitIdx);
+      bool high = bit(contact.id, idx);
       if (high) {
         assert(insert(higher->bucket, contact));
       } else {
@@ -163,13 +193,13 @@ static bool
 add(DHT &dht, const Contact &c) noexcept {
 start:
   bool inTree = false;
-  std::size_t bitIdx = 0;
-  RoutingTable *leaf = find_closest(dht, c.id, inTree, bitIdx);
+  std::size_t idx = 0;
+  RoutingTable *leaf = find_closest(dht, c.id, inTree, idx);
   assert(leaf);
   Bucket &bucket = leaf->bucket;
   if (!insert(bucket, c)) {
     if (inTree) {
-      split(dht, leaf, bitIdx);
+      split(dht, leaf, idx);
       goto start;
     }
     return false;
@@ -178,9 +208,47 @@ start:
 }
 
 static bool
-merge_children(RoutingTable *parent) noexcept {
-  // TODO
+copy(const Contact &from, Bucket &to) noexcept {
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    Contact &c = to.contacts[i];
+    if (!c) {
+      c = from;
+      return true;
+    }
+  }
+  return false;
 }
+
+static bool
+copy(const Bucket &from, Bucket &to) noexcept {
+  for (std::size_t f = 0; f < Bucket::K; ++f) {
+    const Contact &c = from.contacts[f];
+    if (c) {
+      if (!copy(c, to)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static bool
+merge_children(DHT &dht, RoutingTable *parent) noexcept {
+  RoutingTable *lower = parent->node.lower;
+  assert(lower->type == NodeType::LEAF);
+  RoutingTable *higher = parent->node.higher;
+  assert(higher->type == NodeType::LEAF);
+
+  parent->~RoutingTable();
+  parent = new (parent) RoutingTable;
+
+  copy(lower->bucket, parent->bucket);
+  copy(higher->bucket, parent->bucket);
+
+  dealloc(dht, lower);
+  dealloc(dht, higher);
+}
+
 static RoutingTable *
 find_parent(DHT &dht, const NodeId &) noexcept {
   // TODO
@@ -189,7 +257,7 @@ find_parent(DHT &dht, const NodeId &) noexcept {
 
 static bool
 uncontact(Contact &c) noexcept {
-  // TODO
+  c = Contact();
 }
 
 static std::size_t
@@ -227,7 +295,7 @@ remove(DHT &dht, Contact &c) noexcept {
   }
   if (cnt <= Bucket::K) {
     if (lower->type == NodeType::LEAF && higher->type == NodeType::LEAF) {
-      merge_children(parent);
+      merge_children(dht, parent);
       // goto start;
       // TODO recurse
     }
