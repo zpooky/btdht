@@ -1,6 +1,27 @@
 #include "shared.h"
 #include <cassert>
+#include <unistd.h> //close
 #include <utility>
+
+/*fd*/
+fd::fd(int p_fd)
+    : m_fd(p_fd) {
+}
+
+fd::fd(fd &&o)
+    : m_fd(o.m_fd) {
+  o.m_fd = -1;
+}
+
+fd::~fd() {
+  if (m_fd > 0) {
+    ::close(m_fd);
+  }
+}
+
+fd::operator int() noexcept {
+  return m_fd;
+}
 
 namespace sp {
 

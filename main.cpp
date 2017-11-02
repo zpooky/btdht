@@ -9,39 +9,6 @@
 #include <sys/epoll.h>  //epoll
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
-#include <unistd.h>     //close
-
-class fd {
-private:
-  int m_fd;
-
-public:
-  explicit fd(int p_fd)
-      : m_fd(p_fd) {
-  }
-
-  fd(const fd &) = delete;
-  fd(fd &&o)
-      : m_fd(o.m_fd) {
-    o.m_fd = -1;
-  }
-  fd &
-  operator=(const fd &) = delete;
-  fd &
-  operator=(const fd &&) = delete;
-
-  ~fd() {
-    if (m_fd > 0) {
-      ::close(m_fd);
-    }
-  }
-
-  explicit operator int() noexcept {
-    return m_fd;
-  }
-};
-
-using Port = std::uint16_t;
 
 void
 die(const char *s) {
@@ -49,21 +16,36 @@ die(const char *s) {
   std::terminate();
 }
 
+static Port
+listen_port(fd &listen) noexcept {
+  sockaddr_in addr;
+  std::memset(&addr, 0, sizeof(addr));
+  socklen_t slen = sizeof(addr);
+  sockaddr *saddr = (sockaddr *)&addr;
+
+  int ret = ::getsockname(int(listen), saddr, &slen);
+  if (ret < 0) {
+    die("getsockname()");
+  }
+  return addr.sin_port;
+}
+
 static fd
 bind(Port port) {
   int udp =
       ::socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_UDP);
   if (udp < 0) {
-    die("socket()\n");
+    die("socket()");
   }
   ::sockaddr_in me;
   std::memset(&me, 0, sizeof(me));
+  ::sockaddr *meaddr = (::sockaddr *)&me;
 
   me.sin_family = AF_INET;
   me.sin_port = htons(port);
   me.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  if (::bind(udp, (::sockaddr *)&me, sizeof(me)) == -1) {
+  if (::bind(udp, meaddr, sizeof(me)) == -1) {
     die("bind");
   }
   return fd{udp};
@@ -188,12 +170,13 @@ handle(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out) noexcept {
 
 int
 main() {
-  dht::Peer bs_node;
   dht::DHT dht;
   dht::randomize(dht.id);
 
-  Port listen(0);
-  fd udp = bind(listen);
+  fd udp = bind(0);
+  dht::Peer bs_node(INADDR_LOOPBACK, listen_port(udp));
+  printf("bind(%u)\n", bs_node.port);
+
   fd poll = setup_epoll(udp);
   bootstrap(udp, dht.id, bs_node);
   loop(poll, dht, handle);

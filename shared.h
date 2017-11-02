@@ -4,6 +4,28 @@
 #include <cstddef>
 #include <cstdint>
 
+class fd {
+private:
+  int m_fd;
+
+public:
+  explicit fd(int p_fd);
+
+  fd(const fd &) = delete;
+  fd(fd &&o);
+  fd &
+  operator=(const fd &) = delete;
+  fd &
+  operator=(const fd &&) = delete;
+
+  ~fd();
+
+  explicit operator int() noexcept;
+};
+
+using Port = std::uint16_t;
+using Ip = std::uint32_t;
+
 namespace sp {
 
 using byte = unsigned char;

@@ -12,11 +12,12 @@ void
 randomize(NodeId &) noexcept;
 
 struct Peer {
-  std::uint32_t ip;
-  std::uint16_t port;
+  Ip ip;
+  Port port;
   // {
   Peer *next;
   // }
+  Peer(Ip, Port);
   Peer();
 };
 

@@ -30,10 +30,14 @@ KeyValue::KeyValue()
 }
 
 /*Peer*/
-Peer::Peer()
-    : ip(0)
-    , port(0)
+Peer::Peer(Ip i, Port p)
+    : ip(i)
+    , port(p)
     , next(nullptr) {
+}
+
+Peer::Peer()
+    : Peer(0, 0) {
 }
 
 static KeyValue *
