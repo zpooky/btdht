@@ -11,7 +11,7 @@ encode_numeric(sp::Buffer &buffer, const char *format, T in) noexcept {
   std::size_t &i = buffer.pos;
   const std::size_t remaining = buffer.capacity - i;
 
-  char *b = reinterpret_cast<char *>(buffer.start + i);
+  char *b = reinterpret_cast<char *>(buffer.raw + i);
   int res = std::snprintf(b, remaining, format, in);
   if (res < 0) {
     return false;
@@ -75,7 +75,7 @@ encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
 
   std::size_t &i = buffer.pos;
   buffer[i++] = ':';
-  std::memcpy(buffer.start + i, str, length);
+  std::memcpy(buffer.raw + i, str, length);
   i += length;
 
   return true;
@@ -103,7 +103,7 @@ encodeList(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
   if (buffer.pos + 1 > buffer.capacity) {
     return false;
   }
-  buffer.start[i++] = 'l';
+  buffer.raw[i++] = 'l';
 
   if (!f(buffer)) {
     buffer.pos = before;
@@ -114,7 +114,7 @@ encodeList(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
     buffer.pos = before;
     return false;
   }
-  buffer.start[i++] = 'e';
+  buffer.raw[i++] = 'e';
 
   return true;
 }

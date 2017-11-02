@@ -9,7 +9,7 @@ namespace sp {
 using byte = unsigned char;
 
 struct Buffer {
-  byte *start;
+  byte *raw;
   const std::size_t capacity;
   std::size_t length;
   std::size_t pos;
@@ -26,6 +26,18 @@ struct Buffer {
 
 void
 flip(Buffer &) noexcept;
+
+void
+reset(Buffer &) noexcept;
+
+byte *
+offset(Buffer &) noexcept;
+
+std::size_t
+remaining(Buffer &) noexcept;
+
+std::size_t
+remaining_write(Buffer &) noexcept;
 
 } // namespace sp
 

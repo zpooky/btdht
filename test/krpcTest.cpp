@@ -25,7 +25,7 @@ TEST(krpcTest, test_ping) {
   nodeId(id);
 
   ASSERT_TRUE(krpc::request::ping(buff, id));
-  printf("%s\n", buff.start);
+  printf("%s\n", buff.raw);
   // ASSERT_TRUE( EQ("d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe",
   // buff));
 

@@ -8,7 +8,7 @@ static bool
 EQ(const char *str, const sp::Buffer &b) {
   std::size_t length = strlen(str);
   assert(length == b.pos);
-  return memcmp(str, b.start, length) == 0;
+  return memcmp(str, b.raw, length) == 0;
 }
 
 TEST(BEncodeTest, integer) {
@@ -101,7 +101,7 @@ lt(const std::uint8_t *a, const std::uint8_t *b) {
 }
 
 template <std::size_t SIZE>
-static bool
+static void
 convert(std::uint64_t i, std::uint8_t (&buf)[SIZE]) {
   static_assert(sizeof(i) == SIZE, "");
   std::size_t shift = (sizeof(i) * 8) - 8;

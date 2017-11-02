@@ -28,7 +28,7 @@ encodeDict(sp::Buffer &buffer, F f) noexcept {
   if (buffer.pos + 1 > buffer.capacity) {
     return false;
   }
-  buffer.start[i++] = 'd';
+  buffer.raw[i++] = 'd';
 
   if (!f(buffer)) {
     buffer.pos = before;
@@ -39,7 +39,7 @@ encodeDict(sp::Buffer &buffer, F f) noexcept {
     buffer.pos = before;
     return false;
   }
-  buffer.start[i++] = 'e';
+  buffer.raw[i++] = 'e';
 
   return true;
 }
