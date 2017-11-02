@@ -9,8 +9,8 @@ namespace dht {
 
 void
 randomize(NodeId &id) noexcept {
-  sp::byte *it = id;
-  std::size_t remaining = sizeof(id);
+  sp::byte *it = id.id;
+  std::size_t remaining = sizeof(id.id);
 
   while (remaining > 0) {
     const int r = rand();
@@ -119,8 +119,13 @@ bit(const Key &key, std::size_t idx) noexcept {
   return key[byte] & bitMask;
 }
 
+static bool
+bit(const NodeId &key, std::size_t idx) noexcept {
+  return bit(key.id, idx);
+}
+
 static RoutingTable *
-find_closest(DHT &dht, const Key &key, bool &inTree,
+find_closest(DHT &dht, const NodeId &key, bool &inTree,
              std::size_t &idx) noexcept {
   RoutingTable *root = dht.root;
   idx = 0;
@@ -194,6 +199,7 @@ add(DHT &dht, const Contact &c) noexcept {
 start:
   bool inTree = false;
   std::size_t idx = 0;
+
   RoutingTable *leaf = find_closest(dht, c.id, inTree, idx);
   assert(leaf);
   Bucket &bucket = leaf->bucket;
@@ -232,7 +238,7 @@ copy(const Bucket &from, Bucket &to) noexcept {
   return true;
 }
 
-static bool
+static void
 merge_children(DHT &dht, RoutingTable *parent) noexcept {
   RoutingTable *lower = parent->node.lower;
   assert(lower->type == NodeType::LEAF);
@@ -250,12 +256,12 @@ merge_children(DHT &dht, RoutingTable *parent) noexcept {
 }
 
 static RoutingTable *
-find_parent(DHT &dht, const NodeId &) noexcept {
+find_parent(DHT &, const NodeId &) noexcept {
   // TODO
   return nullptr;
 }
 
-static bool
+static void
 uncontact(Contact &c) noexcept {
   c = Contact();
 }
@@ -267,7 +273,7 @@ remove(Bucket &bucket, const Contact &search) noexcept {
     Contact &c = bucket.contacts[i];
     assert(c.next == nullptr);
     if (c) {
-      if (std::memcmp(c.id, search.id, sizeof(c.id)) == 0) {
+      if (std::memcmp(c.id.id, search.id.id, sizeof(c.id)) == 0) {
         uncontact(c);
       }
       ++result;
@@ -300,6 +306,7 @@ remove(DHT &dht, Contact &c) noexcept {
       // TODO recurse
     }
   }
+  return true;
 } // namespace dht
 
 static Contact *

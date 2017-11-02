@@ -33,7 +33,7 @@ offset(Buffer &b) noexcept {
 }
 
 std::size_t
-remaining(Buffer &b) noexcept {
+remaining_read(Buffer &b) noexcept {
   return b.length - b.pos;
 }
 

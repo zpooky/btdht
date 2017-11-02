@@ -11,7 +11,7 @@
 // }
 
 static void
-nodeId(krpc::NodeId &id) {
+nodeId(dht::NodeId &id) {
   memset(id.id, 0, sizeof(id.id));
   const char *raw_id = "abcdefghij0123456789";
   memcpy(id.id, raw_id, strlen(raw_id));
@@ -21,7 +21,7 @@ TEST(krpcTest, test_ping) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  krpc::NodeId id;
+  dht::NodeId id;
   nodeId(id);
 
   ASSERT_TRUE(krpc::request::ping(buff, id));
@@ -36,12 +36,11 @@ TEST(krpcTest, test_find_node) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  krpc::NodeId id;
+  dht::NodeId id;
   nodeId(id);
 
   const char *target = "target";
-  ASSERT_TRUE(krpc::request::find_node(buff, id, target));
-
+  ASSERT_TRUE(krpc::request::find_node(buff, id, id));
   ASSERT_TRUE(krpc::response::find_node(buff, id, target));
 }
 
@@ -49,7 +48,7 @@ TEST(krpcTest, test_get_peers) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  krpc::NodeId id;
+  dht::NodeId id;
   nodeId(id);
 
   const char *infohash = "as";
@@ -60,7 +59,7 @@ TEST(krpcTest, test_anounce_peer) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  krpc::NodeId id;
+  dht::NodeId id;
   nodeId(id);
   ASSERT_TRUE(
       krpc::request::announce_peer(buff, id, true, "infohash", 64000, "token"));

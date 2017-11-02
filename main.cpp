@@ -1,6 +1,7 @@
 #include "mainline.h"
 #include <stdio.h>
 
+#include "krpc.h"
 #include "shared.h"
 #include <arpa/inet.h>
 #include <cstring>
@@ -24,6 +25,10 @@ public:
       : m_fd(o.m_fd) {
     o.m_fd = -1;
   }
+  fd &
+  operator=(const fd &) = delete;
+  fd &
+  operator=(const fd &&) = delete;
 
   ~fd() {
     if (m_fd > 0) {
@@ -83,10 +88,6 @@ setup_epoll(fd &udp) noexcept {
 }
 
 static void
-bootstrap(const dht::NodeId &self, const dht::Peer &) noexcept {
-}
-
-static void
 udp_receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   int flag = 0;
   sockaddr *o = (sockaddr *)&other;
@@ -106,8 +107,44 @@ udp_receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   buf.pos += len;
 }
 
+static bool
+udp_send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
+  int flag = 0;
+  sockaddr *destaddr = (sockaddr *)&dest;
+
+  sp::byte *const raw = offset(buf);
+  const std::size_t raw_len = remaining_read(buf);
+
+  ssize_t sent = 0;
+  do {
+    sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
+  } while (sent < 0 && errno == EAGAIN);
+
+  if (sent < 0) {
+    die("recvfrom()");
+  }
+  buf.pos += sent;
+
+  return true;
+}
+
 static void
-udp_send(int fd, sp::Buffer) noexcept {
+to_sockaddr(const dht::Peer &p, ::sockaddr_in &dest) noexcept {
+}
+
+static bool
+bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &target) noexcept {
+  sp::byte rawb[1024];
+  sp::Buffer buf(rawb);
+  if (!krpc::request::find_node(buf, self, self)) {
+    return false;
+  }
+
+  ::sockaddr_in dest;
+  to_sockaddr(target, dest);
+
+  flip(buf);
+  return udp_send(int(udp), dest, buf);
 }
 
 static void
@@ -125,22 +162,21 @@ loop(fd &fdpoll, dht::DHT &ctx,
   }
 
   for (int i = 0; i < no_events; ++i) {
-
     ::epoll_event &current = events[i];
     if (current.events & EPOLLIN) {
       sp::Buffer inBuffer(in);
       sp::Buffer outBuffer(out);
 
       int cfd = current.data.fd;
-      ::sockaddr_in other;
-      udp_receive(cfd, other, inBuffer);
+      ::sockaddr_in remote;
+      udp_receive(cfd, remote, inBuffer);
       flip(inBuffer);
 
       if (inBuffer.length > 0) {
         f(ctx, inBuffer, outBuffer);
         flip(outBuffer);
 
-        udp_send(cfd, outBuffer);
+        udp_send(cfd, remote, outBuffer);
       }
     }
   }
@@ -159,7 +195,7 @@ main() {
   Port listen(0);
   fd udp = bind(listen);
   fd poll = setup_epoll(udp);
-  bootstrap(dht.id, bs_node);
+  bootstrap(udp, dht.id, bs_node);
   loop(poll, dht, handle);
   return 0;
 }

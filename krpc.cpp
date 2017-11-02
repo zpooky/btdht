@@ -43,7 +43,7 @@ message(sp::Buffer &buf, const char *mt, const char *q, F f) noexcept {
 
 namespace request {
 bool
-ping(sp::Buffer &buf, const NodeId &sender) noexcept {
+ping(sp::Buffer &buf, const dht::NodeId &sender) noexcept {
   using namespace bencode;
   return message(buf, "q", "ping", [&sender](sp::Buffer &b) { //
     if (!encode(b, "a")) {
@@ -60,29 +60,32 @@ ping(sp::Buffer &buf, const NodeId &sender) noexcept {
 } // request::ping()
 
 bool
-find_node(sp::Buffer &buf, const NodeId &id, const char *target) noexcept {
+find_node(sp::Buffer &buf, const dht::NodeId &self,
+          const dht::NodeId &search) noexcept {
   using namespace bencode;
-  return message(buf, "q", "find_node", [id, target](sp::Buffer &b) { //
+  return message(buf, "q", "find_node", [self, search](sp::Buffer &b) { //
     if (!encode(b, "a")) {
       return false;
     }
 
-    return encodeDict(b,                            //
-                      [id, target](sp::Buffer &b) { //
-                        if (!encodePair(b, "id", id.id, sizeof(id.id))) {
-                          return false;
-                        }
+    return encodeDict(
+        b,                              //
+        [self, search](sp::Buffer &b) { //
+          if (!encodePair(b, "id", self.id, sizeof(self.id))) {
+            return false;
+          }
 
-                        if (!encodePair(b, "target", target)) {
-                          return false;
-                        }
-                        return true;
-                      });
+          if (!encodePair(b, "target", search.id, sizeof(search.id))) {
+            return false;
+          }
+          return true;
+        });
   });
 } // request::find_node()
 
 bool
-get_peers(sp::Buffer &buf, const NodeId &id, const char *infohash) noexcept {
+get_peers(sp::Buffer &buf, const dht::NodeId &id,
+          const char *infohash) noexcept {
   using namespace bencode;
   return message(buf, "q", "get_peers", [id, infohash](sp::Buffer &b) { //
     if (!encode(b, "a")) {
@@ -104,7 +107,7 @@ get_peers(sp::Buffer &buf, const NodeId &id, const char *infohash) noexcept {
 } // request::get_peers()
 
 bool
-announce_peer(sp::Buffer &buf, const NodeId &id, bool implied_port,
+announce_peer(sp::Buffer &buf, const dht::NodeId &id, bool implied_port,
               const char *infohash, std::uint16_t port,
               const char *token) noexcept {
 
@@ -146,7 +149,7 @@ announce_peer(sp::Buffer &buf, const NodeId &id, bool implied_port,
 
 namespace response {
 bool
-ping(sp::Buffer &buf, const NodeId &id) noexcept {
+ping(sp::Buffer &buf, const dht::NodeId &id) noexcept {
   using namespace bencode;
   return message(buf, "r", "ping", [id](sp::Buffer &b) { //
     return encodeDict(b,
@@ -164,7 +167,7 @@ ping(sp::Buffer &buf, const NodeId &id) noexcept {
 } // response::ping()
 
 bool
-find_node(sp::Buffer &buf, const NodeId &id, const char *target) noexcept {
+find_node(sp::Buffer &buf, const dht::NodeId &id, const char *target) noexcept {
   using namespace bencode;
   return message(buf, "r", "find_node", [id, target](sp::Buffer &b) { //
     return encodeDict(b,                                              //
@@ -186,7 +189,7 @@ find_node(sp::Buffer &buf, const NodeId &id, const char *target) noexcept {
 } // response::find_node()
 
 bool
-announce_peer(sp::Buffer &buf, const NodeId &id) noexcept {
+announce_peer(sp::Buffer &buf, const dht::NodeId &id) noexcept {
   using namespace bencode;
   return message(buf, "r", "announce_peerid", [id](sp::Buffer &b) { //
     return encodeDict(b,                                            //

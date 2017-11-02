@@ -34,11 +34,23 @@ byte *
 offset(Buffer &) noexcept;
 
 std::size_t
-remaining(Buffer &) noexcept;
+remaining_read(Buffer &) noexcept;
 
 std::size_t
 remaining_write(Buffer &) noexcept;
 
 } // namespace sp
+
+namespace dht {
+/*mainline dht*/
+
+using Key = sp::byte[20];
+using infohash = Key;
+struct NodeId
+
+{
+  Key id;
+};
+} // namespace dht
 
 #endif

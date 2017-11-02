@@ -13,37 +13,32 @@ enum class Error {
   method_unknown = 204
 };
 
-struct NodeId
-
-{
-  sp::byte id[20];
-};
-
 namespace request {
 bool
-ping(sp::Buffer &, const NodeId &sender) noexcept;
+ping(sp::Buffer &, const dht::NodeId &sender) noexcept;
 
 bool
-find_node(sp::Buffer &, const NodeId &id, const char *target) noexcept;
+find_node(sp::Buffer &, const dht::NodeId &self,
+          const dht::NodeId &search) noexcept;
 
 bool
-get_peers(sp::Buffer &, const NodeId &id, const char *infohash) noexcept;
+get_peers(sp::Buffer &, const dht::NodeId &id, const char *infohash) noexcept;
 
 bool
-announce_peer(sp::Buffer &, const NodeId &id, bool implied_port,
+announce_peer(sp::Buffer &, const dht::NodeId &id, bool implied_port,
               const char *infohash, std::uint16_t port,
               const char *token) noexcept;
 } // namespace request
 
 namespace response {
 bool
-ping(sp::Buffer &, const NodeId &receiver) noexcept;
+ping(sp::Buffer &, const dht::NodeId &receiver) noexcept;
 
 bool
-find_node(sp::Buffer &, const NodeId &id, const char *target) noexcept;
+find_node(sp::Buffer &, const dht::NodeId &id, const char *target) noexcept;
 
 bool
-announce_peer(sp::Buffer &, const NodeId &) noexcept;
+announce_peer(sp::Buffer &, const dht::NodeId &) noexcept;
 } // namespace response
 
 } // namespace krpc

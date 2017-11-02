@@ -8,12 +8,6 @@
 // - Node implements Mainline DHT protocol
 
 namespace dht {
-/*mainline dht*/
-
-using Key = sp::byte[20];
-using infohash = Key;
-using NodeId = Key;
-
 void
 randomize(NodeId &) noexcept;
 
