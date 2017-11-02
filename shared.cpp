@@ -2,6 +2,7 @@
 #include <cassert>
 #include <unistd.h> //close
 #include <utility>
+#include <stdio.h>
 
 /*fd*/
 fd::fd(int p_fd)
@@ -16,6 +17,7 @@ fd::fd(fd &&o)
 fd::~fd() {
   if (m_fd > 0) {
     ::close(m_fd);
+    m_fd = -1;
   }
 }
 
