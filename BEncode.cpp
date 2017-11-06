@@ -49,14 +49,14 @@ encode_integer(sp::Buffer &buffer, const char *format, T in) noexcept {
   buffer[i++] = 'e';
   return true;
 }
-
+namespace e {
 bool
-encode(sp::Buffer &buffer, std::uint32_t in) noexcept {
+value(sp::Buffer &buffer, std::uint32_t in) noexcept {
   return encode_integer(buffer, "%u", in);
 }
 
 bool
-encode(sp::Buffer &buffer, std::int32_t in) noexcept {
+value(sp::Buffer &buffer, std::int32_t in) noexcept {
   return encode_integer(buffer, "%d", in);
 }
 //-----------------------------
@@ -82,22 +82,23 @@ encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
 }
 
 bool
-encode(sp::Buffer &buffer, const char *str) noexcept {
-  return encode(buffer, str, std::strlen(str));
+value(sp::Buffer &buffer, const char *str) noexcept {
+  return value(buffer, str, std::strlen(str));
 }
 
 bool
-encode(sp::Buffer &buffer, const char *str, std::size_t length) noexcept {
+value(sp::Buffer &buffer, const char *str, std::size_t length) noexcept {
   return encode_raw(buffer, str, length);
 }
+
 bool
-encode(sp::Buffer &buffer, const sp::byte *str, std::size_t length) noexcept {
+value(sp::Buffer &buffer, const sp::byte *str, std::size_t length) noexcept {
   return encode_raw(buffer, str, length);
 }
 
 //-----------------------------
 bool
-encodeList(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
+list(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
   const std::size_t before = buffer.pos;
   std::size_t &i = buffer.pos;
   if (buffer.pos + 1 > buffer.capacity) {
@@ -123,13 +124,13 @@ encodeList(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
 
 template <typename V>
 static bool
-generic_encodePair(sp::Buffer &buffer, const char *key, V value) {
+generic_encodePair(sp::Buffer &buffer, const char *key, V val) {
   const std::size_t before = buffer.pos;
-  if (!encode(buffer, key)) {
+  if (!value(buffer, key)) {
     buffer.pos = before;
     return false;
   }
-  if (!encode(buffer, value)) {
+  if (!value(buffer, val)) {
     buffer.pos = before;
     return false;
   }
@@ -137,48 +138,80 @@ generic_encodePair(sp::Buffer &buffer, const char *key, V value) {
 }
 
 bool
-encodePair(sp::Buffer &buffer, const char *key, const char *value) noexcept {
+pair(sp::Buffer &buffer, const char *key, const char *value) noexcept {
   return generic_encodePair(buffer, key, value);
 }
 
 bool
-encodePair(sp::Buffer &buffer, const char *key, std::uint32_t value) noexcept {
+pair(sp::Buffer &buffer, const char *key, std::uint32_t value) noexcept {
   return generic_encodePair(buffer, key, value);
 }
 
 bool
-encodePair(sp::Buffer &buffer, const char *key, const sp::byte *value,
-           std::size_t length) noexcept {
+pair(sp::Buffer &buffer, const char *key, const sp::byte *val,
+     std::size_t length) noexcept {
   const std::size_t before = buffer.pos;
-  if (!encode(buffer, key)) {
+  if (!value(buffer, key)) {
     buffer.pos = before;
     return false;
   }
 
-  if (!encode(buffer, value, length)) {
+  if (!value(buffer, val, length)) {
     buffer.pos = before;
     return false;
   }
   return true;
 }
+} // namespace e
 //-----------------------------
 
+namespace d {
+/*Decoder*/
+Decoder::Decoder(sp::Buffer &) {
+}
+
 bool
-decode(sp::Buffer &b, std::uint32_t &out) noexcept {
-  if (b.pos == b.length) {
-    return false;
-  }
-  if (b[b.pos] != 'i') {
-    return false;
-  }
+pair(Decoder &, const char *, sp::byte *, std::size_t) noexcept {
   // TODO
   return true;
 }
 
 bool
-decode(sp::Buffer &, std::int32_t &) noexcept {
+pair(Decoder &, const char *, char *, std::size_t) noexcept {
   // TODO
   return true;
 }
+
+bool
+pair(Decoder &, const char *) noexcept {
+  // TODO
+  return true;
+}
+
+bool
+pair(Decoder &, const char *, bool &) noexcept {
+  // TODO
+  return true;
+}
+
+bool
+pair(Decoder &, const char *, std::uint32_t &) noexcept {
+  // TODO
+  return true;
+}
+
+bool
+pair(Decoder &, const char *, std::uint16_t &) noexcept {
+  // TODO
+  return true;
+}
+
+bool
+value(Decoder &, const char *) noexcept {
+  // TODO
+  return true;
+}
+
+} // namespace d
 
 } // namespace bencode

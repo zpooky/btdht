@@ -5,24 +5,25 @@
 
 namespace bencode {
 
+namespace e {
 bool
-encode(sp::Buffer &, std::uint32_t) noexcept;
+value(sp::Buffer &, std::uint32_t) noexcept;
 bool
-encode(sp::Buffer &, std::int32_t) noexcept;
+value(sp::Buffer &, std::int32_t) noexcept;
 
 bool
-encode(sp::Buffer &, const char *) noexcept;
+value(sp::Buffer &, const char *) noexcept;
 bool
-encode(sp::Buffer &, const char *, std::size_t) noexcept;
+value(sp::Buffer &, const char *, std::size_t) noexcept;
 bool
-encode(sp::Buffer &, const sp::byte *, std::size_t) noexcept;
+value(sp::Buffer &, const sp::byte *, std::size_t) noexcept;
 
 bool
-encodeList(sp::Buffer &, bool (*)(sp::Buffer &)) noexcept;
+list(sp::Buffer &, bool (*)(sp::Buffer &)) noexcept;
 
 template <typename F>
 static bool
-encodeDict(sp::Buffer &buffer, F f) noexcept {
+dict(sp::Buffer &buffer, F f) noexcept {
   const std::size_t before = buffer.pos;
   std::size_t &i = buffer.pos;
   if (buffer.pos + 1 > buffer.capacity) {
@@ -45,21 +46,65 @@ encodeDict(sp::Buffer &buffer, F f) noexcept {
 }
 
 bool
-encodePair(sp::Buffer &, const char *key, const char *value) noexcept;
+pair(sp::Buffer &, const char *key, const char *value) noexcept;
 
 bool
-encodePair(sp::Buffer &, const char *key, std::uint32_t value) noexcept;
+pair(sp::Buffer &, const char *key, std::uint32_t value) noexcept;
 
 bool
-encodePair(sp::Buffer &, const char *key, const sp::byte *value,
-           std::size_t length) noexcept;
+pair(sp::Buffer &, const char *key, const sp::byte *value,
+     std::size_t length) noexcept;
+
+template <std::size_t SIZE>
+bool
+pair(sp::Buffer &b, const char *key, const sp::byte (&value)[SIZE]) noexcept {
+  return pair(b, key, value, SIZE);
+}
+} // namespace e
 
 //----------------------------------
+namespace d {
+struct Decoder {
+  explicit Decoder(sp::Buffer &);
+};
+
+template <typename F>
 bool
-decode(sp::Buffer &, std::uint32_t &) noexcept;
+dict(Decoder &p, F f) noexcept {
+  return f(p);
+}
 
 bool
-decode(sp::Buffer &, std::int32_t &) noexcept;
+pair(Decoder &, const char *, char *, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+bool
+pair(Decoder &p, const char *key, char (&value)[SIZE]) noexcept {
+  return pair(p, key, value, SIZE);
+}
+
+bool
+pair(Decoder &, const char *, sp::byte *, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+bool
+pair(Decoder &p, const char *key, sp::byte (&value)[SIZE]) noexcept {
+  return pair(p, key, value, SIZE);
+}
+
+bool
+pair(Decoder &, const char *, bool &) noexcept;
+
+bool
+pair(Decoder &, const char *, std::uint32_t &) noexcept;
+
+bool
+pair(Decoder &, const char *, std::uint16_t &) noexcept;
+
+bool
+value(Decoder &, const char *) noexcept;
+
+} // namespace d
 
 } // namespace bencode
 

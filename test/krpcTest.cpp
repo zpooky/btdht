@@ -51,7 +51,7 @@ TEST(krpcTest, test_get_peers) {
   dht::NodeId id;
   nodeId(id);
 
-  const char *infohash = "as";
+  dht::Infohash infohash;
   ASSERT_TRUE(krpc::request::get_peers(buff, id, infohash));
 }
 
@@ -61,7 +61,8 @@ TEST(krpcTest, test_anounce_peer) {
 
   dht::NodeId id;
   nodeId(id);
+  dht::Infohash infohash;
   ASSERT_TRUE(
-      krpc::request::announce_peer(buff, id, true, "infohash", 64000, "token"));
+      krpc::request::announce_peer(buff, id, true, infohash, 64000, "token"));
   ASSERT_TRUE(krpc::response::announce_peer(buff, id));
 }

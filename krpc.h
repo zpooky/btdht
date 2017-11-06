@@ -22,11 +22,12 @@ find_node(sp::Buffer &, const dht::NodeId &self,
           const dht::NodeId &search) noexcept;
 
 bool
-get_peers(sp::Buffer &, const dht::NodeId &id, const char *infohash) noexcept;
+get_peers(sp::Buffer &, const dht::NodeId &id,
+          const dht::Infohash &infohash) noexcept;
 
 bool
 announce_peer(sp::Buffer &, const dht::NodeId &id, bool implied_port,
-              const char *infohash, std::uint16_t port,
+              const dht::Infohash &infohash, std::uint16_t port,
               const char *token) noexcept;
 } // namespace request
 

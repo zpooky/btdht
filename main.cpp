@@ -1,6 +1,7 @@
 #include "mainline.h"
 #include <stdio.h>
 
+#include "BEncode.h"
 #include "krpc.h"
 #include "shared.h"
 #include <arpa/inet.h>
@@ -184,8 +185,171 @@ loop(fd &fdpoll, dht::DHT &ctx,
   } // for
 }
 
+struct dht_impls { //
+  void (*req_ping)(dht::DHT &, sp::Buffer &, const dht::NodeId &);
+  void (*req_find_node)(dht::DHT &, sp::Buffer &, //
+                        const dht::NodeId &, const dht::NodeId &);
+  void (*req_get_peers)(dht::DHT &, sp::Buffer &, //
+                        const dht::NodeId &, const dht::Infohash &);
+  void (*req_announce)(dht::DHT &, sp::Buffer &, //
+                       const dht::NodeId &, bool, const dht::Infohash &, Port,
+                       const char *);
+
+  void (*res_ping)(dht::DHT &, sp::Buffer &);
+  void (*res_find_node)(dht::DHT &, sp::Buffer &);
+  void (*res_get_peers)(dht::DHT &, sp::Buffer &);
+  void (*res_announce)(dht::DHT &, sp::Buffer &);
+};
+
+static bool
+parse(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out,
+      dht_impls &impl) noexcept {
+  bencode::d::Decoder p(in);
+  return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) { //
+    sp::byte transaction[16] = {0};
+    char messageType[2] = {0};
+    char query[16] = {0};
+    bool t = false;
+    bool y = false;
+    bool q = false;
+
+  start:
+    if (!t && bencode::d::pair(p, "t", transaction)) {
+      t = true;
+      goto start;
+    }
+    if (!y && bencode::d::pair(p, "y", messageType)) {
+      y = true;
+      goto start;
+    }
+    if (!q && bencode::d::pair(p, "q", query)) {
+      q = true;
+      goto start;
+    }
+
+    if (!(t && y && q)) {
+      return false;
+    }
+
+    if (strcmp(messageType, "q") == 0) {
+      if (!bencode::d::value(p, "a")) {
+        return false;
+      }
+
+      // TODO support out of order
+      /*query*/
+      if (strcmp(query, "ping") == 0) {
+        return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) { //
+          dht::NodeId id;
+          if (!bencode::d::pair(p, "id", id.id)) {
+            return false;
+          }
+
+          impl.req_ping(ctx, out, id);
+          return true;
+        });
+      } else if (strcmp(query, "find_node") == 0) {
+        return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) { //
+          dht::NodeId id;
+          dht::NodeId target;
+
+          if (!bencode::d::pair(p, "id", id.id)) {
+            return false;
+          }
+          if (!bencode::d::pair(p, "target", target.id)) {
+            return false;
+          }
+
+          impl.req_find_node(ctx, out, id, target);
+          return true;
+        });
+      } else if (strcmp(query, "get_peers") == 0) {
+        return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) {
+          dht::NodeId id;
+          dht::Infohash infohash;
+
+          if (!bencode::d::pair(p, "id", id.id)) {
+            return false;
+          }
+          if (!bencode::d::pair(p, "info_hash", infohash.id)) {
+            return false;
+          }
+
+          impl.req_get_peers(ctx, out, id, infohash);
+          return true;
+        });
+      } else if (strcmp(query, "announce_peer") == 0) {
+        return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) {
+          dht::NodeId id;
+          bool implied_port = false;
+          dht::Infohash infohash;
+          Port port = 0;
+          char token[16] = {0};
+
+          if (!bencode::d::pair(p, "id", id.id)) {
+            return false;
+          }
+          if (!bencode::d::pair(p, "implied_port", implied_port)) {
+            return false;
+          }
+          if (!bencode::d::pair(p, "info_hash", infohash.id)) {
+            return false;
+          }
+          // TODO optional
+          if (!bencode::d::pair(p, "port", port)) {
+            return false;
+          }
+          if (!bencode::d::pair(p, "token", token)) {
+            return false;
+          }
+
+          impl.req_announce(ctx, out, id, implied_port, infohash, port, token);
+          return true;
+        });
+      } else {
+        return false;
+      }
+    } else if (strcmp(messageType, "r") == 0) {
+      /*response*/
+      // TODO
+    } else {
+      return false;
+    }
+    return true;
+  });
+}
+
+static void
+handle_Ping(dht::DHT &ctx, sp::Buffer &out, //
+            const dht::NodeId &sender) noexcept {
+}
+
+static void
+handle_FindNode(dht::DHT &ctx, sp::Buffer &out, //
+                const dht::NodeId &self, const dht::NodeId &search) noexcept {
+}
+
+static void
+handle_GetPeers(dht::DHT &ctx, sp::Buffer &out, //
+                const dht::NodeId &id, const dht::Infohash &infohash) noexcept {
+}
+
+static void
+handle_Announce(dht::DHT &ctx, sp::Buffer &out, //
+                const dht::NodeId &id, bool implied_port,
+                const dht::Infohash &infohash, Port port,
+                const char *token) noexcept {
+}
+
 static void
 handle(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out) noexcept {
+  dht_impls impls;
+  impls.req_ping = handle_Ping;
+  impls.req_find_node = handle_FindNode;
+  impls.req_get_peers = handle_GetPeers;
+  impls.req_announce = handle_Announce;
+
+  parse(ctx, in, out, impls);
   printf("handle\n");
 }
 
@@ -199,13 +363,15 @@ handle(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out) noexcept {
 //   constexpr std::size_t BUFLEN = 2048;
 //   sp::byte buf[BUFLEN];
 //
-//   recv_len = ::recvfrom(int(udp), buf, BUFLEN, 0, (struct sockaddr *)&s, &slen);
+//   recv_len = ::recvfrom(int(udp), buf, BUFLEN, 0, (struct sockaddr *)&s,
+//   &slen);
 //
 //   if (recv_len == -1) {
 //     die("recvfrom()");
 //   }
 // }
 
+// echo "asd" | netcat --udp 127.0.0.1 45058
 int
 main() {
   dht::DHT ctx;

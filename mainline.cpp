@@ -41,11 +41,11 @@ Peer::Peer()
 }
 
 static KeyValue *
-find_kv(KeyValue *current, const infohash &id) noexcept {
+find_kv(KeyValue *current, const Infohash &id) noexcept {
   // TODO tree?
 start:
   if (current) {
-    if (std::memcmp(id, current->id, sizeof(id)) == 0) {
+    if (std::memcmp(id.id, current->id.id, sizeof(id)) == 0) {
       return current;
     }
     current = current->next;
@@ -55,7 +55,7 @@ start:
 }
 
 const Peer *
-lookup(DHT &dht, const infohash &id) noexcept {
+lookup(DHT &dht, const Infohash &id) noexcept {
   KeyValue *const needle = find_kv(dht.kv, id);
   if (needle) {
     return needle->peers;

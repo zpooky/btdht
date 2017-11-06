@@ -67,12 +67,15 @@ namespace dht {
 /*mainline dht*/
 
 using Key = sp::byte[20];
-using infohash = Key;
-struct NodeId
 
-{
+struct Infohash {
   Key id;
 };
+
+struct NodeId {
+  Key id;
+};
+
 } // namespace dht
 
 #endif

@@ -28,7 +28,7 @@ using Timestamp = std::uint32_t; // TODO
 struct KeyValue {
   KeyValue *next;
   Peer *peers;
-  infohash id;
+  Infohash id;
   //
   KeyValue();
 };
@@ -87,7 +87,7 @@ struct DHT {
 };
 
 const Peer *
-lookup(const DHT &, const infohash &) noexcept;
+lookup(const DHT &, const Infohash &) noexcept;
 
 } // namespace dht
 #endif
