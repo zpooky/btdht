@@ -138,6 +138,7 @@ struct Node {
 
   Node();
   Node(const NodeId &, Ip, Port, time_t);
+  Node(const NodeId &, const Peer &, time_t);
 
   explicit operator bool() const noexcept;
 };

@@ -96,6 +96,10 @@ Node::Node(const NodeId &nid, Ip ip, Port port, time_t la)
     , ping_await(false) {
 }
 
+Node::Node(const NodeId &nid, const Peer &p, time_t act)
+    : Node(nid, p.ip, p.port, act) {
+}
+
 Node::operator bool() const noexcept {
   return peer.ip == 0;
 }

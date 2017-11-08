@@ -27,7 +27,7 @@ request(dht::DHT &ctx, sp::Buffer &out, const dht::Peer &remote, //
   time_t now = time(0);
   constexpr bool is_ping = true;
   if (!dht::update_activity(ctx, sender, now, is_ping)) {
-    dht::Node contact(sender, remote.ip, remote.port, now);
+    dht::Node contact(sender, remote, now);
     dht::add(ctx, contact);
   }
 
