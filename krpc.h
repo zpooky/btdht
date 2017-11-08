@@ -36,7 +36,16 @@ bool
 ping(sp::Buffer &, const dht::NodeId &receiver) noexcept;
 
 bool
-find_node(sp::Buffer &, const dht::NodeId &id, const char *target) noexcept;
+find_node(sp::Buffer &, const dht::NodeId &id,
+          const sp::list<dht::NodeId> *targets) noexcept;
+
+bool
+get_peers(sp::Buffer &, const dht::NodeId &id, const dht::Token &,
+          const sp::list<dht::Node> *values) noexcept;
+
+bool
+get_peers(sp::Buffer &, const dht::NodeId &id, const dht::Token &,
+          const sp::list<dht::NodeId> *nodes) noexcept;
 
 bool
 announce_peer(sp::Buffer &, const dht::NodeId &) noexcept;

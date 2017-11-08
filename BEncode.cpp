@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include <type_traits>
+#include <arpa/inet.h>
 
 namespace bencode {
 
@@ -96,9 +97,31 @@ value(sp::Buffer &buffer, const sp::byte *str, std::size_t length) noexcept {
   return encode_raw(buffer, str, length);
 }
 
+bool
+value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
+  return value(buffer, id.id);
+}
+
+bool
+value(sp::Buffer &buffer, const dht::Peer &peer) noexcept {
+  sp::byte scratch[sizeof(peer.ip) + sizeof(peer.port)];
+  static_assert(sizeof(scratch) == 4 + 2, "");
+  Ip ip = htonl(peer.ip);
+  std::memcpy(scratch, &ip, sizeof(ip));
+  Port port = htons(peer.port);
+  std::memcpy(scratch + sizeof(ip), &port, sizeof(port));
+  return value(buffer, scratch);
+}
+
+bool
+value(sp::Buffer &, const dht::Node &) noexcept {
+  // TODO
+  return true;
+}
+
 //-----------------------------
 bool
-list(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
+list(sp::Buffer &buffer, void *arg, bool (*f)(sp::Buffer &, void *)) noexcept {
   const std::size_t before = buffer.pos;
   std::size_t &i = buffer.pos;
   if (buffer.pos + 1 > buffer.capacity) {
@@ -106,7 +129,7 @@ list(sp::Buffer &buffer, bool (*f)(sp::Buffer &)) noexcept {
   }
   buffer.raw[i++] = 'l';
 
-  if (!f(buffer)) {
+  if (!f(buffer, arg)) {
     buffer.pos = before;
     return false;
   }

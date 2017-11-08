@@ -3,7 +3,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <time.h>
 
+/*fd*/
 class fd {
 private:
   int m_fd;
@@ -26,10 +28,11 @@ public:
 using Port = std::uint16_t;
 using Ip = std::uint32_t;
 
+//---------------------------
 namespace sp {
-
 using byte = unsigned char;
 
+/*Buffer*/
 struct Buffer {
   byte *raw;
   const std::size_t capacity;
@@ -63,17 +66,80 @@ remaining_write(Buffer &) noexcept;
 
 } // namespace sp
 
-namespace dht {
-/*mainline dht*/
+//---------------------------
+namespace sp {
+/*list*/
+template <typename T>
+struct list {
+  list *next;
+  T value;
+  std::uint8_t size;
 
-using Key = sp::byte[20];
-
-struct Infohash {
-  Key id;
+  list()
+      : next(nullptr)
+      , value()
+      , size(0) {
+  }
 };
 
+} // namespace sp
+
+//---------------------------
+/*dht*/
+namespace dht {
+using Key = sp::byte[20];
+
+/*Infohash*/
+struct Infohash {
+  Key id;
+  Infohash()
+      : id{0} {
+  }
+};
+
+/*NodeId*/
 struct NodeId {
   Key id;
+  NodeId()
+      : id{0} {
+  }
+};
+
+/*Token*/
+struct Token {
+  sp::byte id[16];
+  Token()
+      : id{0} {
+  }
+};
+
+/*Peer*/
+struct Peer {
+  Ip ip;
+  Port port;
+  // {
+  Peer *next;
+  // }
+  Peer(Ip, Port);
+  Peer();
+};
+
+/*Contact*/
+// 15 min refresh
+struct Node {
+  time_t last_activity;
+  NodeId id;
+  Peer peer;
+  bool outstanding_ping;
+
+  // {
+  Node *next;
+  // }
+
+  Node();
+  Node(const NodeId &, Ip, Port, time_t);
+
+  explicit operator bool() const noexcept;
 };
 
 } // namespace dht

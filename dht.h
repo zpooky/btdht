@@ -11,19 +11,6 @@ namespace dht {
 void
 randomize(NodeId &) noexcept;
 
-struct Peer {
-  Ip ip;
-  Port port;
-  // {
-  Peer *next;
-  // }
-  Peer(Ip, Port);
-  Peer();
-};
-
-using Token = int;               // TODO
-using Timestamp = std::uint32_t; // TODO
-
 /*lookup*/
 struct KeyValue {
   KeyValue *next;
@@ -33,27 +20,10 @@ struct KeyValue {
   KeyValue();
 };
 
-/*Contact*/
-// 15 min refresh
-struct Contact {
-  Timestamp last_activity;
-  NodeId id;
-  Peer peer;
-  bool outstanding_ping;
-
-  // {
-  Contact *next;
-  // }
-
-  Contact();
-
-  explicit operator bool() const noexcept;
-};
-
 /*Bucket*/
 struct Bucket {
   static constexpr std::size_t K = 8;
-  Contact contacts[K];
+  Node contacts[K];
 
   Bucket();
   ~Bucket();
@@ -85,7 +55,14 @@ struct DHT {
 
   DHT();
 };
+/**/
+bool
+update_activity(DHT &, const NodeId &, time_t) noexcept;
 
+bool
+add(DHT &, const Node &) noexcept;
+
+/**/
 const Peer *
 lookup(const DHT &, const Infohash &) noexcept;
 

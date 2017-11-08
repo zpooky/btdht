@@ -39,9 +39,8 @@ TEST(krpcTest, test_find_node) {
   dht::NodeId id;
   nodeId(id);
 
-  const char *target = "target";
   ASSERT_TRUE(krpc::request::find_node(buff, id, id));
-  ASSERT_TRUE(krpc::response::find_node(buff, id, target));
+  ASSERT_TRUE(krpc::response::find_node(buff, id, nullptr));
 }
 
 TEST(krpcTest, test_get_peers) {

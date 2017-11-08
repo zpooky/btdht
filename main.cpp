@@ -1,8 +1,9 @@
-#include "mainline.h"
+#include "dht.h"
 #include <stdio.h>
 
 #include "BEncode.h"
 #include "krpc.h"
+#include "module.h"
 #include "shared.h"
 #include <arpa/inet.h>
 #include <cstring>
@@ -10,6 +11,16 @@
 #include <sys/epoll.h>  //epoll
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
+
+template <std::size_t capacity>
+struct Modules {
+  dht::Module module[capacity];
+  std::size_t length;
+  Modules()
+      : module{}
+      , length(0) {
+  }
+};
 
 void
 die(const char *s) {
@@ -87,7 +98,7 @@ udp_receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
 
   ssize_t len = 0;
   do {
-    len = ::recvfrom(fd, raw, raw_len, flag, o, &slen);
+    len = ::recvfrom(fd, raw, raw_len, flag, /*OUT*/ o, &slen);
   } while (len < 0 && errno == EAGAIN);
 
   if (len < 0) {
@@ -118,10 +129,16 @@ udp_send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
 }
 
 static void
-to_sockaddr(const dht::Peer &p, ::sockaddr_in &dest) noexcept {
+to_sockaddr(const dht::Peer &src, ::sockaddr_in &dest) noexcept {
   dest.sin_family = AF_INET;
-  dest.sin_addr.s_addr = htonl(p.ip);
-  dest.sin_port = htons(p.port);
+  dest.sin_addr.s_addr = htonl(src.ip);
+  dest.sin_port = htons(src.port);
+}
+
+static void
+to_peer(const ::sockaddr_in &src, dht::Peer &dest) noexcept {
+  dest.ip = ntohl(src.sin_addr.s_addr);
+  dest.port = ntohs(src.sin_port);
 }
 
 static bool
@@ -139,9 +156,9 @@ bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &target) noexcept {
   return udp_send(int(udp), dest, buf);
 }
 
+template <typename Handle>
 static void
-loop(fd &fdpoll, dht::DHT &ctx,
-     void (*f)(dht::DHT &, sp::Buffer &, sp::Buffer &)) noexcept {
+loop(fd &fdpoll, dht::DHT &ctx, Handle handle) noexcept {
   for (;;) {
     sp::byte in[2048];
     sp::byte out[2048];
@@ -161,15 +178,17 @@ loop(fd &fdpoll, dht::DHT &ctx,
         sp::Buffer outBuffer(out);
 
         int cfd = current.data.fd;
-        ::sockaddr_in remote;
-        udp_receive(cfd, remote, inBuffer);
+        ::sockaddr_in from;
+        udp_receive(cfd, from, inBuffer);
         flip(inBuffer);
 
         if (inBuffer.length > 0) {
-          f(ctx, inBuffer, outBuffer);
+          dht::Peer remote;
+          to_peer(from, remote);
+          handle(ctx, remote, inBuffer, outBuffer);
           flip(outBuffer);
 
-          udp_send(cfd, remote, outBuffer);
+          udp_send(cfd, /*to*/ from, outBuffer);
         }
       }
       if (current.events & EPOLLERR) {
@@ -185,29 +204,27 @@ loop(fd &fdpoll, dht::DHT &ctx,
   } // for
 }
 
-struct dht_impls { //
-  void (*req_ping)(dht::DHT &, sp::Buffer &, const dht::NodeId &);
-  void (*req_find_node)(dht::DHT &, sp::Buffer &, //
-                        const dht::NodeId &, const dht::NodeId &);
-  void (*req_get_peers)(dht::DHT &, sp::Buffer &, //
-                        const dht::NodeId &, const dht::Infohash &);
-  void (*req_announce)(dht::DHT &, sp::Buffer &, //
-                       const dht::NodeId &, bool, const dht::Infohash &, Port,
-                       const char *);
+template <std::size_t capacity>
+static dht::Module &
+module_for(Modules<capacity> &modules, const char *key,
+           dht::Module &error) noexcept {
+  for (std::size_t i = 0; i < modules.length; ++i) {
+    dht::Module &current = modules.module[i];
+    if (std::strcmp(current.query, key) == 0) {
+      return current;
+    }
+  }
+  return error;
+}
 
-  void (*res_ping)(dht::DHT &, sp::Buffer &);
-  void (*res_find_node)(dht::DHT &, sp::Buffer &);
-  void (*res_get_peers)(dht::DHT &, sp::Buffer &);
-  void (*res_announce)(dht::DHT &, sp::Buffer &);
-};
-
+template <std::size_t capacity>
 static bool
-parse(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out,
-      dht_impls &impl) noexcept {
+parse(dht::DHT &ctx, Modules<capacity> &modules, const dht::Peer &peer,
+      sp::Buffer &in, sp::Buffer &out) noexcept {
   bencode::d::Decoder p(in);
-  return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) { //
+  return bencode::d::dict(p, [&ctx, &modules, &peer, &out](auto &p) { //
     sp::byte transaction[16] = {0};
-    char messageType[2] = {0};
+    char message_type[16] = {0};
     char query[16] = {0};
     bool t = false;
     bool y = false;
@@ -218,7 +235,7 @@ parse(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out,
       t = true;
       goto start;
     }
-    if (!y && bencode::d::pair(p, "y", messageType)) {
+    if (!y && bencode::d::pair(p, "y", message_type)) {
       y = true;
       goto start;
     }
@@ -227,91 +244,26 @@ parse(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out,
       goto start;
     }
 
+    dht::Module error;
+    error::setup(error);
     if (!(t && y && q)) {
-      return false;
+      return error.request(ctx, peer, p, out);
     }
 
-    if (strcmp(messageType, "q") == 0) {
+    if (std::strcmp(message_type, "q") == 0) {
+      /*query*/
       if (!bencode::d::value(p, "a")) {
         return false;
       }
-
-      // TODO support out of order
-      /*query*/
-      if (strcmp(query, "ping") == 0) {
-        return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) { //
-          dht::NodeId id;
-          if (!bencode::d::pair(p, "id", id.id)) {
-            return false;
-          }
-
-          impl.req_ping(ctx, out, id);
-          return true;
-        });
-      } else if (strcmp(query, "find_node") == 0) {
-        return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) { //
-          dht::NodeId id;
-          dht::NodeId target;
-
-          if (!bencode::d::pair(p, "id", id.id)) {
-            return false;
-          }
-          if (!bencode::d::pair(p, "target", target.id)) {
-            return false;
-          }
-
-          impl.req_find_node(ctx, out, id, target);
-          return true;
-        });
-      } else if (strcmp(query, "get_peers") == 0) {
-        return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) {
-          dht::NodeId id;
-          dht::Infohash infohash;
-
-          if (!bencode::d::pair(p, "id", id.id)) {
-            return false;
-          }
-          if (!bencode::d::pair(p, "info_hash", infohash.id)) {
-            return false;
-          }
-
-          impl.req_get_peers(ctx, out, id, infohash);
-          return true;
-        });
-      } else if (strcmp(query, "announce_peer") == 0) {
-        return bencode::d::dict(p, [&ctx, &out, &impl](auto &p) {
-          dht::NodeId id;
-          bool implied_port = false;
-          dht::Infohash infohash;
-          Port port = 0;
-          char token[16] = {0};
-
-          if (!bencode::d::pair(p, "id", id.id)) {
-            return false;
-          }
-          if (!bencode::d::pair(p, "implied_port", implied_port)) {
-            return false;
-          }
-          if (!bencode::d::pair(p, "info_hash", infohash.id)) {
-            return false;
-          }
-          // TODO optional
-          if (!bencode::d::pair(p, "port", port)) {
-            return false;
-          }
-          if (!bencode::d::pair(p, "token", token)) {
-            return false;
-          }
-
-          impl.req_announce(ctx, out, id, implied_port, infohash, port, token);
-          return true;
-        });
-      } else {
+      dht::Module &m = module_for(modules, message_type, error);
+      return m.request(ctx, peer, p, out);
+    } else if (std::strcmp(message_type, "r") == 0) {
+      /*response*/
+      if (!bencode::d::value(p, "r")) {
         return false;
       }
-    } else if (strcmp(messageType, "r") == 0) {
-      /*response*/
-      // TODO
+      dht::Module &m = module_for(modules, message_type, error);
+      return m.request(ctx, peer, p, out);
     } else {
       return false;
     }
@@ -320,37 +272,16 @@ parse(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out,
 }
 
 static void
-handle_Ping(dht::DHT &ctx, sp::Buffer &out, //
-            const dht::NodeId &sender) noexcept {
-}
+handle(dht::DHT &ctx, const dht::Peer &peer, sp::Buffer &in,
+       sp::Buffer &out) noexcept {
+  Modules<4> modules;
+  std::size_t &i = modules.length;
+  ping::setup(modules.module[i++]);
+  find_node::setup(modules.module[i++]);
+  get_peers::setup(modules.module[i++]);
+  announce_peer::setup(modules.module[i++]);
 
-static void
-handle_FindNode(dht::DHT &ctx, sp::Buffer &out, //
-                const dht::NodeId &self, const dht::NodeId &search) noexcept {
-}
-
-static void
-handle_GetPeers(dht::DHT &ctx, sp::Buffer &out, //
-                const dht::NodeId &id, const dht::Infohash &infohash) noexcept {
-}
-
-static void
-handle_Announce(dht::DHT &ctx, sp::Buffer &out, //
-                const dht::NodeId &id, bool implied_port,
-                const dht::Infohash &infohash, Port port,
-                const char *token) noexcept {
-}
-
-static void
-handle(dht::DHT &ctx, sp::Buffer &in, sp::Buffer &out) noexcept {
-  dht_impls impls;
-  impls.req_ping = handle_Ping;
-  impls.req_find_node = handle_FindNode;
-  impls.req_get_peers = handle_GetPeers;
-  impls.req_announce = handle_Announce;
-
-  parse(ctx, in, out, impls);
-  printf("handle\n");
+  parse(ctx, modules, peer, in, out);
 }
 
 // static void

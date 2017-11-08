@@ -19,7 +19,7 @@ message(sp::Buffer &buf, const char *mt, const char *q, F f) noexcept {
   transaction(t);
 
   return bencode::e::dict(buf, //
-                          [&](sp::Buffer &b) {
+                          [&t, &mt, q, &f](sp::Buffer &b) {
                             if (!bencode::e::pair(b, "t", t)) {
                               return false;
                             }
@@ -40,67 +40,72 @@ message(sp::Buffer &buf, const char *mt, const char *q, F f) noexcept {
                           });
 }
 
-namespace request {
-bool
-ping(sp::Buffer &buf, const dht::NodeId &sender) noexcept {
-  return message(buf, "q", "ping", [&sender](sp::Buffer &b) { //
+template <typename F>
+static bool
+resp(sp::Buffer &buf, const char *q, F f) noexcept {
+  return message(buf, "r", q, [&f](auto &b) { //
+    if (!bencode::e::value(b, "r")) {
+      return false;
+    }
+
+    return bencode::e::dict(b, [&f](auto &b) { //
+      return f(b);
+    });
+  });
+}
+
+template <typename F>
+static bool
+req(sp::Buffer &buf, const char *q, F f) noexcept {
+  return message(buf, "q", q, [&f](auto &b) { //
     if (!bencode::e::value(b, "a")) {
       return false;
     }
 
-    return bencode::e::dict(b, [&sender](sp::Buffer &b) {
-      if (!bencode::e::pair(b, "id", sender.id, sizeof(sender.id))) {
-        return false;
-      }
-      return true;
+    return bencode::e::dict(b, [&f](auto &b) { //
+      return f(b);
     });
+  });
+}
+
+namespace request {
+bool
+ping(sp::Buffer &buf, const dht::NodeId &sender) noexcept {
+  return req(buf, "ping", [&sender](auto &b) { //
+    if (!bencode::e::pair(b, "id", sender.id)) {
+      return false;
+    }
+    return true;
   });
 } // request::ping()
 
 bool
 find_node(sp::Buffer &buf, const dht::NodeId &self,
           const dht::NodeId &search) noexcept {
-  using namespace bencode;
-  return message(buf, "q", "find_node", [self, search](sp::Buffer &b) { //
-    if (!bencode::e::value(b, "a")) {
+  return req(buf, "find_node", [self, search](sp::Buffer &b) { //
+    if (!bencode::e::pair(b, "id", self.id, sizeof(self.id))) {
       return false;
     }
 
-    return bencode::e::dict(
-        b,                              //
-        [self, search](sp::Buffer &b) { //
-          if (!bencode::e::pair(b, "id", self.id, sizeof(self.id))) {
-            return false;
-          }
-
-          if (!bencode::e::pair(b, "target", search.id, sizeof(search.id))) {
-            return false;
-          }
-          return true;
-        });
+    if (!bencode::e::pair(b, "target", search.id)) {
+      return false;
+    }
+    return true;
   });
 } // request::find_node()
 
 bool
 get_peers(sp::Buffer &buf, const dht::NodeId &id,
           const dht::Infohash &infohash) noexcept {
-
-  using namespace bencode;
-  return message(buf, "q", "get_peers", [id, infohash](sp::Buffer &b) { //
-    if (!bencode::e::value(b, "a")) {
+  return req(buf, "get_peers", [id, infohash](sp::Buffer &b) { //
+    if (!bencode::e::pair(b, "id", id.id)) {
       return false;
     }
 
-    return bencode::e::dict(b, [id, infohash](sp::Buffer &b) { //
-      if (!bencode::e::pair(b, "id", id.id)) {
-        return false;
-      }
-
-      if (!bencode::e::pair(b, "info_hash", infohash.id)) {
-        return false;
-      }
-      return true;
-    });
+    if (!bencode::e::pair(b, "info_hash", infohash.id)) {
+      return false;
+    }
+    return true;
   });
 } // request::get_peers()
 
@@ -108,39 +113,29 @@ bool
 announce_peer(sp::Buffer &buf, const dht::NodeId &id, bool implied_port,
               const dht::Infohash &infohash, std::uint16_t port,
               const char *token) noexcept {
-
-  using namespace bencode;
-  return message(
-      buf, "q", "announce_peer",
-      [id, implied_port, infohash, port, token](sp::Buffer &b) { //
-        if (!bencode::e::value(b, "a")) {
+  return req(
+      buf, "announce_peer",
+      [&id, &implied_port, &infohash, &port, &token](sp::Buffer &buf) { //
+        if (!bencode::e::pair(buf, "id", id.id)) {
           return false;
         }
 
-        return bencode::e::dict(
-            b,
-            [&](sp::Buffer &buf) { //
-              if (!bencode::e::pair(buf, "id", id.id)) {
-                return false;
-              }
+        if (!bencode::e::pair(buf, "implied_port", implied_port)) {
+          return false;
+        }
 
-              if (!bencode::e::pair(buf, "implied_port", implied_port)) {
-                return false;
-              }
+        if (!bencode::e::pair(buf, "info_hash", infohash.id)) {
+          return false;
+        }
 
-              if (!bencode::e::pair(buf, "info_hash", infohash.id)) {
-                return false;
-              }
+        if (!bencode::e::pair(buf, "port", port)) {
+          return false;
+        }
 
-              if (!bencode::e::pair(buf, "port", port)) {
-                return false;
-              }
-
-              if (!bencode::e::pair(buf, "token", token)) {
-                return false;
-              }
-              return true;
-            });
+        if (!bencode::e::pair(buf, "token", token)) {
+          return false;
+        }
+        return true;
       });
 } // request::announce_peer()
 
@@ -149,60 +144,105 @@ announce_peer(sp::Buffer &buf, const dht::NodeId &id, bool implied_port,
 namespace response {
 bool
 ping(sp::Buffer &buf, const dht::NodeId &id) noexcept {
-  using namespace bencode;
-  return message(buf, "r", "ping", [id](sp::Buffer &b) { //
-    return bencode::e::dict(b,
-                            [id](sp::Buffer &b) { //
-                              if (!bencode::e::value(b, "r")) {
-                                return false;
-                              }
+  return resp(buf, "ping", [&id](sp::Buffer &b) { //
 
-                              if (!bencode::e::pair(b, "id", id.id)) {
-                                return false;
-                              }
-                              return true;
-                            });
+    if (!bencode::e::pair(b, "id", id.id)) {
+      return false;
+    }
+    return true;
   });
 } // response::ping()
 
+template <typename T, typename F>
+static bool
+for_all(const sp::list<T> *l, F f) {
+  while (l != nullptr && l->size > 0) {
+    if (!f(l)) {
+      return false;
+    }
+    l = l->next;
+  }
+  return true;
+}
+
+template <typename T>
+static bool
+encode_list(sp::Buffer &buf, const char *key,
+            const sp::list<T> *list) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  void *arg = (void *)list;
+  return bencode::e::list(buf, arg, [](auto &b, void *a) {
+
+    const sp::list<T> *l = (const sp::list<T> *)a;
+    return for_all(l, [&b](const sp::list<T> *l) {
+
+      if (!bencode::e::value(b, l->value)) {
+        return false;
+      }
+      return true;
+    });
+  });
+}
+
 bool
-find_node(sp::Buffer &buf, const dht::NodeId &id, const char *target) noexcept {
-  using namespace bencode;
-  return message(buf, "r", "find_node", [id, target](sp::Buffer &b) { //
-    return bencode::e::dict(
-        b,                            //
-        [id, target](sp::Buffer &b) { //
-          if (!bencode::e::value(b, "r")) {
-            return false;
-          }
+find_node(sp::Buffer &buf, const dht::NodeId &id,
+          const sp::list<dht::NodeId> *target) noexcept {
+  return resp(buf, "find_node", [&id, target](auto &b) { //
 
-          if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
-            return false;
-          }
+    if (!bencode::e::pair(b, "id", id.id)) {
+      return false;
+    }
 
-          if (!bencode::e::pair(b, "target", target)) {
-            return false;
-          }
-          return true;
-        });
+    return encode_list<dht::NodeId>(b, "target", target);
   });
 } // response::find_node()
 
 bool
-announce_peer(sp::Buffer &buf, const dht::NodeId &id) noexcept {
-  using namespace bencode;
-  return message(buf, "r", "announce_peerid", [id](sp::Buffer &b) { //
-    return bencode::e::dict(b,
-                            [id](sp::Buffer &b) { //
-                              if (!bencode::e::value(b, "r")) {
-                                return false;
-                              }
+get_peers(sp::Buffer &buf, const dht::NodeId &id, const dht::Token &token,
+          const sp::list<dht::Node> *values) noexcept {
+  return resp(buf, "get_peers", [&id, &token, &values](auto &b) { //
 
-                              if (!bencode::e::pair(b, "id", id.id)) {
-                                return false;
-                              }
-                              return true;
-                            });
+    if (!bencode::e::pair(b, "id", id.id)) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "token", token.id)) {
+      return false;
+    }
+
+    return encode_list<dht::Node>(b, "values", values);
+  });
+} // response::get_peers()
+
+bool
+get_peers(sp::Buffer &buf, const dht::NodeId &id, const dht::Token &token,
+          const sp::list<dht::NodeId> *nodes) noexcept {
+  return resp(buf, "get_peers", [&id, &token, &nodes](auto &b) { //
+
+    if (!bencode::e::pair(b, "id", id.id)) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "token", token.id)) {
+      return false;
+    }
+
+    return encode_list<dht::NodeId>(b, "nodes", nodes);
+  });
+} // response::get_peers()
+
+bool
+announce_peer(sp::Buffer &buf, const dht::NodeId &id) noexcept {
+  return resp(buf, "announce_peer", [&id](auto &b) { //
+
+    if (!bencode::e::pair(b, "id", id.id)) {
+      return false;
+    }
+
+    return true;
   });
 } // response::announce_peer()
 

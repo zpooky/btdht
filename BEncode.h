@@ -15,11 +15,33 @@ bool
 value(sp::Buffer &, const char *) noexcept;
 bool
 value(sp::Buffer &, const char *, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+bool
+value(sp::Buffer &b, const char (&val)[SIZE]) noexcept {
+  return value(b, val, SIZE);
+}
+
 bool
 value(sp::Buffer &, const sp::byte *, std::size_t) noexcept;
 
+template <std::size_t SIZE>
 bool
-list(sp::Buffer &, bool (*)(sp::Buffer &)) noexcept;
+value(sp::Buffer &b, const sp::byte (&val)[SIZE]) noexcept {
+  return value(b, val, SIZE);
+}
+
+bool
+value(sp::Buffer &, const dht::NodeId &) noexcept;
+
+bool
+value(sp::Buffer &, const dht::Peer &) noexcept;
+
+bool
+value(sp::Buffer &, const dht::Node &) noexcept;
+
+bool
+list(sp::Buffer &, void *, bool (*)(sp::Buffer &, void *)) noexcept;
 
 template <typename F>
 static bool

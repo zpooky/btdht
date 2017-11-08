@@ -1,8 +1,8 @@
 #include "shared.h"
 #include <cassert>
+#include <stdio.h>
 #include <unistd.h> //close
 #include <utility>
-#include <stdio.h>
 
 /*fd*/
 fd::fd(int p_fd)
@@ -25,8 +25,9 @@ fd::operator int() noexcept {
   return m_fd;
 }
 
+//---------------------------
 namespace sp {
-
+/*Buffer*/
 Buffer::Buffer(byte *s, std::size_t l) noexcept
     : raw(s)
     , capacity(l)
@@ -64,5 +65,39 @@ std::size_t
 remaining_write(Buffer &b) noexcept {
   return b.capacity - b.pos;
 }
-
 } // namespace sp
+
+//---------------------------
+namespace dht {
+/*Peer*/
+Peer::Peer(Ip i, Port p)
+    : ip(i)
+    , port(p)
+    , next(nullptr) {
+}
+
+Peer::Peer()
+    : Peer(0, 0) {
+}
+
+/*Contact*/
+Node::Node()
+    : last_activity()
+    , id()
+    , peer()
+    , outstanding_ping(false)
+    , next(nullptr) {
+}
+
+Node::Node(const NodeId &nid, Ip ip, Port port, time_t la)
+    : last_activity(la)
+    , id(nid)
+    , peer(ip, port)
+    , outstanding_ping(false) {
+}
+
+Node::operator bool() const noexcept {
+  return peer.ip == 0;
+}
+
+} // namespace dht

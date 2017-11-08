@@ -44,7 +44,7 @@ TEST(BEncodeTest, lst) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  ASSERT_TRUE(list(buff, [](sp::Buffer &b) { //
+  ASSERT_TRUE(list(buff, nullptr, [](sp::Buffer &b, void *) { //
     if (!value(b, "a")) {
       return false;
     }

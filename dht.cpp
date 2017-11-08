@@ -1,4 +1,4 @@
-#include "mainline.h"
+#include "dht.h"
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
@@ -29,17 +29,6 @@ KeyValue::KeyValue()
     , id() {
 }
 
-/*Peer*/
-Peer::Peer(Ip i, Port p)
-    : ip(i)
-    , port(p)
-    , next(nullptr) {
-}
-
-Peer::Peer()
-    : Peer(0, 0) {
-}
-
 static KeyValue *
 find_kv(KeyValue *current, const Infohash &id) noexcept {
   // TODO tree?
@@ -61,19 +50,6 @@ lookup(DHT &dht, const Infohash &id) noexcept {
     return needle->peers;
   }
   return nullptr;
-}
-
-/*Contact*/
-Contact::Contact()
-    : last_activity()
-    , id()
-    , peer()
-    , outstanding_ping(false)
-    , next(nullptr) {
-}
-
-Contact::operator bool() const noexcept {
-  return peer.ip == 0;
 }
 
 /*Bucket*/
@@ -157,6 +133,7 @@ dealloc(DHT &, T *reclaim) {
   reclaim->~T();
   free(reclaim);
 }
+
 template <typename T>
 static T *
 alloc(DHT &) {
@@ -166,9 +143,9 @@ alloc(DHT &) {
 }
 
 static bool
-insert(Bucket &bucket, const Contact &c) noexcept {
+insert(Bucket &bucket, const Node &c) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Contact &contact = bucket.contacts[i];
+    Node &contact = bucket.contacts[i];
     if (!contact) {
       contact = c;
       return true;
@@ -183,7 +160,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
   auto lower = alloc<RoutingTable>(dht);
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Contact &contact = parent->bucket.contacts[i];
+    Node &contact = parent->bucket.contacts[i];
     if (contact) {
       bool high = bit(contact.id, idx);
       if (high) {
@@ -199,28 +176,9 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
 }
 
 static bool
-add(DHT &dht, const Contact &c) noexcept {
-start:
-  bool inTree = false;
-  std::size_t idx = 0;
-
-  RoutingTable *leaf = find_closest(dht, c.id, inTree, idx);
-  assert(leaf);
-  Bucket &bucket = leaf->bucket;
-  if (!insert(bucket, c)) {
-    if (inTree) {
-      split(dht, leaf, idx);
-      goto start;
-    }
-    return false;
-  }
-  return true;
-}
-
-static bool
-copy(const Contact &from, Bucket &to) noexcept {
+copy(const Node &from, Bucket &to) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Contact &c = to.contacts[i];
+    Node &c = to.contacts[i];
     if (!c) {
       c = from;
       return true;
@@ -232,7 +190,7 @@ copy(const Contact &from, Bucket &to) noexcept {
 static bool
 copy(const Bucket &from, Bucket &to) noexcept {
   for (std::size_t f = 0; f < Bucket::K; ++f) {
-    const Contact &c = from.contacts[f];
+    const Node &c = from.contacts[f];
     if (c) {
       if (!copy(c, to)) {
         return false;
@@ -266,15 +224,15 @@ find_parent(DHT &, const NodeId &) noexcept {
 }
 
 static void
-uncontact(Contact &c) noexcept {
-  c = Contact();
+uncontact(Node &c) noexcept {
+  c = Node();
 }
 
 static std::size_t
-remove(Bucket &bucket, const Contact &search) noexcept {
+remove(Bucket &bucket, const Node &search) noexcept {
   std::size_t result = 0;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Contact &c = bucket.contacts[i];
+    Node &c = bucket.contacts[i];
     assert(c.next == nullptr);
     if (c) {
       if (std::memcmp(c.id.id, search.id.id, sizeof(c.id)) == 0) {
@@ -288,7 +246,7 @@ remove(Bucket &bucket, const Contact &search) noexcept {
 }
 
 static bool
-remove(DHT &dht, Contact &c) noexcept {
+remove(DHT &dht, Node &c) noexcept {
   // start:
   RoutingTable *parent = find_parent(dht, c.id);
   assert(parent->type == NodeType::NODE);
@@ -313,11 +271,11 @@ remove(DHT &dht, Contact &c) noexcept {
   return true;
 } // namespace dht
 
-static Contact *
-contacts_older(RoutingTable *root, const Timestamp &age) noexcept {
+static Node *
+contacts_older(RoutingTable *root, const time_t &age) noexcept {
   if (root->type == NodeType::NODE) {
-    Contact *result = contacts_older(root->node.lower, age);
-    Contact *const higher = contacts_older(root->node.higher, age);
+    Node *result = contacts_older(root->node.lower, age);
+    Node *const higher = contacts_older(root->node.higher, age);
     if (result) {
       result->next = higher;
     } else {
@@ -325,10 +283,10 @@ contacts_older(RoutingTable *root, const Timestamp &age) noexcept {
     }
     return result;
   }
-  Contact *result = nullptr;
+  Node *result = nullptr;
   Bucket &b = root->bucket;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Contact &c = b.contacts[i];
+    Node &c = b.contacts[i];
     if (c) {
       assert(c.next == nullptr);
       if (c.last_activity < age) {
@@ -344,6 +302,32 @@ DHT::DHT()
     : id()
     , kv(nullptr)
     , root(nullptr) {
+}
+
+/*public*/
+bool
+update_activity(DHT &, const NodeId &, time_t) noexcept {
+  // TODO
+  return true;
+}
+
+bool
+add(DHT &dht, const Node &c) noexcept {
+start:
+  bool inTree = false;
+  std::size_t idx = 0;
+
+  RoutingTable *leaf = find_closest(dht, c.id, inTree, idx);
+  assert(leaf);
+  Bucket &bucket = leaf->bucket;
+  if (!insert(bucket, c)) {
+    if (inTree) {
+      split(dht, leaf, idx);
+      goto start;
+    }
+    return false;
+  }
+  return true;
 }
 
 } // namespace dht
