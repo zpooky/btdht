@@ -82,18 +82,18 @@ Peer::Peer()
 
 /*Contact*/
 Node::Node()
-    : last_activity()
+    : activity()
     , id()
     , peer()
-    , outstanding_ping(false)
+    , ping_await(false)
     , next(nullptr) {
 }
 
 Node::Node(const NodeId &nid, Ip ip, Port port, time_t la)
-    : last_activity(la)
+    : activity(la)
     , id(nid)
     , peer(ip, port)
-    , outstanding_ping(false) {
+    , ping_await(false) {
 }
 
 Node::operator bool() const noexcept {

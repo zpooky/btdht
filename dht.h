@@ -57,7 +57,7 @@ struct DHT {
 };
 /**/
 bool
-update_activity(DHT &, const NodeId &, time_t) noexcept;
+update_activity(DHT &, const NodeId &, time_t, bool ping) noexcept;
 
 bool
 add(DHT &, const Node &) noexcept;

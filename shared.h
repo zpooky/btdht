@@ -127,10 +127,10 @@ struct Peer {
 /*Contact*/
 // 15 min refresh
 struct Node {
-  time_t last_activity;
+  time_t activity;
   NodeId id;
   Peer peer;
-  bool outstanding_ping;
+  bool ping_await;
 
   // {
   Node *next;

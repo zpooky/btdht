@@ -154,6 +154,19 @@ insert(Bucket &bucket, const Node &c) noexcept {
   return false;
 }
 
+static Node *
+find(Bucket &bucket, const NodeId &id) noexcept {
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    Node &contact = bucket.contacts[i];
+    if (contact) {
+      if (std::memcmp(contact.id.id, id.id, sizeof(id)) == 0) {
+        return &contact;
+      }
+    }
+  }
+  return nullptr;
+}
+
 static void
 split(DHT &dht, RoutingTable *parent, std::size_t idx) {
   auto higher = alloc<RoutingTable>(dht);
@@ -286,12 +299,12 @@ contacts_older(RoutingTable *root, const time_t &age) noexcept {
   Node *result = nullptr;
   Bucket &b = root->bucket;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Node &c = b.contacts[i];
-    if (c) {
-      assert(c.next == nullptr);
-      if (c.last_activity < age) {
-        c.next = result;
-        result = &c;
+    Node &contact = b.contacts[i];
+    if (contact) {
+      assert(contact.next == nullptr);
+      if (contact.activity < age) {
+        contact.next = result;
+        result = &contact;
       }
     }
   }
@@ -306,21 +319,34 @@ DHT::DHT()
 
 /*public*/
 bool
-update_activity(DHT &, const NodeId &, time_t) noexcept {
-  // TODO
+update_activity(DHT &dht, const NodeId &id, time_t t, bool ping) noexcept {
+  bool inTree = false;
+  std::size_t idx = 0;
+
+  RoutingTable *leaf = find_closest(dht, id, inTree, idx);
+  assert(leaf);
+  // TODO how to ensure leaf is a bucket
+  Node *contact = find(leaf->bucket, id);
+  if (contact) {
+    contact->activity = std::max(t, contact->activity);
+    if (ping) {
+      contact->ping_await = false;
+    }
+    return true;
+  }
   return true;
 }
 
 bool
-add(DHT &dht, const Node &c) noexcept {
+add(DHT &dht, const Node &contact) noexcept {
 start:
   bool inTree = false;
   std::size_t idx = 0;
 
-  RoutingTable *leaf = find_closest(dht, c.id, inTree, idx);
+  RoutingTable *leaf = find_closest(dht, contact.id, inTree, idx);
   assert(leaf);
   Bucket &bucket = leaf->bucket;
-  if (!insert(bucket, c)) {
+  if (!insert(bucket, contact)) {
     if (inTree) {
       split(dht, leaf, idx);
       goto start;
