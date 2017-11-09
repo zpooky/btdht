@@ -1,7 +1,7 @@
 #include "BEncode.h"
 #include "krpc.h"
-#include <cstring>
 #include <arpa/inet.h>
+#include <cstring>
 
 namespace bencode {
 namespace e {
@@ -10,21 +10,37 @@ value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
   return value(buffer, id.id);
 }
 
+static sp::byte *
+serialize(sp::byte *b, const dht::Peer &p) noexcept {
+  Ip ip = htonl(p.ip);
+  std::memcpy(b, &ip, sizeof(ip));
+  b += sizeof(ip);
+  Port port = htons(p.port);
+  std::memcpy(b, &port, sizeof(port));
+  b += sizeof(port);
+  return b;
+}
+
 static bool
-value(sp::Buffer &buffer, const dht::Peer &peer) noexcept {
-  sp::byte scratch[sizeof(peer.ip) + sizeof(peer.port)];
+value(sp::Buffer &buffer, const dht::Peer &p) noexcept {
+  sp::byte scratch[sizeof(p.ip) + sizeof(p.port)];
   static_assert(sizeof(scratch) == 4 + 2, "");
-  Ip ip = htonl(peer.ip);
-  std::memcpy(scratch, &ip, sizeof(ip));
-  Port port = htons(peer.port);
-  std::memcpy(scratch + sizeof(ip), &port, sizeof(port));
+
+  serialize(scratch, p);
   return value(buffer, scratch);
 }
 
 static bool
-value(sp::Buffer &, const dht::Node &) noexcept {
-  // TODO
-  return true;
+value(sp::Buffer &buffer, const dht::Node &node) noexcept {
+  sp::byte scratch[sizeof(node.id.id) + sizeof(node.peer.ip) +
+                   sizeof(node.peer.port)];
+  sp::byte *b = scratch;
+
+  std::memcpy(b, node.id.id, sizeof(node.id.id));
+  b += sizeof(node.id.id);
+
+  serialize(b, node.peer);
+  return value(buffer, scratch);
 }
 
 } // namespace e

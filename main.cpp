@@ -11,6 +11,8 @@
 #include <exception>
 #include <sys/epoll.h> //epoll
 
+// TODO getopt: listen(port,ip) hex nodeid, repeating bootstrap nodes
+
 static bool
 random(krpc::Transaction &t) noexcept {
   const char *a = "aa";
