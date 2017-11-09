@@ -1,16 +1,15 @@
 #include "dht.h"
+#include "udp.h"
 #include <stdio.h>
 
 #include "BEncode.h"
 #include "krpc.h"
 #include "module.h"
 #include "shared.h"
-#include <arpa/inet.h>
 #include <cstring>
 #include <exception>
 #include <sys/epoll.h>  //epoll
-#include <sys/errno.h>  //errno
-#include <sys/socket.h> //socket
+#include <arpa/inet.h>
 
 static bool
 random(krpc::Transaction &t) noexcept {
@@ -29,45 +28,10 @@ struct Modules {
   }
 };
 
-void
+static void
 die(const char *s) {
   perror(s);
   std::terminate();
-}
-
-static Port
-lport(fd &listen) noexcept {
-  sockaddr_in addr;
-  std::memset(&addr, 0, sizeof(addr));
-  socklen_t slen = sizeof(addr);
-  sockaddr *saddr = (sockaddr *)&addr;
-
-  int ret = ::getsockname(int(listen), saddr, &slen);
-  if (ret < 0) {
-    die("getsockname()");
-  }
-  return ntohs(addr.sin_port);
-}
-
-static fd
-bind(Ip ip, Port port) {
-  int udp = ::socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
-  if (udp < 0) {
-    die("socket()");
-  }
-
-  ::sockaddr_in me;
-  std::memset(&me, 0, sizeof(me));
-  me.sin_family = AF_INET;
-  me.sin_port = htons(port);
-  me.sin_addr.s_addr = htonl(ip);
-  ::sockaddr *meaddr = (::sockaddr *)&me;
-
-  int ret = ::bind(udp, meaddr, sizeof(me));
-  if (ret < 0) {
-    die("bind");
-  }
-  return fd{udp};
 }
 
 static fd
@@ -94,62 +58,8 @@ setup_epoll(fd &udp) noexcept {
   return fd{poll};
 }
 
-static void
-udp_receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
-  int flag = 0;
-  sockaddr *o = (sockaddr *)&other;
-  socklen_t slen = sizeof(other);
-
-  sp::byte *const raw = offset(buf);
-  const std::size_t raw_len = remaining_write(buf);
-
-  ssize_t len = 0;
-  do {
-    len = ::recvfrom(fd, raw, raw_len, flag, /*OUT*/ o, &slen);
-  } while (len < 0 && errno == EAGAIN);
-
-  if (len < 0) {
-    die("recvfrom()");
-  }
-  buf.pos += len;
-}
-
 static bool
-udp_send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
-  int flag = 0;
-  sockaddr *destaddr = (sockaddr *)&dest;
-
-  sp::byte *const raw = offset(buf);
-  const std::size_t raw_len = remaining_read(buf);
-
-  ssize_t sent = 0;
-  do {
-    sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
-  } while (sent < 0 && errno == EAGAIN);
-
-  if (sent < 0) {
-    die("recvfrom()");
-  }
-  buf.pos += sent;
-
-  return true;
-}
-
-static void
-to_sockaddr(const dht::Peer &src, ::sockaddr_in &dest) noexcept {
-  dest.sin_family = AF_INET;
-  dest.sin_addr.s_addr = htonl(src.ip);
-  dest.sin_port = htons(src.port);
-}
-
-static void
-to_peer(const ::sockaddr_in &src, dht::Peer &dest) noexcept {
-  dest.ip = ntohl(src.sin_addr.s_addr);
-  dest.port = ntohs(src.sin_port);
-}
-
-static bool
-bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &target) noexcept {
+bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &dest) noexcept {
   sp::byte rawb[1024];
   sp::Buffer buf(rawb);
   krpc::Transaction t;
@@ -157,11 +67,14 @@ bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &target) noexcept {
     return false;
   }
 
-  ::sockaddr_in dest;
-  to_sockaddr(target, dest);
-
   flip(buf);
-  return udp_send(int(udp), dest, buf);
+  return udp::send(int(udp), dest, buf);
+}
+
+static int
+on_timeout(dht::DHT &ctx) noexcept {
+  // TODO
+  return -1;
 }
 
 template <typename Handle>
@@ -174,7 +87,8 @@ loop(fd &fdpoll, dht::DHT &ctx, Handle handle) noexcept {
     constexpr std::size_t max_events = 1024;
     ::epoll_event events[max_events];
 
-    int no_events = ::epoll_wait(int(fdpoll), events, max_events, -1);
+    int timeout = -1;
+    int no_events = ::epoll_wait(int(fdpoll), events, max_events, timeout);
     if (no_events < 0) {
       die("epoll_wait");
     }
@@ -186,17 +100,16 @@ loop(fd &fdpoll, dht::DHT &ctx, Handle handle) noexcept {
         sp::Buffer outBuffer(out);
 
         int cfd = current.data.fd;
-        ::sockaddr_in from;
-        udp_receive(cfd, from, inBuffer);
+        dht::Peer from;
+        udp::receive(cfd, from, inBuffer);
         flip(inBuffer);
 
         if (inBuffer.length > 0) {
           dht::Peer remote;
-          to_peer(from, remote);
-          handle(ctx, remote, inBuffer, outBuffer);
+          handle(ctx, from, inBuffer, outBuffer);
           flip(outBuffer);
 
-          udp_send(cfd, /*to*/ from, outBuffer);
+          udp::send(cfd, /*to*/ from, outBuffer);
         }
       }
       if (current.events & EPOLLERR) {
@@ -209,6 +122,7 @@ loop(fd &fdpoll, dht::DHT &ctx, Handle handle) noexcept {
         printf("EPOLLOUT\n");
       }
     }
+    timeout = on_timeout(ctx);
   } // for
 }
 
@@ -293,34 +207,16 @@ handle(dht::DHT &ctx, const dht::Peer &peer, sp::Buffer &in,
   parse(ctx, modules, peer, in, out);
 }
 
-// static void
-// recce(fd &udp) noexcept {
-//   sockaddr_in s;
-//   socklen_t slen = sizeof(sockaddr_in);
-//
-//   ssize_t recv_len;
-//
-//   constexpr std::size_t BUFLEN = 2048;
-//   sp::byte buf[BUFLEN];
-//
-//   recv_len = ::recvfrom(int(udp), buf, BUFLEN, 0, (struct sockaddr *)&s,
-//   &slen);
-//
-//   if (recv_len == -1) {
-//     die("recvfrom()");
-//   }
-// }
-
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
 main() {
   dht::DHT ctx;
   dht::randomize(ctx.id);
 
-  fd udp = bind(INADDR_ANY, 0);
-  dht::Peer bs_node(INADDR_ANY, lport(udp));
+  fd udp = udp::bind(INADDR_ANY, 0);
+  dht::Peer bs_node(INADDR_ANY, udp::port(udp));
 
-  printf("bind(%u)\n", lport(udp));
+  printf("bind(%u)\n", udp::port(udp));
 
   fd poll = setup_epoll(udp);
   bootstrap(udp, ctx.id, bs_node);
