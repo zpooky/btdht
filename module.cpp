@@ -22,7 +22,8 @@ namespace ping {
 namespace handle {
 
 static void
-request(dht::DHT &ctx, sp::Buffer &out, const dht::Peer &remote, //
+request(dht::DHT &ctx, sp::Buffer &out, const krpc::Transaction &t,
+        const dht::Peer &remote, //
         const dht::NodeId &sender) noexcept {
   time_t now = time(0);
   constexpr bool is_ping = true;
@@ -31,7 +32,7 @@ request(dht::DHT &ctx, sp::Buffer &out, const dht::Peer &remote, //
     dht::add(ctx, contact);
   }
 
-  krpc::response::ping(out, ctx.id);
+  krpc::response::ping(out, t, ctx.id);
 } // ping::handle::request()
 
 static void
@@ -58,13 +59,13 @@ response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
 static bool
 request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
         sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &remote, &out](auto &p) { //
+  return bencode::d::dict(d, [&ctx, &remote, &d, &out](auto &p) { //
     dht::NodeId sender;
     if (!bencode::d::pair(p, "id", sender.id)) {
       return false;
     }
 
-    handle::request(ctx, out, remote, sender);
+    handle::request(ctx, out, d.transaction, remote, sender);
     return true;
   });
 }

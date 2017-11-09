@@ -12,6 +12,13 @@
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
 
+static bool
+random(krpc::Transaction &t) noexcept {
+  const char *a = "aa";
+  std::memcpy(t.id, a, 3);
+  return true;
+}
+
 template <std::size_t capacity>
 struct Modules {
   dht::Module module[capacity];
@@ -145,7 +152,8 @@ static bool
 bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &target) noexcept {
   sp::byte rawb[1024];
   sp::Buffer buf(rawb);
-  if (!krpc::request::find_node(buf, self, self)) {
+  krpc::Transaction t;
+  if (!krpc::request::find_node(buf, t, self, self)) {
     return false;
   }
 
@@ -223,7 +231,7 @@ parse(dht::DHT &ctx, Modules<capacity> &modules, const dht::Peer &peer,
       sp::Buffer &in, sp::Buffer &out) noexcept {
   bencode::d::Decoder p(in);
   return bencode::d::dict(p, [&ctx, &modules, &peer, &out](auto &p) { //
-    sp::byte transaction[16] = {0};
+    krpc::Transaction transaction;
     char message_type[16] = {0};
     char query[16] = {0};
     bool t = false;
@@ -231,7 +239,7 @@ parse(dht::DHT &ctx, Modules<capacity> &modules, const dht::Peer &peer,
     bool q = false;
 
   start:
-    if (!t && bencode::d::pair(p, "t", transaction)) {
+    if (!t && bencode::d::pair(p, "t", transaction.id)) {
       t = true;
       goto start;
     }
@@ -249,6 +257,7 @@ parse(dht::DHT &ctx, Modules<capacity> &modules, const dht::Peer &peer,
     if (!(t && y && q)) {
       return error.request(ctx, peer, p, out);
     }
+    std::memcpy(p.transaction.id, transaction.id, sizeof(transaction.id));
 
     if (std::strcmp(message_type, "q") == 0) {
       /*query*/

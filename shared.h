@@ -67,6 +67,13 @@ remaining_write(Buffer &) noexcept;
 } // namespace sp
 
 //---------------------------
+namespace krpc {
+struct Transaction {
+  sp::byte id[16];
+};
+} // namespace krpc
+
+//---------------------------
 namespace sp {
 /*list*/
 template <typename T>

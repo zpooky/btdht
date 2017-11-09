@@ -1,8 +1,8 @@
 #include "BEncode.h"
+#include <arpa/inet.h>
 #include <cstdio>
 #include <cstring>
 #include <type_traits>
-#include <arpa/inet.h>
 
 namespace bencode {
 
@@ -190,7 +190,8 @@ pair(sp::Buffer &buffer, const char *key, const sp::byte *val,
 
 namespace d {
 /*Decoder*/
-Decoder::Decoder(sp::Buffer &) {
+Decoder::Decoder(sp::Buffer &)
+    : transaction() {
 }
 
 bool

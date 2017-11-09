@@ -1,26 +1,15 @@
 #include "BEncode.h"
 #include "krpc.h"
-#include <string.h>
+#include <cstring>
 
 namespace krpc {
-
-template <std::size_t SIZE>
-static bool
-transaction(char (&t)[SIZE]) noexcept {
-  strcpy(t, "aa");
-  return true;
-}
-
 template <typename F>
 static bool
-message(sp::Buffer &buf, const char *mt, const char *q, F f) noexcept {
-  // Transaction id
-  char t[3];
-  transaction(t);
-
+message(sp::Buffer &buf, const Transaction &t, const char *mt, const char *q,
+        F f) noexcept {
   return bencode::e::dict(buf, //
                           [&t, &mt, q, &f](sp::Buffer &b) {
-                            if (!bencode::e::pair(b, "t", t)) {
+                            if (!bencode::e::pair(b, "t", t.id)) {
                               return false;
                             }
                             if (!bencode::e::pair(b, "y", mt)) {
@@ -42,8 +31,8 @@ message(sp::Buffer &buf, const char *mt, const char *q, F f) noexcept {
 
 template <typename F>
 static bool
-resp(sp::Buffer &buf, const char *q, F f) noexcept {
-  return message(buf, "r", q, [&f](auto &b) { //
+resp(sp::Buffer &buf, const Transaction &t, const char *q, F f) noexcept {
+  return message(buf, t, "r", q, [&f](auto &b) { //
     if (!bencode::e::value(b, "r")) {
       return false;
     }
@@ -56,8 +45,8 @@ resp(sp::Buffer &buf, const char *q, F f) noexcept {
 
 template <typename F>
 static bool
-req(sp::Buffer &buf, const char *q, F f) noexcept {
-  return message(buf, "q", q, [&f](auto &b) { //
+req(sp::Buffer &buf, const Transaction &t, const char *q, F f) noexcept {
+  return message(buf, t, "q", q, [&f](auto &b) { //
     if (!bencode::e::value(b, "a")) {
       return false;
     }
@@ -70,9 +59,9 @@ req(sp::Buffer &buf, const char *q, F f) noexcept {
 
 namespace request {
 bool
-ping(sp::Buffer &buf, const dht::NodeId &sender) noexcept {
-  return req(buf, "ping", [&sender](auto &b) { //
-    if (!bencode::e::pair(b, "id", sender.id)) {
+ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &send) noexcept {
+  return req(buf, t, "ping", [&send](auto &b) { //
+    if (!bencode::e::pair(b, "id", send.id)) {
       return false;
     }
     return true;
@@ -80,9 +69,9 @@ ping(sp::Buffer &buf, const dht::NodeId &sender) noexcept {
 } // request::ping()
 
 bool
-find_node(sp::Buffer &buf, const dht::NodeId &self,
+find_node(sp::Buffer &buf, const Transaction &t, const dht::NodeId &self,
           const dht::NodeId &search) noexcept {
-  return req(buf, "find_node", [self, search](sp::Buffer &b) { //
+  return req(buf, t, "find_node", [self, search](sp::Buffer &b) { //
     if (!bencode::e::pair(b, "id", self.id, sizeof(self.id))) {
       return false;
     }
@@ -95,9 +84,9 @@ find_node(sp::Buffer &buf, const dht::NodeId &self,
 } // request::find_node()
 
 bool
-get_peers(sp::Buffer &buf, const dht::NodeId &id,
+get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
           const dht::Infohash &infohash) noexcept {
-  return req(buf, "get_peers", [id, infohash](sp::Buffer &b) { //
+  return req(buf, t, "get_peers", [id, infohash](sp::Buffer &b) { //
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
     }
@@ -110,11 +99,11 @@ get_peers(sp::Buffer &buf, const dht::NodeId &id,
 } // request::get_peers()
 
 bool
-announce_peer(sp::Buffer &buf, const dht::NodeId &id, bool implied_port,
-              const dht::Infohash &infohash, std::uint16_t port,
-              const char *token) noexcept {
+announce_peer(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
+              bool implied_port, const dht::Infohash &infohash,
+              std::uint16_t port, const char *token) noexcept {
   return req(
-      buf, "announce_peer",
+      buf, t, "announce_peer",
       [&id, &implied_port, &infohash, &port, &token](sp::Buffer &buf) { //
         if (!bencode::e::pair(buf, "id", id.id)) {
           return false;
@@ -143,8 +132,8 @@ announce_peer(sp::Buffer &buf, const dht::NodeId &id, bool implied_port,
 
 namespace response {
 bool
-ping(sp::Buffer &buf, const dht::NodeId &id) noexcept {
-  return resp(buf, "ping", [&id](sp::Buffer &b) { //
+ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
+  return resp(buf, t, "ping", [&id](sp::Buffer &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
@@ -188,9 +177,9 @@ encode_list(sp::Buffer &buf, const char *key,
 }
 
 bool
-find_node(sp::Buffer &buf, const dht::NodeId &id,
-          const sp::list<dht::NodeId> *target) noexcept {
-  return resp(buf, "find_node", [&id, target](auto &b) { //
+find_node(sp::Buffer &buf, const Transaction &t, //
+          const dht::NodeId &id, const sp::list<dht::NodeId> *target) noexcept {
+  return resp(buf, t, "find_node", [&id, target](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
@@ -201,9 +190,11 @@ find_node(sp::Buffer &buf, const dht::NodeId &id,
 } // response::find_node()
 
 bool
-get_peers(sp::Buffer &buf, const dht::NodeId &id, const dht::Token &token,
+get_peers(sp::Buffer &buf,
+          const Transaction &t, //
+          const dht::NodeId &id, const dht::Token &token,
           const sp::list<dht::Node> *values) noexcept {
-  return resp(buf, "get_peers", [&id, &token, &values](auto &b) { //
+  return resp(buf, t, "get_peers", [&id, &token, &values](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
@@ -218,9 +209,10 @@ get_peers(sp::Buffer &buf, const dht::NodeId &id, const dht::Token &token,
 } // response::get_peers()
 
 bool
-get_peers(sp::Buffer &buf, const dht::NodeId &id, const dht::Token &token,
+get_peers(sp::Buffer &buf, const Transaction &t, //
+          const dht::NodeId &id, const dht::Token &token,
           const sp::list<dht::NodeId> *nodes) noexcept {
-  return resp(buf, "get_peers", [&id, &token, &nodes](auto &b) { //
+  return resp(buf, t, "get_peers", [&id, &token, &nodes](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
@@ -235,8 +227,9 @@ get_peers(sp::Buffer &buf, const dht::NodeId &id, const dht::Token &token,
 } // response::get_peers()
 
 bool
-announce_peer(sp::Buffer &buf, const dht::NodeId &id) noexcept {
-  return resp(buf, "announce_peer", [&id](auto &b) { //
+announce_peer(sp::Buffer &buf, const Transaction &t,
+              const dht::NodeId &id) noexcept {
+  return resp(buf, t, "announce_peer", [&id](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;

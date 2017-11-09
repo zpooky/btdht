@@ -17,6 +17,11 @@ nodeId(dht::NodeId &id) {
   memcpy(id.id, raw_id, strlen(raw_id));
 }
 
+static void
+transaction(krpc::Transaction &t) {
+  memcpy(t.id, "aa", 3);
+}
+
 TEST(krpcTest, test_ping) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
@@ -24,12 +29,15 @@ TEST(krpcTest, test_ping) {
   dht::NodeId id;
   nodeId(id);
 
-  ASSERT_TRUE(krpc::request::ping(buff, id));
+  krpc::Transaction t;
+  transaction(t);
+
+  ASSERT_TRUE(krpc::request::ping(buff, t, id));
   printf("%s\n", buff.raw);
   // ASSERT_TRUE( EQ("d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe",
   // buff));
 
-  ASSERT_TRUE(krpc::response::ping(buff, id));
+  ASSERT_TRUE(krpc::response::ping(buff, t, id));
 }
 
 TEST(krpcTest, test_find_node) {
@@ -39,8 +47,11 @@ TEST(krpcTest, test_find_node) {
   dht::NodeId id;
   nodeId(id);
 
-  ASSERT_TRUE(krpc::request::find_node(buff, id, id));
-  ASSERT_TRUE(krpc::response::find_node(buff, id, nullptr));
+  krpc::Transaction t;
+  transaction(t);
+
+  ASSERT_TRUE(krpc::request::find_node(buff, t, id, id));
+  ASSERT_TRUE(krpc::response::find_node(buff, t, id, nullptr));
 }
 
 TEST(krpcTest, test_get_peers) {
@@ -50,8 +61,11 @@ TEST(krpcTest, test_get_peers) {
   dht::NodeId id;
   nodeId(id);
 
+  krpc::Transaction t;
+  transaction(t);
+
   dht::Infohash infohash;
-  ASSERT_TRUE(krpc::request::get_peers(buff, id, infohash));
+  ASSERT_TRUE(krpc::request::get_peers(buff, t, id, infohash));
 }
 
 TEST(krpcTest, test_anounce_peer) {
@@ -60,8 +74,12 @@ TEST(krpcTest, test_anounce_peer) {
 
   dht::NodeId id;
   nodeId(id);
+
+  krpc::Transaction t;
+  transaction(t);
+
   dht::Infohash infohash;
-  ASSERT_TRUE(
-      krpc::request::announce_peer(buff, id, true, infohash, 64000, "token"));
-  ASSERT_TRUE(krpc::response::announce_peer(buff, id));
+  ASSERT_TRUE(krpc::request::announce_peer(buff, t, id, true, infohash, 64000,
+                                           "token"));
+  ASSERT_TRUE(krpc::response::announce_peer(buff, t, id));
 }

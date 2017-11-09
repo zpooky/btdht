@@ -325,7 +325,7 @@ update_activity(DHT &dht, const NodeId &id, time_t t, bool ping) noexcept {
 
   RoutingTable *leaf = find_closest(dht, id, inTree, idx);
   assert(leaf);
-  // TODO how to ensure leaf is a bucket
+  // TODO how to ensure leaf is a bucket?
   Node *contact = find(leaf->bucket, id);
   if (contact) {
     contact->activity = std::max(t, contact->activity);

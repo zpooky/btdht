@@ -15,40 +15,46 @@ enum class Error {
 
 namespace request {
 bool
-ping(sp::Buffer &, const dht::NodeId &sender) noexcept;
+ping(sp::Buffer &, const Transaction &, //
+     const dht::NodeId &sender) noexcept;
 
 bool
-find_node(sp::Buffer &, const dht::NodeId &self,
-          const dht::NodeId &search) noexcept;
+find_node(sp::Buffer &, const Transaction &, //
+          const dht::NodeId &self, const dht::NodeId &search) noexcept;
 
 bool
-get_peers(sp::Buffer &, const dht::NodeId &id,
-          const dht::Infohash &infohash) noexcept;
+get_peers(sp::Buffer &, const Transaction &, //
+          const dht::NodeId &id, const dht::Infohash &infohash) noexcept;
 
 bool
-announce_peer(sp::Buffer &, const dht::NodeId &id, bool implied_port,
+announce_peer(sp::Buffer &, const Transaction &, //
+              const dht::NodeId &id, bool implied_port,
               const dht::Infohash &infohash, std::uint16_t port,
               const char *token) noexcept;
 } // namespace request
 
 namespace response {
 bool
-ping(sp::Buffer &, const dht::NodeId &receiver) noexcept;
+ping(sp::Buffer &, const Transaction &, //
+     const dht::NodeId &receiver) noexcept;
 
 bool
-find_node(sp::Buffer &, const dht::NodeId &id,
-          const sp::list<dht::NodeId> *targets) noexcept;
+find_node(sp::Buffer &, const Transaction &, //
+          const dht::NodeId &, const sp::list<dht::NodeId> *) noexcept;
 
 bool
-get_peers(sp::Buffer &, const dht::NodeId &id, const dht::Token &,
-          const sp::list<dht::Node> *values) noexcept;
+get_peers(sp::Buffer &, const Transaction &, //
+          const dht::NodeId &id, const dht::Token &,
+          const sp::list<dht::Node> *) noexcept;
 
 bool
-get_peers(sp::Buffer &, const dht::NodeId &id, const dht::Token &,
-          const sp::list<dht::NodeId> *nodes) noexcept;
+get_peers(sp::Buffer &, const Transaction &, //
+          const dht::NodeId &id, const dht::Token &,
+          const sp::list<dht::NodeId> *) noexcept;
 
 bool
-announce_peer(sp::Buffer &, const dht::NodeId &) noexcept;
+announce_peer(sp::Buffer &, const Transaction &, //
+              const dht::NodeId &) noexcept;
 } // namespace response
 
 } // namespace krpc
