@@ -1,6 +1,34 @@
 #include "BEncode.h"
 #include "krpc.h"
 #include <cstring>
+#include <arpa/inet.h>
+
+namespace bencode {
+namespace e {
+static bool
+value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
+  return value(buffer, id.id);
+}
+
+static bool
+value(sp::Buffer &buffer, const dht::Peer &peer) noexcept {
+  sp::byte scratch[sizeof(peer.ip) + sizeof(peer.port)];
+  static_assert(sizeof(scratch) == 4 + 2, "");
+  Ip ip = htonl(peer.ip);
+  std::memcpy(scratch, &ip, sizeof(ip));
+  Port port = htons(peer.port);
+  std::memcpy(scratch + sizeof(ip), &port, sizeof(port));
+  return value(buffer, scratch);
+}
+
+static bool
+value(sp::Buffer &, const dht::Node &) noexcept {
+  // TODO
+  return true;
+}
+
+} // namespace e
+} // namespace bencode
 
 namespace krpc {
 template <typename F>
