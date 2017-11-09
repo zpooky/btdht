@@ -6,10 +6,10 @@
 #include "krpc.h"
 #include "module.h"
 #include "shared.h"
+#include <arpa/inet.h>
 #include <cstring>
 #include <exception>
-#include <sys/epoll.h>  //epoll
-#include <arpa/inet.h>
+#include <sys/epoll.h> //epoll
 
 static bool
 random(krpc::Transaction &t) noexcept {
@@ -166,14 +166,22 @@ parse(dht::DHT &ctx, Modules<capacity> &modules, const dht::Peer &peer,
       goto start;
     }
 
+    bool is_query = false;
     dht::Module error;
     error::setup(error);
     if (!(t && y && q)) {
-      return error.request(ctx, peer, p, out);
+      if (y) {
+        is_query = std::strcmp(message_type, "q") == 0;
+      }
+      if (is_query) {
+        // only send reply to a query
+        return error.request(ctx, peer, p, out);
+      }
+      return false;
     }
     std::memcpy(p.transaction.id, transaction.id, sizeof(transaction.id));
 
-    if (std::strcmp(message_type, "q") == 0) {
+    if (is_query) {
       /*query*/
       if (!bencode::d::value(p, "a")) {
         return false;
@@ -203,6 +211,7 @@ handle(dht::DHT &ctx, const dht::Peer &peer, sp::Buffer &in,
   find_node::setup(modules.module[i++]);
   get_peers::setup(modules.module[i++]);
   announce_peer::setup(modules.module[i++]);
+  error::setup(modules.module[i++]);
 
   parse(ctx, modules, peer, in, out);
 }
