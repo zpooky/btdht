@@ -43,15 +43,6 @@ start:
   return current;
 }
 
-const Peer *
-lookup(DHT &dht, const Infohash &id) noexcept {
-  KeyValue *const needle = find_kv(dht.kv, id);
-  if (needle) {
-    return needle->peers;
-  }
-  return nullptr;
-}
-
 /*Bucket*/
 Bucket::Bucket()
     : contacts() {
@@ -285,7 +276,7 @@ remove(DHT &dht, Node &c) noexcept {
 } // namespace dht
 
 static Node *
-contacts_older(RoutingTable *root, const time_t &age) noexcept {
+contacts_older(RoutingTable *root, time_t age) noexcept {
   if (root->type == NodeType::NODE) {
     Node *result = contacts_older(root->node.lower, age);
     Node *const higher = contacts_older(root->node.higher, age);
@@ -314,7 +305,13 @@ contacts_older(RoutingTable *root, const time_t &age) noexcept {
 DHT::DHT()
     : id()
     , kv(nullptr)
-    , root(nullptr) {
+    , root(nullptr)
+    // timeout{{{
+    , timeout_next(0)
+    , timeout_head(nullptr)
+    , timeout_tail(nullptr)
+//}}}
+{
 }
 
 /*public*/
@@ -328,9 +325,10 @@ update_activity(DHT &dht, const NodeId &id, time_t t, bool ping) noexcept {
   // TODO how to ensure leaf is a bucket?
   Node *contact = find(leaf->bucket, id);
   if (contact) {
-    contact->activity = std::max(t, contact->activity);
+    assert(t >= contact->activity);
+    contact->activity = t;
     if (ping) {
-      contact->ping_await = false;
+      contact->ping_outstanding = 0;
     }
     return true;
   }
@@ -349,11 +347,21 @@ start:
   if (!insert(bucket, contact)) {
     if (inTree) {
       split(dht, leaf, idx);
+      // TODO make better
       goto start;
     }
     return false;
   }
   return true;
+}
+
+const Peer *
+lookup(DHT &dht, const Infohash &id) noexcept {
+  KeyValue *const needle = find_kv(dht.kv, id);
+  if (needle) {
+    return needle->peers;
+  }
+  return nullptr;
 }
 
 } // namespace dht

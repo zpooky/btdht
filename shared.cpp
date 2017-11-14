@@ -85,15 +85,18 @@ Node::Node()
     : activity()
     , id()
     , peer()
-    , ping_await(false)
-    , next(nullptr) {
+    , ping_outstanding(0)
+    // timeout{{{
+    , next(nullptr)
+//}}}
+{
 }
 
 Node::Node(const NodeId &nid, Ip ip, Port port, time_t la)
     : activity(la)
     , id(nid)
     , peer(ip, port)
-    , ping_await(false) {
+    , ping_outstanding(0) {
 }
 
 Node::Node(const NodeId &nid, const Peer &p, time_t act)

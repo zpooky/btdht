@@ -2,70 +2,161 @@
 #include "dht.h"
 #include "krpc.h"
 #include "module.h"
+#include "udp.h"
 
 //===========================================================
 // Module
 //===========================================================
 namespace dht {
-Module::Module()
+
+static Timeout
+awake(dht::DHT &, fd &, sp::Buffer &, time_t) noexcept;
+
+/*MessageContext*/
+MessageContext::MessageContext(DHT &p_dht, bencode::d::Decoder &p_in,
+                               sp::Buffer &p_out, const krpc::Transaction &p_t,
+                               Peer p_remote, time_t p_now) noexcept
+    : dht{p_dht}
+    , in{p_in}
+    , out{p_out}
+    , transaction{p_t}
+    , remote{p_remote}
+    , now{p_now} {
+}
+
+/*Module*/
+Module::Module() noexcept
     : query(nullptr)
     , response(nullptr)
     , request(nullptr) {
 }
 
+/*Modules*/
+Modules::Modules() noexcept
+    : module{}
+    , length(0)
+    , on_awake(awake) {
+}
+
+template <typename F>
+static void
+for_each(Node *, F f) noexcept {
+  // TODO
+}
+
+static Node *
+take_timedout(DHT &ctx, time_t) noexcept {
+  // TODO
+  return nullptr;
+}
+
+static void
+increment_outstanding(Node *) noexcept {
+  // TODO
+}
+
+static void
+append(DHT &ctx, Node *) noexcept {
+  // TODO
+}
+
+static Timeout
+awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
+  if (ctx.timeout_next >= now) {
+    // TODO assert out is empty
+    Node *timedout = take_timedout(ctx, now);
+    for_each(timedout, [&ctx, &udp, &out](Node *node) { //
+      krpc::Transaction t;
+      // TODO t
+      krpc::request::ping(out, t, node->id);
+      sp::flip(out);
+      udp::send(udp, node->peer, out);
+      increment_outstanding(node);
+      // TODO
+      // fake update activity otherwise if all nodes have to same timeout we
+      // will spam out pings, ex: 3 noes timedout ,send ping, append, get the
+      // next timeout date, since there is only 3 in the queue and we will
+      // immediately awake and send ping  to the same 3 nodes
+    });
+    append(ctx, timedout);
+
+    // TODO always have a queue of closes timeout when receive anything
+    // we remove from list and add to tail of list
+    //- have a tail pointer to append at
+    //- have a front pointer to look at the front from
+    //-when adding new node append to end
+    //-when updating activity append to end
+    //-when removing contact remove contact from queue
+    //-when finding next timeout slot look at the front of timeout queue
+    //-when sending ping dequeue them and append them at the end(even though we
+    // do
+    // not know if the contact is well yet) and increment to contact
+    // awaiting-ping-response counter
+  }
+  return now - ctx.timeout_next;
+}
+
 } // namespace dht
+
+// TODO change to more descriptive function names
+// TODO check that peer owns nodeid before change anything
+// TODO not having out buffer when receiveing a repsonse so we do not respond to
+// responses
+// TODO every received msg(request/response) should update the activity
+// timestamp.
+// TODO calculate latency by having a list of active transaction{id,time_sent}
+// latency = now - time_sent. To be used an desiding factor when inserting to a
+// full not exapndable bucket. or desiding on which X best Contact Nodes when
+// returning find_node/get_peers
 
 //===========================================================
 // Ping
 //===========================================================
 namespace ping {
-namespace handle {
-
 static void
-request(dht::DHT &ctx, sp::Buffer &out, const krpc::Transaction &t,
-        const dht::Peer &remote, //
-        const dht::NodeId &sender) noexcept {
-  time_t now = time(0);
+handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
+  /*we receive a ping request?*/
   constexpr bool is_ping = true;
-  if (!dht::update_activity(ctx, sender, now, is_ping)) {
-    dht::Node contact(sender, remote, now);
-    dht::add(ctx, contact);
-  }
 
-  krpc::response::ping(out, t, ctx.id);
-} // ping::handle::request()
+  time_t now = ctx.now;
+  if (!dht::update_activity(ctx.dht, sender, now, is_ping)) {
+    dht::Node contact(sender, ctx.remote, now);
+    dht::add(ctx.dht, contact);
+  }
+  // TODO clear ctx.timeout_list
+
+  krpc::response::ping(ctx.out, ctx.transaction, ctx.dht.id);
+} // ping::handle_request()
 
 static void
-response(dht::DHT &ctx, sp::Buffer &out, const dht::Peer &remote, //
-         const dht::NodeId &sender) noexcept {
-} // ping::handle::response()
+handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
+  // if (dht::valid_transaction(ctx, t)) {
+  // }
 
-} // namespace handle
+} // ping::handle_response()
 
 static bool
-response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-         sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &remote, &out](auto &p) { //
+on_response(dht::MessageContext &ctx) {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
     dht::NodeId sender;
     if (!bencode::d::pair(p, "id", sender.id)) {
       return false;
     }
 
-    handle::response(ctx, out, remote, sender);
+    handle_response(ctx, sender);
     return true;
   });
 }
 
 static bool
-request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-        sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &remote, &d, &out](auto &p) { //
+on_request(dht::MessageContext &ctx) {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     dht::NodeId sender;
     if (!bencode::d::pair(p, "id", sender.id)) {
       return false;
     }
 
-    handle::request(ctx, out, d.transaction, remote, sender);
+    handle_request(ctx, sender);
     return true;
   });
 }
@@ -73,8 +164,8 @@ request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
 void
 setup(dht::Module &module) noexcept {
   module.query = "ping";
-  module.request = request;
-  module.response = response;
+  module.request = on_request;
+  module.response = on_response;
 }
 } // namespace ping
 
@@ -82,19 +173,15 @@ setup(dht::Module &module) noexcept {
 // find_node
 //===========================================================
 namespace find_node {
-namespace handle { //
 static void
-request(dht::DHT &ctx, sp::Buffer &out, const dht::Peer &, //
-        const dht::NodeId &self, const dht::NodeId &search) noexcept {
+handle_request(dht::MessageContext &ctx, const dht::NodeId &self,
+               const dht::NodeId &search) noexcept {
   // TODO
 }
 
-} // namespace handle
-
 static bool
-response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-         sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &remote](auto &p) { //
+on_response(dht::MessageContext &ctx) {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
 
     dht::NodeId id;
     sp::list<dht::NodeId> *target = nullptr; // TODO
@@ -109,9 +196,8 @@ response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
 }
 
 static bool
-request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-        sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &remote, &out](auto &p) { //
+on_request(dht::MessageContext &ctx) {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     dht::NodeId id;
     dht::NodeId target;
 
@@ -122,7 +208,7 @@ request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
       return false;
     }
 
-    handle::request(ctx, out, remote, id, target);
+    handle_request(ctx, id, target);
     return true;
   });
 }
@@ -130,8 +216,8 @@ request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
 void
 setup(dht::Module &module) noexcept {
   module.query = "find_node";
-  module.request = request;
-  module.response = response;
+  module.request = on_request;
+  module.response = on_response;
 }
 
 } // namespace find_node
@@ -140,19 +226,15 @@ setup(dht::Module &module) noexcept {
 // get_peers
 //===========================================================
 namespace get_peers {
-namespace handle { //
 static void
-request(dht::DHT &ctx, sp::Buffer &out, const dht::Peer &, //
-        const dht::NodeId &id, const dht::Infohash &infohash) noexcept {
+handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
+               const dht::Infohash &infohash) noexcept {
   // TODO
 }
 
-} // namespace handle
-
 static bool
-response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-         sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &remote](auto &p) { //
+on_response(dht::MessageContext &ctx) {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     dht::NodeId id;
     dht::Token token;
     sp::list<dht::Node> *values = nullptr; // TODO
@@ -172,9 +254,8 @@ response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
 }
 
 static bool
-request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-        sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &remote, &out](auto &p) {
+on_request(dht::MessageContext &ctx) {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
     dht::NodeId id;
     dht::Infohash infohash;
 
@@ -185,7 +266,7 @@ request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
       return false;
     }
 
-    handle::request(ctx, out, remote, id, infohash);
+    handle_request(ctx, id, infohash);
     return true;
   });
 }
@@ -193,8 +274,8 @@ request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
 void
 setup(dht::Module &module) noexcept {
   module.query = "get_peers";
-  module.request = request;
-  module.response = response;
+  module.request = on_request;
+  module.response = on_response;
 }
 } // namespace get_peers
 
@@ -202,20 +283,16 @@ setup(dht::Module &module) noexcept {
 // announce_peer
 //===========================================================
 namespace announce_peer {
-namespace handle { //
 static void
-request(dht::DHT &ctx, sp::Buffer &out, const dht::Peer &, //
-        const dht::NodeId &id, bool implied_port, const dht::Infohash &infohash,
-        Port port, const char *token) noexcept {
+handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
+               bool implied_port, const dht::Infohash &infohash, Port port,
+               const char *token) noexcept {
   // TODO
 }
 
-} // namespace handle
-
 static bool
-response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-         sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &remote](auto &p) { //
+on_response(dht::MessageContext &ctx) {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     dht::NodeId id;
     if (!bencode::d::pair(p, "id", id.id)) {
       return false;
@@ -227,15 +304,15 @@ response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
 }
 
 static bool
-request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-        sp::Buffer &out) {
-  return bencode::d::dict(d, [&ctx, &out, &remote](auto &p) {
+on_request(dht::MessageContext &ctx) {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
     dht::NodeId id;
     bool implied_port = false;
     dht::Infohash infohash;
     Port port = 0;
     char token[16] = {0};
 
+    // TODO support for instances that does have exactly this order
     if (!bencode::d::pair(p, "id", id.id)) {
       return false;
     }
@@ -253,7 +330,7 @@ request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
       return false;
     }
 
-    handle::request(ctx, out, remote, id, implied_port, infohash, port, token);
+    handle_request(ctx, id, implied_port, infohash, port, token);
     return true;
   });
 }
@@ -261,8 +338,8 @@ request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
 void
 setup(dht::Module &module) noexcept {
   module.query = "announce_peer";
-  module.request = request;
-  module.response = response;
+  module.request = on_request;
+  module.response = on_response;
 }
 } // namespace announce_peer
 
@@ -271,20 +348,18 @@ setup(dht::Module &module) noexcept {
 //===========================================================
 namespace error {
 static bool
-response(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-         sp::Buffer &out) {
+on_response(dht::MessageContext &ctx) {
   // TODO log
 }
 
 static bool
-request(dht::DHT &ctx, const dht::Peer &remote, bencode::d::Decoder &d,
-        sp::Buffer &out) {
+on_request(dht::MessageContext &ctx) {
   // TODO build error response
 }
 void
 setup(dht::Module &module) noexcept {
   module.query = "";
-  module.request = request;
-  module.response = response;
+  module.request = on_request;
+  module.response = on_response;
 }
 } // namespace error

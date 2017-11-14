@@ -167,8 +167,7 @@ pair(sp::Buffer &buffer, const char *key, const sp::byte *val,
 
 namespace d {
 /*Decoder*/
-Decoder::Decoder(sp::Buffer &)
-    : transaction() {
+Decoder::Decoder(sp::Buffer &) {
 }
 
 bool

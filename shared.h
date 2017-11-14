@@ -27,6 +27,7 @@ public:
 
 using Port = std::uint16_t;
 using Ip = std::uint32_t;
+using Timeout = int;
 
 //---------------------------
 namespace sp {
@@ -137,7 +138,7 @@ struct Node {
   time_t activity;
   NodeId id;
   Peer peer;
-  bool ping_await;
+  std::uint8_t ping_outstanding;
 
   // {
   Node *next;

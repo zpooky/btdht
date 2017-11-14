@@ -52,6 +52,11 @@ struct DHT {
   NodeId id;
   KeyValue *kv;
   RoutingTable *root;
+  // timeout {{{
+  time_t timeout_next;
+  Node *timeout_head;
+  Node *timeout_tail;
+  //}}}
 
   DHT();
 };

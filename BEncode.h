@@ -78,7 +78,6 @@ pair(sp::Buffer &b, const char *key, const sp::byte (&value)[SIZE]) noexcept {
 //----------------------------------
 namespace d {
 struct Decoder {
-  krpc::Transaction transaction;
   explicit Decoder(sp::Buffer &);
 };
 

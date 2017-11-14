@@ -8,16 +8,37 @@
 // Module
 //===========================================================
 namespace dht {
+
+/*MessageContext*/
+struct MessageContext {
+  DHT &dht;
+  bencode::d::Decoder &in;
+  sp::Buffer &out;
+  const krpc::Transaction &transaction;
+  Peer remote;
+  const time_t now;
+  // TODO ctor
+  MessageContext(DHT &, bencode::d::Decoder &, sp::Buffer &,
+                 const krpc::Transaction &, Peer, time_t) noexcept;
+};
+
+/*Module*/
 struct Module {
   const char *query;
 
-  bool(*response) //
-      (dht::DHT &, const dht::Peer &, bencode::d::Decoder &, sp::Buffer &);
+  bool (*response)(MessageContext &);
+  bool (*request)(MessageContext &);
 
-  bool(*request) //
-      (dht::DHT &, const dht::Peer &, bencode::d::Decoder &, sp::Buffer &);
+  Module() noexcept;
+};
 
-  Module();
+/*Modules*/
+struct Modules {
+  dht::Module module[24];
+  std::size_t length;
+  Timeout (*on_awake)(dht::DHT &, fd &, sp::Buffer &, time_t);
+
+  Modules() noexcept;
 };
 
 } // namespace dht

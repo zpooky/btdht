@@ -1,5 +1,6 @@
 #include "udp.h"
 #include <arpa/inet.h>
+#include <cassert>
 #include <cstring>
 #include <exception>
 #include <stdio.h>
@@ -108,6 +109,7 @@ receive(int fd, dht::Peer &other, sp::Buffer &buf) noexcept {
 
 static bool
 send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
+  assert(buf.length > 0);
   int flag = 0;
   sockaddr *destaddr = (sockaddr *)&dest;
 
@@ -132,6 +134,11 @@ send(int fd, const dht::Peer &dest, sp::Buffer &buf) noexcept {
   ::sockaddr_in d;
   to_sockaddr(dest, d);
   send(fd, d, buf);
+}
+
+bool
+send(fd &fd, const dht::Peer &dest, sp::Buffer &buf) noexcept {
+  return send(int(fd), dest, buf);
 }
 
 } // namespace udp

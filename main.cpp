@@ -11,6 +11,14 @@
 #include <exception>
 #include <sys/epoll.h> //epoll
 
+/*
+ * #Assumptions
+ * - monothonic clock
+ *
+ * #Decisions based on stuff
+ * -TODO nodeid+ip+port what denotes a duplicate contact?
+ */
+
 // TODO getopt: listen(port,ip) hex nodeid, repeating bootstrap nodes
 
 static bool
@@ -19,16 +27,6 @@ random(krpc::Transaction &t) noexcept {
   std::memcpy(t.id, a, 3);
   return true;
 }
-
-template <std::size_t capacity>
-struct Modules {
-  dht::Module module[capacity];
-  std::size_t length;
-  Modules()
-      : module{}
-      , length(0) {
-  }
-};
 
 static void
 die(const char *s) {
@@ -73,15 +71,9 @@ bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &dest) noexcept {
   return udp::send(int(udp), dest, buf);
 }
 
-static int
-on_timeout(dht::DHT &ctx) noexcept {
-  // TODO
-  return -1;
-}
-
-template <typename Handle>
+template <typename Handle, typename Awake>
 static void
-loop(fd &fdpoll, dht::DHT &ctx, Handle handle) noexcept {
+loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
   for (;;) {
     sp::byte in[2048];
     sp::byte out[2048];
@@ -89,8 +81,9 @@ loop(fd &fdpoll, dht::DHT &ctx, Handle handle) noexcept {
     constexpr std::size_t max_events = 1024;
     ::epoll_event events[max_events];
 
-    int timeout = -1;
+    Timeout timeout = -1;
     int no_events = ::epoll_wait(int(fdpoll), events, max_events, timeout);
+    time_t now = time(0);
     if (no_events < 0) {
       die("epoll_wait");
     }
@@ -108,10 +101,12 @@ loop(fd &fdpoll, dht::DHT &ctx, Handle handle) noexcept {
 
         if (inBuffer.length > 0) {
           dht::Peer remote;
-          handle(ctx, from, inBuffer, outBuffer);
+          handle(from, inBuffer, outBuffer, now);
           flip(outBuffer);
 
-          udp::send(cfd, /*to*/ from, outBuffer);
+          if (outBuffer.length > 0) {
+            udp::send(cfd, /*to*/ from, outBuffer);
+          }
         }
       }
       if (current.events & EPOLLERR) {
@@ -124,13 +119,13 @@ loop(fd &fdpoll, dht::DHT &ctx, Handle handle) noexcept {
         printf("EPOLLOUT\n");
       }
     }
-    timeout = on_timeout(ctx);
+    sp::Buffer outBuffer(out);
+    timeout = on_awake(outBuffer, now);
   } // for
 }
 
-template <std::size_t capacity>
 static dht::Module &
-module_for(Modules<capacity> &modules, const char *key,
+module_for(dht::Modules &modules, const char *key,
            dht::Module &error) noexcept {
   for (std::size_t i = 0; i < modules.length; ++i) {
     dht::Module &current = modules.module[i];
@@ -141,12 +136,11 @@ module_for(Modules<capacity> &modules, const char *key,
   return error;
 }
 
-template <std::size_t capacity>
 static bool
-parse(dht::DHT &ctx, Modules<capacity> &modules, const dht::Peer &peer,
-      sp::Buffer &in, sp::Buffer &out) noexcept {
+parse(dht::DHT &dht, dht::Modules &modules, const dht::Peer &peer,
+      sp::Buffer &in, sp::Buffer &out, time_t now) noexcept {
   bencode::d::Decoder p(in);
-  return bencode::d::dict(p, [&ctx, &modules, &peer, &out](auto &p) { //
+  return bencode::d::dict(p, [&dht, &modules, &peer, &out, &now](auto &p) { //
     krpc::Transaction transaction;
     char message_type[16] = {0};
     char query[16] = {0};
@@ -168,35 +162,27 @@ parse(dht::DHT &ctx, Modules<capacity> &modules, const dht::Peer &peer,
       goto start;
     }
 
-    bool is_query = false;
-    dht::Module error;
-    error::setup(error);
     if (!(t && y && q)) {
-      if (y) {
-        is_query = std::strcmp(message_type, "q") == 0;
-      }
-      if (is_query) {
-        // only send reply to a query
-        return error.request(ctx, peer, p, out);
-      }
       return false;
     }
-    std::memcpy(p.transaction.id, transaction.id, sizeof(transaction.id));
+    dht::Module error;
+    error::setup(error);
 
-    if (is_query) {
+    dht::MessageContext ctx{dht, p, out, transaction, peer, now};
+    if (std::strcmp(message_type, "q") == 0) {
       /*query*/
       if (!bencode::d::value(p, "a")) {
         return false;
       }
       dht::Module &m = module_for(modules, message_type, error);
-      return m.request(ctx, peer, p, out);
+      return m.request(ctx);
     } else if (std::strcmp(message_type, "r") == 0) {
       /*response*/
       if (!bencode::d::value(p, "r")) {
         return false;
       }
       dht::Module &m = module_for(modules, message_type, error);
-      return m.request(ctx, peer, p, out);
+      return m.response(ctx);
     } else {
       return false;
     }
@@ -205,24 +191,20 @@ parse(dht::DHT &ctx, Modules<capacity> &modules, const dht::Peer &peer,
 }
 
 static void
-handle(dht::DHT &ctx, const dht::Peer &peer, sp::Buffer &in,
-       sp::Buffer &out) noexcept {
-  Modules<4> modules;
+setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
   ping::setup(modules.module[i++]);
   find_node::setup(modules.module[i++]);
   get_peers::setup(modules.module[i++]);
   announce_peer::setup(modules.module[i++]);
   error::setup(modules.module[i++]);
-
-  parse(ctx, modules, peer, in, out);
 }
 
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
 main() {
-  dht::DHT ctx;
-  dht::randomize(ctx.id);
+  dht::DHT dht;
+  dht::randomize(dht.id);
 
   fd udp = udp::bind(INADDR_ANY, 0);
   dht::Peer bs_node(INADDR_ANY, udp::port(udp));
@@ -230,7 +212,20 @@ main() {
   printf("bind(%u)\n", udp::port(udp));
 
   fd poll = setup_epoll(udp);
-  bootstrap(udp, ctx.id, bs_node);
-  loop(poll, ctx, handle);
+  bootstrap(udp, dht.id, bs_node);
+
+  dht::Modules modules;
+  setup(modules);
+
+  auto handle = [&modules, &dht](dht::Peer from, sp::Buffer &in,
+                                 sp::Buffer &out, time_t now) {
+    return parse(dht, modules, from, in, out, now);
+  };
+
+  auto awake = [&udp, &modules, &dht](sp::Buffer &out, time_t now) {
+    return modules.on_awake(dht, udp, out, now);
+  };
+
+  loop(poll, handle, awake);
   return 0;
 }
