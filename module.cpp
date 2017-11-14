@@ -3,11 +3,20 @@
 #include "krpc.h"
 #include "module.h"
 #include "udp.h"
+#include <cstring>
 
 //===========================================================
 // Module
 //===========================================================
 namespace dht {
+
+static bool
+random(krpc::Transaction &t) noexcept {
+  const char *a = "aa";
+  // TODO
+  std::memcpy(t.id, a, 3);
+  return true;
+}
 
 static Timeout
 awake(dht::DHT &, fd &, sp::Buffer &, time_t) noexcept;
@@ -40,24 +49,68 @@ Modules::Modules() noexcept
 
 template <typename F>
 static void
-for_each(Node *, F f) noexcept {
-  // TODO
+for_each(Node *node, F f) noexcept {
+Lstart:
+  if (node) {
+    f(node);
+    node = node->next;
+    goto Lstart;
+  }
 }
 
 static Node *
-take_timedout(DHT &ctx, time_t) noexcept {
-  // TODO
-  return nullptr;
+take_timedout(DHT &ctx, time_t now) noexcept {
+  Node *result = nullptr;
+  Node *head = ctx.timeout_head;
+Lstart:
+  if (head) {
+    if (head->activity <= now) {
+      // iterate
+      head = head->next;
+
+      // build result
+      head->next = result;
+      result = head;
+
+      // repeat
+      goto Lstart;
+    }
+  }
+
+  // updated head
+  ctx.timeout_head = head;
+
+  // clear tail if head is empty
+  if (head == nullptr)
+    ctx.timeout_tail = nullptr;
+
+  return result;
 }
 
 static void
-increment_outstanding(Node *) noexcept {
-  // TODO
+increment_outstanding(Node *node) noexcept {
+  auto &data = node->ping_outstanding;
+  if (data != ~std::uint8_t(0)) {
+    data += 1;
+  }
+}
+
+static Node *
+last(Node *node) noexcept {
+Lstart:
+  if (node) {
+    node = node->next;
+    goto Lstart;
+  }
+  return node;
 }
 
 static void
-append(DHT &ctx, Node *) noexcept {
-  // TODO
+append(DHT &ctx, Node *node) noexcept {
+  if (ctx.timeout_tail)
+    ctx.timeout_tail->next = node;
+
+  ctx.timeout_tail = last(node);
 }
 
 static Timeout

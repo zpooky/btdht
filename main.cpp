@@ -21,13 +21,6 @@
 
 // TODO getopt: listen(port,ip) hex nodeid, repeating bootstrap nodes
 
-static bool
-random(krpc::Transaction &t) noexcept {
-  const char *a = "aa";
-  std::memcpy(t.id, a, 3);
-  return true;
-}
-
 static void
 die(const char *s) {
   perror(s);
