@@ -1,6 +1,7 @@
 #include "BEncode.h"
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <type_traits>
 
 namespace bencode {
@@ -166,50 +167,171 @@ pair(sp::Buffer &buffer, const char *key, const sp::byte *val,
 //-----------------------------
 
 namespace d {
+template <typename T>
+static bool
+read_numeric(sp::Buffer &b, T &out, char end) noexcept {
+  static_assert(std::is_integral<T>::value, "");
+  char str[32] = {0};
+  std::size_t it = 0;
+Lloop:
+  if (sp::remaining_read(b) > 0) {
+    if (b[b.pos] != end) {
+
+      if (b[b.pos] >= 0 && b[b.pos] <= 9) {
+        if (it < sizeof(str)) {
+          str[it++] = b[b.pos++];
+          goto Lloop;
+        }
+      }
+      return false;
+    }
+  } else {
+    return false;
+  }
+
+  if (it == 0) {
+    return false;
+  }
+
+  out = std::atoll(str);
+  return true;
+}
+
+template <typename T>
+static bool
+parse_string(sp::Buffer &b, /*OUT*/ const T *&str, std::size_t &len) noexcept {
+  static_assert(sizeof(T) == 1, "");
+  if (!read_numeric(b, len, ':')) {
+    return false;
+  }
+  if (len > sp::remaining_read(b)) {
+    return false;
+  }
+  str = (T *)b.raw;
+  b.pos += len;
+
+  return true;
+}
+
+static bool
+parse_key(sp::Buffer &b, const char *key) noexcept {
+  const std::size_t key_len = std::strlen(key);
+
+  const char *parse_key = nullptr;
+  std::size_t parse_key_len = 0;
+  if (!parse_string(b, parse_key, parse_key_len)) {
+    return false;
+  }
+
+  if (key_len != parse_key_len || std::memcmp(key, parse_key, key_len) != 0) {
+    return false;
+  }
+
+  return true;
+}
+
+template <typename T>
+static bool
+parse_key_value(sp::Buffer &b, const char *key, T *val,
+                std::size_t len) noexcept {
+  if (!parse_key(b, key)) {
+    return false;
+  }
+
+  const sp::byte *val_ref = nullptr;
+  std::size_t val_len = 0;
+  if (!parse_string(b, val_ref, val_len)) {
+    return false;
+  }
+  if (val_len > len) {
+    return false;
+  }
+
+  std::memcpy(val, val_ref, val_len);
+  // TODO howd to indicate length of parsed val?
+
+  return true;
+}
+
+static bool
+parse_key_valuex(sp::Buffer &b, const char *key, std::uint64_t &val) noexcept {
+  if (!parse_key(b, key)) {
+    return false;
+  }
+
+  if (sp::remaining_read(b) == 0 || b.raw[b.pos++] != 'i') {
+    return false;
+  }
+
+  if (!read_numeric(b, val, 'e')) {
+    return false;
+  }
+
+  return true;
+}
+
 /*Decoder*/
-Decoder::Decoder(sp::Buffer &) {
+Decoder::Decoder(sp::Buffer &b)
+    : buf(b) {
 }
 
 bool
-pair(Decoder &, const char *, sp::byte *, std::size_t) noexcept {
-  // TODO
+pair(Decoder &d, const char *key, char *val, std::size_t len) noexcept {
+  return parse_key_value(d.buf, key, val, len);
+}
+
+bool
+pair(Decoder &d, const char *key, sp::byte *val, std::size_t len) noexcept {
+  return parse_key_value(d.buf, key, val, len);
+}
+
+bool
+pair(Decoder &d, const char *key, bool &v) noexcept {
+  std::uint64_t t = 0;
+  if (!parse_key_valuex(d.buf, key, t)) {
+    return false;
+  }
+
+  v = t == 1;
+
   return true;
 }
 
 bool
-pair(Decoder &, const char *, char *, std::size_t) noexcept {
-  // TODO
+pair(Decoder &d, const char *key, std::uint32_t &v) noexcept {
+  std::uint64_t t = 0;
+  if (!parse_key_valuex(d.buf, key, t)) {
+    return false;
+  }
+
+  if (t > std::uint64_t(~std::uint32_t(0))) {
+    return false;
+  }
+
+  v = std::uint32_t(t);
+
   return true;
 }
 
 bool
-pair(Decoder &, const char *) noexcept {
-  // TODO
+pair(Decoder &d, const char *key, std::uint16_t &v) noexcept {
+  std::uint64_t t = 0;
+  if (!parse_key_valuex(d.buf, key, t)) {
+    return false;
+  }
+
+  if (t > std::uint64_t(~std::uint16_t(0))) {
+    return false;
+  }
+
+  v = std::uint16_t(t);
+
   return true;
 }
 
 bool
-pair(Decoder &, const char *, bool &) noexcept {
-  // TODO
-  return true;
-}
-
-bool
-pair(Decoder &, const char *, std::uint32_t &) noexcept {
-  // TODO
-  return true;
-}
-
-bool
-pair(Decoder &, const char *, std::uint16_t &) noexcept {
-  // TODO
-  return true;
-}
-
-bool
-value(Decoder &, const char *) noexcept {
-  // TODO
-  return true;
+value(Decoder &d, const char *key) noexcept {
+  return parse_key(d.buf, key);
 }
 
 } // namespace d

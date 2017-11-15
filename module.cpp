@@ -99,46 +99,57 @@ static Node *
 last(Node *node) noexcept {
 Lstart:
   if (node) {
-    node = node->next;
-    goto Lstart;
+    if (node->next) {
+      node = node->next;
+      goto Lstart;
+    }
   }
   return node;
-}
+} // namespace dht
 
 static void
-append(DHT &ctx, Node *node) noexcept {
+append_timeout(DHT &ctx, Node *node) noexcept {
   if (ctx.timeout_tail)
     ctx.timeout_tail->next = node;
 
   ctx.timeout_tail = last(node);
 }
 
+static void
+unlink_timeout(DHT &ctx, Node *node) noexcept {
+  // TODO we need to have doubly linked node to be able to relink on the fly
+}
+
+static void
+update_activity(DHT &ctx, Node *node, time_t now) noexcept {
+  unlink_timeout(ctx, node);
+  node->activity = now;
+  append_timeout(ctx, node);
+}
+
 static Timeout
 awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
+  reset(out);
   if (ctx.timeout_next >= now) {
-    // TODO assert out is empty
     Node *timedout = take_timedout(ctx, now);
-    for_each(timedout, [&ctx, &udp, &out](Node *node) { //
+    for_each(timedout, [&ctx, &udp, &out, now](Node *node) { //
       krpc::Transaction t;
-      // TODO t
+      random(t);
+
       krpc::request::ping(out, t, node->id);
       sp::flip(out);
       udp::send(udp, node->peer, out);
       increment_outstanding(node);
-      // TODO
+
       // fake update activity otherwise if all nodes have to same timeout we
-      // will spam out pings, ex: 3 noes timedout ,send ping, append, get the
+      // will spam out pings, ex: 3 noes timed out ,send ping, append, get the
       // next timeout date, since there is only 3 in the queue and we will
       // immediately awake and send ping  to the same 3 nodes
+      node->activity = now;
     });
-    append(ctx, timedout);
+    append_timeout(ctx, timedout);
 
-    // TODO always have a queue of closes timeout when receive anything
-    // we remove from list and add to tail of list
-    //- have a tail pointer to append at
-    //- have a front pointer to look at the front from
-    //-when adding new node append to end
-    //-when updating activity append to end
+    // TODO
     //-when removing contact remove contact from queue
     //-when finding next timeout slot look at the front of timeout queue
     //-when sending ping dequeue them and append them at the end(even though we
@@ -151,15 +162,12 @@ awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
 
 } // namespace dht
 
-// TODO change to more descriptive function names
 // TODO check that peer owns nodeid before change anything
-// TODO not having out buffer when receiveing a repsonse so we do not respond to
-// responses
-// TODO every received msg(request/response) should update the activity
+// TODO every received message(request/response) should update the activity
 // timestamp.
 // TODO calculate latency by having a list of active transaction{id,time_sent}
-// latency = now - time_sent. To be used an desiding factor when inserting to a
-// full not exapndable bucket. or desiding on which X best Contact Nodes when
+// latency = now - time_sent. To be used an deciding factor when inserting to a
+// full not expandable bucket. Or deciding on which X best Contact Nodes when
 // returning find_node/get_peers
 
 //===========================================================

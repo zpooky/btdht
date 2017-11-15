@@ -133,7 +133,7 @@ bool
 send(int fd, const dht::Peer &dest, sp::Buffer &buf) noexcept {
   ::sockaddr_in d;
   to_sockaddr(dest, d);
-  send(fd, d, buf);
+  return send(fd, d, buf);
 }
 
 bool
