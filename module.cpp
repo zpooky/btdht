@@ -3,6 +3,7 @@
 #include "krpc.h"
 #include "module.h"
 #include "udp.h"
+#include <cassert>
 #include <cstring>
 
 //===========================================================
@@ -58,10 +59,22 @@ Lstart:
   }
 }
 
-static Node *
-take_timedout(DHT &ctx, time_t now) noexcept {
-  Node *result = nullptr;
-  Node *head = ctx.timeout_head;
+static void
+increment_outstanding(Node *node) noexcept {
+  auto &data = node->ping_outstanding;
+  if (data != ~std::uint8_t(0)) {
+    data += 1;
+  }
+}
+
+} // namespace dht
+
+namespace timeout {
+
+static dht::Node *
+take(dht::DHT &ctx, time_t now) noexcept {
+  dht::Node *result = nullptr;
+  dht::Node *head = ctx.timeout_head;
 Lstart:
   if (head) {
     if (head->activity <= now) {
@@ -88,50 +101,21 @@ Lstart:
 }
 
 static void
-increment_outstanding(Node *node) noexcept {
-  auto &data = node->ping_outstanding;
-  if (data != ~std::uint8_t(0)) {
-    data += 1;
-  }
+update(dht::DHT &ctx, dht::Node *const contact, time_t now) noexcept {
+  assert(now >= contact->activity);
+  unlink(ctx, contact);
+  contact->activity = now;
+  append(ctx, contact);
 }
+} // namespace timeout
 
-static Node *
-last(Node *node) noexcept {
-Lstart:
-  if (node) {
-    if (node->next) {
-      node = node->next;
-      goto Lstart;
-    }
-  }
-  return node;
-} // namespace dht
-
-static void
-append_timeout(DHT &ctx, Node *node) noexcept {
-  if (ctx.timeout_tail)
-    ctx.timeout_tail->next = node;
-
-  ctx.timeout_tail = last(node);
-}
-
-static void
-unlink_timeout(DHT &ctx, Node *node) noexcept {
-  // TODO we need to have doubly linked node to be able to relink on the fly
-}
-
-static void
-update_activity(DHT &ctx, Node *node, time_t now) noexcept {
-  unlink_timeout(ctx, node);
-  node->activity = now;
-  append_timeout(ctx, node);
-}
+namespace dht {
 
 static Timeout
 awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
   reset(out);
   if (ctx.timeout_next >= now) {
-    Node *timedout = take_timedout(ctx, now);
+    Node *timedout = timeout::take(ctx, now);
     for_each(timedout, [&ctx, &udp, &out, now](Node *node) { //
       krpc::Transaction t;
       random(t);
@@ -147,17 +131,36 @@ awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
       // immediately awake and send ping  to the same 3 nodes
       node->activity = now;
     });
-    append_timeout(ctx, timedout);
+    timeout::append(ctx, timedout);
 
     // TODO
-    //-when removing contact remove contact from queue
+    //-keep track of transaction ids we sent out in requests,bounded queue of
+    // active transaction with a timout only send out pings based on how many
+    // free slots in queue,delay the rest ready for ping the next 'awake' slot.
+    //
     //-when finding next timeout slot look at the front of timeout queue
-    //-when sending ping dequeue them and append them at the end(even though we
-    // do
-    // not know if the contact is well yet) and increment to contact
-    // awaiting-ping-response counter
+    //
+    //-calc new timeout , shold be
+    // max(next_timeout,config.get_min_timeout_granularity(60sec)),
+    //
   }
   return now - ctx.timeout_next;
+}
+
+static Node *
+update_activity(dht::MessageContext &ctx, const dht::NodeId &sender) {
+  time_t now = ctx.now;
+  DHT &dht = ctx.dht;
+
+  Node *const contact = find_contact(dht, sender);
+  if (contact) {
+    timeout::update(dht, contact, now);
+
+    return contact;
+  }
+
+  Node c(sender, ctx.remote, now);
+  return dht::add(ctx.dht, c);
 }
 
 } // namespace dht
@@ -176,24 +179,20 @@ awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
 namespace ping {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  /*we receive a ping request?*/
-  constexpr bool is_ping = true;
+  dht::DHT &dht = ctx.dht;
+  dht::update_activity(ctx, sender);
 
-  time_t now = ctx.now;
-  if (!dht::update_activity(ctx.dht, sender, now, is_ping)) {
-    dht::Node contact(sender, ctx.remote, now);
-    dht::add(ctx.dht, contact);
-  }
-  // TODO clear ctx.timeout_list
-
-  krpc::response::ping(ctx.out, ctx.transaction, ctx.dht.id);
+  krpc::response::ping(ctx.out, ctx.transaction, dht.id);
 } // ping::handle_request()
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  // if (dht::valid_transaction(ctx, t)) {
-  // }
+  dht::DHT &dht = ctx.dht;
+  const krpc::Transaction &t = ctx.transaction;
 
+  if (dht::valid(dht, t)) {
+    dht::update_activity(ctx, sender);
+  }
 } // ping::handle_response()
 
 static bool
@@ -238,7 +237,23 @@ static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &self,
                const dht::NodeId &search) noexcept {
   // TODO
-}
+} // find_node::handle_request()
+
+static void
+handle_response(dht::MessageContext &ctx, const dht::NodeId &self,
+                const sp::list<dht::NodeId> *target) noexcept {
+  dht::DHT &dht = ctx.dht;
+  const krpc::Transaction &t = ctx.transaction;
+
+  if (dht::valid(dht, t)) {
+    // if (dht.bootstrap_mode) {
+    //   for (node : nodes) {
+    //     send_find_nodes(node);
+    //   }
+    // }
+    // // TODO
+  }
+} // find_node::handle_response()
 
 static bool
 on_response(dht::MessageContext &ctx) {
@@ -251,7 +266,7 @@ on_response(dht::MessageContext &ctx) {
       return false;
     }
 
-    // TODO impl.res_find_node(ctx, id, target);
+    handle_response(ctx, id, target);
     return true;
   });
 }

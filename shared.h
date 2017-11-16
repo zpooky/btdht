@@ -140,9 +140,10 @@ struct Node {
   Peer peer;
   std::uint8_t ping_outstanding;
 
-  // {
+  // timeout {{{
   Node *next;
-  // }
+  Node *priv;
+  // }}}
 
   Node();
   Node(const NodeId &, Ip, Port, time_t);

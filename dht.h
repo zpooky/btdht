@@ -62,9 +62,12 @@ struct DHT {
 };
 /**/
 bool
-update_activity(DHT &, const NodeId &, time_t, bool ping) noexcept;
+valid(DHT &dht, const krpc::Transaction &) noexcept;
 
-bool
+Node *
+find_contact(DHT &dht, const NodeId &) noexcept;
+
+Node *
 add(DHT &, const Node &) noexcept;
 
 /**/
@@ -72,4 +75,13 @@ const Peer *
 lookup(const DHT &, const Infohash &) noexcept;
 
 } // namespace dht
+
+namespace timeout {
+void
+unlink(dht::DHT &, dht::Node *) noexcept;
+
+void
+append(dht::DHT &, dht::Node *) noexcept;
+} // namespace timeout
+
 #endif

@@ -133,16 +133,28 @@ alloc(DHT &) {
   return new (result) T;
 }
 
-static bool
-insert(Bucket &bucket, const Node &c) noexcept {
+static Node *
+insert(DHT &dht, Bucket &bucket, const Node &c, bool eager) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];
     if (!contact) {
       contact = c;
-      return true;
+      return &contact;
     }
   }
-  return false;
+  if (eager) {
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      Node &contact = bucket.contacts[i];
+      // TODO configurable non arbitrary limit?
+      if (contact.ping_outstanding > 2) {
+        timeout::unlink(dht, &contact);
+        contact = c;
+        timeout::append(dht, &contact);
+        return &contact;
+      }
+    }
+  }
+  return nullptr;
 }
 
 static Node *
@@ -168,9 +180,9 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
     if (contact) {
       bool high = bit(contact.id, idx);
       if (high) {
-        assert(insert(higher->bucket, contact));
+        assert(insert(dht, higher->bucket, contact, false));
       } else {
-        assert(insert(lower->bucket, contact));
+        assert(insert(dht, lower->bucket, contact, false));
       }
     }
   } // for
@@ -316,26 +328,24 @@ DHT::DHT()
 
 /*public*/
 bool
-update_activity(DHT &dht, const NodeId &id, time_t t, bool ping) noexcept {
+valid(DHT &dht, const krpc::Transaction &) noexcept {
+  // TODO
+  return true;
+}
+
+Node *
+find_contact(DHT &dht, const NodeId &id) noexcept {
   bool inTree = false;
   std::size_t idx = 0;
 
   RoutingTable *leaf = find_closest(dht, id, inTree, idx);
   assert(leaf);
   // TODO how to ensure leaf is a bucket?
-  Node *contact = find(leaf->bucket, id);
-  if (contact) {
-    assert(t >= contact->activity);
-    contact->activity = t;
-    if (ping) {
-      contact->ping_outstanding = 0;
-    }
-    return true;
-  }
-  return true;
+
+  return find(leaf->bucket, id);
 }
 
-bool
+Node *
 add(DHT &dht, const Node &contact) noexcept {
 start:
   bool inTree = false;
@@ -343,16 +353,20 @@ start:
 
   RoutingTable *leaf = find_closest(dht, contact.id, inTree, idx);
   assert(leaf);
+
   Bucket &bucket = leaf->bucket;
-  if (!insert(bucket, contact)) {
+  // when we are intree meaning we can add another bucket we do not necessarily
+  // need to evict a node that might be late responding to pings
+
+  Node *result = insert(dht, bucket, contact, !inTree);
+  if (!result) {
     if (inTree) {
       split(dht, leaf, idx);
       // TODO make better
       goto start;
     }
-    return false;
   }
-  return true;
+  return result;
 }
 
 const Peer *
@@ -365,3 +379,47 @@ lookup(DHT &dht, const Infohash &id) noexcept {
 }
 
 } // namespace dht
+
+namespace timeout {
+void
+unlink(dht::DHT &ctx, dht::Node *const contact) noexcept {
+  assert(contact);
+  dht::Node *priv = contact->priv;
+  dht::Node *next = contact->next;
+  if (priv)
+    priv->next = next;
+
+  if (next)
+    next->priv = priv;
+
+  if (ctx.timeout_tail == contact)
+    ctx.timeout_tail = priv;
+
+  if (ctx.timeout_head == contact)
+    ctx.timeout_head = next;
+}
+
+static dht::Node *
+last(dht::Node *node) noexcept {
+Lstart:
+  if (node) {
+    if (node->next) {
+      node = node->next;
+      goto Lstart;
+    }
+  }
+  return node;
+} // namespace dht
+
+void
+append(dht::DHT &ctx, dht::Node *node) noexcept {
+  if (ctx.timeout_tail) {
+    ctx.timeout_tail->next = node;
+    node->priv = ctx.timeout_tail;
+  }
+
+  dht::Node *l = last(node);
+  ctx.timeout_tail = l;
+  l->priv = ctx.timeout_tail;
+}
+} // namespace timeout

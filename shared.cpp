@@ -88,6 +88,7 @@ Node::Node()
     , ping_outstanding(0)
     // timeout{{{
     , next(nullptr)
+    , priv(nullptr)
 //}}}
 {
 }
