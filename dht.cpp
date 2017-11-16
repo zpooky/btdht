@@ -322,14 +322,33 @@ DHT::DHT()
     , timeout_next(0)
     , timeout_head(nullptr)
     , timeout_tail(nullptr)
-//}}}
+    //}}}
+    // recycle {{{
+    , contact_list()
+// }}}
 {
 }
 
+static sp::list<Node>
+find_closest_internal(DHT &dht, const Key &, std::size_t) noexcept {
+  // TODO
+  return dht.contact_list;
+}
+
 /*public*/
+sp::list<Node>
+find_closest(DHT &dht, const NodeId &id, std::size_t number) noexcept {
+  return find_closest_internal(dht, id.id, number);
+}
+
+sp::list<Node>
+find_closest(DHT &dht, const Infohash &id, std::size_t number) noexcept {
+  return find_closest_internal(dht, id.id, number);
+}
+
 bool
 valid(DHT &dht, const krpc::Transaction &) noexcept {
-  // TODO
+  // TODO list of active transaction
   return true;
 }
 

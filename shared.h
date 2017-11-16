@@ -78,17 +78,37 @@ struct Transaction {
 namespace sp {
 /*list*/
 template <typename T>
-struct list {
-  list *next;
+struct node {
+  node *next;
   T value;
-  std::uint8_t size;
 
-  list()
+  node()
       : next(nullptr)
-      , value()
-      , size(0) {
+      , value() {
   }
 };
+
+template <typename T>
+struct list {
+  node<T> *root;
+  std::size_t size;
+  std::size_t capacity;
+  list()
+      : root(nullptr)
+      , size(0)
+      , capacity(0) {
+  }
+};
+
+template <typename T, typename F>
+static void
+for_each(const sp::list<T> &list, F f) noexcept {
+  sp::node<T> *l = list.root;
+  for (std::size_t i = 0; i < list.size; ++i) {
+    f(l->value);
+    l = l->next;
+  }
+}
 
 } // namespace sp
 

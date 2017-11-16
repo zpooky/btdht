@@ -1,6 +1,7 @@
 #include "BEncode.h"
 #include "krpc.h"
 #include <arpa/inet.h>
+#include <cassert>
 #include <cstring>
 
 namespace bencode {
@@ -34,6 +35,7 @@ static bool
 value(sp::Buffer &buffer, const dht::Node &node) noexcept {
   sp::byte scratch[sizeof(node.id.id) + sizeof(node.peer.ip) +
                    sizeof(node.peer.port)];
+  static_assert(sizeof(scratch) == 26, "");
   sp::byte *b = scratch;
 
   std::memcpy(b, node.id.id, sizeof(node.id.id));
@@ -188,9 +190,11 @@ ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
 
 template <typename T, typename F>
 static bool
-for_all(const sp::list<T> *l, F f) {
-  while (l != nullptr && l->size > 0) {
-    if (!f(l)) {
+for_all(const sp::list<T> &list, F f) {
+  sp::node<T> *l = list.root;
+  for (std::size_t i = 0; i < list.size; ++i) {
+    assert(l);
+    if (!f(*l)) {
       return false;
     }
     l = l->next;
@@ -198,10 +202,43 @@ for_all(const sp::list<T> *l, F f) {
   return true;
 }
 
+template <typename F>
+static bool
+for_all(const dht::Peer *l, F f) {
+  while (l) {
+    if (!f(*l)) {
+      return false;
+    }
+    l = l->next;
+  }
+  return true;
+} // namespace response
+
 template <typename T>
 static bool
 encode_list(sp::Buffer &buf, const char *key,
-            const sp::list<T> *list) noexcept {
+            const sp::list<T> &list) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  void *arg = (void *)&list;
+  return bencode::e::list(buf, arg, [](auto &b, void *a) {
+
+    const sp::list<T> *l = (const sp::list<T> *)a;
+    assert(l);
+    return for_all(*l, [&b](const sp::node<T> &l) {
+
+      if (!bencode::e::value(b, l.value)) {
+        return false;
+      }
+      return true;
+    });
+  });
+}
+
+static bool
+encode_list(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
   if (!bencode::e::value(buf, key)) {
     return false;
   }
@@ -209,10 +246,12 @@ encode_list(sp::Buffer &buf, const char *key,
   void *arg = (void *)list;
   return bencode::e::list(buf, arg, [](auto &b, void *a) {
 
-    const sp::list<T> *l = (const sp::list<T> *)a;
-    return for_all(l, [&b](const sp::list<T> *l) {
+    const dht::Peer *l = (const dht::Peer *)a;
+    assert(l);
 
-      if (!bencode::e::value(b, l->value)) {
+    return for_all(l, [&b](const auto &l) {
+
+      if (!bencode::e::value(b, l)) {
         return false;
       }
       return true;
@@ -222,40 +261,21 @@ encode_list(sp::Buffer &buf, const char *key,
 
 bool
 find_node(sp::Buffer &buf, const Transaction &t, //
-          const dht::NodeId &id, const sp::list<dht::NodeId> *target) noexcept {
+          const dht::NodeId &id, const sp::list<dht::Node> &target) noexcept {
   return resp(buf, t, "find_node", [&id, target](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
     }
 
-    return encode_list<dht::NodeId>(b, "target", target);
+    return encode_list<dht::Node>(b, "target", target);
   });
 } // response::find_node()
 
 bool
-get_peers(sp::Buffer &buf,
-          const Transaction &t, //
-          const dht::NodeId &id, const dht::Token &token,
-          const sp::list<dht::Node> *values) noexcept {
-  return resp(buf, t, "get_peers", [&id, &token, &values](auto &b) { //
-
-    if (!bencode::e::pair(b, "id", id.id)) {
-      return false;
-    }
-
-    if (!bencode::e::pair(b, "token", token.id)) {
-      return false;
-    }
-
-    return encode_list<dht::Node>(b, "values", values);
-  });
-} // response::get_peers()
-
-bool
 get_peers(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const dht::Token &token,
-          const sp::list<dht::NodeId> *nodes) noexcept {
+          const sp::list<dht::Node> &nodes) noexcept {
   return resp(buf, t, "get_peers", [&id, &token, &nodes](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
@@ -266,7 +286,26 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
       return false;
     }
 
-    return encode_list<dht::NodeId>(b, "nodes", nodes);
+    return encode_list<dht::Node>(b, "nodes", nodes);
+  });
+} // response::get_peers()
+
+bool
+get_peers(sp::Buffer &buf,
+          const Transaction &t, //
+          const dht::NodeId &id, const dht::Token &token,
+          const dht::Peer *values) noexcept {
+  return resp(buf, t, "get_peers", [&id, &token, values](auto &b) { //
+
+    if (!bencode::e::pair(b, "id", id.id)) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "token", token.id)) {
+      return false;
+    }
+
+    return encode_list(b, "values", values);
   });
 } // response::get_peers()
 

@@ -78,7 +78,7 @@ pair(sp::Buffer &b, const char *key, const sp::byte (&value)[SIZE]) noexcept {
 //----------------------------------
 namespace d {
 struct Decoder {
-  sp::Buffer&buf;
+  sp::Buffer &buf;
   explicit Decoder(sp::Buffer &);
 };
 
@@ -114,6 +114,12 @@ pair(Decoder &, const char *, std::uint32_t &) noexcept;
 
 bool
 pair(Decoder &, const char *, std::uint16_t &) noexcept;
+
+bool
+pair(Decoder &, const char *, const sp::list<dht::Node> &) noexcept;
+
+bool
+pair(Decoder &, const char *, const sp::list<dht::Peer> &) noexcept;
 
 bool
 value(Decoder &, const char *) noexcept;

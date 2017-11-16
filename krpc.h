@@ -40,17 +40,17 @@ ping(sp::Buffer &, const Transaction &, //
 
 bool
 find_node(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &, const sp::list<dht::NodeId> *) noexcept;
+          const dht::NodeId &, const sp::list<dht::Node> &) noexcept;
 
 bool
 get_peers(sp::Buffer &, const Transaction &, //
           const dht::NodeId &id, const dht::Token &,
-          const sp::list<dht::Node> *) noexcept;
+          const sp::list<dht::Node> &) noexcept;
 
 bool
 get_peers(sp::Buffer &, const Transaction &, //
           const dht::NodeId &id, const dht::Token &,
-          const sp::list<dht::NodeId> *) noexcept;
+          const dht::Peer *) noexcept;
 
 bool
 announce_peer(sp::Buffer &, const Transaction &, //

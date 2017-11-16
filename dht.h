@@ -57,22 +57,32 @@ struct DHT {
   Node *timeout_head;
   Node *timeout_tail;
   //}}}
+  // recycle {{{
+  sp::list<Node> contact_list;
+  sp::list<Peer> value_list;
+  // }}}
 
   DHT();
 };
 /**/
+sp::list<Node>
+find_closest(DHT &, const NodeId &, std::size_t) noexcept;
+
+sp::list<Node>
+find_closest(DHT &, const Infohash &, std::size_t) noexcept;
+
 bool
-valid(DHT &dht, const krpc::Transaction &) noexcept;
+valid(DHT &, const krpc::Transaction &) noexcept;
 
 Node *
-find_contact(DHT &dht, const NodeId &) noexcept;
+find_contact(DHT &, const NodeId &) noexcept;
 
 Node *
 add(DHT &, const Node &) noexcept;
 
 /**/
 const Peer *
-lookup(const DHT &, const Infohash &) noexcept;
+lookup(DHT &, const Infohash &) noexcept;
 
 } // namespace dht
 

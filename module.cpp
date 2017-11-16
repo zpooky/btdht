@@ -166,8 +166,6 @@ update_activity(dht::MessageContext &ctx, const dht::NodeId &sender) {
 } // namespace dht
 
 // TODO check that peer owns nodeid before change anything
-// TODO every received message(request/response) should update the activity
-// timestamp.
 // TODO calculate latency by having a list of active transaction{id,time_sent}
 // latency = now - time_sent. To be used an deciding factor when inserting to a
 // full not expandable bucket. Or deciding on which X best Contact Nodes when
@@ -236,37 +234,50 @@ namespace find_node {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &self,
                const dht::NodeId &search) noexcept {
-  // TODO
+  dht::DHT &dht = ctx.dht;
+  dht::update_activity(ctx, self);
+  sp::list<dht::Node> result = dht::find_closest(dht, search, 8);
+  krpc::response::find_node(ctx.out, ctx.transaction, dht.id, result);
 } // find_node::handle_request()
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &self,
-                const sp::list<dht::NodeId> *target) noexcept {
+                const sp::list<dht::Node> &contacts) noexcept {
   dht::DHT &dht = ctx.dht;
   const krpc::Transaction &t = ctx.transaction;
 
   if (dht::valid(dht, t)) {
+    dht::update_activity(ctx, self);
+    for_each(contacts, [&dht, &ctx](auto &contact) { //
+      contact.activity = ctx.now;
+      contact.ping_outstanding = 0;
+      dht::add(dht, contact);
+    });
     // if (dht.bootstrap_mode) {
     //   for (node : nodes) {
     //     send_find_nodes(node);
     //   }
     // }
-    // // TODO
+    // TODO
   }
 } // find_node::handle_response()
 
 static bool
 on_response(dht::MessageContext &ctx) {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
+    dht::DHT &dht = ctx.dht;
 
     dht::NodeId id;
-    sp::list<dht::NodeId> *target = nullptr; // TODO
+    sp::list<dht::Node> nodes = dht.contact_list;
 
     if (!bencode::d::pair(p, "id", id.id)) {
       return false;
     }
+    if (!bencode::d::pair(p, "nodes", nodes)) {
+      return false;
+    }
 
-    handle_response(ctx, id, target);
+    handle_response(ctx, id, nodes);
     return true;
   });
 }
@@ -304,16 +315,41 @@ setup(dht::Module &module) noexcept {
 namespace get_peers {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
-               const dht::Infohash &infohash) noexcept {
+               const dht::Infohash &search) noexcept {
+  dht::DHT &dht = ctx.dht;
+
+  dht::update_activity(ctx, id);
+  const dht::Peer *result = dht::lookup(dht, search);
+  dht::Token token; // TODO
+  if (result) {
+    krpc::response::get_peers(ctx.out, ctx.transaction, dht.id, token, result);
+  } else {
+    sp::list<dht::Node> closest = dht::find_closest(dht, search, 8);
+    krpc::response::get_peers(ctx.out, ctx.transaction, dht.id, token, closest);
+  }
+}
+
+static void
+handle_response(dht::MessageContext &ctx, const dht::NodeId &id,
+                const dht::Token &token,
+                const sp::list<dht::Peer> &values) noexcept {
+  // TODO
+}
+
+static void
+handle_response(dht::MessageContext &ctx, const dht::NodeId &id,
+                const dht::Token &token,
+                const sp::list<dht::Node> &nodes) noexcept {
   // TODO
 }
 
 static bool
 on_response(dht::MessageContext &ctx) {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
+    dht::DHT &dht = ctx.dht;
+
     dht::NodeId id;
     dht::Token token;
-    sp::list<dht::Node> *values = nullptr; // TODO
 
     if (!bencode::d::pair(p, "id", id.id)) {
       return false;
@@ -322,10 +358,21 @@ on_response(dht::MessageContext &ctx) {
     if (!bencode::d::pair(p, "token", token.id)) {
       return false;
     }
-    // const sp::list<dht::NodeId> *targets; // TODO
 
-    // TODO impl.res_get_peers_contact(ctx, id, token, values);
-    return true;
+    /*closes K nodes*/
+    sp::list<dht::Node> nodes = dht.contact_list;
+    if (bencode::d::pair(p, "nodes", nodes)) {
+      handle_response(ctx, id, token, nodes);
+      return true;
+    }
+
+    sp::list<dht::Peer> values = dht.value_list;
+    if (bencode::d::pair(p, "values", values)) {
+      handle_response(ctx, id, token, values);
+      return true;
+    }
+
+    return false;
   });
 }
 

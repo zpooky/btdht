@@ -330,6 +330,18 @@ pair(Decoder &d, const char *key, std::uint16_t &v) noexcept {
 }
 
 bool
+pair(Decoder &d, const char *key, const sp::list<dht::Node> &list) noexcept {
+  // TODO
+  return true;
+}
+
+bool
+pair(Decoder &, const char *, const sp::list<dht::Peer> &) noexcept {
+  // TODO
+  return true;
+}
+
+bool
 value(Decoder &d, const char *key) noexcept {
   return parse_key(d.buf, key);
 }

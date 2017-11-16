@@ -49,9 +49,10 @@ TEST(krpcTest, test_find_node) {
 
   krpc::Transaction t;
   transaction(t);
+  sp::list<dht::Node> list;
 
   ASSERT_TRUE(krpc::request::find_node(buff, t, id, id));
-  ASSERT_TRUE(krpc::response::find_node(buff, t, id, nullptr));
+  ASSERT_TRUE(krpc::response::find_node(buff, t, id, list));
 }
 
 TEST(krpcTest, test_get_peers) {
