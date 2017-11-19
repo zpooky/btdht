@@ -1,7 +1,4 @@
-#include "gtest/gtest.h"
-#include <bencode.h>
-#include <krpc.h>
-#include <shared.h>
+#include "util.h"
 
 // using namespace krpc;
 
@@ -11,35 +8,6 @@
 //   // assert(length == b.pos);
 //   return memcmp(str, b.start, length) == 0;
 // }
-
-static void
-assert_eq(const char *one, const char *two) {
-  ASSERT_TRUE(strcmp(one, two) == 0);
-}
-
-template <std::size_t SIZE>
-static void
-assert_eq(const sp::byte (&one)[SIZE], const sp::byte (&two)[SIZE]) {
-  ASSERT_TRUE(memcmp(one, two, SIZE) == 0);
-}
-
-template <typename T>
-static void
-assert_eq(const T &first, const T &second) {
-  ASSERT_EQ(first, second);
-}
-
-static void
-nodeId(dht::NodeId &id) {
-  memset(id.id, 0, sizeof(id.id));
-  const char *raw_id = "abcdefghij0123456789";
-  memcpy(id.id, raw_id, strlen(raw_id));
-}
-
-static void
-transaction(krpc::Transaction &t) {
-  memcpy(t.id, "aa", 3);
-}
 
 template <std::size_t MSG_SIZE, std::size_t QUERY_SIZE, typename F>
 static void
@@ -135,14 +103,13 @@ TEST(krpcTest, test_ping) {
 }
 
 TEST(krpcTest, test_find_node) {
-  sp::byte b[256] = {0};
+  sp::byte b[2048] = {0};
 
   dht::NodeId id;
   nodeId(id);
 
   krpc::Transaction t;
   transaction(t);
-  sp::list<dht::Node> list;
 
   { //
     sp::Buffer buff{b};
@@ -168,13 +135,49 @@ TEST(krpcTest, test_find_node) {
       assert_eq(target.id, id.id);
       return true;
     });
-    // ASSERT_TRUE(eq(msgOut, "q"));
-    // ASSERT_TRUE(eq(t.id, tOut.id));
+    ASSERT_TRUE(sp::remaining_read(buff) == 0);
+    assert_eq(msgOut, "q");
+    assert_eq(t.id, tOut.id);
+    assert_eq(qOut, "find_node");
   }
 
   {
+    sp::list<dht::Node> list;
+    const std::size_t nodes = 8;
+    sp::init(list, nodes);
+    for (std::size_t i = 0; i < nodes; ++i) {
+      dht::Node node;
+      nodeId(node.id);
+      node.peer.ip = rand();
+      node.peer.port = rand();
+
+      assert(sp::push_back(list, node));
+    }
+
     sp::Buffer buff{b};
     ASSERT_TRUE(krpc::response::find_node(buff, t, id, list));
+    sp::flip(buff);
+    // print("find_node_resp:", buff.raw + buff.pos, buff.length);
+
+    krpc::Transaction tOut;
+    char msgOut[16] = {0};
+    char qOut[16] = {0};
+    bencode::d::Decoder p(buff);
+    test_response(p, tOut, msgOut, qOut, [&id, &list](bencode::d::Decoder &p) {
+      dht::NodeId sender;
+      if (!bencode::d::pair(p, "id", sender.id)) {
+        return false;
+      }
+      assert_eq(sender.id, id.id);
+      //
+      sp::list<dht::Node> outList;
+      sp::init(outList, 8);
+      if (!bencode::d::pair(p, "target", outList)) {
+        return false;
+      }
+      assert_eq(list, outList);
+      return true;
+    });
   }
 }
 
@@ -201,12 +204,12 @@ TEST(krpcTest, test_anounce_peer) {
   krpc::Transaction t;
   transaction(t);
 
-  bool implied_port = true;
-  Port port = 64123;
-  const char token[] = "token";
-
-  dht::Infohash infohash;
   {
+    dht::Infohash infohash;
+    Port port = 64123;
+    const char token[] = "token";
+
+    bool implied_port = true;
     sp::Buffer buff{b};
     ASSERT_TRUE(krpc::request::announce_peer(buff, t, id, implied_port,
                                              infohash, port, token));
@@ -253,6 +256,7 @@ TEST(krpcTest, test_anounce_peer) {
           return true;
         });
     //--
+    ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(msgOut, "q");
     assert_eq(t.id, tOut.id);
     assert_eq(qOut, "announce_peer");
@@ -276,6 +280,7 @@ TEST(krpcTest, test_anounce_peer) {
       //
       return true;
     });
+    ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(msgOut, "r");
     assert_eq(t.id, tOut.id);
     assert_eq(qOut, "announce_peer");

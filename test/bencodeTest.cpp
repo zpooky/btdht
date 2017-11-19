@@ -1,6 +1,5 @@
+#include "util.h"
 #include "gtest/gtest.h"
-#include <bencode.h>
-#include <string.h>
 
 using namespace bencode::e;
 
@@ -124,5 +123,32 @@ TEST(BEncodeTest, generic) {
     ASSERT_TRUE(lt(aBuff, bBuff));
     ASSERT_TRUE(a < b);
     a++;
+  }
+}
+
+TEST(BEncodeTest, list) {
+  sp::byte raw[2048];
+  sp::list<dht::Node> list;
+  const std::size_t nodes = 8;
+  sp::init(list, nodes);
+  for (std::size_t i = 0; i < nodes; ++i) {
+    dht::Node node;
+    nodeId(node.id);
+    node.peer.ip = ~Ip(0);
+    node.peer.port = ~Port(0);
+
+    assert(sp::push_back(list, node));
+  }
+  {
+    sp::Buffer b(raw);
+    ASSERT_TRUE(bencode::e::pair(b, "target", list));
+    sp::flip(b);
+    // print("list    ", b.raw + b.pos, b.length);
+
+    bencode::d::Decoder p(b);
+    sp::list<dht::Node> outList;
+    sp::init(outList, 16);
+    ASSERT_TRUE(bencode::d::pair(p, "target", outList));
+    assert_eq(list, outList);
   }
 }

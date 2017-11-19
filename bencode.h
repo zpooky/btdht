@@ -75,7 +75,7 @@ pair(sp::Buffer &b, const char *key, const sp::byte (&value)[SIZE]) noexcept {
 }
 } // namespace e
 
-//----------------------------------
+//===============================================
 namespace d {
 struct Decoder {
   sp::Buffer &buf;

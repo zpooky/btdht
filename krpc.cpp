@@ -4,37 +4,40 @@
 #include <cassert>
 #include <cstring>
 
+//=BEncode==================================================================
 namespace bencode {
 namespace e {
 static bool
 value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
   return value(buffer, id.id);
-} // bencode::e
+} // bencode::e::value()
 
 static sp::byte *
 serialize(sp::byte *b, const dht::Peer &p) noexcept {
   Ip ip = htonl(p.ip);
   std::memcpy(b, &ip, sizeof(ip));
   b += sizeof(ip);
+
   Port port = htons(p.port);
   std::memcpy(b, &port, sizeof(port));
   b += sizeof(port);
-  return b;
-} // bencode::e
 
-static bool
+  return b;
+} // bencode::e::value()
+
+bool
 value(sp::Buffer &buffer, const dht::Peer &p) noexcept {
-  sp::byte scratch[sizeof(p.ip) + sizeof(p.port)];
+  sp::byte scratch[sizeof(p.ip) + sizeof(p.port)] = {0};
   static_assert(sizeof(scratch) == 4 + 2, "");
 
   serialize(scratch, p);
   return value(buffer, scratch);
-} // bencode::e
+} // bencode::e::value()
 
-static bool
+bool
 value(sp::Buffer &buffer, const dht::Node &node) noexcept {
   sp::byte scratch[sizeof(node.id.id) + sizeof(node.peer.ip) +
-                   sizeof(node.peer.port)];
+                   sizeof(node.peer.port)] = {0};
   static_assert(sizeof(scratch) == 26, "");
   sp::byte *b = scratch;
 
@@ -43,11 +46,63 @@ value(sp::Buffer &buffer, const dht::Node &node) noexcept {
 
   serialize(b, node.peer);
   return value(buffer, scratch);
-} // bencode::e
+} // bencode::e::value()
+
+bool
+pair(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  void *arg = (void *)list;
+  return bencode::e::list(buf, arg, [](auto &b, void *a) {
+
+    const dht::Peer *l = (const dht::Peer *)a;
+    assert(l);
+
+    return dht::for_all(l, [&b](const auto &l) {
+
+      if (!bencode::e::value(b, l)) {
+        return false;
+      }
+      return true;
+    });
+  });
+} // bencode::e::pair()
+
+template <typename T>
+static bool
+internal_pair(sp::Buffer &buf, const char *key,
+              const sp::list<T> &list) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  void *arg = (void *)&list;
+  return bencode::e::list(buf, arg, [](auto &b, void *a) {
+
+    const sp::list<T> *l = (const sp::list<T> *)a;
+    assert(l);
+    return for_all(*l, [&b](const auto &value) {
+
+      if (!bencode::e::value(b, value)) {
+        return false;
+      }
+      return true;
+    });
+  });
+} // bencode::e::internal_pair()
+
+bool
+pair(sp::Buffer &buf, const char *key,
+     const sp::list<dht::Node> &list) noexcept {
+  return internal_pair(buf, key, list);
+} // bencode::e::pair()
 
 } // namespace e
 } // namespace bencode
 
+//=KRPC==================================================================
 namespace krpc {
 template <typename F>
 static bool
@@ -188,73 +243,16 @@ ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
   });
 } // response::ping()
 
-template <typename F>
-static bool
-for_all(const dht::Peer *l, F f) {
-  while (l) {
-    if (!f(*l)) {
-      return false;
-    }
-    l = l->next;
-  }
-  return true;
-}
-
-template <typename T>
-static bool
-encode_list(sp::Buffer &buf, const char *key,
-            const sp::list<T> &list) noexcept {
-  if (!bencode::e::value(buf, key)) {
-    return false;
-  }
-
-  void *arg = (void *)&list;
-  return bencode::e::list(buf, arg, [](auto &b, void *a) {
-
-    const sp::list<T> *l = (const sp::list<T> *)a;
-    assert(l);
-    return for_all(*l, [&b](const auto &value) {
-
-      if (!bencode::e::value(b, value)) {
-        return false;
-      }
-      return true;
-    });
-  });
-}
-
-static bool
-encode_list(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
-  if (!bencode::e::value(buf, key)) {
-    return false;
-  }
-
-  void *arg = (void *)list;
-  return bencode::e::list(buf, arg, [](auto &b, void *a) {
-
-    const dht::Peer *l = (const dht::Peer *)a;
-    assert(l);
-
-    return for_all(l, [&b](const auto &l) {
-
-      if (!bencode::e::value(b, l)) {
-        return false;
-      }
-      return true;
-    });
-  });
-}
-
 bool
 find_node(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const sp::list<dht::Node> &target) noexcept {
-  return resp(buf, t, "find_node", [&id, target](auto &b) { //
+  return resp(buf, t, "find_node", [&id, &target](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
     }
 
-    return encode_list<dht::Node>(b, "target", target);
+    return bencode::e::pair(b, "target", target);
   });
 } // response::find_node()
 
@@ -272,7 +270,7 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
       return false;
     }
 
-    return encode_list<dht::Node>(b, "nodes", nodes);
+    return bencode::e::pair(b, "nodes", nodes);
   });
 } // response::get_peers()
 
@@ -291,7 +289,7 @@ get_peers(sp::Buffer &buf,
       return false;
     }
 
-    return encode_list(b, "values", values);
+    return bencode::e::pair(b, "values", values);
   });
 } // response::get_peers()
 

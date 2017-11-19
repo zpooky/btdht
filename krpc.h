@@ -2,6 +2,22 @@
 #define SP_MAINLINE_DHT_KRPC_H
 
 #include "shared.h"
+namespace bencode {
+namespace e {
+bool
+value(sp::Buffer &buffer, const dht::Peer &p) noexcept;
+
+bool
+value(sp::Buffer &buffer, const dht::Node &node) noexcept;
+
+bool
+pair(sp::Buffer &, const char *, const dht::Peer *list) noexcept;
+
+bool
+pair(sp::Buffer &, const char *, const sp::list<dht::Node> &list) noexcept;
+
+} // namespace e
+} // namespace bencode
 
 namespace krpc {
 enum class MessageType : char { query = 'q', response = 'r', error = 'e' };

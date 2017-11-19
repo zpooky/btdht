@@ -65,10 +65,10 @@ struct DHT {
   DHT();
 };
 /**/
-sp::list<Node>
+sp::list<Node> &
 find_closest(DHT &, const NodeId &, std::size_t) noexcept;
 
-sp::list<Node>
+sp::list<Node> &
 find_closest(DHT &, const Infohash &, std::size_t) noexcept;
 
 bool
@@ -80,10 +80,6 @@ find_contact(DHT &, const NodeId &) noexcept;
 Node *
 add(DHT &, const Node &) noexcept;
 
-/**/
-const Peer *
-lookup(DHT &, const Infohash &) noexcept;
-
 } // namespace dht
 
 namespace timeout {
@@ -93,5 +89,14 @@ unlink(dht::DHT &, dht::Node *) noexcept;
 void
 append(dht::DHT &, dht::Node *) noexcept;
 } // namespace timeout
+
+namespace lookup {
+/**/
+const dht::Peer *
+get(dht::DHT &, const dht::Infohash &) noexcept;
+
+void
+insert(dht::DHT &, const dht::Infohash &, const dht::Peer &) noexcept;
+} // namespace lookup
 
 #endif

@@ -61,9 +61,9 @@ Lstart:
 
 static void
 increment_outstanding(Node *node) noexcept {
-  auto &data = node->ping_outstanding;
+  std::uint8_t &data = node->ping_outstanding;
   if (data != ~std::uint8_t(0)) {
-    data += 1;
+    ++data;
   }
 }
 
@@ -238,7 +238,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search) noexcept {
   dht::DHT &dht = ctx.dht;
   dht::update_activity(ctx, sender);
-  sp::list<dht::Node> result = dht::find_closest(dht, search, 8);
+  sp::list<dht::Node> &result = dht::find_closest(dht, search, 8);
   krpc::response::find_node(ctx.out, ctx.transaction, dht.id, result);
 } // find_node::handle_request()
 
@@ -270,7 +270,7 @@ on_response(dht::MessageContext &ctx) {
     dht::DHT &dht = ctx.dht;
 
     dht::NodeId id;
-    sp::list<dht::Node> nodes = dht.contact_list;
+    sp::list<dht::Node> &nodes = dht.contact_list;
 
     if (!bencode::d::pair(p, "id", id.id)) {
       return false;
@@ -321,12 +321,12 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
   dht::DHT &dht = ctx.dht;
 
   dht::update_activity(ctx, id);
-  const dht::Peer *result = dht::lookup(dht, search);
+  const dht::Peer *result = lookup::get(dht, search);
   dht::Token token; // TODO
   if (result) {
     krpc::response::get_peers(ctx.out, ctx.transaction, dht.id, token, result);
   } else {
-    sp::list<dht::Node> closest = dht::find_closest(dht, search, 8);
+    sp::list<dht::Node> &closest = dht::find_closest(dht, search, 8);
     krpc::response::get_peers(ctx.out, ctx.transaction, dht.id, token, closest);
   }
 }
@@ -374,13 +374,13 @@ on_response(dht::MessageContext &ctx) {
     }
 
     /*closes K nodes*/
-    sp::list<dht::Node> nodes = dht.contact_list;
+    sp::list<dht::Node> &nodes = dht.contact_list;
     if (bencode::d::pair(p, "nodes", nodes)) {
       handle_response(ctx, id, token, nodes);
       return true;
     }
 
-    sp::list<dht::Peer> values = dht.value_list;
+    sp::list<dht::Peer> &values = dht.value_list;
     if (bencode::d::pair(p, "values", values)) {
       handle_response(ctx, id, token, values);
       return true;
@@ -424,6 +424,7 @@ static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                bool implied_port, const dht::Infohash &infohash, Port port,
                const char *token) noexcept {
+  // dht::insert()
   // TODO
 }
 
@@ -496,11 +497,13 @@ namespace error {
 static bool
 on_response(dht::MessageContext &ctx) {
   // TODO log
+  return true;
 }
 
 static bool
 on_request(dht::MessageContext &ctx) {
   // TODO build error response
+  return true;
 }
 void
 setup(dht::Module &module) noexcept {

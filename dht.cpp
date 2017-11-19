@@ -329,19 +329,19 @@ DHT::DHT()
 {
 }
 
-static sp::list<Node>
+static sp::list<Node> &
 find_closest_internal(DHT &dht, const Key &, std::size_t) noexcept {
   // TODO
   return dht.contact_list;
 }
 
 /*public*/
-sp::list<Node>
+sp::list<Node> &
 find_closest(DHT &dht, const NodeId &id, std::size_t number) noexcept {
   return find_closest_internal(dht, id.id, number);
 }
 
-sp::list<Node>
+sp::list<Node> &
 find_closest(DHT &dht, const Infohash &id, std::size_t number) noexcept {
   return find_closest_internal(dht, id.id, number);
 }
@@ -386,15 +386,6 @@ start:
     }
   }
   return result;
-}
-
-const Peer *
-lookup(DHT &dht, const Infohash &id) noexcept {
-  KeyValue *const needle = find_kv(dht.kv, id);
-  if (needle) {
-    return needle->peers;
-  }
-  return nullptr;
 }
 
 } // namespace dht
@@ -442,3 +433,20 @@ append(dht::DHT &ctx, dht::Node *node) noexcept {
   l->priv = ctx.timeout_tail;
 }
 } // namespace timeout
+
+namespace lookup {
+const dht::Peer *
+get(dht::DHT &dht, const dht::Infohash &id) noexcept {
+  dht::KeyValue *const needle = find_kv(dht.kv, id);
+  if (needle) {
+    return needle->peers;
+  }
+  return nullptr;
+}
+
+void
+insert(dht::DHT &, const dht::Infohash &, const dht::Peer &) noexcept {
+  // TODO
+}
+
+} // namespace lookup

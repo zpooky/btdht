@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include <stdio.h> //debug
+#include <stdlib.h>
 
 /*fd*/
 class fd {
@@ -84,8 +85,8 @@ struct node {
   node *next;
   T value;
 
-  node()
-      : next(nullptr)
+  explicit node(sp::node<T> *n)
+      : next(n)
       , value() {
   }
 };
@@ -95,15 +96,79 @@ struct list {
   node<T> *root;
   std::size_t size;
   std::size_t capacity;
+
   list()
       : root(nullptr)
       , size(0)
       , capacity(0) {
   }
+
+  list(const list<T> &) = delete;
+  list(const list<T> &&) = delete;
+
+  list<T> &
+  operator=(const list<T> &) = delete;
+  list<T> &
+  operator=(const list<T> &&) = delete;
+
+  ~list() {
+  Lstart:
+    if (root) {
+      sp::node<T> *next = root->next;
+      delete root;
+      root = next;
+      goto Lstart;
+    }
+  }
 };
 
-template <typename T, typename F>
+template <typename T>
 static void
+init(sp::list<T> &l, std::size_t capacity) noexcept {
+  assert(l.capacity == 0);
+  sp::node<T> *next = l.root;
+
+  while (l.capacity < capacity) {
+    sp::node<T> *c = new sp::node<T>(next);
+    assert(c);
+
+    l.root = next = c;
+    l.capacity++;
+  }
+}
+
+template <typename T>
+static T *
+get(sp::list<T> &l, std::size_t idx) noexcept {
+  sp::node<T> *current = l.root;
+Lstart:
+  if (current) {
+    if (idx == 0) {
+      return &current->value;
+    }
+    --idx;
+    current = current->next;
+    goto Lstart;
+  }
+  return nullptr;
+}
+
+template <typename T>
+static bool
+push_back(sp::list<T> &list, const T &val) noexcept {
+  if (list.size < list.capacity) {
+    T *const value = get(list, list.size);
+    if (value) {
+      *value = val;
+      list.size++;
+      return true;
+    }
+  }
+  return false;
+}
+
+template <typename T, typename F>
+void
 for_each(const sp::list<T> &list, F f) noexcept {
   sp::node<T> *l = list.root;
   for (std::size_t i = 0; i < list.size; ++i) {
@@ -115,7 +180,7 @@ for_each(const sp::list<T> &list, F f) noexcept {
 }
 
 template <typename T, typename F>
-static bool
+bool
 for_all(const sp::list<T> &list, F f) noexcept {
   sp::node<T> *l = list.root;
   for (std::size_t i = 0; i < list.size; ++i) {
@@ -171,6 +236,18 @@ struct Peer {
   Peer(Ip, Port);
   Peer();
 };
+
+template <typename F>
+static bool
+for_all(const dht::Peer *l, F f) {
+  while (l) {
+    if (!f(*l)) {
+      return false;
+    }
+    l = l->next;
+  }
+  return true;
+}
 
 /*Contact*/
 // 15 min refresh

@@ -1,5 +1,6 @@
 #include "bencode.h"
 #include <arpa/inet.h>
+#include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -23,7 +24,7 @@ encode_numeric(sp::Buffer &buffer, const char *format, T in) noexcept {
   }
   i += res;
   return true;
-}
+} // bencode::encode_numeric()
 
 template <typename T>
 static bool
@@ -50,7 +51,8 @@ encode_integer(sp::Buffer &buffer, const char *format, T in) noexcept {
   }
   buffer[i++] = 'e';
   return true;
-}
+} // bencode::encode_integer()
+
 namespace e {
 bool
 value(sp::Buffer &buffer, std::uint32_t in) noexcept {
@@ -66,7 +68,7 @@ template <typename T>
 bool
 encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
   const std::size_t before = buffer.pos;
-  if (!encode_numeric(buffer, "%u", length)) {
+  if (!encode_numeric(buffer, "%zu", length)) {
     buffer.pos = before;
     return false;
   }
@@ -142,12 +144,12 @@ generic_encodePair(sp::Buffer &buffer, const char *key, V val) {
 bool
 pair(sp::Buffer &buffer, const char *key, const char *value) noexcept {
   return generic_encodePair(buffer, key, value);
-}
+} // bencode::e::pair()
 
 bool
 pair(sp::Buffer &buffer, const char *key, std::uint32_t value) noexcept {
   return generic_encodePair(buffer, key, value);
-}
+} // bencode::e::pair()
 
 bool
 pair(sp::Buffer &buffer, const char *key, const sp::byte *val,
@@ -163,10 +165,11 @@ pair(sp::Buffer &buffer, const char *key, const sp::byte *val,
     return false;
   }
   return true;
-}
-} // namespace e
-//-----------------------------
+} // bencode::e::pair()
 
+} // namespace e
+
+//=DECODE=========================================
 namespace d {
 template <typename T>
 static bool
@@ -378,10 +381,19 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
   sp::Buffer &b = d.buf;
   const std::size_t p = b.pos;
 
+  if (sp::remaining_read(b) == 0) {
+    return false;
+  }
+
+  if (b[b.pos++] != 'l') {
+    b.pos = p;
+    return false;
+  }
+
   sp::node<T> *node = list.root;
   list.size = 0;
 
-  while (sp::remaining_read(b) && b[b.pos] != 'e') {
+  while (sp::remaining_read(b) > 0 && b[b.pos] != 'e') {
     if (!node) {
       return false;
     }
@@ -430,7 +442,7 @@ value(Decoder &d, dht::Node &value) noexcept {
     return false;
   }
 
-  if (len != (sizeof(value.id.id), sizeof(peer.ip) + sizeof(peer.port))) {
+  if (len != (sizeof(value.id.id) + sizeof(peer.ip) + sizeof(peer.port))) {
     buf.pos = pos;
     return false;
   }
@@ -471,14 +483,13 @@ decode_list_pair(Decoder &d, const char *key, sp::list<T> &list) noexcept {
   sp::Buffer &b = d.buf;
   const std::size_t p = b.pos;
 
-  std::uint64_t t = 0;
-  if (!parse_key_valuex(d.buf, key, t)) {
+  if (!parse_key(d.buf, key)) {
     b.pos = p;
     return false;
   }
 
-  auto f = [](Decoder &d, /*OUT*/ T &out, void *) { //
-    return value(d, out);
+  auto f = [](Decoder &decoder, /*OUT*/ T &out, void *) { //
+    return value(decoder, out);
   };
 
   if (!bencode::d::list(d, list, nullptr, f)) {
@@ -502,7 +513,7 @@ pair(Decoder &d, const char *key, sp::list<dht::Peer> &l) noexcept {
 bool
 value(Decoder &d, const char *key) noexcept {
   return parse_key(d.buf, key);
-}//bencode::d::value()
+} // bencode::d::value()
 
 } // namespace d
 
