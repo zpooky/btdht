@@ -202,7 +202,7 @@ Lloop:
 
   out = std::atoll(str);
   return true;
-} // bencode::d::read_numeric
+} // bencode::d::read_numeric()
 
 template <typename T>
 static bool
@@ -315,7 +315,7 @@ is(sp::Buffer &buf, const char *exact, std::size_t length) noexcept {
 bool
 pair(Decoder &d, const char *key, char *val, std::size_t len) noexcept {
   return parse_key_value(d.buf, key, val, len);
-}
+} // bencode::d::pair()
 
 bool
 pair(Decoder &d, const char *key, sp::byte *val, std::size_t len) noexcept {
@@ -332,7 +332,7 @@ pair(Decoder &d, const char *key, bool &v) noexcept {
   v = t == 1;
 
   return true;
-}
+} // bencode::d::pair()
 
 bool
 pair(Decoder &d, const char *key, std::uint32_t &v) noexcept {
@@ -351,7 +351,7 @@ pair(Decoder &d, const char *key, std::uint32_t &v) noexcept {
   v = std::uint32_t(t);
 
   return true;
-}
+} // bencode::d::pair()
 
 bool
 pair(Decoder &d, const char *key, std::uint16_t &v) noexcept {
@@ -370,7 +370,7 @@ pair(Decoder &d, const char *key, std::uint16_t &v) noexcept {
   v = std::uint16_t(t);
 
   return true;
-}
+} // bencode::d::pair()
 
 template <typename T, typename F>
 static bool
@@ -404,7 +404,7 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
   }
 
   return true;
-}
+} // bencode::d::list()
 
 static void
 value_to_peer(const char *str, dht::Peer &peer) noexcept {
@@ -414,7 +414,7 @@ value_to_peer(const char *str, dht::Peer &peer) noexcept {
 
   std::memcpy(&peer.port, str, sizeof(peer.port));
   peer.port = ntohl(peer.port);
-}
+} // bencode::d::value_to_peer()
 
 static bool
 value(Decoder &d, dht::Node &value) noexcept {
@@ -441,7 +441,7 @@ value(Decoder &d, dht::Node &value) noexcept {
   value_to_peer(str, peer);
 
   return true;
-}
+} // bencode::d::value()
 
 static bool
 value(Decoder &d, dht::Peer &peer) noexcept {
@@ -463,7 +463,7 @@ value(Decoder &d, dht::Peer &peer) noexcept {
   value_to_peer(str, peer);
 
   return true;
-}
+} // bencode::d::value()
 
 template <typename T>
 static bool
@@ -487,7 +487,7 @@ decode_list_pair(Decoder &d, const char *key, sp::list<T> &list) noexcept {
   }
 
   return true;
-}
+} // bencode::d::decode_list_pair()
 
 bool
 pair(Decoder &d, const char *key, sp::list<dht::Node> &l) noexcept {
@@ -502,7 +502,7 @@ pair(Decoder &d, const char *key, sp::list<dht::Peer> &l) noexcept {
 bool
 value(Decoder &d, const char *key) noexcept {
   return parse_key(d.buf, key);
-}
+}//bencode::d::value()
 
 } // namespace d
 
