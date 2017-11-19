@@ -1,4 +1,4 @@
-#include "BEncode.h"
+#include "bencode.h"
 #include "dht.h"
 #include "krpc.h"
 #include "module.h"
@@ -170,6 +170,8 @@ update_activity(dht::MessageContext &ctx, const dht::NodeId &sender) {
 // latency = now - time_sent. To be used an deciding factor when inserting to a
 // full not expandable bucket. Or deciding on which X best Contact Nodes when
 // returning find_node/get_peers
+// TODO lookup table values lifetime
+// TODO krpc serialize + deserialize test case
 
 //===========================================================
 // Ping
@@ -232,22 +234,22 @@ setup(dht::Module &module) noexcept {
 //===========================================================
 namespace find_node {
 static void
-handle_request(dht::MessageContext &ctx, const dht::NodeId &self,
+handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search) noexcept {
   dht::DHT &dht = ctx.dht;
-  dht::update_activity(ctx, self);
+  dht::update_activity(ctx, sender);
   sp::list<dht::Node> result = dht::find_closest(dht, search, 8);
   krpc::response::find_node(ctx.out, ctx.transaction, dht.id, result);
 } // find_node::handle_request()
 
 static void
-handle_response(dht::MessageContext &ctx, const dht::NodeId &self,
+handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const sp::list<dht::Node> &contacts) noexcept {
   dht::DHT &dht = ctx.dht;
   const krpc::Transaction &t = ctx.transaction;
 
   if (dht::valid(dht, t)) {
-    dht::update_activity(ctx, self);
+    dht::update_activity(ctx, sender);
     for_each(contacts, [&dht, &ctx](auto &contact) { //
       contact.activity = ctx.now;
       contact.ping_outstanding = 0;
@@ -330,17 +332,29 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
 }
 
 static void
-handle_response(dht::MessageContext &ctx, const dht::NodeId &id,
+handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &token,
                 const sp::list<dht::Peer> &values) noexcept {
-  // TODO
+  dht::DHT &dht = ctx.dht;
+  if (dht::valid(dht, ctx.transaction)) {
+    dht::update_activity(ctx, sender);
+    // TODO
+  }
 }
 
 static void
-handle_response(dht::MessageContext &ctx, const dht::NodeId &id,
+handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &token,
-                const sp::list<dht::Node> &nodes) noexcept {
-  // TODO
+                const sp::list<dht::Node> &contacts) noexcept {
+  dht::DHT &dht = ctx.dht;
+  if (dht::valid(dht, ctx.transaction)) {
+    dht::update_activity(ctx, sender);
+    for_each(contacts, [&dht, &ctx](auto &contact) { //
+      contact.activity = ctx.now;
+      contact.ping_outstanding = 0;
+      dht::add(dht, contact);
+    });
+  }
 }
 
 static bool
@@ -407,10 +421,19 @@ setup(dht::Module &module) noexcept {
 //===========================================================
 namespace announce_peer {
 static void
-handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
+handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                bool implied_port, const dht::Infohash &infohash, Port port,
                const char *token) noexcept {
   // TODO
+}
+
+static void
+handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
+  dht::DHT &dht = ctx.dht;
+  if (dht::valid(dht, ctx.transaction)) {
+    dht::update_activity(ctx, sender);
+    // TODO
+  }
 }
 
 static bool
@@ -421,7 +444,7 @@ on_response(dht::MessageContext &ctx) {
       return false;
     }
 
-    // TODO impl.res_announce(ctx, id);
+    handle_response(ctx, id);
     return true;
   });
 }

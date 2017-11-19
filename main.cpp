@@ -2,7 +2,7 @@
 #include "udp.h"
 #include <stdio.h>
 
-#include "BEncode.h"
+#include "bencode.h"
 #include "krpc.h"
 #include "module.h"
 #include "shared.h"
@@ -132,55 +132,40 @@ module_for(dht::Modules &modules, const char *key,
 static bool
 parse(dht::DHT &dht, dht::Modules &modules, const dht::Peer &peer,
       sp::Buffer &in, sp::Buffer &out, time_t now) noexcept {
-  bencode::d::Decoder p(in);
-  return bencode::d::dict(p, [&dht, &modules, &peer, &out, &now](auto &p) { //
-    krpc::Transaction transaction;
-    char message_type[16] = {0};
-    char query[16] = {0};
-    bool t = false;
-    bool y = false;
-    bool q = false;
+  bencode::d::Decoder d(in);
+  krpc::Transaction t;
+  char msg[16] = {0};
+  char q[16] = {0};
 
-  start:
-    if (!t && bencode::d::pair(p, "t", transaction.id)) {
-      t = true;
-      goto start;
-    }
-    if (!y && bencode::d::pair(p, "y", message_type)) {
-      y = true;
-      goto start;
-    }
-    if (!q && bencode::d::pair(p, "q", query)) {
-      q = true;
-      goto start;
-    }
+  auto f = [&dht, &modules, &peer, &out, now] //
+      (bencode::d::Decoder & p, const krpc::Transaction &tx, const char *msg_type, const char *query) {
+        dht::Module error;
+        error::setup(error);
 
-    if (!(t && y && q)) {
-      return false;
-    }
-    dht::Module error;
-    error::setup(error);
+        dht::MessageContext ctx{dht, p, out, tx, peer, now};
+        if (std::strcmp(msg_type, "q") == 0) {
+          /*query*/
+          if (!bencode::d::value(p, "a")) {
+            return false;
+          }
+          dht::Module &m = module_for(modules, query, error);
+          return m.request(ctx);
+        } else if (std::strcmp(msg_type, "r") == 0) {
+          /*response*/
+          if (!bencode::d::value(p, "r")) {
+            return false;
+          }
+          dht::Module &m = module_for(modules, query, error);
+          return m.response(ctx);
+        } else {
+          return false;
+        }
+      };
 
-    dht::MessageContext ctx{dht, p, out, transaction, peer, now};
-    if (std::strcmp(message_type, "q") == 0) {
-      /*query*/
-      if (!bencode::d::value(p, "a")) {
-        return false;
-      }
-      dht::Module &m = module_for(modules, message_type, error);
-      return m.request(ctx);
-    } else if (std::strcmp(message_type, "r") == 0) {
-      /*response*/
-      if (!bencode::d::value(p, "r")) {
-        return false;
-      }
-      dht::Module &m = module_for(modules, message_type, error);
-      return m.response(ctx);
-    } else {
-      return false;
-    }
-    return true;
-  });
+  if (!krpc::d::krpc(d, t, msg, q, f)) {
+    return false;
+  }
+  return true;
 }
 
 static void

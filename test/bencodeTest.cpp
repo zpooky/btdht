@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include <BEncode.h>
+#include <bencode.h>
 #include <string.h>
 
 using namespace bencode::e;

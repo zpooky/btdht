@@ -1,12 +1,42 @@
 [
     {
-        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -o build/main.o main.cpp",
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/udp.o udp.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/udp.cpp"
+    },
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/bencode.o bencode.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/bencode.cpp"
+    },
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/krpc.o krpc.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/krpc.cpp"
+    },
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/dht.o dht.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/dht.cpp"
+    },
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/module.o module.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/module.cpp"
+    },
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/shared.o shared.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/shared.cpp"
+    },
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/main.o main.cpp",
         "directory": "/home/spooky/development/repos/dht",
         "file": "/home/spooky/development/repos/dht/main.cpp"
     },
     {
-        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -o build/app.o app.cpp",
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/kadmelia.o kadmelia.cpp",
         "directory": "/home/spooky/development/repos/dht",
-        "file": "/home/spooky/development/repos/dht/app.cpp"
+        "file": "/home/spooky/development/repos/dht/kadmelia.cpp"
     }
 ]

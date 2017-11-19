@@ -1,4 +1,5 @@
-#include "BEncode.h"
+#include "bencode.h"
+#include <arpa/inet.h>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -171,79 +172,97 @@ template <typename T>
 static bool
 read_numeric(sp::Buffer &b, T &out, char end) noexcept {
   static_assert(std::is_integral<T>::value, "");
+  const std::size_t p = b.pos;
+
   char str[32] = {0};
   std::size_t it = 0;
 Lloop:
   if (sp::remaining_read(b) > 0) {
     if (b[b.pos] != end) {
 
-      if (b[b.pos] >= 0 && b[b.pos] <= 9) {
+      if (b[b.pos] >= '0' && b[b.pos] <= '9') {
         if (it < sizeof(str)) {
           str[it++] = b[b.pos++];
           goto Lloop;
         }
       }
+      b.pos = p;
       return false;
     }
+    ++b.pos;
   } else {
+    b.pos = p;
     return false;
   }
 
   if (it == 0) {
+    b.pos = p;
     return false;
   }
 
   out = std::atoll(str);
   return true;
-}
+} // bencode::d::read_numeric
 
 template <typename T>
 static bool
 parse_string(sp::Buffer &b, /*OUT*/ const T *&str, std::size_t &len) noexcept {
   static_assert(sizeof(T) == 1, "");
+  const std::size_t p = b.pos;
+
   if (!read_numeric(b, len, ':')) {
+    b.pos = p;
     return false;
   }
   if (len > sp::remaining_read(b)) {
+    b.pos = p;
     return false;
   }
-  str = (T *)b.raw;
+  str = (T *)b.raw + b.pos;
   b.pos += len;
 
   return true;
-}
+} // bencode::d::parse_string()
 
 static bool
-parse_key(sp::Buffer &b, const char *key) noexcept {
-  const std::size_t key_len = std::strlen(key);
+parse_key(sp::Buffer &b, const char *cmp_key) noexcept {
+  const std::size_t key_len = std::strlen(cmp_key);
+  const std::size_t p = b.pos;
 
   const char *parse_key = nullptr;
   std::size_t parse_key_len = 0;
   if (!parse_string(b, parse_key, parse_key_len)) {
+    b.pos = p;
     return false;
   }
 
-  if (key_len != parse_key_len || std::memcmp(key, parse_key, key_len) != 0) {
+  if (key_len != parse_key_len ||
+      std::memcmp(cmp_key, parse_key, key_len) != 0) {
+    b.pos = p;
     return false;
   }
 
   return true;
-}
+} // bencode::d::parse_key()
 
 template <typename T>
 static bool
 parse_key_value(sp::Buffer &b, const char *key, T *val,
                 std::size_t len) noexcept {
+  const std::size_t p = b.pos;
   if (!parse_key(b, key)) {
+    b.pos = p;
     return false;
   }
 
   const sp::byte *val_ref = nullptr;
   std::size_t val_len = 0;
   if (!parse_string(b, val_ref, val_len)) {
+    b.pos = p;
     return false;
   }
   if (val_len > len) {
+    b.pos = p;
     return false;
   }
 
@@ -251,29 +270,47 @@ parse_key_value(sp::Buffer &b, const char *key, T *val,
   // TODO howd to indicate length of parsed val?
 
   return true;
-}
+} // bencode::d::parse_key_value()
 
 static bool
 parse_key_valuex(sp::Buffer &b, const char *key, std::uint64_t &val) noexcept {
+  const std::size_t p = b.pos;
   if (!parse_key(b, key)) {
+    b.pos = p;
     return false;
   }
 
   if (sp::remaining_read(b) == 0 || b.raw[b.pos++] != 'i') {
+    b.pos = p;
     return false;
   }
 
   if (!read_numeric(b, val, 'e')) {
+    b.pos = p;
     return false;
   }
 
   return true;
-}
+} // bencode::d::parse_key_valuex()
 
 /*Decoder*/
 Decoder::Decoder(sp::Buffer &b)
     : buf(b) {
 }
+
+namespace internal {
+bool
+is(sp::Buffer &buf, const char *exact, std::size_t length) noexcept {
+  if (sp::remaining_read(buf) < length) {
+    return false;
+  }
+  if (std::memcmp(exact, buf.raw + buf.pos, length) != 0) {
+    return false;
+  }
+  buf.pos += length;
+  return true;
+}
+} // namespace internal
 
 bool
 pair(Decoder &d, const char *key, char *val, std::size_t len) noexcept {
@@ -299,12 +336,15 @@ pair(Decoder &d, const char *key, bool &v) noexcept {
 
 bool
 pair(Decoder &d, const char *key, std::uint32_t &v) noexcept {
+  const std::size_t p = d.buf.pos;
   std::uint64_t t = 0;
   if (!parse_key_valuex(d.buf, key, t)) {
+    d.buf.pos = p;
     return false;
   }
 
   if (t > std::uint64_t(~std::uint32_t(0))) {
+    d.buf.pos = p;
     return false;
   }
 
@@ -315,12 +355,15 @@ pair(Decoder &d, const char *key, std::uint32_t &v) noexcept {
 
 bool
 pair(Decoder &d, const char *key, std::uint16_t &v) noexcept {
+  const std::size_t p = d.buf.pos;
   std::uint64_t t = 0;
   if (!parse_key_valuex(d.buf, key, t)) {
+    d.buf.pos = p;
     return false;
   }
 
   if (t > std::uint64_t(~std::uint16_t(0))) {
+    d.buf.pos = p;
     return false;
   }
 
@@ -329,17 +372,132 @@ pair(Decoder &d, const char *key, std::uint16_t &v) noexcept {
   return true;
 }
 
-bool
-pair(Decoder &d, const char *key, const sp::list<dht::Node> &list) noexcept {
-  // TODO
+template <typename T, typename F>
+static bool
+list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
+  sp::Buffer &b = d.buf;
+  const std::size_t p = b.pos;
+
+  sp::node<T> *node = list.root;
+  list.size = 0;
+
+  while (sp::remaining_read(b) && b[b.pos] != 'e') {
+    if (!node) {
+      return false;
+    }
+
+    if (!f(d, node->value, arg)) {
+      return false;
+    }
+    node = node->next;
+    ++list.size;
+  }
+
+  if (sp::remaining_read(b) == 0) {
+    b.pos = p;
+    return false;
+  }
+
+  if (b[b.pos++] != 'e') {
+    b.pos = p;
+    return false;
+  }
+
+  return true;
+}
+
+static void
+value_to_peer(const char *str, dht::Peer &peer) noexcept {
+  std::memcpy(&peer.ip, str, sizeof(peer.ip));
+  str += sizeof(peer.ip);
+  peer.ip = ntohl(peer.ip);
+
+  std::memcpy(&peer.port, str, sizeof(peer.port));
+  peer.port = ntohl(peer.port);
+}
+
+static bool
+value(Decoder &d, dht::Node &value) noexcept {
+  dht::Peer &peer = value.peer;
+  sp::Buffer &buf = d.buf;
+
+  const std::size_t pos = buf.pos;
+
+  const char *str = nullptr;
+  std::size_t len = 0;
+  if (!parse_string(d.buf, str, len)) {
+    buf.pos = pos;
+    return false;
+  }
+
+  if (len != (sizeof(value.id.id), sizeof(peer.ip) + sizeof(peer.port))) {
+    buf.pos = pos;
+    return false;
+  }
+
+  std::memcpy(value.id.id, str, sizeof(value.id.id));
+  str += sizeof(value.id.id);
+
+  value_to_peer(str, peer);
+
+  return true;
+}
+
+static bool
+value(Decoder &d, dht::Peer &peer) noexcept {
+  sp::Buffer &buf = d.buf;
+  const std::size_t pos = buf.pos;
+
+  const char *str = nullptr;
+  std::size_t len = 0;
+  if (!parse_string(d.buf, str, len)) {
+    buf.pos = pos;
+    return false;
+  }
+
+  if (len != (sizeof(peer.ip) + sizeof(peer.port))) {
+    buf.pos = pos;
+    return false;
+  }
+
+  value_to_peer(str, peer);
+
+  return true;
+}
+
+template <typename T>
+static bool
+decode_list_pair(Decoder &d, const char *key, sp::list<T> &list) noexcept {
+  sp::Buffer &b = d.buf;
+  const std::size_t p = b.pos;
+
+  std::uint64_t t = 0;
+  if (!parse_key_valuex(d.buf, key, t)) {
+    b.pos = p;
+    return false;
+  }
+
+  auto f = [](Decoder &d, /*OUT*/ T &out, void *) { //
+    return value(d, out);
+  };
+
+  if (!bencode::d::list(d, list, nullptr, f)) {
+    b.pos = p;
+    return false;
+  }
+
   return true;
 }
 
 bool
-pair(Decoder &, const char *, const sp::list<dht::Peer> &) noexcept {
-  // TODO
-  return true;
-}
+pair(Decoder &d, const char *key, sp::list<dht::Node> &l) noexcept {
+  return decode_list_pair(d, key, l);
+} // bencode::d::pair()
+
+bool
+pair(Decoder &d, const char *key, sp::list<dht::Peer> &l) noexcept {
+  return decode_list_pair(d, key, l);
+} // bencode::d:pair()
 
 bool
 value(Decoder &d, const char *key) noexcept {

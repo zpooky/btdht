@@ -1,5 +1,7 @@
-#include "krpc.h"
 #include "gtest/gtest.h"
+#include <bencode.h>
+#include <krpc.h>
+#include <shared.h>
 
 // using namespace krpc;
 
@@ -9,6 +11,17 @@
 //   // assert(length == b.pos);
 //   return memcmp(str, b.start, length) == 0;
 // }
+
+static void
+assert_eq(const char *one, const char *two) {
+  ASSERT_TRUE(strcmp(one, two) == 0);
+}
+
+template <std::size_t SIZE>
+static void
+assert_eq(const sp::byte (&one)[SIZE], const sp::byte (&two)[SIZE]) {
+  ASSERT_TRUE(memcmp(one, two, SIZE) == 0);
+}
 
 static void
 nodeId(dht::NodeId &id) {
@@ -32,8 +45,37 @@ TEST(krpcTest, test_ping) {
   krpc::Transaction t;
   transaction(t);
 
-  ASSERT_TRUE(krpc::request::ping(buff, t, id));
-  printf("%s\n", buff.raw);
+  {
+    ASSERT_TRUE(krpc::request::ping(buff, t, id));
+    sp::flip(buff);
+    krpc::Transaction tOut;
+    char msgOut[16] = {0};
+    char qOut[16] = {0};
+    bencode::d::Decoder p(buff);
+    auto f = [&id](bencode::d::Decoder &p, const krpc::Transaction &,
+                   const char *, const char *) {
+
+      if (!bencode::d::value(p, "a")) {
+        return false;
+      }
+
+      return bencode::d::dict(p, [&id](bencode::d::Decoder &p) {
+        dht::NodeId sender;
+        if (!bencode::d::pair(p, "id", sender.id)) {
+          return false;
+        }
+        assert_eq(sender.id, id.id);
+
+        return true;
+      });
+
+      return true;
+    };
+    ASSERT_TRUE(krpc::d::krpc(p, tOut, msgOut, qOut, f));
+    assert_eq(msgOut, "q");
+    assert_eq(t.id, tOut.id);
+    assert_eq(qOut, "ping");
+  }
   // ASSERT_TRUE( EQ("d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe",
   // buff));
 
@@ -51,7 +93,18 @@ TEST(krpcTest, test_find_node) {
   transaction(t);
   sp::list<dht::Node> list;
 
-  ASSERT_TRUE(krpc::request::find_node(buff, t, id, id));
+  { //
+    ASSERT_TRUE(krpc::request::find_node(buff, t, id, id));
+    // sp::flip(buff);
+    // krpc::Transaction tOut;
+    // char msgOut[16] = {0};
+    // char qOut[16] = {0};
+    // bencode::d::Decoder p(buff);
+    // ASSERT_TRUE(krpc::d::krpc(p, tOut, msgOut, qOut,[](){}));
+    // ASSERT_TRUE(eq(msgOut, "q"));
+    // ASSERT_TRUE(eq(t.id, tOut.id));
+  }
+
   ASSERT_TRUE(krpc::response::find_node(buff, t, id, list));
 }
 

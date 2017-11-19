@@ -1,4 +1,4 @@
-#include "BEncode.h"
+#include "bencode.h"
 #include "krpc.h"
 #include <arpa/inet.h>
 #include <cassert>
@@ -9,7 +9,7 @@ namespace e {
 static bool
 value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
   return value(buffer, id.id);
-}
+} // bencode::e
 
 static sp::byte *
 serialize(sp::byte *b, const dht::Peer &p) noexcept {
@@ -20,7 +20,7 @@ serialize(sp::byte *b, const dht::Peer &p) noexcept {
   std::memcpy(b, &port, sizeof(port));
   b += sizeof(port);
   return b;
-}
+} // bencode::e
 
 static bool
 value(sp::Buffer &buffer, const dht::Peer &p) noexcept {
@@ -29,7 +29,7 @@ value(sp::Buffer &buffer, const dht::Peer &p) noexcept {
 
   serialize(scratch, p);
   return value(buffer, scratch);
-}
+} // bencode::e
 
 static bool
 value(sp::Buffer &buffer, const dht::Node &node) noexcept {
@@ -43,7 +43,7 @@ value(sp::Buffer &buffer, const dht::Node &node) noexcept {
 
   serialize(b, node.peer);
   return value(buffer, scratch);
-}
+} // bencode::e
 
 } // namespace e
 } // namespace bencode
@@ -188,20 +188,6 @@ ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
   });
 } // response::ping()
 
-template <typename T, typename F>
-static bool
-for_all(const sp::list<T> &list, F f) {
-  sp::node<T> *l = list.root;
-  for (std::size_t i = 0; i < list.size; ++i) {
-    assert(l);
-    if (!f(*l)) {
-      return false;
-    }
-    l = l->next;
-  }
-  return true;
-}
-
 template <typename F>
 static bool
 for_all(const dht::Peer *l, F f) {
@@ -212,7 +198,7 @@ for_all(const dht::Peer *l, F f) {
     l = l->next;
   }
   return true;
-} // namespace response
+}
 
 template <typename T>
 static bool
@@ -227,9 +213,9 @@ encode_list(sp::Buffer &buf, const char *key,
 
     const sp::list<T> *l = (const sp::list<T> *)a;
     assert(l);
-    return for_all(*l, [&b](const sp::node<T> &l) {
+    return for_all(*l, [&b](const auto &value) {
 
-      if (!bencode::e::value(b, l.value)) {
+      if (!bencode::e::value(b, value)) {
         return false;
       }
       return true;

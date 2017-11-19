@@ -35,7 +35,7 @@ bool
 list(sp::Buffer &, void *, bool (*)(sp::Buffer &, void *)) noexcept;
 
 template <typename F>
-static bool
+bool
 dict(sp::Buffer &buffer, F f) noexcept {
   const std::size_t before = buffer.pos;
   std::size_t &i = buffer.pos;
@@ -56,7 +56,7 @@ dict(sp::Buffer &buffer, F f) noexcept {
   buffer.raw[i++] = 'e';
 
   return true;
-}
+} // bencode::e::dict
 
 bool
 pair(sp::Buffer &, const char *key, const char *value) noexcept;
@@ -82,11 +82,28 @@ struct Decoder {
   explicit Decoder(sp::Buffer &);
 };
 
+namespace internal {
+bool
+is(sp::Buffer &, const char *, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+bool
+is(sp::Buffer &buf, const char (&exact)[SIZE]) {
+  return is(buf, exact, SIZE);
+}
+} // namespace internal
+
 template <typename F>
 bool
 dict(Decoder &p, F f) noexcept {
-  return f(p);
-}
+  if (!internal::is(p.buf, "d", 1)) {
+    return false;
+  }
+  if (!f(p)) {
+    return false;
+  }
+  return internal::is(p.buf, "e", 1);
+} // bencode::d::dict
 
 bool
 pair(Decoder &, const char *, char *, std::size_t) noexcept;
@@ -116,10 +133,10 @@ bool
 pair(Decoder &, const char *, std::uint16_t &) noexcept;
 
 bool
-pair(Decoder &, const char *, const sp::list<dht::Node> &) noexcept;
+pair(Decoder &, const char *, sp::list<dht::Node> &) noexcept;
 
 bool
-pair(Decoder &, const char *, const sp::list<dht::Peer> &) noexcept;
+pair(Decoder &, const char *, sp::list<dht::Peer> &) noexcept;
 
 bool
 value(Decoder &, const char *) noexcept;

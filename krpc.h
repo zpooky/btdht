@@ -57,6 +57,39 @@ announce_peer(sp::Buffer &, const Transaction &, //
               const dht::NodeId &) noexcept;
 } // namespace response
 
+namespace d {
+template <typename F>
+bool
+krpc(bencode::d::Decoder &d, Transaction &tx, char (&msg_type)[16],
+     char (&query)[16], F f) {
+  return bencode::d::dict(d, [&tx, &msg_type, &query, f](auto &p) { //
+    bool t = false;
+    bool y = false;
+    bool q = false;
+
+  start:
+    if (!t && bencode::d::pair(p, "t", tx.id)) {
+      t = true;
+      goto start;
+    }
+    if (!y && bencode::d::pair(p, "y", msg_type)) {
+      y = true;
+      goto start;
+    }
+    if (!q && bencode::d::pair(p, "q", query)) {
+      q = true;
+      goto start;
+    }
+
+    if (!(t && y && q)) {
+      return false;
+    }
+
+    return f(p, tx, msg_type, query);
+  });
+}
+} // namespace d
+
 } // namespace krpc
 
 #endif

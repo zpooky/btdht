@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <time.h>
 
+#include <stdio.h> //debug
+
 /*fd*/
 class fd {
 private:
@@ -105,9 +107,27 @@ static void
 for_each(const sp::list<T> &list, F f) noexcept {
   sp::node<T> *l = list.root;
   for (std::size_t i = 0; i < list.size; ++i) {
+    // assert(l);
+
     f(l->value);
     l = l->next;
   }
+}
+
+template <typename T, typename F>
+static bool
+for_all(const sp::list<T> &list, F f) noexcept {
+  sp::node<T> *l = list.root;
+  for (std::size_t i = 0; i < list.size; ++i) {
+    // assert(l);
+
+    bool r = f(l->value);
+    if (!r) {
+      return false;
+    }
+    l = l->next;
+  }
+  return true;
 }
 
 } // namespace sp
