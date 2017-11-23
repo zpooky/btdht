@@ -136,7 +136,7 @@ bool
 pair(Decoder &, const char *, sp::list<dht::Node> &) noexcept;
 
 bool
-pair(Decoder &, const char *, sp::list<dht::Peer> &) noexcept;
+pair(Decoder &, const char *, sp::list<dht::Contact> &) noexcept;
 
 bool
 value(Decoder &, const char *) noexcept;

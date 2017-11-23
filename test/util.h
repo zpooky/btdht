@@ -3,9 +3,9 @@
 
 #include "gtest/gtest.h"
 #include <bencode.h>
+#include <cstring>
 #include <krpc.h>
 #include <shared.h>
-#include <string.h>
 
 inline static void
 assert_eq(const char *one, const char *two) {
@@ -29,6 +29,25 @@ inline static void
 assert_eq(const sp::list<T> &first, const sp::list<T> &second) {
   ASSERT_EQ(first.size, second.size);
   // TODO
+}
+
+inline static void
+assert_eq2(const dht::Node &first, const dht::Node &second) {
+  ASSERT_EQ(0, std::memcmp(first.id.id, second.id.id, sizeof(second.id.id)));
+  ASSERT_EQ(first.peer.ip, second.peer.ip);
+  ASSERT_EQ(first.peer.port, second.peer.port);
+}
+
+template <std::size_t SIZE>
+inline static void
+assert_eq(const dht::Node *(&first)[SIZE], const sp::list<dht::Node> &second) {
+  ASSERT_EQ(SIZE, second.size);
+  for (std::size_t i = 0; i < SIZE; ++i) {
+    ASSERT_TRUE(first[i]);
+    const dht::Node *s = sp::get(second, i);
+    ASSERT_TRUE(s);
+    assert_eq2(*first[i], *s);
+  }
 }
 
 inline static void

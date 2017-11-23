@@ -16,14 +16,14 @@ die(const char *s) {
 }
 
 static void
-to_sockaddr(const dht::Peer &src, ::sockaddr_in &dest) noexcept {
+to_sockaddr(const dht::Contact &src, ::sockaddr_in &dest) noexcept {
   dest.sin_family = AF_INET;
   dest.sin_addr.s_addr = htonl(src.ip);
   dest.sin_port = htons(src.port);
 }
 
 static void
-to_peer(const ::sockaddr_in &src, dht::Peer &dest) noexcept {
+to_peer(const ::sockaddr_in &src, dht::Contact &dest) noexcept {
   dest.ip = ntohl(src.sin_addr.s_addr);
   dest.port = ntohs(src.sin_port);
 }
@@ -101,7 +101,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
 }
 
 void
-receive(int fd, dht::Peer &other, sp::Buffer &buf) noexcept {
+receive(int fd, dht::Contact &other, sp::Buffer &buf) noexcept {
   ::sockaddr_in o;
   receive(fd, o, buf);
   to_peer(o, other);
@@ -130,14 +130,14 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
 }
 
 bool
-send(int fd, const dht::Peer &dest, sp::Buffer &buf) noexcept {
+send(int fd, const dht::Contact &dest, sp::Buffer &buf) noexcept {
   ::sockaddr_in d;
   to_sockaddr(dest, d);
   return send(fd, d, buf);
 }
 
 bool
-send(fd &fd, const dht::Peer &dest, sp::Buffer &buf) noexcept {
+send(fd &fd, const dht::Contact &dest, sp::Buffer &buf) noexcept {
   return send(int(fd), dest, buf);
 }
 

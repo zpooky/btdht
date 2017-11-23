@@ -26,21 +26,8 @@ randomize(NodeId &id) noexcept {
 KeyValue::KeyValue()
     : next(nullptr)
     , peers(nullptr)
+    , activity(0)
     , id() {
-}
-
-static KeyValue *
-find_kv(KeyValue *current, const Infohash &id) noexcept {
-  // TODO tree?
-start:
-  if (current) {
-    if (std::memcmp(id.id, current->id.id, sizeof(id)) == 0) {
-      return current;
-    }
-    current = current->next;
-    goto start;
-  }
-  return current;
 }
 
 /*Bucket*/
@@ -149,7 +136,7 @@ insert(DHT &dht, Bucket &bucket, const Node &c, bool eager) noexcept {
       if (contact.ping_outstanding > 2) {
         timeout::unlink(dht, &contact);
         contact = c;
-        timeout::append(dht, &contact);
+        timeout::append_all(dht, &contact);
         return &contact;
       }
     }
@@ -178,6 +165,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = parent->bucket.contacts[i];
     if (contact) {
+      // TODO fixup the timout_next&priv chain with the new adresses +tail&head
       bool high = bit(contact.id, idx);
       if (high) {
         assert(insert(dht, higher->bucket, contact, false));
@@ -244,113 +232,183 @@ uncontact(Node &c) noexcept {
   c = Node();
 }
 
-static std::size_t
-remove(Bucket &bucket, const Node &search) noexcept {
-  std::size_t result = 0;
-  for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Node &c = bucket.contacts[i];
-    assert(c.next == nullptr);
-    if (c) {
-      if (std::memcmp(c.id.id, search.id.id, sizeof(c.id)) == 0) {
-        uncontact(c);
-      }
-      ++result;
-    }
-  }
+// static std::size_t
+// remove(Bucket &bucket, const Node &search) noexcept {
+//   std::size_t result = 0;
+//   for (std::size_t i = 0; i < Bucket::K; ++i) {
+//     Node &c = bucket.contacts[i];
+//     assert(c.timeout_next == nullptr);
+//     if (c) {
+//       if (std::memcmp(c.id.id, search.id.id, sizeof(c.id)) == 0) {
+//         uncontact(c);
+//       }
+//       ++result;
+//     }
+//   }
+//
+//   return result;
+// }
+//
+// static bool
+// remove(DHT &dht, Node &c) noexcept {
+//   // start:
+//   RoutingTable *parent = find_parent(dht, c.id);
+//   assert(parent->type == NodeType::NODE);
+//
+//   RoutingTable *lower = parent->node.lower;
+//   RoutingTable *higher = parent->node.higher;
+//
+//   std::size_t cnt = 0;
+//   if (lower->type == NodeType::LEAF) {
+//     cnt += remove(lower->bucket, c);
+//   }
+//   if (higher->type == NodeType::LEAF) {
+//     cnt += remove(higher->bucket, c);
+//   }
+//   if (cnt <= Bucket::K) {
+//     if (lower->type == NodeType::LEAF && higher->type == NodeType::LEAF) {
+//       merge_children(dht, parent);
+//       // goto start;
+//       // TODO recurse
+//     }
+//   }
+//   return true;
+// } // namespace dht
 
-  return result;
+// static Node *
+// contacts_older(RoutingTable *root, time_t age) noexcept {
+//   if (root->type == NodeType::NODE) {
+//     Node *result = contacts_older(root->node.lower, age);
+//     Node *const higher = contacts_older(root->node.higher, age);
+//     if (result) {
+//       result->timeout_next = higher;
+//     } else {
+//       result = higher;
+//     }
+//     return result;
+//   }
+//
+//   Node *result = nullptr;
+//   Bucket &b = root->bucket;
+//   for (std::size_t i = 0; i < Bucket::K; ++i) {
+//     Node &contact = b.contacts[i];
+//     if (contact) {
+//       assert(contact.timeout_next == nullptr);
+//       if (contact.activity < age) {
+//         contact.timeout_next = result;
+//         result = &contact;
+//       }
+//     }
+//   }
+//   return result;
+// }
+
+/*TokenPair*/
+TokenPair::TokenPair()
+    : ip()
+    , token()
+    , created() {
 }
 
-static bool
-remove(DHT &dht, Node &c) noexcept {
-  // start:
-  RoutingTable *parent = find_parent(dht, c.id);
-  assert(parent->type == NodeType::NODE);
-
-  RoutingTable *lower = parent->node.lower;
-  RoutingTable *higher = parent->node.higher;
-
-  std::size_t cnt = 0;
-  if (lower->type == NodeType::LEAF) {
-    cnt += remove(lower->bucket, c);
-  }
-  if (higher->type == NodeType::LEAF) {
-    cnt += remove(higher->bucket, c);
-  }
-  if (cnt <= Bucket::K) {
-    if (lower->type == NodeType::LEAF && higher->type == NodeType::LEAF) {
-      merge_children(dht, parent);
-      // goto start;
-      // TODO recurse
-    }
-  }
+TokenPair::operator bool() const noexcept {
   return true;
-} // namespace dht
-
-static Node *
-contacts_older(RoutingTable *root, time_t age) noexcept {
-  if (root->type == NodeType::NODE) {
-    Node *result = contacts_older(root->node.lower, age);
-    Node *const higher = contacts_older(root->node.higher, age);
-    if (result) {
-      result->next = higher;
-    } else {
-      result = higher;
-    }
-    return result;
-  }
-  Node *result = nullptr;
-  Bucket &b = root->bucket;
-  for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Node &contact = b.contacts[i];
-    if (contact) {
-      assert(contact.next == nullptr);
-      if (contact.activity < age) {
-        contact.next = result;
-        result = &contact;
-      }
-    }
-  }
-  return result;
 }
+
 /*DHT*/
 DHT::DHT()
+    // self {{{
     : id()
-    , kv(nullptr)
+    //}}}
+    // peer-lookup db {{{
+    , lookup_table(nullptr)
+    , tokens()
+    //}}}
+    // routing-table {{{
     , root(nullptr)
+    //}}}
     // timeout{{{
     , timeout_next(0)
     , timeout_head(nullptr)
     , timeout_tail(nullptr)
     //}}}
-    // recycle {{{
+    // recycle contact list {{{
     , contact_list()
-// }}}
+    , value_list()
+    // }}}
+    // {{{
+    , sequence(0)
+//}}}
 {
 }
 
-static sp::list<Node> &
-find_closest_internal(DHT &dht, const Key &, std::size_t) noexcept {
-  // TODO
-  return dht.contact_list;
+static std::size_t
+index(Ip ip) noexcept {
+  return ip % DHT::tables;
 }
+
+void
+mintToken(DHT &dht, Ip ip, const Token &token) noexcept {
+  // TODO
+}
+
+bool
+is_blacklisted(DHT &dht, const dht::Contact &) noexcept {
+  return false;
+}
+
+//============================================================
+bool
+init(dht::DHT &dht) noexcept {
+  if (!sp::init(dht.contact_list, 16)) {
+    return false;
+  }
+  if (!sp::init(dht.value_list, 64)) {
+    return false;
+  }
+  return true;
+}
+
+static void
+find_closest_nodes(DHT &dht, const Key &search, Node *(&result)[Bucket::K],
+                   std::size_t number) noexcept {
+  RoutingTable *root = dht.root;
+  std::size_t idx = 0;
+  // TODO circular buff insert for all leafs?
+  // TODO
+start:
+  if (root->type == NodeType::NODE) {
+    if (bit(search, idx) == true) {
+      root = root->node.higher;
+    } else {
+      root = root->node.lower;
+    }
+
+    ++idx;
+    goto start;
+  }
+  // return root;
+  // return dht.contact_list;
+  return;
+} // dht::find_closest_internal()
 
 /*public*/
-sp::list<Node> &
-find_closest(DHT &dht, const NodeId &id, std::size_t number) noexcept {
-  return find_closest_internal(dht, id.id, number);
-}
+void
+find_closest(DHT &dht, const NodeId &id, Node *(&result)[Bucket::K],
+             std::size_t number) noexcept {
+  return find_closest_nodes(dht, id.id, result, number);
+} // dht::find_closes()
 
-sp::list<Node> &
-find_closest(DHT &dht, const Infohash &id, std::size_t number) noexcept {
-  return find_closest_internal(dht, id.id, number);
-}
+void
+find_closest(DHT &dht, const Infohash &id, Node *(&result)[Bucket::K],
+             std::size_t number) noexcept {
+  return find_closest_nodes(dht, id.id, result, number);
+} // dht::find_closest()
 
 bool
 valid(DHT &dht, const krpc::Transaction &) noexcept {
   // TODO list of active transaction
   return true;
-}
+} // dht::valid()
 
 Node *
 find_contact(DHT &dht, const NodeId &id) noexcept {
@@ -362,10 +420,10 @@ find_contact(DHT &dht, const NodeId &id) noexcept {
   // TODO how to ensure leaf is a bucket?
 
   return find(leaf->bucket, id);
-}
+} // dht::find_contact()
 
 Node *
-add(DHT &dht, const Node &contact) noexcept {
+insert(DHT &dht, const Node &contact) noexcept {
 start:
   bool inTree = false;
   std::size_t idx = 0;
@@ -381,72 +439,136 @@ start:
   if (!result) {
     if (inTree) {
       split(dht, leaf, idx);
-      // TODO make better
+      // XXX make better
       goto start;
     }
   }
   return result;
-}
+} // dht::insert()
 
 } // namespace dht
 
 namespace timeout {
 void
 unlink(dht::DHT &ctx, dht::Node *const contact) noexcept {
-  assert(contact);
-  dht::Node *priv = contact->priv;
-  dht::Node *next = contact->next;
+  dht::Node *priv = contact->timeout_priv;
+  dht::Node *next = contact->timeout_next;
   if (priv)
-    priv->next = next;
+    priv->timeout_next = next;
 
   if (next)
-    next->priv = priv;
+    next->timeout_priv = priv;
 
   if (ctx.timeout_tail == contact)
     ctx.timeout_tail = priv;
 
   if (ctx.timeout_head == contact)
     ctx.timeout_head = next;
-}
+} // timeout::unlink()
 
 static dht::Node *
 last(dht::Node *node) noexcept {
 Lstart:
   if (node) {
-    if (node->next) {
-      node = node->next;
+    if (node->timeout_next) {
+      node = node->timeout_next;
       goto Lstart;
     }
   }
   return node;
-} // namespace dht
+} // timeout::last()
 
 void
-append(dht::DHT &ctx, dht::Node *node) noexcept {
+append_all(dht::DHT &ctx, dht::Node *node) noexcept {
   if (ctx.timeout_tail) {
-    ctx.timeout_tail->next = node;
-    node->priv = ctx.timeout_tail;
+    ctx.timeout_tail->timeout_next = node;
+    node->timeout_priv = ctx.timeout_tail;
   }
 
   dht::Node *l = last(node);
   ctx.timeout_tail = l;
-  l->priv = ctx.timeout_tail;
-}
+  l->timeout_priv = ctx.timeout_tail;
+} // timeout::append_all()
 } // namespace timeout
 
 namespace lookup {
+static dht::KeyValue *
+find_haystack(dht::KeyValue *current, const dht::Infohash &id) noexcept {
+  // XXX tree?
+start:
+  if (current) {
+    if (std::memcmp(id.id, current->id.id, sizeof(id)) == 0) {
+      return current;
+    }
+    current = current->next;
+    goto start;
+  }
+  return current;
+}
+
 const dht::Peer *
-get(dht::DHT &dht, const dht::Infohash &id) noexcept {
-  dht::KeyValue *const needle = find_kv(dht.kv, id);
+lookup(dht::DHT &dht, const dht::Infohash &id, time_t now) noexcept {
+  dht::KeyValue *const needle = find_haystack(dht.lookup_table, id);
   if (needle) {
-    return needle->peers;
+    auto is_expired = [&dht, now](auto &peer) {
+      time_t last_lookup_refresh = dht.lookup_refresh;
+      time_t peer_activity = peer.activity;
+
+      // Determine to age if end of life is higher than now and make sure that
+      // we have an internet connection by checking that we have received any
+      // updates at all
+      dht::Config config;
+      time_t peer_eol = peer_activity + config.peer_age_refresh;
+      if (peer_eol < now) {
+        if (last_lookup_refresh > peer_eol) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    auto reclaim = [&dht](dht::Peer *) { //
+      // TODO return peer to pool
+    };
+
+    auto reclaim_needle = [&dht](dht::KeyValue *) { //
+      // TODO
+    };
+
+    dht::Peer dummy;
+    dht::Peer *it = dummy.next = needle->peers;
+
+    dht::Peer *previous = &dummy;
+  Lloop:
+    if (it) {
+      dht::Peer *const next = it->next;
+      if (is_expired(*it)) {
+        reclaim(it);
+        previous->next = next;
+      }
+      previous = it;
+
+      it = next;
+      goto Lloop;
+    }
+    needle->peers = dummy.next;
+    if (needle->peers) {
+      return needle->peers;
+    }
+    reclaim_needle(needle);
   }
   return nullptr;
 }
 
 void
-insert(dht::DHT &, const dht::Infohash &, const dht::Peer &) noexcept {
+insert(dht::DHT &dht, const dht::Infohash &, const dht::Contact &) noexcept {
+  // TODO update activity
+}
+
+bool
+valid(dht::DHT &, const dht::Token &) noexcept {
   // TODO
+  return true;
 }
 
 } // namespace lookup

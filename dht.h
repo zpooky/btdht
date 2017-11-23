@@ -15,6 +15,7 @@ randomize(NodeId &) noexcept;
 struct KeyValue {
   KeyValue *next;
   Peer *peers;
+  time_t activity;
   Infohash id;
   //
   KeyValue();
@@ -47,29 +48,62 @@ struct RoutingTable {
   ~RoutingTable();
 };
 
+struct TokenPair {
+  Ip ip;
+  Token token;
+  time_t created;
+
+  operator bool() const noexcept;
+
+  TokenPair();
+};
+
 /*DHT*/
 struct DHT {
+  static const std::size_t tables = 64;
+  // self {{{
   NodeId id;
-  KeyValue *kv;
+  //}}}
+  // peer-lookup db {{{
+  KeyValue *lookup_table;
+  Token tokens[tables];
+  time_t lookup_refresh;
+  //}}}
+  // routing-table {{{
   RoutingTable *root;
+  //}}}
   // timeout {{{
   time_t timeout_next;
   Node *timeout_head;
   Node *timeout_tail;
   //}}}
-  // recycle {{{
+  // recycle contact list {{{
   sp::list<Node> contact_list;
-  sp::list<Peer> value_list;
+  sp::list<dht::Contact> value_list;
+  // }}}
+  // {{{
+  std::uint16_t sequence;
   // }}}
 
   DHT();
 };
-/**/
-sp::list<Node> &
-find_closest(DHT &, const NodeId &, std::size_t) noexcept;
 
-sp::list<Node> &
-find_closest(DHT &, const Infohash &, std::size_t) noexcept;
+bool
+init(dht::DHT &) noexcept;
+
+void
+mintToken(DHT &, Ip, const Token &) noexcept;
+
+bool
+is_blacklisted(DHT &dht, const dht::Contact &) noexcept;
+
+/**/
+void
+find_closest(DHT &, const NodeId &, Node *(&)[Bucket::K], std::size_t) noexcept;
+
+void
+find_closest(DHT &, const Infohash &, Node *(&)[Bucket::K],
+             std::size_t) noexcept;
 
 bool
 valid(DHT &, const krpc::Transaction &) noexcept;
@@ -78,7 +112,7 @@ Node *
 find_contact(DHT &, const NodeId &) noexcept;
 
 Node *
-add(DHT &, const Node &) noexcept;
+insert(DHT &, const Node &) noexcept;
 
 } // namespace dht
 
@@ -87,16 +121,19 @@ void
 unlink(dht::DHT &, dht::Node *) noexcept;
 
 void
-append(dht::DHT &, dht::Node *) noexcept;
+append_all(dht::DHT &, dht::Node *) noexcept;
 } // namespace timeout
 
 namespace lookup {
 /**/
 const dht::Peer *
-get(dht::DHT &, const dht::Infohash &) noexcept;
+lookup(dht::DHT &, const dht::Infohash &, time_t) noexcept;
 
 void
-insert(dht::DHT &, const dht::Infohash &, const dht::Peer &) noexcept;
+insert(dht::DHT &, const dht::Infohash &, const dht::Contact &) noexcept;
+
+bool
+valid(dht::DHT &, const dht::Token &) noexcept;
 } // namespace lookup
 
 #endif

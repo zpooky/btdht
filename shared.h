@@ -31,6 +31,7 @@ public:
 using Port = std::uint16_t;
 using Ip = std::uint32_t;
 using Timeout = int;
+using Seconds = std::uint32_t;
 
 //---------------------------
 namespace sp {
@@ -74,6 +75,8 @@ remaining_write(Buffer &) noexcept;
 namespace krpc {
 struct Transaction {
   sp::byte id[16];
+  std::size_t length;
+  Transaction();
 };
 } // namespace krpc
 
@@ -123,24 +126,42 @@ struct list {
 };
 
 template <typename T>
-static void
+static bool
 init(sp::list<T> &l, std::size_t capacity) noexcept {
-  assert(l.capacity == 0);
   sp::node<T> *next = l.root;
 
   while (l.capacity < capacity) {
     sp::node<T> *c = new sp::node<T>(next);
-    assert(c);
+    if (!c) {
+      return false;
+    }
 
     l.root = next = c;
     l.capacity++;
   }
+  return true;
 }
 
 template <typename T>
 static T *
 get(sp::list<T> &l, std::size_t idx) noexcept {
   sp::node<T> *current = l.root;
+Lstart:
+  if (current) {
+    if (idx == 0) {
+      return &current->value;
+    }
+    --idx;
+    current = current->next;
+    goto Lstart;
+  }
+  return nullptr;
+}
+
+template <typename T>
+static const T *
+get(const sp::list<T> &l, std::size_t idx) noexcept {
+  const sp::node<T> *current = l.root;
 Lstart:
   if (current) {
     if (idx == 0) {
@@ -200,6 +221,14 @@ for_all(const sp::list<T> &list, F f) noexcept {
 //---------------------------
 /*dht*/
 namespace dht {
+struct Config {
+  time_t min_timeout_interval;
+  time_t refresh_interval;
+  time_t peer_age_refresh;
+
+  Config() noexcept;
+};
+
 using Key = sp::byte[20];
 
 /*Infohash*/
@@ -213,33 +242,42 @@ struct Infohash {
 /*NodeId*/
 struct NodeId {
   Key id;
-  NodeId()
-      : id{0} {
-  }
+  NodeId();
 };
+
+bool
+is_valid(const NodeId &) noexcept;
 
 /*Token*/
 struct Token {
-  sp::byte id[16];
+  sp::byte id[20];
   Token()
       : id{0} {
   }
 };
 
-/*Peer*/
-struct Peer {
+/*Contact*/
+struct Contact {
   Ip ip;
   Port port;
+  Contact(Ip, Port) noexcept;
+  Contact() noexcept;
+};
+
+/*Peer*/
+struct Peer {
+  Contact contact;
+  time_t activity;
   // {
   Peer *next;
   // }
-  Peer(Ip, Port);
-  Peer();
+  Peer(Ip, Port, time_t) noexcept;
+  Peer() noexcept;
 };
 
 template <typename F>
 static bool
-for_all(const dht::Peer *l, F f) {
+for_all(const dht::Peer *l, F f) noexcept {
   while (l) {
     if (!f(*l)) {
       return false;
@@ -252,22 +290,27 @@ for_all(const dht::Peer *l, F f) {
 /*Contact*/
 // 15 min refresh
 struct Node {
-  time_t activity;
+  time_t request_activity;
+  time_t response_activity;
+  time_t ping_sent;
   NodeId id;
-  Peer peer;
+  Contact peer;
   std::uint8_t ping_outstanding;
 
   // timeout {{{
-  Node *next;
-  Node *priv;
+  Node *timeout_next;
+  Node *timeout_priv;
   // }}}
 
-  Node();
-  Node(const NodeId &, Ip, Port, time_t);
-  Node(const NodeId &, const Peer &, time_t);
+  Node() noexcept;
+  Node(const NodeId &, Ip, Port, time_t) noexcept;
+  Node(const NodeId &, const Contact &, time_t) noexcept;
 
   explicit operator bool() const noexcept;
 };
+
+time_t
+activity(const Node &) noexcept;
 
 } // namespace dht
 

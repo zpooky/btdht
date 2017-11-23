@@ -142,20 +142,19 @@ TEST(krpcTest, test_find_node) {
   }
 
   {
-    sp::list<dht::Node> list;
-    const std::size_t nodes = 8;
-    sp::init(list, nodes);
+    constexpr std::size_t nodes = 8;
+    dht::Node node[nodes];
+    const dht::Node *in[nodes];
     for (std::size_t i = 0; i < nodes; ++i) {
-      dht::Node node;
-      nodeId(node.id);
-      node.peer.ip = rand();
-      node.peer.port = rand();
-
-      assert(sp::push_back(list, node));
+      nodeId(node[i].id);
+      node[i].peer.ip = rand();
+      node[i].peer.port = rand();
+      in[i] = &node[i];
     }
 
     sp::Buffer buff{b};
-    ASSERT_TRUE(krpc::response::find_node(buff, t, id, list));
+    ASSERT_TRUE(
+        krpc::response::find_node(buff, t, id, (const dht::Node **)&in, nodes));
     sp::flip(buff);
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
 
@@ -163,7 +162,7 @@ TEST(krpcTest, test_find_node) {
     char msgOut[16] = {0};
     char qOut[16] = {0};
     bencode::d::Decoder p(buff);
-    test_response(p, tOut, msgOut, qOut, [&id, &list](bencode::d::Decoder &p) {
+    test_response(p, tOut, msgOut, qOut, [&id, &in](bencode::d::Decoder &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
         return false;
@@ -175,7 +174,7 @@ TEST(krpcTest, test_find_node) {
       if (!bencode::d::pair(p, "target", outList)) {
         return false;
       }
-      assert_eq(list, outList);
+      assert_eq(in, outList);
       return true;
     });
   }

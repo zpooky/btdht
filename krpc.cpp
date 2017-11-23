@@ -3,6 +3,8 @@
 #include <arpa/inet.h>
 #include <cassert>
 #include <cstring>
+#include <tuple>
+#include <type_traits>
 
 //=BEncode==================================================================
 namespace bencode {
@@ -13,7 +15,7 @@ value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
 } // bencode::e::value()
 
 static sp::byte *
-serialize(sp::byte *b, const dht::Peer &p) noexcept {
+serialize(sp::byte *b, const dht::Contact &p) noexcept {
   Ip ip = htonl(p.ip);
   std::memcpy(b, &ip, sizeof(ip));
   b += sizeof(ip);
@@ -26,7 +28,7 @@ serialize(sp::byte *b, const dht::Peer &p) noexcept {
 } // bencode::e::value()
 
 bool
-value(sp::Buffer &buffer, const dht::Peer &p) noexcept {
+value(sp::Buffer &buffer, const dht::Contact &p) noexcept {
   sp::byte scratch[sizeof(p.ip) + sizeof(p.port)] = {0};
   static_assert(sizeof(scratch) == 4 + 2, "");
 
@@ -62,7 +64,7 @@ pair(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
 
     return dht::for_all(l, [&b](const auto &l) {
 
-      if (!bencode::e::value(b, l)) {
+      if (!bencode::e::value(b, l.contact)) {
         return false;
       }
       return true;
@@ -93,10 +95,53 @@ internal_pair(sp::Buffer &buf, const char *key,
   });
 } // bencode::e::internal_pair()
 
+template <typename F>
+static bool
+for_all(const dht::Node **list, std::size_t length, F f) noexcept {
+  for (std::size_t i = 0; i < length; ++i) {
+    if (list[i]) {
+      if (!f(*list[i])) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static bool
+xxx(sp::Buffer &buf, const char *key, const dht::Node **list,
+    std::size_t size) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  std::tuple<const dht::Node **, std::size_t> arg(list, size);
+  return bencode::e::list(buf, &arg, [](auto &b, void *a) {
+    std::tuple<const dht::Node **, std::size_t> *targ =
+        (std::tuple<const dht::Node **, std::size_t> *)a;
+
+    // const dht::Node **l = (dht::Node *)a;
+    return for_all(std::get<0>(*targ), std::get<1>(*targ),
+                   [&b](const auto &value) {
+
+                     if (!bencode::e::value(b, value)) {
+                       return false;
+                     }
+                     return true;
+                   });
+  });
+} // bencode::e::xxx()
+
 bool
 pair(sp::Buffer &buf, const char *key,
      const sp::list<dht::Node> &list) noexcept {
   return internal_pair(buf, key, list);
+} // bencode::e::pair()
+
+static bool
+pair(sp::Buffer &buf, const char *key, const dht::Node **list,
+     std::size_t size) noexcept {
+  return xxx(buf, key, list, size);
 } // bencode::e::pair()
 
 } // namespace e
@@ -120,8 +165,10 @@ message(sp::Buffer &buf, const Transaction &t, const char *mt, const char *q,
                             // if (!encodePair(b, "v", "SP")) {
                             //   return false;
                             // }
-                            if (!bencode::e::pair(b, "q", q)) {
-                              return false;
+                            if (q) {
+                              if (!bencode::e::pair(b, "q", q)) {
+                                return false;
+                              }
                             }
                             if (!f(b)) {
                               return false;
@@ -138,8 +185,8 @@ resp(sp::Buffer &buf, const Transaction &t, const char *q, F f) noexcept {
       return false;
     }
 
-    return bencode::e::dict(b, [&f](auto &b) { //
-      return f(b);
+    return bencode::e::dict(b, [&f](auto &b2) { //
+      return f(b2);
     });
   });
 }
@@ -152,9 +199,22 @@ req(sp::Buffer &buf, const Transaction &t, const char *q, F f) noexcept {
       return false;
     }
 
-    return bencode::e::dict(b, [&f](auto &b) { //
-      return f(b);
+    return bencode::e::dict(b, [&f](auto &b2) { //
+      return f(b2);
     });
+  });
+}
+
+template <typename F>
+static bool
+err(sp::Buffer &buf, const Transaction &t, F f) noexcept {
+  const char *query = nullptr;
+  return message(buf, t, "e", query, [&f](auto &b) { //
+    if (!bencode::e::value(b, "e")) {
+      return false;
+    }
+
+    return f(b);
   });
 }
 
@@ -245,22 +305,23 @@ ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
 
 bool
 find_node(sp::Buffer &buf, const Transaction &t, //
-          const dht::NodeId &id, const sp::list<dht::Node> &target) noexcept {
-  return resp(buf, t, "find_node", [&id, &target](auto &b) { //
+          const dht::NodeId &id, const dht::Node **target,
+          std::size_t length) noexcept {
+  return resp(buf, t, "find_node", [&id, &target, &length](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
     }
 
-    return bencode::e::pair(b, "target", target);
+    return bencode::e::pair(b, "target", target, length);
   });
 } // response::find_node()
 
 bool
 get_peers(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const dht::Token &token,
-          const sp::list<dht::Node> &nodes) noexcept {
-  return resp(buf, t, "get_peers", [&id, &token, &nodes](auto &b) { //
+          const dht::Node **nodes, std::size_t length) noexcept {
+  return resp(buf, t, "get_peers", [&id, &token, &nodes, &length](auto &b) { //
 
     if (!bencode::e::pair(b, "id", id.id)) {
       return false;
@@ -270,7 +331,7 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
       return false;
     }
 
-    return bencode::e::pair(b, "nodes", nodes);
+    return bencode::e::pair(b, "nodes", nodes, length);
   });
 } // response::get_peers()
 
@@ -305,6 +366,32 @@ announce_peer(sp::Buffer &buf, const Transaction &t,
     return true;
   });
 } // response::announce_peer()
+
+bool
+error(sp::Buffer &buf, const Transaction &t, Error e,
+      const char *msg) noexcept {
+  return err(buf, t, [e, msg](auto &b) { //
+
+    std::tuple<Error, const char *> tt(e, msg);
+    return bencode::e::list(b, &tt, [](auto &b2, void *a) {
+      auto targ = *((std::tuple<Error, const char *> *)a);
+
+      using Et = std::underlying_type<Error>::type;
+      auto error = static_cast<Et>(std::get<0>(targ));
+
+      if (!bencode::e::value(b2, error)) {
+        return false;
+      }
+
+      const char *emsg = std::get<1>(targ);
+      if (!bencode::e::value(b2, emsg)) {
+        return false;
+      }
+
+      return true;
+    });
+  });
+} // response::error()
 
 } // namespace response
 

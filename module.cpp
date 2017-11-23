@@ -3,6 +3,7 @@
 #include "krpc.h"
 #include "module.h"
 #include "udp.h"
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 
@@ -12,21 +13,29 @@
 namespace dht {
 
 static bool
-random(krpc::Transaction &t) noexcept {
-  const char *a = "aa";
-  // TODO
-  std::memcpy(t.id, a, 3);
+mintTransaction(DHT &dht, time_t now, krpc::Transaction &t) noexcept {
+  int r = rand();
+  std::memcpy(t.id, &r, 2);
+
+  uint16_t seq = ++dht.sequence;
+  std::memcpy(t.id + 2, &seq, 2);
+
+  t.length = 4;
+  // TODO keep track of transaction
+
   return true;
 }
 
 static Timeout
-awake(dht::DHT &, fd &, sp::Buffer &, time_t) noexcept;
+awake(DHT &, fd &, sp::Buffer &, time_t) noexcept;
 
 /*MessageContext*/
-MessageContext::MessageContext(DHT &p_dht, bencode::d::Decoder &p_in,
-                               sp::Buffer &p_out, const krpc::Transaction &p_t,
-                               Peer p_remote, time_t p_now) noexcept
-    : dht{p_dht}
+MessageContext::MessageContext(const char *q, DHT &p_dht,
+                               bencode::d::Decoder &p_in, sp::Buffer &p_out,
+                               const krpc::Transaction &p_t, Contact p_remote,
+                               time_t p_now) noexcept
+    : query(q)
+    , dht{p_dht}
     , in{p_in}
     , out{p_out}
     , transaction{p_t}
@@ -54,7 +63,7 @@ for_each(Node *node, F f) noexcept {
 Lstart:
   if (node) {
     f(node);
-    node = node->next;
+    node = node->timeout_next;
     goto Lstart;
   }
 }
@@ -73,16 +82,21 @@ namespace timeout {
 
 static dht::Node *
 take(dht::DHT &ctx, time_t now) noexcept {
+  auto is_expired = [](auto &node, time_t cmp) { //
+    time_t exp = dht::activity(node);
+    return exp <= cmp;
+  };
+
   dht::Node *result = nullptr;
   dht::Node *head = ctx.timeout_head;
 Lstart:
   if (head) {
-    if (head->activity <= now) {
+    if (is_expired(*head, now)) {
       // iterate
-      head = head->next;
+      head = head->timeout_next;
 
       // build result
-      head->next = result;
+      head->timeout_next = result;
       result = head;
 
       // repeat
@@ -98,18 +112,38 @@ Lstart:
     ctx.timeout_tail = nullptr;
 
   return result;
-}
+} // timeout::take()
+
+static dht::Node *
+head(dht::DHT &ctx) noexcept {
+  return ctx.timeout_head;
+} // timeout::head()
 
 static void
 update(dht::DHT &ctx, dht::Node *const contact, time_t now) noexcept {
-  assert(now >= contact->activity);
+  assert(contact);
+
+  assert(now >= dht::activity(*contact));
   unlink(ctx, contact);
-  contact->activity = now;
-  append(ctx, contact);
-}
+  contact->ping_sent = now;
+  append_all(ctx, contact);
+} // timeout::update()
+
 } // namespace timeout
 
 namespace dht {
+// TODO
+//-keep track of transaction ids we sent out in requests,bounded queue of
+// active transaction with a timout only send out pings based on how many
+// free slots in queue,delay the rest ready for ping the next 'awake' slot.
+// TODO check that peer owns nodeid before change anything
+// TODO calculate latency by having a list of active
+// transaction{id,time_sent} latency = now - time_sent. To be used an
+// deciding factor when inserting to a full not expandable bucket. Or
+// deciding on which X best Contact Nodes when returning find_node/get_peers
+// TODO lookup table values lifetime
+// TODO handle out of order request kv
+// TODO ignore unknown request kv
 
 static Timeout
 awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
@@ -118,7 +152,7 @@ awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
     Node *timedout = timeout::take(ctx, now);
     for_each(timedout, [&ctx, &udp, &out, now](Node *node) { //
       krpc::Transaction t;
-      random(t);
+      mintTransaction(ctx, now, t);
 
       krpc::request::ping(out, t, node->id);
       sp::flip(out);
@@ -129,49 +163,86 @@ awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
       // will spam out pings, ex: 3 noes timed out ,send ping, append, get the
       // next timeout date, since there is only 3 in the queue and we will
       // immediately awake and send ping  to the same 3 nodes
-      node->activity = now;
+      node->ping_sent = now;
     });
-    timeout::append(ctx, timedout);
+    timeout::append_all(ctx, timedout);
 
-    // TODO
-    //-keep track of transaction ids we sent out in requests,bounded queue of
-    // active transaction with a timout only send out pings based on how many
-    // free slots in queue,delay the rest ready for ping the next 'awake' slot.
-    //
-    //-when finding next timeout slot look at the front of timeout queue
-    //
-    //-calc new timeout , shold be
-    // max(next_timeout,config.get_min_timeout_granularity(60sec)),
-    //
+    Config config;
+    Node *const tHead = timeout::head(ctx);
+    if (tHead) {
+
+      time_t ping_secs_ago = now - tHead->ping_sent;
+      time_t next_timeout = config.refresh_interval > ping_secs_ago
+                                ? config.refresh_interval - ping_secs_ago
+                                : 0;
+      time_t normalized = std::max(config.min_timeout_interval, next_timeout);
+
+      ctx.timeout_next = now + normalized;
+      return Timeout(normalized * 1000);
+    }
+
+    // timeout queue is empty
+    ctx.timeout_next = config.refresh_interval;
+    return Timeout(-1);
   }
+  // recalculate
   return now - ctx.timeout_next;
 }
 
 static Node *
-update_activity(dht::MessageContext &ctx, const dht::NodeId &sender) {
-  time_t now = ctx.now;
-  DHT &dht = ctx.dht;
-
-  Node *const contact = find_contact(dht, sender);
-  if (contact) {
-    timeout::update(dht, contact, now);
-
-    return contact;
+dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
+  if (!dht::is_valid(sender)) {
+    return nullptr;
   }
 
-  Node c(sender, ctx.remote, now);
-  return dht::add(ctx.dht, c);
+  DHT &dht = ctx.dht;
+  if (dht::is_blacklisted(dht, ctx.remote)) {
+    return nullptr;
+  }
+
+  time_t now = ctx.now;
+
+  Node *contact = find_contact(dht, sender);
+  if (contact) {
+    timeout::update(dht, contact, now);
+  } else {
+    Node c(sender, ctx.remote, now);
+    contact = dht::insert(dht, c);
+  }
+
+  return contact;
 }
 
 } // namespace dht
 
-// TODO check that peer owns nodeid before change anything
-// TODO calculate latency by having a list of active transaction{id,time_sent}
-// latency = now - time_sent. To be used an deciding factor when inserting to a
-// full not expandable bucket. Or deciding on which X best Contact Nodes when
-// returning find_node/get_peers
-// TODO lookup table values lifetime
-// TODO krpc serialize + deserialize test case
+template <typename F>
+static dht::Node *
+dht_request(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
+
+  dht::DHT &dht = ctx.dht;
+  if (!dht::valid(dht, ctx.transaction)) {
+    return nullptr;
+  }
+
+  dht::Node *contact = dht_activity(ctx, sender);
+  if (contact) {
+    contact->request_activity = ctx.now;
+    f(*contact);
+  }
+  return contact;
+}
+
+template <typename F>
+static dht::Node *
+dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
+             F f) noexcept {
+  dht::Node *contact = dht_activity(ctx, sender);
+  if (contact) {
+    contact->response_activity = ctx.now;
+    f(*contact);
+  }
+  return contact;
+}
 
 //===========================================================
 // Ping
@@ -179,20 +250,18 @@ update_activity(dht::MessageContext &ctx, const dht::NodeId &sender) {
 namespace ping {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  dht::DHT &dht = ctx.dht;
-  dht::update_activity(ctx, sender);
+  dht_response(ctx, sender, [](auto &) { //
+  });
 
+  dht::DHT &dht = ctx.dht;
   krpc::response::ping(ctx.out, ctx.transaction, dht.id);
 } // ping::handle_request()
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  dht::DHT &dht = ctx.dht;
-  const krpc::Transaction &t = ctx.transaction;
-
-  if (dht::valid(dht, t)) {
-    dht::update_activity(ctx, sender);
-  }
+  dht_response(ctx, sender, [](auto &node) { //
+    node.ping_outstanding = 0;
+  });
 } // ping::handle_response()
 
 static bool
@@ -237,31 +306,29 @@ static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search) noexcept {
   dht::DHT &dht = ctx.dht;
-  dht::update_activity(ctx, sender);
-  sp::list<dht::Node> &result = dht::find_closest(dht, search, 8);
-  krpc::response::find_node(ctx.out, ctx.transaction, dht.id, result);
+  dht_request(ctx, sender, [](auto &) {});
+  constexpr std::size_t capacity = 8;
+
+  const krpc::Transaction &t = ctx.transaction;
+  dht::Node *result[capacity];
+  dht::find_closest(dht, search, result, capacity);
+  krpc::response::find_node(ctx.out, t, dht.id, (const dht::Node **)&result,
+                            capacity);
 } // find_node::handle_request()
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const sp::list<dht::Node> &contacts) noexcept {
   dht::DHT &dht = ctx.dht;
-  const krpc::Transaction &t = ctx.transaction;
 
-  if (dht::valid(dht, t)) {
-    dht::update_activity(ctx, sender);
-    for_each(contacts, [&dht, &ctx](auto &contact) { //
-      contact.activity = ctx.now;
-      contact.ping_outstanding = 0;
-      dht::add(dht, contact);
+  dht_response(ctx, sender, [&](auto &) {
+    for_each(contacts, [&](auto &contact) { //
+
+      dht::insert(dht, contact);
     });
-    // if (dht.bootstrap_mode) {
-    //   for (node : nodes) {
-    //     send_find_nodes(node);
-    //   }
-    // }
-    // TODO
-  }
+
+  });
+
 } // find_node::handle_response()
 
 static bool
@@ -318,43 +385,51 @@ namespace get_peers {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search) noexcept {
-  dht::DHT &dht = ctx.dht;
+  dht_request(ctx, id, [](auto &) {});
 
-  dht::update_activity(ctx, id);
-  const dht::Peer *result = lookup::get(dht, search);
-  dht::Token token; // TODO
+  dht::Token token;
+  dht::DHT &dht = ctx.dht;
+  dht::mintToken(dht, ctx.remote.ip, token);
+
+  const krpc::Transaction &t = ctx.transaction;
+  const dht::Peer *result = lookup::lookup(dht, search, ctx.now);
   if (result) {
-    krpc::response::get_peers(ctx.out, ctx.transaction, dht.id, token, result);
+    // TODO
+    krpc::response::get_peers(ctx.out, t, dht.id, token, result);
   } else {
-    sp::list<dht::Node> &closest = dht::find_closest(dht, search, 8);
-    krpc::response::get_peers(ctx.out, ctx.transaction, dht.id, token, closest);
+    constexpr std::size_t capacity = 8;
+    dht::Node *closest[capacity];
+    dht::find_closest(dht, search, closest, capacity);
+    krpc::response::get_peers(ctx.out, t, dht.id, token,
+                              (const dht::Node **)closest, capacity);
   }
 }
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &token,
-                const sp::list<dht::Peer> &values) noexcept {
-  dht::DHT &dht = ctx.dht;
-  if (dht::valid(dht, ctx.transaction)) {
-    dht::update_activity(ctx, sender);
-    // TODO
-  }
+                const sp::list<dht::Contact> &values) noexcept {
+  /*
+   * infohash lookup query found result, sender returns requested data.
+   */
+  dht_response(ctx, sender, [](auto &) { //
+  });
 }
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &token,
                 const sp::list<dht::Node> &contacts) noexcept {
+  /*
+   * sender has no information for queried infohash, returns the closest
+   * contacts.
+   */
   dht::DHT &dht = ctx.dht;
-  if (dht::valid(dht, ctx.transaction)) {
-    dht::update_activity(ctx, sender);
-    for_each(contacts, [&dht, &ctx](auto &contact) { //
-      contact.activity = ctx.now;
-      contact.ping_outstanding = 0;
-      dht::add(dht, contact);
+  dht_request(ctx, sender, [&](auto &) {
+    for_each(contacts, [&](auto &contact) { //
+      dht::insert(dht, contact);
     });
-  }
+  });
 }
 
 static bool
@@ -380,7 +455,7 @@ on_response(dht::MessageContext &ctx) {
       return true;
     }
 
-    sp::list<dht::Peer> &values = dht.value_list;
+    sp::list<dht::Contact> &values = dht.value_list;
     if (bencode::d::pair(p, "values", values)) {
       handle_response(ctx, id, token, values);
       return true;
@@ -423,18 +498,29 @@ namespace announce_peer {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                bool implied_port, const dht::Infohash &infohash, Port port,
-               const char *token) noexcept {
-  // dht::insert()
-  // TODO
+               const dht::Token &token) noexcept {
+  dht::DHT &dht = ctx.dht;
+  if (lookup::valid(dht, token)) {
+    dht_request(ctx, sender, [&](auto &) {
+      dht::Contact peer;
+      peer.ip = ctx.remote.ip;
+      if (implied_port) {
+        peer.port = ctx.remote.port;
+      } else {
+        peer.port = port;
+      }
+
+      lookup::insert(dht, infohash, peer);
+    });
+  }
+  krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);
 }
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  dht::DHT &dht = ctx.dht;
-  if (dht::valid(dht, ctx.transaction)) {
-    dht::update_activity(ctx, sender);
-    // TODO
-  }
+  dht_response(ctx, sender, [](auto &) { //
+
+  });
 }
 
 static bool
@@ -457,7 +543,7 @@ on_request(dht::MessageContext &ctx) {
     bool implied_port = false;
     dht::Infohash infohash;
     Port port = 0;
-    char token[16] = {0};
+    dht::Token token;
 
     // TODO support for instances that does have exactly this order
     if (!bencode::d::pair(p, "id", id.id)) {
@@ -473,7 +559,7 @@ on_request(dht::MessageContext &ctx) {
     if (!bencode::d::pair(p, "port", port)) {
       return false;
     }
-    if (!bencode::d::pair(p, "token", token)) {
+    if (!bencode::d::pair(p, "token", token.id)) {
       return false;
     }
 
@@ -496,13 +582,16 @@ setup(dht::Module &module) noexcept {
 namespace error {
 static bool
 on_response(dht::MessageContext &ctx) {
-  // TODO log
+  printf("unknow response query type %s\n", ctx.query);
   return true;
 }
 
 static bool
 on_request(dht::MessageContext &ctx) {
-  // TODO build error response
+  printf("unknow request query type %s\n", ctx.query);
+
+  krpc::response::error(ctx.out, ctx.transaction, krpc::Error::method_unknown,
+                        "unknown method");
   return true;
 }
 void

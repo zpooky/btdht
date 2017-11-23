@@ -5,13 +5,13 @@
 namespace bencode {
 namespace e {
 bool
-value(sp::Buffer &buffer, const dht::Peer &p) noexcept;
+value(sp::Buffer &buffer, const dht::Contact &p) noexcept;
 
 bool
 value(sp::Buffer &buffer, const dht::Node &node) noexcept;
 
 bool
-pair(sp::Buffer &, const char *, const dht::Peer *list) noexcept;
+pair(sp::Buffer &, const char *, const dht::Contact *list) noexcept;
 
 bool
 pair(sp::Buffer &, const char *, const sp::list<dht::Node> &list) noexcept;
@@ -56,12 +56,12 @@ ping(sp::Buffer &, const Transaction &, //
 
 bool
 find_node(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &, const sp::list<dht::Node> &) noexcept;
+          const dht::NodeId &, const dht::Node **target, std::size_t) noexcept;
 
 bool
 get_peers(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &id, const dht::Token &,
-          const sp::list<dht::Node> &) noexcept;
+          const dht::NodeId &id, const dht::Token &, const dht::Node **,
+          std::size_t) noexcept;
 
 bool
 get_peers(sp::Buffer &, const Transaction &, //
@@ -71,6 +71,9 @@ get_peers(sp::Buffer &, const Transaction &, //
 bool
 announce_peer(sp::Buffer &, const Transaction &, //
               const dht::NodeId &) noexcept;
+
+bool
+error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
 } // namespace response
 
 namespace d {

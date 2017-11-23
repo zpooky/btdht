@@ -419,18 +419,18 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
 } // bencode::d::list()
 
 static void
-value_to_peer(const char *str, dht::Peer &peer) noexcept {
+value_to_peer(const char *str, dht::Contact &peer) noexcept {
   std::memcpy(&peer.ip, str, sizeof(peer.ip));
   str += sizeof(peer.ip);
   peer.ip = ntohl(peer.ip);
 
   std::memcpy(&peer.port, str, sizeof(peer.port));
-  peer.port = ntohl(peer.port);
+  peer.port = ntohs(peer.port);
 } // bencode::d::value_to_peer()
 
 static bool
 value(Decoder &d, dht::Node &value) noexcept {
-  dht::Peer &peer = value.peer;
+  dht::Contact &peer = value.peer;
   sp::Buffer &buf = d.buf;
 
   const std::size_t pos = buf.pos;
@@ -456,7 +456,7 @@ value(Decoder &d, dht::Node &value) noexcept {
 } // bencode::d::value()
 
 static bool
-value(Decoder &d, dht::Peer &peer) noexcept {
+value(Decoder &d, dht::Contact &peer) noexcept {
   sp::Buffer &buf = d.buf;
   const std::size_t pos = buf.pos;
 
@@ -506,7 +506,7 @@ pair(Decoder &d, const char *key, sp::list<dht::Node> &l) noexcept {
 } // bencode::d::pair()
 
 bool
-pair(Decoder &d, const char *key, sp::list<dht::Peer> &l) noexcept {
+pair(Decoder &d, const char *key, sp::list<dht::Contact> &l) noexcept {
   return decode_list_pair(d, key, l);
 } // bencode::d:pair()
 

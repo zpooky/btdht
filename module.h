@@ -11,15 +11,16 @@ namespace dht {
 
 /*MessageContext*/
 struct MessageContext {
+  const char *query;
   DHT &dht;
   bencode::d::Decoder &in;
   sp::Buffer &out;
   const krpc::Transaction &transaction;
-  Peer remote;
+  Contact remote;
   const time_t now;
   // TODO ctor
-  MessageContext(DHT &, bencode::d::Decoder &, sp::Buffer &,
-                 const krpc::Transaction &, Peer, time_t) noexcept;
+  MessageContext(const char *, DHT &, bencode::d::Decoder &, sp::Buffer &,
+                 const krpc::Transaction &, Contact, time_t) noexcept;
 };
 
 /*Module*/

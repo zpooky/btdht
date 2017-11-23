@@ -6,6 +6,7 @@
 #include "krpc.h"
 #include "module.h"
 #include "shared.h"
+#include <algorithm>
 #include <arpa/inet.h>
 #include <cstring>
 #include <exception>
@@ -52,7 +53,7 @@ setup_epoll(fd &udp) noexcept {
 }
 
 static bool
-bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &dest) noexcept {
+bootstrap(fd &udp, const dht::NodeId &self, const dht::Contact &dest) noexcept {
   sp::byte rawb[1024];
   sp::Buffer buf(rawb);
   krpc::Transaction t;
@@ -67,6 +68,7 @@ bootstrap(fd &udp, const dht::NodeId &self, const dht::Peer &dest) noexcept {
 template <typename Handle, typename Awake>
 static void
 loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
+  time_t previous = 0;
   for (;;) {
     sp::byte in[2048];
     sp::byte out[2048];
@@ -76,10 +78,11 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
 
     Timeout timeout = -1;
     int no_events = ::epoll_wait(int(fdpoll), events, max_events, timeout);
-    time_t now = time(0);
     if (no_events < 0) {
       die("epoll_wait");
     }
+
+    time_t now = std::max(time(0), previous);
 
     for (int i = 0; i < no_events; ++i) {
       ::epoll_event &current = events[i];
@@ -88,7 +91,7 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
         sp::Buffer outBuffer(out);
 
         int cfd = current.data.fd;
-        dht::Peer from;
+        dht::Contact from;
         udp::receive(cfd, from, inBuffer);
         flip(inBuffer);
 
@@ -114,6 +117,8 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
     }
     sp::Buffer outBuffer(out);
     timeout = on_awake(outBuffer, now);
+
+    previous = now;
   } // for
 }
 
@@ -130,7 +135,7 @@ module_for(dht::Modules &modules, const char *key,
 }
 
 static bool
-parse(dht::DHT &dht, dht::Modules &modules, const dht::Peer &peer,
+parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
       sp::Buffer &in, sp::Buffer &out, time_t now) noexcept {
   bencode::d::Decoder d(in);
   krpc::Transaction t;
@@ -138,11 +143,12 @@ parse(dht::DHT &dht, dht::Modules &modules, const dht::Peer &peer,
   char q[16] = {0};
 
   auto f = [&dht, &modules, &peer, &out, now] //
-      (bencode::d::Decoder & p, const krpc::Transaction &tx, const char *msg_type, const char *query) {
+      (bencode::d::Decoder & p, const krpc::Transaction &tx,
+       const char *msg_type, const char *query) {
         dht::Module error;
         error::setup(error);
 
-        dht::MessageContext ctx{dht, p, out, tx, peer, now};
+        dht::MessageContext ctx{query, dht, p, out, tx, peer, now};
         if (std::strcmp(msg_type, "q") == 0) {
           /*query*/
           if (!bencode::d::value(p, "a")) {
@@ -185,7 +191,7 @@ main() {
   dht::randomize(dht.id);
 
   fd udp = udp::bind(INADDR_ANY, 0);
-  dht::Peer bs_node(INADDR_ANY, udp::port(udp));
+  dht::Contact bs_node(INADDR_ANY, udp::port(udp)); // TODO
 
   printf("bind(%u)\n", udp::port(udp));
 
@@ -195,8 +201,8 @@ main() {
   dht::Modules modules;
   setup(modules);
 
-  auto handle = [&modules, &dht](dht::Peer from, sp::Buffer &in,
-                                 sp::Buffer &out, time_t now) {
+  auto handle = [&](dht::Contact from, sp::Buffer &in, sp::Buffer &out,
+                    time_t now) {
     return parse(dht, modules, from, in, out, now);
   };
 
