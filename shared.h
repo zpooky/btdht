@@ -272,6 +272,7 @@ struct Peer {
   Peer *next;
   // }
   Peer(Ip, Port, time_t) noexcept;
+  Peer(const Contact &, time_t, Peer *next) noexcept;
   Peer() noexcept;
 };
 

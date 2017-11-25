@@ -1,10 +1,10 @@
 #include "shared.h"
+#include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <stdio.h>
 #include <unistd.h> //close
 #include <utility>
-#include <algorithm>
-#include <cstring>
 
 /*fd*/
 fd::fd(int p_fd)
@@ -78,8 +78,8 @@ Transaction::Transaction()
 //---------------------------
 namespace dht {
 /*Config*/
-
 Config::Config() noexcept
+    // seconds
     : min_timeout_interval(60)
     , refresh_interval(15 * 60)
     , peer_age_refresh(60 * 45) {
@@ -111,6 +111,11 @@ Peer::Peer(Ip i, Port p, time_t n) noexcept
     : contact(i, p)
     , activity(n)
     , next(nullptr) {
+}
+Peer::Peer(const Contact &c, time_t a, Peer *nxt) noexcept
+    : contact(c)
+    , activity(a)
+    , next(nxt) {
 }
 
 Peer::Peer() noexcept

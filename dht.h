@@ -15,10 +15,9 @@ randomize(NodeId &) noexcept;
 struct KeyValue {
   KeyValue *next;
   Peer *peers;
-  time_t activity;
   Infohash id;
   //
-  KeyValue();
+  KeyValue(const Infohash &, KeyValue *);
 };
 
 /*Bucket*/
@@ -112,7 +111,7 @@ Node *
 find_contact(DHT &, const NodeId &) noexcept;
 
 Node *
-insert(DHT &, const Node &) noexcept;
+insert(DHT &, const Node &, time_t) noexcept;
 
 } // namespace dht
 
@@ -126,11 +125,12 @@ append_all(dht::DHT &, dht::Node *) noexcept;
 
 namespace lookup {
 /**/
-const dht::Peer *
+dht::KeyValue *
 lookup(dht::DHT &, const dht::Infohash &, time_t) noexcept;
 
-void
-insert(dht::DHT &, const dht::Infohash &, const dht::Contact &) noexcept;
+bool
+insert(dht::DHT &, const dht::Infohash &, const dht::Contact &,
+       time_t) noexcept;
 
 bool
 valid(dht::DHT &, const dht::Token &) noexcept;

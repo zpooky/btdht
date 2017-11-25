@@ -18,7 +18,6 @@ struct MessageContext {
   const krpc::Transaction &transaction;
   Contact remote;
   const time_t now;
-  // TODO ctor
   MessageContext(const char *, DHT &, bencode::d::Decoder &, sp::Buffer &,
                  const krpc::Transaction &, Contact, time_t) noexcept;
 };

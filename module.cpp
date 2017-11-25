@@ -141,9 +141,8 @@ namespace dht {
 // transaction{id,time_sent} latency = now - time_sent. To be used an
 // deciding factor when inserting to a full not expandable bucket. Or
 // deciding on which X best Contact Nodes when returning find_node/get_peers
-// TODO lookup table values lifetime
-// TODO handle out of order request kv
-// TODO ignore unknown request kv
+// TODO handle out of order request attribute
+// TODO ignore unknown request attribute
 
 static Timeout
 awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
@@ -207,7 +206,7 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
     timeout::update(dht, contact, now);
   } else {
     Node c(sender, ctx.remote, now);
-    contact = dht::insert(dht, c);
+    contact = dht::insert(dht, c, ctx.now);
   }
 
   return contact;
@@ -324,7 +323,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht_response(ctx, sender, [&](auto &) {
     for_each(contacts, [&](auto &contact) { //
 
-      dht::insert(dht, contact);
+      dht::insert(dht, contact, ctx.now);
     });
 
   });
@@ -392,10 +391,10 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
   dht::mintToken(dht, ctx.remote.ip, token);
 
   const krpc::Transaction &t = ctx.transaction;
-  const dht::Peer *result = lookup::lookup(dht, search, ctx.now);
+  const dht::KeyValue *result = lookup::lookup(dht, search, ctx.now);
   if (result) {
     // TODO
-    krpc::response::get_peers(ctx.out, t, dht.id, token, result);
+    krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
   } else {
     constexpr std::size_t capacity = 8;
     dht::Node *closest[capacity];
@@ -427,7 +426,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht::DHT &dht = ctx.dht;
   dht_request(ctx, sender, [&](auto &) {
     for_each(contacts, [&](auto &contact) { //
-      dht::insert(dht, contact);
+      dht::insert(dht, contact, ctx.now);
     });
   });
 }
@@ -510,7 +509,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
         peer.port = port;
       }
 
-      lookup::insert(dht, infohash, peer);
+      lookup::insert(dht, infohash, peer, ctx.now);
     });
   }
   krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);

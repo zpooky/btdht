@@ -23,11 +23,11 @@ randomize(NodeId &id) noexcept {
 }
 
 /*KeyValue*/
-KeyValue::KeyValue()
-    : next(nullptr)
+KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
+    : next(nxt)
     , peers(nullptr)
-    , activity(0)
     , id() {
+  std::memcpy(id.id, pid.id, sizeof(id.id));
 }
 
 /*Bucket*/
@@ -121,7 +121,21 @@ alloc(DHT &) {
 }
 
 static Node *
-insert(DHT &dht, Bucket &bucket, const Node &c, bool eager) noexcept {
+insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
+       time_t now) noexcept {
+  auto is_good = [now](Node &contact) {
+    Config config;
+    // XXX configurable non arbitrary limit?
+    if (contact.ping_outstanding > 2) {
+      if (contact.response_activity + config.refresh_interval < now) {
+        if (contact.request_activity + config.refresh_interval < now) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];
     if (!contact) {
@@ -132,8 +146,7 @@ insert(DHT &dht, Bucket &bucket, const Node &c, bool eager) noexcept {
   if (eager) {
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
-      // TODO configurable non arbitrary limit?
-      if (contact.ping_outstanding > 2) {
+      if (!is_good(contact)) {
         timeout::unlink(dht, &contact);
         contact = c;
         timeout::append_all(dht, &contact);
@@ -168,9 +181,9 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
       // TODO fixup the timout_next&priv chain with the new adresses +tail&head
       bool high = bit(contact.id, idx);
       if (high) {
-        assert(insert(dht, higher->bucket, contact, false));
+        assert(insert(dht, higher->bucket, contact, false, time_t(0)));
       } else {
-        assert(insert(dht, lower->bucket, contact, false));
+        assert(insert(dht, lower->bucket, contact, false, time_t(0)));
       }
     }
   } // for
@@ -423,7 +436,7 @@ find_contact(DHT &dht, const NodeId &id) noexcept {
 } // dht::find_contact()
 
 Node *
-insert(DHT &dht, const Node &contact) noexcept {
+insert(DHT &dht, const Node &contact, time_t now) noexcept {
 start:
   bool inTree = false;
   std::size_t idx = 0;
@@ -435,7 +448,7 @@ start:
   // when we are intree meaning we can add another bucket we do not necessarily
   // need to evict a node that might be late responding to pings
 
-  Node *result = insert(dht, bucket, contact, !inTree);
+  Node *result = insert(dht, bucket, contact, !inTree, now);
   if (!result) {
     if (inTree) {
       split(dht, leaf, idx);
@@ -492,49 +505,51 @@ append_all(dht::DHT &ctx, dht::Node *node) noexcept {
 } // namespace timeout
 
 namespace lookup {
-static dht::KeyValue *
-find_haystack(dht::KeyValue *current, const dht::Infohash &id) noexcept {
-  // XXX tree?
-start:
-  if (current) {
-    if (std::memcmp(id.id, current->id.id, sizeof(id)) == 0) {
-      return current;
-    }
-    current = current->next;
-    goto start;
-  }
-  return current;
-}
-
-const dht::Peer *
+dht::KeyValue *
 lookup(dht::DHT &dht, const dht::Infohash &id, time_t now) noexcept {
+  auto find_haystack = [](dht::KeyValue *current, const dht::Infohash &id) {
+    // XXX tree?
+  start:
+    if (current) {
+      if (std::memcmp(id.id, current->id.id, sizeof(id)) == 0) {
+        return current;
+      }
+      current = current->next;
+      goto start;
+    }
+
+    return current;
+  };
+
+  auto is_expired = [&dht, now](auto &peer) {
+    time_t last_lookup_refresh = dht.lookup_refresh;
+    time_t peer_activity = peer.activity;
+
+    // Determine to age if end of life is higher than now and make sure that
+    // we have an internet connection by checking that we have received any
+    // updates at all
+    dht::Config config;
+    time_t peer_eol = peer_activity + config.peer_age_refresh;
+    if (peer_eol < now) {
+      if (last_lookup_refresh > peer_eol) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  auto reclaim = [&dht](dht::Peer *peer) { //
+    // XXX pool
+    delete peer;
+  };
+
+  auto reclaim_table = [&dht](dht::KeyValue *kv) { //
+    // XXX pool
+    delete kv;
+  };
+
   dht::KeyValue *const needle = find_haystack(dht.lookup_table, id);
   if (needle) {
-    auto is_expired = [&dht, now](auto &peer) {
-      time_t last_lookup_refresh = dht.lookup_refresh;
-      time_t peer_activity = peer.activity;
-
-      // Determine to age if end of life is higher than now and make sure that
-      // we have an internet connection by checking that we have received any
-      // updates at all
-      dht::Config config;
-      time_t peer_eol = peer_activity + config.peer_age_refresh;
-      if (peer_eol < now) {
-        if (last_lookup_refresh > peer_eol) {
-          return true;
-        }
-      }
-      return false;
-    };
-
-    auto reclaim = [&dht](dht::Peer *) { //
-      // TODO return peer to pool
-    };
-
-    auto reclaim_needle = [&dht](dht::KeyValue *) { //
-      // TODO
-    };
-
     dht::Peer dummy;
     dht::Peer *it = dummy.next = needle->peers;
 
@@ -553,16 +568,48 @@ lookup(dht::DHT &dht, const dht::Infohash &id, time_t now) noexcept {
     }
     needle->peers = dummy.next;
     if (needle->peers) {
-      return needle->peers;
+      return needle;
     }
-    reclaim_needle(needle);
+    reclaim_table(needle);
   }
   return nullptr;
 }
 
-void
-insert(dht::DHT &dht, const dht::Infohash &, const dht::Contact &) noexcept {
-  // TODO update activity
+bool
+insert(dht::DHT &dht, const dht::Infohash &id, const dht::Contact &contact,
+       time_t now) noexcept {
+  auto create = [&dht](const dht::Infohash &id) -> dht::KeyValue * {
+    auto result = new dht::KeyValue(id, dht.lookup_table);
+    if (result) {
+      dht.lookup_table = result;
+    }
+    return result;
+  };
+
+  auto add = [&dht, now](dht::KeyValue &s, const dht::Contact &c) {
+    auto p = new dht::Peer(c, now, s.peers);
+    if (p) {
+      s.peers = p;
+      return true;
+    }
+    return false;
+  };
+
+  dht::KeyValue *needle = lookup(dht, id, now);
+  if (!needle) {
+    needle = create(id);
+  }
+  if (needle) {
+
+    if (add(*needle, contact)) {
+      return true;
+    }
+    if (needle->peers == nullptr) {
+      // TODO if add false and create needle reclaim needle
+    }
+  }
+
+  return false;
 }
 
 bool
