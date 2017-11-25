@@ -247,46 +247,33 @@ dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 // Ping
 //===========================================================
 namespace ping {
-static void
+static bool
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  dht_response(ctx, sender, [](auto &) { //
+  dht_response(ctx, sender, [&ctx](auto &) { //
+    dht::DHT &dht = ctx.dht;
+    krpc::response::ping(ctx.out, ctx.transaction, dht.id);
   });
+  // XXX response
 
-  dht::DHT &dht = ctx.dht;
-  krpc::response::ping(ctx.out, ctx.transaction, dht.id);
+  return true;
 } // ping::handle_request()
 
-static void
+static bool
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   dht_response(ctx, sender, [](auto &node) { //
     node.ping_outstanding = 0;
   });
+  return true;
 } // ping::handle_response()
 
 static bool
-on_response(dht::MessageContext &ctx) {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
-    dht::NodeId sender;
-    if (!bencode::d::pair(p, "id", sender.id)) {
-      return false;
-    }
-
-    handle_response(ctx, sender);
-    return true;
-  });
+on_response(dht::MessageContext &ctx) noexcept {
+  return krpc::d::response::ping(ctx, handle_response);
 }
 
 static bool
-on_request(dht::MessageContext &ctx) {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
-    dht::NodeId sender;
-    if (!bencode::d::pair(p, "id", sender.id)) {
-      return false;
-    }
-
-    handle_request(ctx, sender);
-    return true;
-  });
+on_request(dht::MessageContext &ctx) noexcept {
+  return krpc::d::request::ping(ctx, handle_request);
 }
 
 void
@@ -304,23 +291,24 @@ namespace find_node {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search) noexcept {
-  dht::DHT &dht = ctx.dht;
-  dht_request(ctx, sender, [](auto &) {});
-  constexpr std::size_t capacity = 8;
+  dht_request(ctx, sender, [&](auto &) {
+    dht::DHT &dht = ctx.dht;
+    constexpr std::size_t capacity = 8;
 
-  const krpc::Transaction &t = ctx.transaction;
-  dht::Node *result[capacity];
-  dht::find_closest(dht, search, result, capacity);
-  krpc::response::find_node(ctx.out, t, dht.id, (const dht::Node **)&result,
-                            capacity);
+    const krpc::Transaction &t = ctx.transaction;
+    dht::Node *result[capacity];
+    dht::find_closest(dht, search, result, capacity);
+    const dht::Node **r = (const dht::Node **)&result;
+
+    krpc::response::find_node(ctx.out, t, dht.id, r, capacity);
+  });
 } // find_node::handle_request()
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const sp::list<dht::Node> &contacts) noexcept {
-  dht::DHT &dht = ctx.dht;
-
   dht_response(ctx, sender, [&](auto &) {
+    dht::DHT &dht = ctx.dht;
     for_each(contacts, [&](auto &contact) { //
 
       dht::insert(dht, contact, ctx.now);
@@ -384,24 +372,25 @@ namespace get_peers {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search) noexcept {
-  dht_request(ctx, id, [](auto &) {});
+  dht_request(ctx, id, [&](auto &) {
+    dht::Token token;
+    dht::DHT &dht = ctx.dht;
+    dht::mintToken(dht, ctx.remote.ip, token, ctx.now);
 
-  dht::Token token;
-  dht::DHT &dht = ctx.dht;
-  dht::mintToken(dht, ctx.remote.ip, token, ctx.now);
+    const krpc::Transaction &t = ctx.transaction;
+    const dht::KeyValue *result = lookup::lookup(dht, search, ctx.now);
+    if (result) {
+      // TODO
+      krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
+    } else {
+      constexpr std::size_t capacity = 8;
+      dht::Node *closest[capacity];
+      dht::find_closest(dht, search, closest, capacity);
+      const dht::Node **r = (const dht::Node **)&closest;
 
-  const krpc::Transaction &t = ctx.transaction;
-  const dht::KeyValue *result = lookup::lookup(dht, search, ctx.now);
-  if (result) {
-    // TODO
-    krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
-  } else {
-    constexpr std::size_t capacity = 8;
-    dht::Node *closest[capacity];
-    dht::find_closest(dht, search, closest, capacity);
-    krpc::response::get_peers(ctx.out, t, dht.id, token,
-                              (const dht::Node **)closest, capacity);
-  }
+      krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
+    }
+  });
 }
 
 static void
@@ -411,7 +400,8 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   /*
    * infohash lookup query found result, sender returns requested data.
    */
-  dht_response(ctx, sender, [](auto &) { //
+  dht_response(ctx, sender, [](auto &) {
+    // XXX
   });
 }
 
@@ -589,8 +579,9 @@ static bool
 on_request(dht::MessageContext &ctx) {
   printf("unknow request query type %s\n", ctx.query);
 
-  krpc::response::error(ctx.out, ctx.transaction, krpc::Error::method_unknown,
-                        "unknown method");
+  krpc::Error e = krpc::Error::method_unknown;
+  const char *msg = "unknown method";
+  krpc::response::error(ctx.out, ctx.transaction, e, msg);
   return true;
 }
 void

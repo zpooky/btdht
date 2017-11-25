@@ -360,7 +360,7 @@ index(Ip ip) noexcept {
 }
 
 void
-mintToken(DHT &dht, Ip ip, const Token &token) noexcept {
+mintToken(DHT &dht, Ip ip, Token &token, time_t) noexcept {
   // TODO
 }
 

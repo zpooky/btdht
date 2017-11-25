@@ -107,38 +107,41 @@ krpc(bencode::d::Decoder &d, Transaction &tx, char (&msg_type)[16],
     return f(p, tx, msg_type, query);
   });
 }
-// namespace response {
-//
-// template <typename Ctx, typename F #<{(|MessageContext -> NodeId -> bool|)}>#>
-// bool
-// ping(Ctx &ctx, F f) noexcept {
-//   return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
-//     dht::NodeId sender;
-//     if (!bencode::d::pair(p, "id", sender.id)) {
-//       return false;
-//     }
-//
-//     return f(ctx, sender);
-//   });
-// }
-//
-// } // namespace response
+namespace response {
 
-// namespace request {
-// template <typename Ctx, typename F #<{(|MessageContext -> NodeId -> bool|)}>#>
-// bool
-// ping(Ctx &ctx, F f) noexcept {
-//   return bencode::d::dict(ctx.in, [&ctx, f](auto &p) { //
-//     dht::NodeId sender;
-//     if (!bencode::d::pair(p, "id", sender.id)) {
-//       return false;
-//     }
-//
-//     return f(ctx, sender);
-//   });
-// }
-// } // namespace request
+/*f: MessageContext -> NodeId -> bool*/
+template <typename Ctx, typename F>
+bool
+ping(Ctx &ctx, F f) noexcept {
+  return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
+    dht::NodeId sender;
+    if (!bencode::d::pair(p, "id", sender.id)) {
+      return false;
+    }
+
+    return f(ctx, sender);
+  });
+}
+
+} // namespace response
+
+namespace request {
+/*f: MessageContext -> NodeId -> bool*/
+template <typename Ctx, typename F>
+bool
+ping(Ctx &ctx, F f) noexcept {
+  return bencode::d::dict(ctx.in, [&ctx, f](auto &p) { //
+    dht::NodeId sender;
+    if (!bencode::d::pair(p, "id", sender.id)) {
+      return false;
+    }
+
+    return f(ctx, sender);
+  });
+}
+} // namespace request
 
 } // namespace d
+} // namespace krpc
 
 #endif
