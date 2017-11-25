@@ -82,7 +82,8 @@ Config::Config() noexcept
     // seconds
     : min_timeout_interval(60)
     , refresh_interval(15 * 60)
-    , peer_age_refresh(60 * 45) {
+    , peer_age_refresh(60 * 45)
+    , token_max_age(15 * 60) {
 }
 
 /*NodeId*/

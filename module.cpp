@@ -388,7 +388,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
 
   dht::Token token;
   dht::DHT &dht = ctx.dht;
-  dht::mintToken(dht, ctx.remote.ip, token);
+  dht::mintToken(dht, ctx.remote.ip, token, ctx.now);
 
   const krpc::Transaction &t = ctx.transaction;
   const dht::KeyValue *result = lookup::lookup(dht, search, ctx.now);

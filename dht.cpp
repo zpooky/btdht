@@ -324,7 +324,7 @@ TokenPair::TokenPair()
 }
 
 TokenPair::operator bool() const noexcept {
-  return true;
+  return ip != Ip(0);
 }
 
 /*DHT*/
@@ -356,7 +356,7 @@ DHT::DHT()
 
 static std::size_t
 index(Ip ip) noexcept {
-  return ip % DHT::tables;
+  return ip % DHT::token_table;
 }
 
 void
@@ -366,6 +366,7 @@ mintToken(DHT &dht, Ip ip, const Token &token) noexcept {
 
 bool
 is_blacklisted(DHT &dht, const dht::Contact &) noexcept {
+  // XXX
   return false;
 }
 

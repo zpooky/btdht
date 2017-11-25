@@ -177,21 +177,92 @@ TEST(krpcTest, test_find_node) {
       assert_eq(in, outList);
       return true;
     });
+    ASSERT_TRUE(sp::remaining_read(buff) == 0);
+    assert_eq(msgOut, "r");
+    assert_eq(t.id, tOut.id);
+    assert_eq(qOut, "find_node");
   }
 }
 
 TEST(krpcTest, test_get_peers) {
-  sp::byte b[256] = {0};
-  sp::Buffer buff{b};
-
+  sp::byte b[2048] = {0};
   dht::NodeId id;
   nodeId(id);
 
   krpc::Transaction t;
   transaction(t);
 
-  dht::Infohash infohash;
-  ASSERT_TRUE(krpc::request::get_peers(buff, t, id, infohash));
+  {
+    sp::Buffer buff{b};
+
+    dht::Infohash infohash;
+    ASSERT_TRUE(krpc::request::get_peers(buff, t, id, infohash));
+    sp::flip(buff);
+    // TODO
+  }
+  /*response Nodes*/
+  {
+    dht::Token token; // TODO
+
+    constexpr std::size_t NODE_SIZE = 8;
+    dht::Node node[NODE_SIZE];
+    const dht::Node *in[NODE_SIZE];
+    for (std::size_t i = 0; i < NODE_SIZE; ++i) {
+      nodeId(node[i].id);
+      node[i].peer.ip = rand();
+      node[i].peer.port = rand();
+      in[i] = &node[i];
+    }
+
+    sp::Buffer buff{b};
+
+    dht::Infohash infohash;
+    ASSERT_TRUE(krpc::response::get_peers(buff, t, id, token,
+                                          (const dht::Node **)&in, NODE_SIZE));
+    sp::flip(buff);
+
+    krpc::Transaction tOut;
+    char msgOut[16] = {0};
+    char qOut[16] = {0};
+    bencode::d::Decoder p(buff);
+    test_response(p, tOut, msgOut, qOut, [&id, &in, &token](auto &p) { //
+      dht::NodeId sender;
+      if (!bencode::d::pair(p, "id", sender.id)) {
+        return false;
+      }
+      assert_eq(sender.id, id.id);
+
+      dht::Token oToken;
+      if (!bencode::d::pair(p, "token", oToken.id)) {
+        return false;
+      }
+      assert_eq(oToken.id, token.id);
+
+      /*closes K nodes*/
+      sp::list<dht::Node> outNodes;
+      sp::init(outNodes, 8);
+      if (!bencode::d::pair(p, "nodes", outNodes)) {
+        return false;
+      }
+      assert_eq(in, outNodes);
+
+      return true;
+    });
+    ASSERT_TRUE(sp::remaining_read(buff) == 0);
+    assert_eq(msgOut, "r");
+    assert_eq(t.id, tOut.id);
+    assert_eq(qOut, "get_peers");
+  }
+  /*response Peers*/
+  {
+    sp::Buffer buff{b};
+
+    dht::Token token; // TODO
+    dht::Peer peer[16];
+
+    ASSERT_TRUE(krpc::response::get_peers(buff, t, id, token, peer));
+    sp::flip(buff);
+  }
 }
 
 TEST(krpcTest, test_anounce_peer) {

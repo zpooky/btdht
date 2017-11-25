@@ -225,6 +225,7 @@ struct Config {
   time_t min_timeout_interval;
   time_t refresh_interval;
   time_t peer_age_refresh;
+  time_t token_max_age;
 
   Config() noexcept;
 };

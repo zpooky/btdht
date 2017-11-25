@@ -59,13 +59,13 @@ struct TokenPair {
 
 /*DHT*/
 struct DHT {
-  static const std::size_t tables = 64;
+  static const std::size_t token_table = 64;
   // self {{{
   NodeId id;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;
-  Token tokens[tables];
+  Token tokens[token_table];
   time_t lookup_refresh;
   //}}}
   // routing-table {{{
@@ -91,7 +91,7 @@ bool
 init(dht::DHT &) noexcept;
 
 void
-mintToken(DHT &, Ip, const Token &) noexcept;
+mintToken(DHT &, Ip, Token &, time_t) noexcept;
 
 bool
 is_blacklisted(DHT &dht, const dht::Contact &) noexcept;
