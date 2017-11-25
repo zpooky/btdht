@@ -380,7 +380,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
     const krpc::Transaction &t = ctx.transaction;
     const dht::KeyValue *result = lookup::lookup(dht, search, ctx.now);
     if (result) {
-      // TODO
+      // TODO??
       krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
     } else {
       constexpr std::size_t capacity = 8;

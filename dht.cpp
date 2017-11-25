@@ -51,12 +51,12 @@ RoutingTable::RoutingTable()
 }
 
 RoutingTable::~RoutingTable() {
+  // DHT dht;
   if (type == NodeType::LEAF) {
     bucket.~Bucket();
   } else {
-    // TODO reclaim
-    // dealloc(dht,lower);
-    // dealloc(dht,higher);
+    // dealloc(dht, lower);
+    // dealloc(dht, higher);
   }
 }
 
@@ -170,26 +170,51 @@ find(Bucket &bucket, const NodeId &id) noexcept {
   return nullptr;
 }
 
-static void
+static bool
 split(DHT &dht, RoutingTable *parent, std::size_t idx) {
   auto higher = alloc<RoutingTable>(dht);
+  if (!higher) {
+    return false;
+  }
   auto lower = alloc<RoutingTable>(dht);
+  if (!lower) {
+    dealloc(dht, higher);
+    return false;
+  }
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = parent->bucket.contacts[i];
     if (contact) {
-      // TODO fixup the timout_next&priv chain with the new adresses +tail&head
+      Node *const priv = contact.timeout_priv;
+      Node *const next = contact.timeout_next;
+      auto relink = [priv, next](dht::Node *contact) {
+        contact->timeout_priv = priv;
+        contact->timeout_next = next;
+        if (priv)
+          priv->timeout_next = contact;
+        if (next)
+          next->timeout_priv = contact;
+      };
+
       bool high = bit(contact.id, idx);
+      RoutingTable *direction = nullptr;
       if (high) {
-        assert(insert(dht, higher->bucket, contact, false, time_t(0)));
+        direction = higher;
       } else {
-        assert(insert(dht, lower->bucket, contact, false, time_t(0)));
+        direction = lower;
+      }
+
+      assert(direction);
+      dht::Node *nc = insert(dht, direction->bucket, contact, false, time_t(0));
+      if (nc) {
+        relink(nc);
       }
     }
   } // for
 
   parent->~RoutingTable();
   new (parent) RoutingTable(higher, lower);
+  return true;
 }
 
 static bool
@@ -410,7 +435,7 @@ void
 find_closest(DHT &dht, const NodeId &id, Node *(&result)[Bucket::K],
              std::size_t number) noexcept {
   return find_closest_nodes(dht, id.id, result, number);
-} // dht::find_closes()
+} // dht::find_closest()
 
 void
 find_closest(DHT &dht, const Infohash &id, Node *(&result)[Bucket::K],
@@ -431,7 +456,7 @@ find_contact(DHT &dht, const NodeId &id) noexcept {
 
   RoutingTable *leaf = find_closest(dht, id, inTree, idx);
   assert(leaf);
-  // TODO how to ensure leaf is a bucket?
+  // XXX how to ensure leaf is a bucket?
 
   return find(leaf->bucket, id);
 } // dht::find_contact()
