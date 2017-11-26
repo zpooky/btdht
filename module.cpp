@@ -296,8 +296,8 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
     constexpr std::size_t capacity = 8;
 
     const krpc::Transaction &t = ctx.transaction;
-    dht::Node *result[capacity];
-    dht::find_closest(dht, search, result, capacity);
+    dht::Node *result[dht::Bucket::K] = {nullptr};
+    dht::find_closest(dht, search, result);
     const dht::Node **r = (const dht::Node **)&result;
 
     krpc::response::find_node(ctx.out, t, dht.id, r, capacity);
@@ -384,8 +384,8 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
       krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
     } else {
       constexpr std::size_t capacity = 8;
-      dht::Node *closest[capacity];
-      dht::find_closest(dht, search, closest, capacity);
+      dht::Node *closest[dht::Bucket::K] = {nullptr};
+      dht::find_closest(dht, search, closest);
       const dht::Node **r = (const dht::Node **)&closest;
 
       krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
@@ -489,6 +489,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                bool implied_port, const dht::Infohash &infohash, Port port,
                const dht::Token &token) noexcept {
   dht::DHT &dht = ctx.dht;
+
   if (lookup::valid(dht, token)) {
     dht_request(ctx, sender, [&](auto &) {
       dht::Contact peer;

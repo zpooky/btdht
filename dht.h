@@ -52,9 +52,8 @@ struct TokenPair {
   Token token;
   time_t created;
 
-  operator bool() const noexcept;
-
   TokenPair();
+  operator bool() const noexcept;
 };
 
 /*DHT*/
@@ -66,7 +65,6 @@ struct DHT {
   // peer-lookup db {{{
   KeyValue *lookup_table;
   Token tokens[token_table];
-  time_t lookup_refresh;
   //}}}
   // routing-table {{{
   RoutingTable *root;
@@ -82,10 +80,14 @@ struct DHT {
   // }}}
   // {{{
   std::uint16_t sequence;
+  time_t last_activity;
   // }}}
 
   DHT();
 };
+
+bool
+is_good(DHT &, const Node &) noexcept;
 
 bool
 init(dht::DHT &) noexcept;
@@ -98,11 +100,10 @@ is_blacklisted(DHT &dht, const dht::Contact &) noexcept;
 
 /**/
 void
-find_closest(DHT &, const NodeId &, Node *(&)[Bucket::K], std::size_t) noexcept;
+find_closest(DHT &, const NodeId &, Node *(&)[Bucket::K]) noexcept;
 
 void
-find_closest(DHT &, const Infohash &, Node *(&)[Bucket::K],
-             std::size_t) noexcept;
+find_closest(DHT &, const Infohash &, Node *(&)[Bucket::K]) noexcept;
 
 bool
 valid(DHT &, const krpc::Transaction &) noexcept;

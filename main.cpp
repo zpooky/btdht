@@ -203,6 +203,7 @@ main() {
 
   auto handle = [&](dht::Contact from, sp::Buffer &in, sp::Buffer &out,
                     time_t now) {
+    dht.last_activity = now;
     return parse(dht, modules, from, in, out, now);
   };
 
