@@ -81,6 +81,7 @@ struct DHT {
   // {{{
   std::uint16_t sequence;
   time_t last_activity;
+  std::uint32_t total_nodes;
   // }}}
 
   DHT();

@@ -61,13 +61,13 @@ RoutingTable::~RoutingTable() {
 }
 
 /**/
-static void
-distance(const Key &a, const Key &b, Key &result) {
-  // distance(A,B) = |A xor B| Smaller values are closer.
-  for (std::size_t i = 0; i < sizeof(Key); ++i) {
-    result[i] = a[i] ^ b[i];
-  }
-}
+// static void
+// distance(const Key &a, const Key &b, Key &result) {
+//   // distance(A,B) = |A xor B| Smaller values are closer.
+//   for (std::size_t i = 0; i < sizeof(Key); ++i) {
+//     result[i] = a[i] ^ b[i];
+//   }
+// }
 
 static bool
 bit(const Key &key, std::size_t idx) noexcept {
@@ -121,12 +121,15 @@ alloc(DHT &) {
 }
 
 static Node *
-do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager) noexcept {
+do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
+          bool &replaced) noexcept {
+  replaced = false;
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];
     if (!contact) {
       contact = c;
+
       return &contact;
     }
   }
@@ -137,6 +140,8 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager) noexcept {
         timeout::unlink(dht, &contact);
         contact = c;
         timeout::append_all(dht, &contact);
+
+        replaced = true;
         return &contact;
       }
     }
@@ -193,7 +198,10 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
       }
 
       assert(direction);
-      dht::Node *nc = do_insert(dht, direction->bucket, contact, false);
+      bool eager_merge = false;
+      bool replaced = false;
+      dht::Node *nc = do_insert(dht, direction->bucket, contact, eager_merge,
+                                /*OUT*/ replaced);
       if (nc) {
         relink(nc);
       }
@@ -205,30 +213,30 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
   return true;
 }
 
-static bool
-copy(const Node &from, Bucket &to) noexcept {
-  for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Node &c = to.contacts[i];
-    if (!c) {
-      c = from;
-      return true;
-    }
-  }
-  return false;
-}
+// static bool
+// copy(const Node &from, Bucket &to) noexcept {
+//   for (std::size_t i = 0; i < Bucket::K; ++i) {
+//     Node &c = to.contacts[i];
+//     if (!c) {
+//       c = from;
+//       return true;
+//     }
+//   }
+//   return false;
+// }
 
-static bool
-copy(const Bucket &from, Bucket &to) noexcept {
-  for (std::size_t f = 0; f < Bucket::K; ++f) {
-    const Node &c = from.contacts[f];
-    if (c) {
-      if (!copy(c, to)) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
+// static bool
+// copy(const Bucket &from, Bucket &to) noexcept {
+//   for (std::size_t f = 0; f < Bucket::K; ++f) {
+//     const Node &c = from.contacts[f];
+//     if (c) {
+//       if (!copy(c, to)) {
+//         return false;
+//       }
+//     }
+//   }
+//   return true;
+// }
 
 // static void
 // merge_children(DHT &dht, RoutingTable *parent) noexcept {
@@ -366,6 +374,8 @@ DHT::DHT()
     , sequence(0)
     /*timestamp of received request&response*/
     , last_activity(0)
+    /*total nodes present intthe routing table*/
+    , total_nodes(0)
 //}}}
 {
 }
@@ -525,8 +535,14 @@ start:
   // when we are intree meaning we can add another bucket we do not necessarily
   // need to evict a node that might be late responding to pings
 
-  Node *result = do_insert(dht, bucket, contact, !inTree);
-  if (!result) {
+  bool eager_merge = !inTree;
+  bool replaced = false;
+  Node *result = do_insert(dht, bucket, contact, eager_merge, /*OUT*/ replaced);
+  if (result) {
+    if (!replaced) {
+      ++dht.total_nodes;
+    }
+  } else {
     if (inTree) {
       split(dht, leaf, idx);
       // XXX make better
@@ -583,7 +599,7 @@ append_all(dht::DHT &ctx, dht::Node *node) noexcept {
 
 namespace lookup {
 dht::KeyValue *
-lookup(dht::DHT &dht, const dht::Infohash &id, time_t now) noexcept {
+lookup(dht::DHT &dht, const dht::Infohash &infohash, time_t now) noexcept {
   auto find_haystack = [](dht::KeyValue *current, const dht::Infohash &id) {
     // XXX tree?
   start:
@@ -624,7 +640,7 @@ lookup(dht::DHT &dht, const dht::Infohash &id, time_t now) noexcept {
     delete kv;
   };
 
-  dht::KeyValue *const needle = find_haystack(dht.lookup_table, id);
+  dht::KeyValue *const needle = find_haystack(dht.lookup_table, infohash);
   if (needle) {
     dht::Peer dummy;
     dht::Peer *it = dummy.next = needle->peers;
