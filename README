@@ -1,0 +1,42 @@
+#Routing table maintanance
+RoutingTable-Node timeout queue if outstanding pings > config.outstanding_ping_threshold and
+dht.last_activity > node.last_activity+config.node_timeout then remove node from
+routing table and timeout queue
+
+----
+#bootstrap & survivor strategy
+config[outstanding_ping_questionable_threshold]
+
+On DHT level have a count of questionable nodes and total nodes.
+
+Have questionable flag on node that is set if node.outstanding_pings > config
+and node.last_activity+config.node_timeout also DHT.questionable incremented. When ping receive uncheck
+questionable decrement and decrement DHT.questionable is node was questionable.
+
+Have the same criteria for inserting new contact and that also determine if
+a contact node is questionable in the awake function.
+
+----
+#Peer table clean-up
+Have a timeout queue of peers order by there timeout time-stamp. Similar to node
+the node timeout-queue.
+
+----
+#Token table
+...
+
+----
+#Transaction table
+...
+
+
+#Statistics
+...
+
+#having self in our own routing table
+how to handle this?
+
+#bep42
+bep42 assume ip is not nat and create confiming nodeid from that if it sees
+that the ip is not correct regenerate nodeid from that external ip insert from
+old RoutingTable in new

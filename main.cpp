@@ -54,6 +54,7 @@ setup_epoll(fd &udp) noexcept {
 
 static bool
 bootstrap(fd &udp, const dht::NodeId &self, const dht::Contact &dest) noexcept {
+  // TODO manually insert bootstrap node into routing table
   sp::byte rawb[1024];
   sp::Buffer buf(rawb);
   krpc::Transaction t;
