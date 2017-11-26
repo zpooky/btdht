@@ -175,13 +175,13 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
       Node *const priv = contact.timeout_priv;
       Node *const next = contact.timeout_next;
 
-      auto relink = [priv, next](dht::Node *contact) {
-        contact->timeout_priv = priv;
-        contact->timeout_next = next;
+      auto relink = [priv, next](dht::Node *c) {
+        c->timeout_priv = priv;
+        c->timeout_next = next;
         if (priv)
-          priv->timeout_next = contact;
+          priv->timeout_next = c;
         if (next)
-          next->timeout_priv = contact;
+          next->timeout_priv = c;
       };
 
       bool high = bit(contact.id, idx);
@@ -378,43 +378,78 @@ index(Ip ip) noexcept {
 static void
 find_closest_nodes(DHT &dht, const Key &search,
                    Node *(&result)[Bucket::K]) noexcept {
-  std::size_t idx = 0;
-  auto enqueue_result = [&dht, &idx, &result](Bucket &bucket) {
-    for (std::size_t i = 0; i < Bucket::K; ++i) {
-      Node &contact = bucket.contacts[i];
-      if (contact) {
-        if (is_good(dht, contact)) {
-          result[idx++ % Bucket::K] = &contact;
-        }
+
+  Bucket *best[Bucket::K] = {nullptr};
+  std::size_t bestIdx = 0;
+  auto buffer_close = [&best, &bestIdx](RoutingTable *close) { //
+    if (close) {
+      if (close->type == NodeType::LEAF) {
+        best[bestIdx++ % Bucket::K] = &close->bucket;
       }
     }
   };
 
   RoutingTable *root = dht.root;
+  std::size_t idx = 0;
 start:
   if (root) {
     if (root->type == NodeType::NODE) {
       if (bit(search, idx) == true) {
         root = root->node.higher;
+        buffer_close(root->node.lower);
       } else {
         root = root->node.lower;
+        buffer_close(root->node.higher);
       }
 
       goto start;
     } else {
-      enqueue_result(root->bucket);
+      buffer_close(root);
     }
   }
+
+  // auto enqueue_result = [&dht, &best, bestIdx, &result] {
+  std::size_t resIdx = 0;
+  auto merge = [&dht, &resIdx, &result](Bucket &b) -> bool { //
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      Node &contact = b.contacts[i];
+      if (contact) {
+        if (is_good(dht, contact)) {
+          result[resIdx++] = &contact;
+          if (resIdx == Bucket::K) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  const std::size_t end_best = bestIdx;
+
+  do {
+    bestIdx = (bestIdx - 1) % Bucket::K;
+    if (best[bestIdx]) {
+      // while (resIdx < Bucket::K) {
+
+      if (merge(*best[bestIdx])) {
+        return;
+      }
+    }
+  } while (bestIdx != end_best);
+  // };
+  //
+  // enqueue_result();
 } // dht::find_closest_nodes()
 
 //============================================================
 void
-mintToken(DHT &dht, Ip ip, Token &token, time_t) noexcept {
+mintToken(DHT &, Ip, Token &, time_t) noexcept {
   // TODO
 }
 
 bool
-is_blacklisted(DHT &dht, const dht::Contact &) noexcept {
+is_blacklisted(DHT &, const dht::Contact &) noexcept {
   // XXX
   return false;
 }
@@ -460,7 +495,7 @@ find_closest(DHT &dht, const Infohash &id, Node *(&res)[Bucket::K]) noexcept {
 } // dht::find_closest()
 
 bool
-valid(DHT &dht, const krpc::Transaction &) noexcept {
+valid(DHT &, const krpc::Transaction &) noexcept {
   // TODO list of active transaction
   return true;
 } // dht::valid()
@@ -478,7 +513,7 @@ find_contact(DHT &dht, const NodeId &id) noexcept {
 } // dht::find_contact()
 
 Node *
-insert(DHT &dht, const Node &contact, time_t now) noexcept {
+insert(DHT &dht, const Node &contact) noexcept {
 start:
   bool inTree = false;
   std::size_t idx = 0;
@@ -614,7 +649,7 @@ lookup(dht::DHT &dht, const dht::Infohash &id, time_t now) noexcept {
     reclaim_table(needle);
   }
   return nullptr;
-}//lookup::lookup()
+} // lookup::lookup()
 
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash,
@@ -654,7 +689,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
   }
 
   return false;
-}//lookup::insert()
+} // lookup::insert()
 
 bool
 valid(dht::DHT &, const dht::Token &) noexcept {

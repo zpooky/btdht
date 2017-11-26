@@ -122,8 +122,8 @@ head(dht::DHT &ctx) noexcept {
 static void
 update(dht::DHT &ctx, dht::Node *const contact, time_t now) noexcept {
   assert(contact);
-
   assert(now >= dht::activity(*contact));
+
   unlink(ctx, contact);
   contact->ping_sent = now;
   append_all(ctx, contact);
@@ -201,15 +201,17 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
   time_t now = ctx.now;
 
-  Node *contact = find_contact(dht, sender);
-  if (contact) {
-    timeout::update(dht, contact, now);
+  Node *result = find_contact(dht, sender);
+  if (result) {
+
+    timeout::update(dht, result, now);
   } else {
-    Node c(sender, ctx.remote, now);
-    contact = dht::insert(dht, c, ctx.now);
+
+    Node contact(sender, ctx.remote, now);
+    result = dht::insert(dht, contact);
   }
 
-  return contact;
+  return result;
 }
 
 } // namespace dht
@@ -309,9 +311,10 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const sp::list<dht::Node> &contacts) noexcept {
   dht_response(ctx, sender, [&](auto &) {
     dht::DHT &dht = ctx.dht;
-    for_each(contacts, [&](auto &contact) { //
+    for_each(contacts, [&](const auto &contact) { //
 
-      dht::insert(dht, contact, ctx.now);
+      dht::Node ins(contact, ctx.now);
+      dht::insert(dht, ins);
     });
 
   });
@@ -415,8 +418,10 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
    */
   dht::DHT &dht = ctx.dht;
   dht_request(ctx, sender, [&](auto &) {
-    for_each(contacts, [&](auto &contact) { //
-      dht::insert(dht, contact, ctx.now);
+    for_each(contacts, [&](const auto &contact) { //
+
+      dht::Node ins(contact, ctx.now);
+      dht::insert(dht, ins);
     });
   });
 }

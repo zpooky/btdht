@@ -156,6 +156,10 @@ Node::Node(const NodeId &nid, const Contact &p, time_t act) noexcept
     : Node(nid, p.ip, p.port, act) {
 }
 
+Node::Node(const Node &node, time_t now) noexcept
+    : Node(node.id, node.peer, now) {
+}
+
 Node::operator bool() const noexcept {
   return peer.ip == 0;
 }

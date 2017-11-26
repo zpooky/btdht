@@ -307,6 +307,7 @@ struct Node {
   Node() noexcept;
   Node(const NodeId &, Ip, Port, time_t) noexcept;
   Node(const NodeId &, const Contact &, time_t) noexcept;
+  Node(const Node &, time_t) noexcept;
 
   explicit operator bool() const noexcept;
 };

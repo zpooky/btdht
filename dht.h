@@ -112,7 +112,7 @@ Node *
 find_contact(DHT &, const NodeId &) noexcept;
 
 Node *
-insert(DHT &, const Node &, time_t) noexcept;
+insert(DHT &, const Node &) noexcept;
 
 } // namespace dht
 
