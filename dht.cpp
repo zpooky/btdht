@@ -88,19 +88,21 @@ find_closest(DHT &dht, const NodeId &key, bool &inTree,
   RoutingTable *root = dht.root;
   idx = 0;
 start:
-  if (root->type == NodeType::NODE) {
-    bool high = bit(key, idx);
-    // inTree true if share same prefix
-    inTree &= bit(dht.id, idx) == high;
+  if (root) {
+    if (root->type == NodeType::NODE) {
+      bool high = bit(key, idx);
+      // inTree true if share same prefix
+      inTree &= bit(dht.id, idx) == high;
 
-    if (high) {
-      root = root->node.higher;
-    } else {
-      root = root->node.lower;
+      if (high) {
+        root = root->node.higher;
+      } else {
+        root = root->node.lower;
+      }
+
+      ++idx;
+      goto start;
     }
-
-    ++idx;
-    goto start;
   }
   return root;
 }
@@ -516,10 +518,12 @@ find_contact(DHT &dht, const NodeId &id) noexcept {
   std::size_t idx = 0;
 
   RoutingTable *leaf = find_closest(dht, id, inTree, idx);
-  assert(leaf);
-  // XXX how to ensure leaf is a bucket?
+  if (leaf) {
+    // XXX how to ensure leaf is a bucket?
 
-  return find(leaf->bucket, id);
+    return find(leaf->bucket, id);
+  }
+  return nullptr;
 } // dht::find_contact()
 
 Node *
@@ -529,27 +533,32 @@ start:
   std::size_t idx = 0;
 
   RoutingTable *leaf = find_closest(dht, contact.id, inTree, idx);
-  assert(leaf);
+  if (leaf) {
 
-  Bucket &bucket = leaf->bucket;
-  // when we are intree meaning we can add another bucket we do not necessarily
-  // need to evict a node that might be late responding to pings
+    Bucket &bucket = leaf->bucket;
+    // when we are intree meaning we can add another bucket we do not
+    // necessarily need to evict a node that might be late responding to pings
 
-  bool eager_merge = !inTree;
-  bool replaced = false;
-  Node *result = do_insert(dht, bucket, contact, eager_merge, /*OUT*/ replaced);
-  if (result) {
-    if (!replaced) {
-      ++dht.total_nodes;
+    bool eager_merge = !inTree;
+    bool replaced = false;
+    Node *result =
+        do_insert(dht, bucket, contact, eager_merge, /*OUT*/ replaced);
+    if (result) {
+      if (!replaced) {
+        ++dht.total_nodes;
+      }
+    } else {
+      if (inTree) {
+        split(dht, leaf, idx);
+        // XXX make better
+        goto start;
+      }
     }
-  } else {
-    if (inTree) {
-      split(dht, leaf, idx);
-      // XXX make better
-      goto start;
-    }
+
+    return result;
   }
-  return result;
+
+  return nullptr;
 } // dht::insert()
 
 } // namespace dht
