@@ -57,16 +57,19 @@ namespace e {
 bool
 value(sp::Buffer &buffer, std::uint32_t in) noexcept {
   return encode_integer(buffer, "%u", in);
-}
+} // bencode::e::value()
 
 bool
 value(sp::Buffer &buffer, std::int32_t in) noexcept {
   return encode_integer(buffer, "%d", in);
-}
+} // bencode::e::value()
+
 //-----------------------------
 template <typename T>
 bool
 encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
+  static_assert(
+      std::is_same<T, char>::value || std::is_same<T, sp::byte>::value, "");
   const std::size_t before = buffer.pos;
   if (!encode_numeric(buffer, "%zu", length)) {
     buffer.pos = before;
@@ -83,26 +86,27 @@ encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
   i += length;
 
   return true;
-}
+} // bencode::e::encode_raw()
 
 bool
 value(sp::Buffer &buffer, const char *str) noexcept {
   return value(buffer, str, std::strlen(str));
-}
+} // bencode::value()
 
 bool
 value(sp::Buffer &buffer, const char *str, std::size_t length) noexcept {
   return encode_raw(buffer, str, length);
-}
+} // bencode::e::value()
 
 bool
-value(sp::Buffer &buffer, const sp::byte *str, std::size_t length) noexcept {
-  return encode_raw(buffer, str, length);
-}
+value(sp::Buffer &b, const sp::byte *str, std::size_t length) noexcept {
+  return encode_raw(b, str, length);
+} // bencode::e::value()
 
 //-----------------------------
 bool
-list(sp::Buffer &buffer, void *arg, bool (*f)(sp::Buffer &, void *)) noexcept {
+list(sp::Buffer &buffer, void *capture,
+     bool (*f)(sp::Buffer &, void *)) noexcept {
   const std::size_t before = buffer.pos;
   std::size_t &i = buffer.pos;
   if (buffer.pos + 1 > buffer.capacity) {
@@ -110,7 +114,7 @@ list(sp::Buffer &buffer, void *arg, bool (*f)(sp::Buffer &, void *)) noexcept {
   }
   buffer.raw[i++] = 'l';
 
-  if (!f(buffer, arg)) {
+  if (!f(buffer, capture)) {
     buffer.pos = before;
     return false;
   }
@@ -122,7 +126,7 @@ list(sp::Buffer &buffer, void *arg, bool (*f)(sp::Buffer &, void *)) noexcept {
   buffer.raw[i++] = 'e';
 
   return true;
-}
+} // bencode::e::list()
 
 //-----------------------------
 
@@ -139,7 +143,7 @@ generic_encodePair(sp::Buffer &buffer, const char *key, V val) {
     return false;
   }
   return true;
-}
+} // bencode::e::generic_encodePair()
 
 bool
 pair(sp::Buffer &buffer, const char *key, const char *value) noexcept {
@@ -152,18 +156,19 @@ pair(sp::Buffer &buffer, const char *key, std::uint32_t value) noexcept {
 } // bencode::e::pair()
 
 bool
-pair(sp::Buffer &buffer, const char *key, const sp::byte *val,
-     std::size_t length) noexcept {
-  const std::size_t before = buffer.pos;
-  if (!value(buffer, key)) {
-    buffer.pos = before;
+pair(sp::Buffer &b, const char *k, const sp::byte *v, std::size_t l) noexcept {
+  const std::size_t before = b.pos;
+
+  if (!value(b, k)) {
+    b.pos = before;
     return false;
   }
 
-  if (!value(buffer, val, length)) {
-    buffer.pos = before;
+  if (!value(b, v, l)) {
+    b.pos = before;
     return false;
   }
+
   return true;
 } // bencode::e::pair()
 

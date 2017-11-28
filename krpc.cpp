@@ -11,12 +11,12 @@ namespace bencode {
 namespace e {
 static bool
 value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
-  return value(buffer, id.id);
+  return value(buffer, id.id, sizeof(id.id));
 } // bencode::e::value()
 
 static sp::byte *
 serialize(sp::byte *b, const dht::Contact &p) noexcept {
-  Ip ip = htonl(p.ip);
+  Ipv4 ip = htonl(p.ip);
   std::memcpy(b, &ip, sizeof(ip));
   b += sizeof(ip);
 
@@ -33,7 +33,7 @@ value(sp::Buffer &buffer, const dht::Contact &p) noexcept {
   static_assert(sizeof(scratch) == 4 + 2, "");
 
   serialize(scratch, p);
-  return value(buffer, scratch);
+  return value(buffer, scratch, sizeof(scratch));
 } // bencode::e::value()
 
 bool
@@ -47,7 +47,7 @@ value(sp::Buffer &buffer, const dht::Node &node) noexcept {
   b += sizeof(node.id.id);
 
   serialize(b, node.peer);
-  return value(buffer, scratch);
+  return value(buffer, scratch, sizeof(scratch));
 } // bencode::e::value()
 
 bool
@@ -153,34 +153,41 @@ template <typename F>
 static bool
 message(sp::Buffer &buf, const Transaction &t, const char *mt, const char *q,
         F f) noexcept {
-  return bencode::e::dict(buf, //
-                          [&t, &mt, q, &f](sp::Buffer &b) {
-                            if (!bencode::e::pair(b, "t", t.id)) {
-                              return false;
-                            }
-                            if (!bencode::e::pair(b, "y", mt)) {
-                              return false;
-                            }
-                            // Client identifier
-                            // if (!encodePair(b, "v", "SP")) {
-                            //   return false;
-                            // }
-                            if (q) {
-                              if (!bencode::e::pair(b, "q", q)) {
-                                return false;
-                              }
-                            }
-                            if (!f(b)) {
-                              return false;
-                            }
-                            return true;
-                          });
+  return bencode::e::dict(
+      buf, //
+      [&t, &mt, q, &f](sp::Buffer &b) {
+        if (!bencode::e::pair(b, "t", t.id, 4)) {
+          return false;
+        }
+        if (!bencode::e::pair(b, "y", mt)) {
+          return false;
+        }
+        sp::byte version[4] = {0};
+        {
+          version[0] = 's';
+          version[1] = 'p';
+          version[2] = '1';
+          version[3] = '9';
+        }
+        if (!bencode::e::pair(b, "v", version, sizeof(version))) {
+          return false;
+        }
+        if (q) {
+          if (!bencode::e::pair(b, "q", q)) {
+            return false;
+          }
+        }
+        if (!f(b)) {
+          return false;
+        }
+        return true;
+      });
 }
 
 template <typename F>
 static bool
-resp(sp::Buffer &buf, const Transaction &t, const char *q, F f) noexcept {
-  return message(buf, t, "r", q, [&f](auto &b) { //
+resp(sp::Buffer &buf, const Transaction &t, F f) noexcept {
+  return message(buf, t, "r", nullptr, [&f](auto &b) { //
     if (!bencode::e::value(b, "r")) {
       return false;
     }
@@ -222,7 +229,7 @@ namespace request {
 bool
 ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &send) noexcept {
   return req(buf, t, "ping", [&send](auto &b) { //
-    if (!bencode::e::pair(b, "id", send.id)) {
+    if (!bencode::e::pair(b, "id", send.id, sizeof(send.id))) {
       return false;
     }
     return true;
@@ -237,7 +244,7 @@ find_node(sp::Buffer &buf, const Transaction &t, const dht::NodeId &self,
       return false;
     }
 
-    if (!bencode::e::pair(b, "target", search.id)) {
+    if (!bencode::e::pair(b, "target", search.id, sizeof(search.id))) {
       return false;
     }
     return true;
@@ -248,11 +255,11 @@ bool
 get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
           const dht::Infohash &infohash) noexcept {
   return req(buf, t, "get_peers", [id, infohash](sp::Buffer &b) { //
-    if (!bencode::e::pair(b, "id", id.id)) {
+    if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
 
-    if (!bencode::e::pair(b, "info_hash", infohash.id)) {
+    if (!bencode::e::pair(b, "info_hash", sizeof(infohash.id))) {
       return false;
     }
     return true;
@@ -266,7 +273,7 @@ announce_peer(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
   return req(
       buf, t, "announce_peer",
       [&id, &implied_port, &infohash, &port, &token](sp::Buffer &buf) { //
-        if (!bencode::e::pair(buf, "id", id.id)) {
+        if (!bencode::e::pair(buf, "id", id.id, sizeof(id.id))) {
           return false;
         }
 
@@ -274,7 +281,8 @@ announce_peer(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
           return false;
         }
 
-        if (!bencode::e::pair(buf, "info_hash", infohash.id)) {
+        if (!bencode::e::pair(buf, "info_hash", infohash.id,
+                              sizeof(infohash.id))) {
           return false;
         }
 
@@ -294,9 +302,9 @@ announce_peer(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
 namespace response {
 bool
 ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
-  return resp(buf, t, "ping", [&id](sp::Buffer &b) { //
+  return resp(buf, t, [&id](sp::Buffer &b) { //
 
-    if (!bencode::e::pair(b, "id", id.id)) {
+    if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
     return true;
@@ -307,9 +315,9 @@ bool
 find_node(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const dht::Node **target,
           std::size_t length) noexcept {
-  return resp(buf, t, "find_node", [&id, &target, &length](auto &b) { //
+  return resp(buf, t, [&id, &target, &length](auto &b) { //
 
-    if (!bencode::e::pair(b, "id", id.id)) {
+    if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
 
@@ -321,13 +329,13 @@ bool
 get_peers(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const dht::Token &token,
           const dht::Node **nodes, std::size_t length) noexcept {
-  return resp(buf, t, "get_peers", [&id, &token, &nodes, &length](auto &b) { //
+  return resp(buf, t, [&id, &token, &nodes, &length](auto &b) { //
 
-    if (!bencode::e::pair(b, "id", id.id)) {
+    if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
 
-    if (!bencode::e::pair(b, "token", token.id)) {
+    if (!bencode::e::pair(b, "token", token.id, sizeof(token.id))) {
       return false;
     }
 
@@ -340,13 +348,13 @@ get_peers(sp::Buffer &buf,
           const Transaction &t, //
           const dht::NodeId &id, const dht::Token &token,
           const dht::Peer *values) noexcept {
-  return resp(buf, t, "get_peers", [&id, &token, values](auto &b) { //
+  return resp(buf, t, [&id, &token, values](auto &b) { //
 
-    if (!bencode::e::pair(b, "id", id.id)) {
+    if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
 
-    if (!bencode::e::pair(b, "token", token.id)) {
+    if (!bencode::e::pair(b, "token", token.id, sizeof(token.id))) {
       return false;
     }
 
@@ -357,9 +365,9 @@ get_peers(sp::Buffer &buf,
 bool
 announce_peer(sp::Buffer &buf, const Transaction &t,
               const dht::NodeId &id) noexcept {
-  return resp(buf, t, "announce_peer", [&id](auto &b) { //
+  return resp(buf, t, [&id](auto &b) { //
 
-    if (!bencode::e::pair(b, "id", id.id)) {
+    if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
 

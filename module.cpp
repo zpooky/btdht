@@ -410,7 +410,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
-                const dht::Token &token,
+                const dht::Token &,
                 const sp::list<dht::Node> &contacts) noexcept {
   /*
    * sender has no information for queried infohash, returns the closest

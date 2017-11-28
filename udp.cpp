@@ -60,7 +60,7 @@ port(fd &listen) noexcept {
 }
 
 fd
-bind(Ip ip, Port port) noexcept {
+bind(Ipv4 ip, Port port) noexcept {
   int udp = ::socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
   if (udp < 0) {
     die("socket()");

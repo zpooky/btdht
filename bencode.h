@@ -16,20 +16,8 @@ value(sp::Buffer &, const char *) noexcept;
 bool
 value(sp::Buffer &, const char *, std::size_t) noexcept;
 
-template <std::size_t SIZE>
-bool
-value(sp::Buffer &b, const char (&val)[SIZE]) noexcept {
-  return value(b, val, SIZE);
-}
-
 bool
 value(sp::Buffer &, const sp::byte *, std::size_t) noexcept;
-
-template <std::size_t SIZE>
-bool
-value(sp::Buffer &b, const sp::byte (&val)[SIZE]) noexcept {
-  return value(b, val, SIZE);
-}
 
 bool
 list(sp::Buffer &, void *, bool (*)(sp::Buffer &, void *)) noexcept;
@@ -68,11 +56,6 @@ bool
 pair(sp::Buffer &, const char *key, const sp::byte *value,
      std::size_t length) noexcept;
 
-template <std::size_t SIZE>
-bool
-pair(sp::Buffer &b, const char *key, const sp::byte (&value)[SIZE]) noexcept {
-  return pair(b, key, value, SIZE);
-}
 } // namespace e
 
 //===============================================

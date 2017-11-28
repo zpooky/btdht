@@ -347,7 +347,7 @@ TokenPair::TokenPair()
 }
 
 TokenPair::operator bool() const noexcept {
-  return ip != Ip(0);
+  return ip != Ipv4(0);
 }
 
 /*DHT*/
@@ -383,7 +383,7 @@ DHT::DHT()
 }
 
 static std::size_t
-index(Ip ip) noexcept {
+index(Ipv4 ip) noexcept {
   return ip % DHT::token_table;
 }
 
@@ -456,7 +456,7 @@ start:
 
 //============================================================
 void
-mintToken(DHT &, Ip, Token &, time_t) noexcept {
+mintToken(DHT &, Ipv4, Token &, time_t) noexcept {
   // TODO
 }
 

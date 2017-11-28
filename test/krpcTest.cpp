@@ -22,6 +22,7 @@ test_request(bencode::d::Decoder &p, krpc::Transaction &t,
 
     return bencode::d::dict(p, body);
   };
+  print("request: ", p.buf);
   ASSERT_TRUE(krpc::d::krpc(p, t, msg, query, f));
 }
 
@@ -38,6 +39,7 @@ test_response(bencode::d::Decoder &p, krpc::Transaction &t,
 
     return bencode::d::dict(p, body);
   };
+  print("response: ", p.buf);
   ASSERT_TRUE(krpc::d::krpc(p, t, msg, query, f));
 }
 
@@ -98,7 +100,7 @@ TEST(krpcTest, test_ping) {
     //--
     assert_eq(msgOut, "r");
     assert_eq(t.id, tOut.id);
-    assert_eq(qOut, "ping");
+    ASSERT_EQ(0, std::strlen(qOut));
   }
 }
 
@@ -180,7 +182,7 @@ TEST(krpcTest, test_find_node) {
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(msgOut, "r");
     assert_eq(t.id, tOut.id);
-    assert_eq(qOut, "find_node");
+    ASSERT_EQ(0, std::strlen(qOut));
   }
 }
 
@@ -251,7 +253,7 @@ TEST(krpcTest, test_get_peers) {
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(msgOut, "r");
     assert_eq(t.id, tOut.id);
-    assert_eq(qOut, "get_peers");
+    ASSERT_EQ(0, std::strlen(qOut));
   }
   /*response Peers*/
   {
@@ -353,6 +355,6 @@ TEST(krpcTest, test_anounce_peer) {
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(msgOut, "r");
     assert_eq(t.id, tOut.id);
-    assert_eq(qOut, "announce_peer");
+    ASSERT_EQ(0, std::strlen(qOut));
   }
 }

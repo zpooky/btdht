@@ -48,7 +48,7 @@ struct RoutingTable {
 };
 
 struct TokenPair {
-  Ip ip;
+  Ipv4 ip;
   Token token;
   time_t created;
 
@@ -94,7 +94,7 @@ bool
 init(dht::DHT &) noexcept;
 
 void
-mintToken(DHT &, Ip, Token &, time_t) noexcept;
+mintToken(DHT &, Ipv4, Token &, time_t) noexcept;
 
 bool
 is_blacklisted(DHT &dht, const dht::Contact &) noexcept;

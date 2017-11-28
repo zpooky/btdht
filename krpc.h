@@ -2,6 +2,9 @@
 #define SP_MAINLINE_DHT_KRPC_H
 
 #include "shared.h"
+#include <cassert>
+#include <cstring>
+
 namespace bencode {
 namespace e {
 bool
@@ -85,23 +88,62 @@ krpc(bencode::d::Decoder &d, Transaction &tx, char (&msg_type)[16],
     bool t = false;
     bool y = false;
     bool q = false;
+    bool ip = false;
+    bool v = false;
 
+    sp::byte version[16] = {0};
+    sp::byte extIp[16] = {0};
+
+    char wkey[16] = {0};
+    sp::byte wvalue[16] = {0};
   start:
+    const std::size_t before = p.buf.pos;
     if (!t && bencode::d::pair(p, "t", tx.id)) {
       t = true;
       goto start;
+    } else {
+      assert(before == p.buf.pos);
     }
+
     if (!y && bencode::d::pair(p, "y", msg_type)) {
       y = true;
       goto start;
+    } else {
+      assert(before == p.buf.pos);
     }
+
     if (!q && bencode::d::pair(p, "q", query)) {
       q = true;
       goto start;
+    } else {
+      assert(before == p.buf.pos);
     }
 
-    if (!(t && y && q)) {
-      return false;
+    if (!ip && bencode::d::pair(p, "ip", extIp)) {
+      ip = true;
+      goto start;
+    } else {
+      assert(before == p.buf.pos);
+    }
+
+    if (!v && bencode::d::pair(p, "v", version)) {
+      v = true;
+      goto start;
+    } else {
+      assert(before == p.buf.pos);
+    }
+
+    // bencode::d::pair
+    // TODO query is optional for response
+
+    if (std::strcmp("q", query) == 0) {
+      if (!(t && y && q)) {
+        return false;
+      }
+    } else {
+      if (!(t && y)) {
+        return false;
+      }
     }
 
     return f(p, tx, msg_type, query);

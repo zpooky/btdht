@@ -9,7 +9,7 @@ Port
 port(fd &listen) noexcept;
 
 fd
-bind(Ip ip, Port port) noexcept;
+bind(Ipv4 ip, Port port) noexcept;
 
 void
 receive(int fd, dht::Contact &other, sp::Buffer &buf) noexcept;

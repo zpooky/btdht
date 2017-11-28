@@ -33,10 +33,5 @@
         "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/main.o main.cpp",
         "directory": "/home/spooky/development/repos/dht",
         "file": "/home/spooky/development/repos/dht/main.cpp"
-    },
-    {
-        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/kadmelia.o kadmelia.cpp",
-        "directory": "/home/spooky/development/repos/dht",
-        "file": "/home/spooky/development/repos/dht/kadmelia.cpp"
     }
 ]

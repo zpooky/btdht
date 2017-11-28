@@ -27,6 +27,20 @@ fd::operator int() noexcept {
   return m_fd;
 }
 
+/*ExternalIp*/
+ExternalIp::ExternalIp(Ipv4 ipv4, Port p) noexcept
+    : v4(ipv4)
+    , port(p)
+    , type(IpType::IPV4) {
+}
+
+ExternalIp::ExternalIp(const Ipv6 &ipv6, Port p) noexcept
+    : v6()
+    , port(p)
+    , type(IpType::IPV6) {
+  std::memcpy(v6.raw, ipv6.raw, sizeof(v6));
+}
+
 //---------------------------
 namespace sp {
 /*Buffer*/
@@ -98,7 +112,7 @@ is_valid(const NodeId &id) noexcept {
 }
 
 /*Contact*/
-Contact::Contact(Ip i, Port p) noexcept
+Contact::Contact(Ipv4 i, Port p) noexcept
     : ip(i)
     , port(p) {
 }
@@ -108,7 +122,7 @@ Contact::Contact() noexcept
 }
 
 /*Peer*/
-Peer::Peer(Ip i, Port p, time_t n) noexcept
+Peer::Peer(Ipv4 i, Port p, time_t n) noexcept
     : contact(i, p)
     , activity(n)
     , next(nullptr) {
@@ -138,7 +152,7 @@ Node::Node() noexcept
 {
 }
 
-Node::Node(const NodeId &nid, Ip ip, Port port, time_t la) noexcept
+Node::Node(const NodeId &nid, Ipv4 ip, Port port, time_t la) noexcept
     : request_activity(la)
     , response_activity(la) // TODO??
     , ping_sent(la)         // TODO??

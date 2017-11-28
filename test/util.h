@@ -9,6 +9,12 @@
 
 inline static void
 assert_eq(const char *one, const char *two) {
+  if (!one) {
+    ASSERT_TRUE(two == nullptr);
+  }
+  if (!two) {
+    ASSERT_TRUE(one == nullptr);
+  }
   ASSERT_TRUE(strcmp(one, two) == 0);
 }
 
@@ -74,5 +80,10 @@ print(const char *prefix, const sp::byte *b, std::size_t len) noexcept {
     }
   }
   printf("\n");
+}
+
+static void
+print(const char *prefix, const sp::Buffer &buffer) noexcept {
+  print(prefix, buffer.raw, buffer.length);
 }
 #endif

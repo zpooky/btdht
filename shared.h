@@ -28,15 +28,40 @@ public:
   explicit operator int() noexcept;
 };
 
+namespace sp {
+using byte = unsigned char;
+}
+
 using Port = std::uint16_t;
-using Ip = std::uint32_t;
+using Ipv4 = std::uint32_t;
+struct Ipv6 {
+  sp::byte raw[16];
+};
+
+enum class IpType : uint8_t {
+  IPV4,
+  IPV6
+};
+
+/*ExternalIp*/
+struct ExternalIp {
+  union {
+    Ipv4 v4;
+    Ipv6 v6;
+  };
+
+  Port port;
+  IpType type;
+
+  ExternalIp(Ipv4, Port) noexcept;
+  ExternalIp(const Ipv6 &, Port) noexcept;
+};
+
 using Timeout = int;
 using Seconds = std::uint32_t;
 
 //---------------------------
 namespace sp {
-using byte = unsigned char;
-
 /*Buffer*/
 struct Buffer {
   byte *raw;
@@ -259,9 +284,9 @@ struct Token {
 
 /*Contact*/
 struct Contact {
-  Ip ip;
+  Ipv4 ip;
   Port port;
-  Contact(Ip, Port) noexcept;
+  Contact(Ipv4, Port) noexcept;
   Contact() noexcept;
 };
 
@@ -272,7 +297,7 @@ struct Peer {
   // {
   Peer *next;
   // }
-  Peer(Ip, Port, time_t) noexcept;
+  Peer(Ipv4, Port, time_t) noexcept;
   Peer(const Contact &, time_t, Peer *next) noexcept;
   Peer() noexcept;
 };
@@ -305,7 +330,7 @@ struct Node {
   // }}}
 
   Node() noexcept;
-  Node(const NodeId &, Ip, Port, time_t) noexcept;
+  Node(const NodeId &, Ipv4, Port, time_t) noexcept;
   Node(const NodeId &, const Contact &, time_t) noexcept;
   Node(const Node &, time_t) noexcept;
 
