@@ -38,10 +38,7 @@ struct Ipv6 {
   sp::byte raw[16];
 };
 
-enum class IpType : uint8_t {
-  IPV4,
-  IPV6
-};
+enum class IpType : uint8_t { IPV4, IPV6 };
 
 /*ExternalIp*/
 struct ExternalIp {
@@ -77,6 +74,7 @@ struct Buffer {
   }
 
   byte &operator[](std::size_t) noexcept;
+  const byte &operator[](std::size_t) const noexcept;
 };
 
 void
@@ -89,10 +87,10 @@ byte *
 offset(Buffer &) noexcept;
 
 std::size_t
-remaining_read(Buffer &) noexcept;
+remaining_read(const Buffer &) noexcept;
 
 std::size_t
-remaining_write(Buffer &) noexcept;
+remaining_write(const Buffer &) noexcept;
 
 } // namespace sp
 

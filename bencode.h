@@ -122,7 +122,19 @@ bool
 pair(Decoder &, const char *, sp::list<dht::Contact> &) noexcept;
 
 bool
-value(Decoder &, const char *) noexcept;
+value(Decoder &, const char *key) noexcept;
+
+bool
+peek(const Decoder &, const char *key) noexcept;
+
+bool
+pair_any(Decoder &, char *, std::size_t, sp::byte *, std::size_t) noexcept;
+
+template <std::size_t N, std::size_t N2>
+bool
+pair_any(Decoder &d, char (&key)[N], sp::byte (&value)[N2]) noexcept {
+  return pair_any(d, key, N, value, N2);
+}
 
 } // namespace d
 

@@ -178,39 +178,69 @@ pair(sp::Buffer &b, const char *k, const sp::byte *v, std::size_t l) noexcept {
 namespace d {
 template <typename T>
 static bool
-read_numeric(sp::Buffer &b, T &out, char end) noexcept {
+peek_numeric(const sp::Buffer &b, T &out, char end,
+             std::size_t &read) noexcept {
   static_assert(std::is_integral<T>::value, "");
-  const std::size_t p = b.pos;
+  std::size_t p = b.pos;
 
   char str[32] = {0};
   std::size_t it = 0;
 Lloop:
   if (sp::remaining_read(b) > 0) {
-    if (b[b.pos] != end) {
+    if (b[p] != end) {
 
-      if (b[b.pos] >= '0' && b[b.pos] <= '9') {
+      if (b[p] >= '0' && b[p] <= '9') {
         if (it < sizeof(str)) {
-          str[it++] = b[b.pos++];
+          str[it++] = b[p++];
           goto Lloop;
         }
       }
-      b.pos = p;
       return false;
     }
-    ++b.pos;
+    ++p;
   } else {
-    b.pos = p;
     return false;
   }
 
   if (it == 0) {
-    b.pos = p;
     return false;
   }
 
+  read = p - b.pos;
   out = std::atoll(str);
   return true;
 } // bencode::d::read_numeric()
+template <typename T>
+static bool
+read_numeric(sp::Buffer &b, T &out, char end) noexcept {
+  std::size_t read = 0;
+
+  if (!peek_numeric(b, out, end, read)) {
+    return false;
+  }
+
+  b.pos += read;
+  return true;
+} // bencode::d::read_numeric()
+
+template <typename T>
+static bool
+peek_string(const sp::Buffer &b, /*OUT*/ const T *&str,
+            std::size_t &len) noexcept {
+  static_assert(sizeof(T) == 1, "");
+
+  std::size_t num_read = 0;
+  if (!peek_numeric(b, len, ':', num_read)) {
+    return false;
+  }
+
+  if (len > sp::remaining_read(b)) {
+    return false;
+  }
+  str = (T *)b.raw + b.pos + num_read;
+
+  return true;
+} // bencode::d::parse_string()
 
 template <typename T>
 static bool
@@ -519,6 +549,63 @@ bool
 value(Decoder &d, const char *key) noexcept {
   return parse_key(d.buf, key);
 } // bencode::d::value()
+
+bool
+peek(const Decoder &d, const char *key) noexcept {
+
+  const char *parse_key = nullptr;
+  std::size_t parse_key_len = 0;
+  if (!peek_string(d.buf, parse_key, parse_key_len)) {
+    return false;
+  }
+
+  std::size_t key_len = std::strlen(key);
+  if (key_len != parse_key_len || std::memcmp(key, parse_key, key_len) != 0) {
+    return false;
+  }
+  return true;
+}
+
+bool
+pair_any(Decoder &d, char *key, std::size_t klen, sp::byte *val,
+         std::size_t vlen) noexcept {
+  sp::Buffer &b = d.buf;
+  const std::size_t pos = b.pos;
+
+  {
+    const char *pkey = nullptr;
+    std::size_t pkeylen = 0;
+    if (!parse_string(b, pkey, pkeylen)) {
+      b.pos = pos;
+      return false;
+    }
+
+    if ((pkeylen + 1) > klen) {
+      b.pos = pos;
+      return false;
+    }
+    std::memset(key, 0, klen);
+    std::memcpy(key, pkey, pkeylen);
+  }
+  {
+    const sp::byte *pval = nullptr;
+    std::size_t plen = 0;
+    if (!parse_string(b, pval, plen)) {
+      b.pos = pos;
+      return false;
+    }
+
+    if (plen + 1 > vlen) {
+      b.pos = pos;
+      return false;
+    }
+
+    std::memset(val, 0, vlen);
+    std::memcpy(val, pval, plen);
+  }
+
+  return true;
+}
 
 } // namespace d
 

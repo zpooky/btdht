@@ -56,6 +56,11 @@ byte &Buffer::operator[](std::size_t idx) noexcept {
   return raw[idx];
 }
 
+const byte &Buffer::operator[](std::size_t idx) const noexcept {
+  assert(idx < capacity);
+  return raw[idx];
+}
+
 void
 flip(Buffer &b) noexcept {
   std::swap(b.length, b.pos);
@@ -73,12 +78,12 @@ offset(Buffer &b) noexcept {
 }
 
 std::size_t
-remaining_read(Buffer &b) noexcept {
+remaining_read(const Buffer &b) noexcept {
   return b.length - b.pos;
 }
 
 std::size_t
-remaining_write(Buffer &b) noexcept {
+remaining_write(const Buffer &b) noexcept {
   return b.capacity - b.pos;
 }
 } // namespace sp

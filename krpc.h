@@ -119,22 +119,27 @@ krpc(bencode::d::Decoder &d, Transaction &tx, char (&msg_type)[16],
       assert(before == p.buf.pos);
     }
 
-    if (!ip && bencode::d::pair(p, "ip", extIp)) {
-      ip = true;
-      goto start;
-    } else {
-      assert(before == p.buf.pos);
-    }
+    // if (!ip && bencode::d::pair(p, "ip", extIp)) {
+    //   ip = true;
+    //   goto start;
+    // } else {
+    //   assert(before == p.buf.pos);
+    // }
+    //
+    // if (!v && bencode::d::pair(p, "v", version)) {
+    //   v = true;
+    //   goto start;
+    // } else {
+    //   assert(before == p.buf.pos);
+    // }
 
-    if (!v && bencode::d::pair(p, "v", version)) {
-      v = true;
+    if (!(bencode::d::peek(p, "a") || bencode::d::peek(p, "r"))) {
+      // parse and ignore unknown attributes for future compatability
+      if (!bencode::d::pair_any(p, wkey, wvalue)) {
+        return false;
+      }
       goto start;
-    } else {
-      assert(before == p.buf.pos);
     }
-
-    // bencode::d::pair
-    // TODO query is optional for response
 
     if (std::strcmp("q", query) == 0) {
       if (!(t && y && q)) {
