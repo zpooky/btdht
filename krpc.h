@@ -79,59 +79,74 @@ bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
 } // namespace response
 
+struct ParseContext {
+  bencode::d::Decoder &decoder;
+  Transaction tx;
+  char msg_type[16];
+  char query[16];
+  sp::byte version[16];
+  sp::byte ext_ip[16];
+
+  explicit ParseContext(bencode::d::Decoder &d) noexcept
+      : decoder(d)
+      , tx()
+      , msg_type{0}
+      , query{0}
+      , version{0}
+      , ext_ip{0} {
+  }
+}; // krpc::ParseContext
+
 namespace d {
+
 template <typename F>
 bool
-krpc(bencode::d::Decoder &d, Transaction &tx, char (&msg_type)[16],
-     char (&query)[16], F f) {
-  return bencode::d::dict(d, [&tx, &msg_type, &query, f](auto &p) { //
+krpc(ParseContext &ctx, F f) {
+  return bencode::d::dict(ctx.decoder, [&ctx, f](auto &p) { //
     bool t = false;
     bool y = false;
     bool q = false;
     bool ip = false;
     bool v = false;
 
-    sp::byte version[16] = {0};
-    sp::byte extIp[16] = {0};
-
     char wkey[16] = {0};
-    sp::byte wvalue[16] = {0};
+    sp::byte wvalue[64] = {0};
   start:
     const std::size_t before = p.buf.pos;
-    if (!t && bencode::d::pair(p, "t", tx.id)) {
+    if (!t && bencode::d::pair(p, "t", ctx.tx.id)) {
       t = true;
       goto start;
     } else {
       assert(before == p.buf.pos);
     }
 
-    if (!y && bencode::d::pair(p, "y", msg_type)) {
+    if (!y && bencode::d::pair(p, "y", ctx.msg_type)) {
       y = true;
       goto start;
     } else {
       assert(before == p.buf.pos);
     }
 
-    if (!q && bencode::d::pair(p, "q", query)) {
+    if (!q && bencode::d::pair(p, "q", ctx.query)) {
       q = true;
       goto start;
     } else {
       assert(before == p.buf.pos);
     }
 
-    // if (!ip && bencode::d::pair(p, "ip", extIp)) {
-    //   ip = true;
-    //   goto start;
-    // } else {
-    //   assert(before == p.buf.pos);
-    // }
-    //
-    // if (!v && bencode::d::pair(p, "v", version)) {
-    //   v = true;
-    //   goto start;
-    // } else {
-    //   assert(before == p.buf.pos);
-    // }
+    if (!ip && bencode::d::pair(p, "ip", ctx.ext_ip)) {
+      ip = true;
+      goto start;
+    } else {
+      assert(before == p.buf.pos);
+    }
+
+    if (!v && bencode::d::pair(p, "v", ctx.version)) {
+      v = true;
+      goto start;
+    } else {
+      assert(before == p.buf.pos);
+    }
 
     if (!(bencode::d::peek(p, "a") || bencode::d::peek(p, "r"))) {
       // parse and ignore unknown attributes for future compatability
@@ -141,7 +156,7 @@ krpc(bencode::d::Decoder &d, Transaction &tx, char (&msg_type)[16],
       goto start;
     }
 
-    if (std::strcmp("q", query) == 0) {
+    if (std::strcmp("q", ctx.query) == 0) {
       if (!(t && y && q)) {
         return false;
       }
@@ -151,7 +166,7 @@ krpc(bencode::d::Decoder &d, Transaction &tx, char (&msg_type)[16],
       }
     }
 
-    return f(p, tx, msg_type, query);
+    return f(ctx);
   });
 }
 namespace response {

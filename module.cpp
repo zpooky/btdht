@@ -30,15 +30,14 @@ static Timeout
 awake(DHT &, fd &, sp::Buffer &, time_t) noexcept;
 
 /*MessageContext*/
-MessageContext::MessageContext(const char *q, DHT &p_dht,
-                               bencode::d::Decoder &p_in, sp::Buffer &p_out,
-                               const krpc::Transaction &p_t, Contact p_remote,
+MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
+                               sp::Buffer &p_out, Contact p_remote,
                                time_t p_now) noexcept
-    : query(q)
+    : query(ctx.query)
     , dht{p_dht}
-    , in{p_in}
+    , in{ctx.decoder}
     , out{p_out}
-    , transaction{p_t}
+    , transaction{ctx.tx}
     , remote{p_remote}
     , now{p_now} {
 }

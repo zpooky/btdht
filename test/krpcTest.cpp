@@ -1,46 +1,35 @@
 #include "util.h"
 
-// using namespace krpc;
-
-// static bool
-// EQ(const char *str, const sp::Buffer &b) {
-//   std::size_t length = strlen(str);
-//   // assert(length == b.pos);
-//   return memcmp(str, b.start, length) == 0;
-// }
-
-template <std::size_t MSG_SIZE, std::size_t QUERY_SIZE, typename F>
+template <typename F>
 static void
-test_request(bencode::d::Decoder &p, krpc::Transaction &t,
-             char (&msg)[MSG_SIZE], char (&query)[QUERY_SIZE], F body) {
-  auto f = [&body](bencode::d::Decoder &p, const krpc::Transaction &,
-                   const char *, const char *) {
+test_request(krpc::ParseContext &ctx, F body) {
+  auto f = [&body](krpc::ParseContext &ctx) {
 
-    if (!bencode::d::value(p, "a")) {
+    if (!bencode::d::value(ctx.decoder, "a")) {
       return false;
     }
 
-    return bencode::d::dict(p, body);
+    return bencode::d::dict(ctx.decoder, body);
   };
-  print("request: ", p.buf);
-  ASSERT_TRUE(krpc::d::krpc(p, t, msg, query, f));
+
+  print("request: ", ctx.decoder.buf);
+  ASSERT_TRUE(krpc::d::krpc(ctx, f));
 }
 
-template <std::size_t MSG_SIZE, std::size_t QUERY_SIZE, typename F>
+template <typename F>
 static void
-test_response(bencode::d::Decoder &p, krpc::Transaction &t,
-              char (&msg)[MSG_SIZE], char (&query)[QUERY_SIZE], F body) {
-  auto f = [&body](bencode::d::Decoder &p, const krpc::Transaction &,
-                   const char *, const char *) {
+test_response(krpc::ParseContext &ctx, F body) {
+  auto f = [&body](krpc::ParseContext &ctx) {
 
-    if (!bencode::d::value(p, "r")) {
+    if (!bencode::d::value(ctx.decoder, "r")) {
       return false;
     }
 
-    return bencode::d::dict(p, body);
+    return bencode::d::dict(ctx.decoder, body);
   };
-  print("response: ", p.buf);
-  ASSERT_TRUE(krpc::d::krpc(p, t, msg, query, f));
+
+  print("response: ", ctx.decoder.buf);
+  ASSERT_TRUE(krpc::d::krpc(ctx, f));
 }
 
 TEST(krpcTest, test_ping) {
@@ -57,14 +46,11 @@ TEST(krpcTest, test_ping) {
     ASSERT_TRUE(krpc::request::ping(buff, t, id));
     sp::flip(buff);
 
-    krpc::Transaction tOut;
-    char msgOut[16] = {0};
-    char qOut[16] = {0};
-
     bencode::d::Decoder p(buff);
-    test_request(p, tOut, msgOut, qOut, [&id](bencode::d::Decoder &p) {
+    krpc::ParseContext ctx(p);
+    test_request(ctx, [&id](bencode::d::Decoder &d) {
       dht::NodeId sender;
-      if (!bencode::d::pair(p, "id", sender.id)) {
+      if (!bencode::d::pair(d, "id", sender.id)) {
         return false;
       }
       assert_eq(sender.id, id.id);
@@ -72,25 +58,20 @@ TEST(krpcTest, test_ping) {
       return true;
     });
     //--
-    assert_eq(msgOut, "q");
-    assert_eq(t.id, tOut.id);
-    assert_eq(qOut, "ping");
+    assert_eq(ctx.query, "ping");
+    assert_eq(t.id, ctx.tx.id);
+    assert_eq(ctx.msg_type, "q");
   }
-  // ASSERT_TRUE( EQ("d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe",
-  // buff));
   {
     sp::Buffer buff{b};
     ASSERT_TRUE(krpc::response::ping(buff, t, id));
     sp::flip(buff);
 
-    krpc::Transaction tOut;
-    char msgOut[16] = {0};
-    char qOut[16] = {0};
-
     bencode::d::Decoder p(buff);
-    test_response(p, tOut, msgOut, qOut, [&id](bencode::d::Decoder &p) {
+    krpc::ParseContext ctx(p);
+    test_response(ctx, [&id](bencode::d::Decoder &d) {
       dht::NodeId sender;
-      if (!bencode::d::pair(p, "id", sender.id)) {
+      if (!bencode::d::pair(d, "id", sender.id)) {
         return false;
       }
       assert_eq(sender.id, id.id);
@@ -98,9 +79,9 @@ TEST(krpcTest, test_ping) {
       return true;
     });
     //--
-    assert_eq(msgOut, "r");
-    assert_eq(t.id, tOut.id);
-    ASSERT_EQ(0, std::strlen(qOut));
+    assert_eq(ctx.msg_type, "r");
+    assert_eq(t.id, ctx.tx.id);
+    ASSERT_EQ(0, std::strlen(ctx.query));
   }
 }
 
@@ -118,12 +99,9 @@ TEST(krpcTest, test_find_node) {
     ASSERT_TRUE(krpc::request::find_node(buff, t, id, id));
     sp::flip(buff);
 
-    krpc::Transaction tOut;
-    char msgOut[16] = {0};
-    char qOut[16] = {0};
     bencode::d::Decoder p(buff);
-
-    test_request(p, tOut, msgOut, qOut, [&id](bencode::d::Decoder &p) {
+    krpc::ParseContext ctx(p);
+    test_request(ctx, [&id](bencode::d::Decoder &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
         return false;
@@ -138,9 +116,9 @@ TEST(krpcTest, test_find_node) {
       return true;
     });
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(msgOut, "q");
-    assert_eq(t.id, tOut.id);
-    assert_eq(qOut, "find_node");
+    assert_eq(ctx.query, "find_node");
+    assert_eq(t.id, ctx.tx.id);
+    assert_eq(ctx.msg_type, "q");
   }
 
   {
@@ -156,15 +134,14 @@ TEST(krpcTest, test_find_node) {
 
     sp::Buffer buff{b};
     ASSERT_TRUE(
-        krpc::response::find_node(buff, t, id, (const dht::Node **)&in, nodes));
+        krpc::response::find_node(buff, t, id, (const dht::Node **)&in,
+        nodes));
     sp::flip(buff);
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
 
-    krpc::Transaction tOut;
-    char msgOut[16] = {0};
-    char qOut[16] = {0};
     bencode::d::Decoder p(buff);
-    test_response(p, tOut, msgOut, qOut, [&id, &in](bencode::d::Decoder &p) {
+    krpc::ParseContext ctx(p);
+    test_response(ctx, [&id, &in](bencode::d::Decoder &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
         return false;
@@ -180,9 +157,9 @@ TEST(krpcTest, test_find_node) {
       return true;
     });
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(msgOut, "r");
-    assert_eq(t.id, tOut.id);
-    ASSERT_EQ(0, std::strlen(qOut));
+    assert_eq(ctx.msg_type, "r");
+    assert_eq(t.id, ctx.tx.id);
+    ASSERT_EQ(0, std::strlen(ctx.query));
   }
 }
 
@@ -220,14 +197,13 @@ TEST(krpcTest, test_get_peers) {
 
     dht::Infohash infohash;
     ASSERT_TRUE(krpc::response::get_peers(buff, t, id, token,
-                                          (const dht::Node **)&in, NODE_SIZE));
+                                          (const dht::Node **)&in,
+                                          NODE_SIZE));
     sp::flip(buff);
 
-    krpc::Transaction tOut;
-    char msgOut[16] = {0};
-    char qOut[16] = {0};
     bencode::d::Decoder p(buff);
-    test_response(p, tOut, msgOut, qOut, [&id, &in, &token](auto &p) { //
+    krpc::ParseContext ctx(p);
+    test_response(ctx, [&id, &in, &token](auto &p) { //
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
         return false;
@@ -251,9 +227,9 @@ TEST(krpcTest, test_get_peers) {
       return true;
     });
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(msgOut, "r");
-    assert_eq(t.id, tOut.id);
-    ASSERT_EQ(0, std::strlen(qOut));
+    assert_eq(ctx.msg_type, "r");
+    assert_eq(t.id, ctx.tx.id);
+    ASSERT_EQ(0, std::strlen(ctx.query));
   }
   /*response Peers*/
   {
@@ -287,63 +263,56 @@ TEST(krpcTest, test_anounce_peer) {
                                              infohash, port, token));
     sp::flip(buff);
 
-    krpc::Transaction tOut;
-    char msgOut[16] = {0};
-    char qOut[16] = {0};
-
     bencode::d::Decoder p(buff);
-    test_request(
-        p, tOut, msgOut, qOut,
-        [&id, implied_port, infohash, port, token](bencode::d::Decoder &p) {
-          dht::NodeId sender;
-          if (!bencode::d::pair(p, "id", sender.id)) {
-            return false;
-          }
-          assert_eq(sender.id, id.id);
-          //
-          bool out_implied_port = false;
-          if (!bencode::d::pair(p, "implied_port", out_implied_port)) {
-            return false;
-          }
-          assert_eq(out_implied_port, implied_port);
-          //
-          dht::Infohash out_infohash;
-          if (!bencode::d::pair(p, "info_hash", out_infohash.id)) {
-            return false;
-          }
-          assert_eq(out_infohash.id, infohash.id);
-          //
-          Port out_port = 0;
-          if (!bencode::d::pair(p, "port", out_port)) {
-            return false;
-          }
-          assert_eq(out_port, port);
-          //
-          char out_token[64] = {0};
-          if (!bencode::d::pair(p, "token", out_token)) {
-            return false;
-          }
-          assert_eq(out_token, token);
+    krpc::ParseContext ctx(p);
+    test_request(ctx, [&id, implied_port, infohash, port,
+                       token](bencode::d::Decoder &p) {
+      dht::NodeId sender;
+      if (!bencode::d::pair(p, "id", sender.id)) {
+        return false;
+      }
+      assert_eq(sender.id, id.id);
+      //
+      bool out_implied_port = false;
+      if (!bencode::d::pair(p, "implied_port", out_implied_port)) {
+        return false;
+      }
+      assert_eq(out_implied_port, implied_port);
+      //
+      dht::Infohash out_infohash;
+      if (!bencode::d::pair(p, "info_hash", out_infohash.id)) {
+        return false;
+      }
+      assert_eq(out_infohash.id, infohash.id);
+      //
+      Port out_port = 0;
+      if (!bencode::d::pair(p, "port", out_port)) {
+        return false;
+      }
+      assert_eq(out_port, port);
+      //
+      char out_token[64] = {0};
+      if (!bencode::d::pair(p, "token", out_token)) {
+        return false;
+      }
+      assert_eq(out_token, token);
 
-          return true;
-        });
+      return true;
+    });
     //--
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(msgOut, "q");
-    assert_eq(t.id, tOut.id);
-    assert_eq(qOut, "announce_peer");
+    assert_eq(ctx.msg_type, "q");
+    assert_eq(t.id, ctx.tx.id);
+    assert_eq(ctx.query, "announce_peer");
   }
   {
     sp::Buffer buff{b};
     ASSERT_TRUE(krpc::response::announce_peer(buff, t, id));
     sp::flip(buff);
 
-    krpc::Transaction tOut;
-    char msgOut[16] = {0};
-    char qOut[16] = {0};
-
     bencode::d::Decoder p(buff);
-    test_response(p, tOut, msgOut, qOut, [&id](bencode::d::Decoder &p) { //
+    krpc::ParseContext ctx(p);
+    test_response(ctx, [&id](bencode::d::Decoder &p) { //
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
         return false;
@@ -353,8 +322,8 @@ TEST(krpcTest, test_anounce_peer) {
       return true;
     });
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(msgOut, "r");
-    assert_eq(t.id, tOut.id);
-    ASSERT_EQ(0, std::strlen(qOut));
+    assert_eq(ctx.msg_type, "r");
+    assert_eq(t.id, ctx.tx.id);
+    ASSERT_EQ(0, std::strlen(ctx.query));
   }
 }

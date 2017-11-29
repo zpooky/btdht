@@ -182,7 +182,7 @@ message(sp::Buffer &buf, const Transaction &t, const char *mt, const char *q,
         }
         return true;
       });
-}
+} // krpc::message()
 
 template <typename F>
 static bool
@@ -196,7 +196,7 @@ resp(sp::Buffer &buf, const Transaction &t, F f) noexcept {
       return f(b2);
     });
   });
-}
+} // krpc::resp()
 
 template <typename F>
 static bool
@@ -210,7 +210,7 @@ req(sp::Buffer &buf, const Transaction &t, const char *q, F f) noexcept {
       return f(b2);
     });
   });
-}
+} // krpc::req()
 
 template <typename F>
 static bool
@@ -223,7 +223,7 @@ err(sp::Buffer &buf, const Transaction &t, F f) noexcept {
 
     return f(b);
   });
-}
+} // krpc::err()
 
 namespace request {
 bool

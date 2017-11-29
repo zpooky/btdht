@@ -18,8 +18,8 @@ struct MessageContext {
   const krpc::Transaction &transaction;
   Contact remote;
   const time_t now;
-  MessageContext(const char *, DHT &, bencode::d::Decoder &, sp::Buffer &,
-                 const krpc::Transaction &, Contact, time_t) noexcept;
+  MessageContext(DHT &p_dht, const krpc::ParseContext &ctx, sp::Buffer &p_out,
+                 Contact p_remote, time_t p_now) noexcept;
 };
 
 /*Module*/

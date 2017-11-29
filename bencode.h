@@ -80,11 +80,15 @@ template <typename F>
 bool
 dict(Decoder &p, F f) noexcept {
   if (!internal::is(p.buf, "d", 1)) {
+    // TODO reset buffer
     return false;
   }
+
   if (!f(p)) {
+    // TODO reset buffer
     return false;
   }
+
   return internal::is(p.buf, "e", 1);
 } // bencode::d::dict
 
