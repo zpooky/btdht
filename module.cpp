@@ -140,8 +140,6 @@ namespace dht {
 // transaction{id,time_sent} latency = now - time_sent. To be used an
 // deciding factor when inserting to a full not expandable bucket. Or
 // deciding on which X best Contact Nodes when returning find_node/get_peers
-// TODO handle out of order request attribute
-// TODO ignore unknown request attribute
 
 static Timeout
 awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
@@ -323,15 +321,25 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 static bool
 on_response(dht::MessageContext &ctx) {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
-    dht::DHT &dht = ctx.dht;
+    bool b_id = false;
+    bool b_n = false;
 
     dht::NodeId id;
-    sp::list<dht::Node> &nodes = dht.contact_list;
 
-    if (!bencode::d::pair(p, "id", id.id)) {
-      return false;
+    dht::DHT &dht = ctx.dht;
+    sp::list<dht::Node> &nodes = dht.contact_list;
+    sp::clear(nodes);
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", id.id)) {
+      b_id = true;
+      goto Lstart;
     }
     if (!bencode::d::pair(p, "nodes", nodes)) {
+      b_n = true;
+      goto Lstart;
+    }
+    if (!(b_id && b_n)) {
       return false;
     }
 
@@ -343,13 +351,23 @@ on_response(dht::MessageContext &ctx) {
 static bool
 on_request(dht::MessageContext &ctx) {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
+    bool b_id = false;
+    bool b_t = false;
+
     dht::NodeId id;
     dht::NodeId target;
 
-    if (!bencode::d::pair(p, "id", id.id)) {
-      return false;
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", id.id)) {
+      b_id = true;
+      goto Lstart;
     }
-    if (!bencode::d::pair(p, "target", target.id)) {
+    if (!b_t && bencode::d::pair(p, "target", target.id)) {
+      b_t = true;
+      goto Lstart;
+    }
+
+    if (!(b_id && b_t)) {
       return false;
     }
 
@@ -428,28 +446,49 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 static bool
 on_response(dht::MessageContext &ctx) {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
-    dht::DHT &dht = ctx.dht;
+    bool b_id = false;
+    bool b_t = false;
+    bool b_n = false;
+    bool b_v = false;
 
     dht::NodeId id;
     dht::Token token;
 
-    if (!bencode::d::pair(p, "id", id.id)) {
-      return false;
+    dht::DHT &dht = ctx.dht;
+    sp::list<dht::Node> &nodes = dht.contact_list;
+    sp::clear(nodes);
+
+    sp::list<dht::Contact> &values = dht.value_list;
+    sp::clear(values);
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", id.id)) {
+      b_id = true;
+      goto Lstart;
     }
 
-    if (!bencode::d::pair(p, "token", token.id)) {
-      return false;
+    if (!b_t && bencode::d::pair(p, "token", token.id)) {
+      b_t = true;
+      goto Lstart;
     }
 
     /*closes K nodes*/
-    sp::list<dht::Node> &nodes = dht.contact_list;
-    if (bencode::d::pair(p, "nodes", nodes)) {
+    if (!b_n && bencode::d::pair(p, "nodes", nodes)) {
+      b_n = true;
+      goto Lstart;
+    }
+
+    if (!b_v && bencode::d::pair(p, "values", values)) {
+      b_v = true;
+      goto Lstart;
+    }
+
+    if (b_id && b_t && b_n) {
       handle_response(ctx, id, token, nodes);
       return true;
     }
 
-    sp::list<dht::Contact> &values = dht.value_list;
-    if (bencode::d::pair(p, "values", values)) {
+    if (b_id && b_t && b_v) {
       handle_response(ctx, id, token, values);
       return true;
     }
@@ -461,13 +500,23 @@ on_response(dht::MessageContext &ctx) {
 static bool
 on_request(dht::MessageContext &ctx) {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) {
+    bool b_id = false;
+    bool b_ih = false;
+
     dht::NodeId id;
     dht::Infohash infohash;
 
-    if (!bencode::d::pair(p, "id", id.id)) {
-      return false;
+  start:
+    if (!b_id && bencode::d::pair(p, "id", id.id)) {
+      b_id = true;
+      goto start;
     }
-    if (!bencode::d::pair(p, "info_hash", infohash.id)) {
+    if (!b_ih && bencode::d::pair(p, "info_hash", infohash.id)) {
+      b_ih = true;
+      goto start;
+    }
+
+    if (!(b_id && b_ih)) {
       return false;
     }
 
@@ -533,27 +582,42 @@ on_response(dht::MessageContext &ctx) {
 static bool
 on_request(dht::MessageContext &ctx) {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) {
+    bool b_id = false;
+    bool b_ip = false;
+    bool b_ih = false;
+    bool b_p = false;
+    bool b_t = false;
+
     dht::NodeId id;
     bool implied_port = false;
     dht::Infohash infohash;
     Port port = 0;
     dht::Token token;
 
-    // TODO support for instances that does have exactly this order
-    if (!bencode::d::pair(p, "id", id.id)) {
-      return false;
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", id.id)) {
+      b_id = true;
+      goto Lstart;
     }
-    if (!bencode::d::pair(p, "implied_port", implied_port)) {
-      return false;
+    // optional
+    if (!b_ip && bencode::d::pair(p, "implied_port", implied_port)) {
+      b_ip = true;
+      goto Lstart;
     }
-    if (!bencode::d::pair(p, "info_hash", infohash.id)) {
-      return false;
+    if (!b_ih && bencode::d::pair(p, "info_hash", infohash.id)) {
+      b_ih = true;
+      goto Lstart;
     }
-    // TODO optional
-    if (!bencode::d::pair(p, "port", port)) {
-      return false;
+    if (!b_p && bencode::d::pair(p, "port", port)) {
+      b_p = true;
+      goto Lstart;
     }
-    if (!bencode::d::pair(p, "token", token.id)) {
+    if (!b_t && bencode::d::pair(p, "token", token.id)) {
+      b_t = true;
+      goto Lstart;
+    }
+
+    if (!(b_id && b_ih && b_p && b_t)) {
       return false;
     }
 

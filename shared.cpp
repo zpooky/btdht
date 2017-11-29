@@ -86,12 +86,14 @@ std::size_t
 remaining_write(const Buffer &b) noexcept {
   return b.capacity - b.pos;
 }
+
 } // namespace sp
 namespace krpc {
 Transaction::Transaction()
     : id()
     , length(0) {
 }
+
 } // namespace krpc
 
 //---------------------------

@@ -182,6 +182,23 @@ Lstart:
 }
 
 template <typename T>
+static void
+clear(sp::list<T> &l) {
+  sp::node<T> *current = l.root;
+  std::size_t size = l.size;
+Lstart:
+  if (current) {
+    if (size-- > 0) {
+      current->value.~T();
+      new (&current->value) T;
+      current = current->next;
+      goto Lstart;
+    }
+  }
+  size = 0;
+}
+
+template <typename T>
 static const T *
 get(const sp::list<T> &l, std::size_t idx) noexcept {
   const sp::node<T> *current = l.root;
