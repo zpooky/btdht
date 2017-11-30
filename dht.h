@@ -72,7 +72,6 @@ struct DHT {
   // timeout {{{
   time_t timeout_next;
   Node *timeout_head;
-  Node *timeout_tail;
   //}}}
   // recycle contact list {{{
   sp::list<Node> contact_list;

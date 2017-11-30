@@ -365,7 +365,6 @@ DHT::DHT()
     // timeout{{{
     , timeout_next(0)
     , timeout_head(nullptr)
-    , timeout_tail(nullptr)
     //}}}
     // recycle contact list {{{
     , contact_list()
@@ -564,7 +563,7 @@ start:
 } // namespace dht
 
 namespace timeout {
-template<typename T>
+template <typename T>
 static T *
 last(T *node) noexcept {
 Lstart:
@@ -589,9 +588,6 @@ unlink_x(dht::DHT &ctx, T *const contact) noexcept {
   if (next)
     next->timeout_priv = priv;
 
-  if (ctx.timeout_tail == contact)
-    ctx.timeout_tail = priv;
-
   if (ctx.timeout_head == contact)
     ctx.timeout_head = next;
 }
@@ -604,14 +600,24 @@ unlink(dht::DHT &ctx, dht::Node *contact) noexcept {
 template <typename T>
 void
 append_all_x(dht::DHT &ctx, T *const node) noexcept {
-  if (ctx.timeout_tail) {
-    ctx.timeout_tail->timeout_next = node;
-    node->timeout_priv = ctx.timeout_tail;
-  }
+  if (!ctx.timeout_head) {
+    T *const l = last(node);
 
-  T *l = last(node);
-  ctx.timeout_tail = l;
-  l->timeout_priv = ctx.timeout_tail;
+    l->timeout_next = node;
+    node->timeout_priv = l;
+
+    ctx.timeout_head = node;
+  } else {
+    T *const l = last(node);
+
+    T *const priv = ctx.timeout_head->timeout_priv;
+    node->timeout_priv = priv;
+    priv->timeout_next = node;
+
+    T *const next = ctx.timeout_head;
+    l->timeout_next = next;
+    next->timeout_priv = l;
+  }
 }
 
 void

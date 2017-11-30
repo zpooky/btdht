@@ -87,28 +87,29 @@ take(dht::DHT &ctx, time_t now) noexcept {
   };
 
   dht::Node *result = nullptr;
-  dht::Node *head = ctx.timeout_head;
+  dht::Node *const head = ctx.timeout_head;
+  dht::Node *current = head;
 Lstart:
-  if (head) {
-    if (is_expired(*head, now)) {
-      // iterate
-      head = head->timeout_next;
+  if (current) {
+    if (is_expired(*current, now)) {
+      dht::Node *const next = current->timeout_next;
+      timeout::unlink(ctx, current);
 
-      // build result
-      head->timeout_next = result;
-      result = head;
+      if (!result) {
+        result = current;
+      } else {
+        current->timeout_next = result;
+        result = current;
+      }
 
-      // repeat
-      goto Lstart;
+      if (next != head) {
+        current = next;
+        goto Lstart;
+      } else {
+        ctx.timeout_head = nullptr;
+      }
     }
   }
-
-  // updated head
-  ctx.timeout_head = head;
-
-  // clear tail if head is empty
-  if (head == nullptr)
-    ctx.timeout_tail = nullptr;
 
   return result;
 } // timeout::take()
