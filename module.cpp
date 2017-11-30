@@ -146,24 +146,28 @@ static Timeout
 awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
   reset(out);
   if (ctx.timeout_next >= now) {
-    Node *timedout = timeout::take(ctx, now);
-    for_each(timedout, [&ctx, &udp, &out, now](Node *node) { //
-      krpc::Transaction t;
-      mintTransaction(ctx, now, t);
+    /*pings*/
+    {
+      Node *timedout = timeout::take(ctx, now);
+      for_each(timedout, [&ctx, &udp, &out, now](Node *node) { //
+        krpc::Transaction t;
+        mintTransaction(ctx, now, t);
 
-      krpc::request::ping(out, t, node->id);
-      sp::flip(out);
-      udp::send(udp, node->peer, out);
-      increment_outstanding(node);
+        krpc::request::ping(out, t, node->id);
+        sp::flip(out);
+        udp::send(udp, node->peer, out);
+        increment_outstanding(node);
 
-      // fake update activity otherwise if all nodes have to same timeout we
-      // will spam out pings, ex: 3 noes timed out ,send ping, append, get the
-      // next timeout date, since there is only 3 in the queue and we will
-      // immediately awake and send ping  to the same 3 nodes
-      node->ping_sent = now;
-    });
-    timeout::append_all(ctx, timedout);
+        // Fake update activity otherwise if all nodes have to same timeout we
+        // will spam out pings, ex: 3 noes timed out ,send ping, append, get the
+        // next timeout date, since there is only 3 in the queue and we will
+        // immediately awake and send ping  to the same 3 nodes
+        node->ping_sent = now;
+      });
+      timeout::append_all(ctx, timedout);
+    }
 
+    /*calculate next timeout*/
     Config config;
     Node *const tHead = timeout::head(ctx);
     if (tHead) {

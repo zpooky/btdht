@@ -358,6 +358,7 @@ DHT::DHT()
     // peer-lookup db {{{
     , lookup_table(nullptr)
     , tokens()
+    , timeout_peer(nullptr)
     //}}}
     // routing-table {{{
     , root(nullptr)
@@ -578,7 +579,7 @@ Lstart:
 
 template <typename T>
 void
-unlink_x(dht::DHT &ctx, T *const contact) noexcept {
+internal_unlink(T *&head, T *const contact) noexcept {
   T *priv = contact->timeout_priv;
   T *next = contact->timeout_next;
 
@@ -588,33 +589,38 @@ unlink_x(dht::DHT &ctx, T *const contact) noexcept {
   if (next)
     next->timeout_priv = priv;
 
-  if (ctx.timeout_head == contact)
-    ctx.timeout_head = next;
+  if (head == contact)
+    head = next;
 }
 
 void
 unlink(dht::DHT &ctx, dht::Node *contact) noexcept {
-  return unlink_x(ctx, contact);
+  return internal_unlink(ctx.timeout_head, contact);
+} // timeout::unlink()
+
+static void
+unlink(dht::DHT &ctx, dht::Peer *peer) noexcept {
+  return internal_unlink(ctx.timeout_peer, peer);
 } // timeout::unlink()
 
 template <typename T>
 void
-append_all_x(dht::DHT &ctx, T *const node) noexcept {
-  if (!ctx.timeout_head) {
+internal_append_all(T *&head, T *const node) noexcept {
+  if (!head) {
     T *const l = last(node);
 
     l->timeout_next = node;
     node->timeout_priv = l;
 
-    ctx.timeout_head = node;
+    head = node;
   } else {
     T *const l = last(node);
 
-    T *const priv = ctx.timeout_head->timeout_priv;
+    T *const priv = head->timeout_priv;
     node->timeout_priv = priv;
     priv->timeout_next = node;
 
-    T *const next = ctx.timeout_head;
+    T *const next = head;
     l->timeout_next = next;
     next->timeout_priv = l;
   }
@@ -622,7 +628,12 @@ append_all_x(dht::DHT &ctx, T *const node) noexcept {
 
 void
 append_all(dht::DHT &ctx, dht::Node *node) noexcept {
-  return append_all_x(ctx, node);
+  return internal_append_all(ctx.timeout_head, node);
+} // timeout::append_all()
+
+static void
+append_all(dht::DHT &ctx, dht::Peer *peer) noexcept {
+  return internal_append_all(ctx.timeout_peer, peer);
 } // timeout::append_all()
 
 } // namespace timeout
@@ -740,9 +751,9 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
   if (table) {
     dht::Peer *const existing = find(*table, contact);
     if (existing) {
-      // timeout::unlink_x(dht, existing);
+      // TODO timeout::unlink_x(dht, existing);
       existing->activity = now;
-      // timeout::append_all_x(dht, existing);
+      timeout::append_all(dht, existing);
 
       return true;
     } else if (add_peer(*table, contact)) {

@@ -65,6 +65,7 @@ struct DHT {
   // peer-lookup db {{{
   KeyValue *lookup_table;
   Token tokens[token_table];
+  dht::Peer *timeout_peer;
   //}}}
   // routing-table {{{
   RoutingTable *root;
