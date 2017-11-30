@@ -128,20 +128,44 @@ Contact::Contact() noexcept
     : Contact(0, 0) {
 }
 
+bool
+Contact::operator==(const Contact &c) const noexcept {
+  return ip == c.ip && port == c.port;
+}
+
 /*Peer*/
 Peer::Peer(Ipv4 i, Port p, time_t n) noexcept
     : contact(i, p)
     , activity(n)
-    , next(nullptr) {
+    //{
+    , next(nullptr)
+    //}
+    //{
+    , timeout_priv(nullptr)
+    , timeout_next(nullptr)
+//}
+{
 }
 Peer::Peer(const Contact &c, time_t a, Peer *nxt) noexcept
     : contact(c)
     , activity(a)
-    , next(nxt) {
+    //{
+    , next(nxt)
+    //}
+    //{
+    , timeout_priv(nullptr)
+    , timeout_next(nullptr)
+//}
+{
 }
 
 Peer::Peer() noexcept
     : Peer(0, 0, 0) {
+}
+
+bool
+Peer::operator==(const Contact &c) const noexcept {
+  return contact.operator==(c);
 }
 
 /*Contact*/

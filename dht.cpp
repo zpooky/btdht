@@ -564,10 +564,25 @@ start:
 } // namespace dht
 
 namespace timeout {
+template<typename T>
+static T *
+last(T *node) noexcept {
+Lstart:
+  if (node) {
+    if (node->timeout_next) {
+      node = node->timeout_next;
+      goto Lstart;
+    }
+  }
+  return node;
+} // timeout::last()
+
+template <typename T>
 void
-unlink(dht::DHT &ctx, dht::Node *const contact) noexcept {
-  dht::Node *priv = contact->timeout_priv;
-  dht::Node *next = contact->timeout_next;
+unlink_x(dht::DHT &ctx, T *const contact) noexcept {
+  T *priv = contact->timeout_priv;
+  T *next = contact->timeout_next;
+
   if (priv)
     priv->timeout_next = next;
 
@@ -579,31 +594,31 @@ unlink(dht::DHT &ctx, dht::Node *const contact) noexcept {
 
   if (ctx.timeout_head == contact)
     ctx.timeout_head = next;
-} // timeout::unlink()
-
-static dht::Node *
-last(dht::Node *node) noexcept {
-Lstart:
-  if (node) {
-    if (node->timeout_next) {
-      node = node->timeout_next;
-      goto Lstart;
-    }
-  }
-  return node;
-} // timeout::last()
+}
 
 void
-append_all(dht::DHT &ctx, dht::Node *node) noexcept {
+unlink(dht::DHT &ctx, dht::Node *contact) noexcept {
+  return unlink_x(ctx, contact);
+} // timeout::unlink()
+
+template <typename T>
+void
+append_all_x(dht::DHT &ctx, T *const node) noexcept {
   if (ctx.timeout_tail) {
     ctx.timeout_tail->timeout_next = node;
     node->timeout_priv = ctx.timeout_tail;
   }
 
-  dht::Node *l = last(node);
+  T *l = last(node);
   ctx.timeout_tail = l;
   l->timeout_priv = ctx.timeout_tail;
+}
+
+void
+append_all(dht::DHT &ctx, dht::Node *node) noexcept {
+  return append_all_x(ctx, node);
 } // timeout::append_all()
+
 } // namespace timeout
 
 namespace lookup {
@@ -688,7 +703,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     return result;
   };
 
-  auto add = [&dht, now](dht::KeyValue &s, const dht::Contact &c) {
+  auto add_peer = [&dht, now](dht::KeyValue &s, const dht::Contact &c) {
     auto p = new dht::Peer(c, now, s.peers);
     if (p) {
       s.peers = p;
@@ -697,18 +712,38 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     return false;
   };
 
+  auto find = [](dht::KeyValue &t, const dht::Contact &s) {
+    dht::Peer *it = t.peers;
+  Lstart:
+    if (it) {
+      if (it->contact == s) {
+        return it;
+      }
+      it = it->next;
+      goto Lstart;
+    }
+
+    return (dht::Peer *)nullptr;
+  };
+
   dht::KeyValue *table = lookup(dht, infohash, now);
   if (!table) {
     table = new_table();
   }
 
   if (table) {
-    // TODO check if Contact already exists and if so update time
+    dht::Peer *const existing = find(*table, contact);
+    if (existing) {
+      // timeout::unlink_x(dht, existing);
+      existing->activity = now;
+      // timeout::append_all_x(dht, existing);
 
-    if (add(*table, contact)) {
+      return true;
+    } else if (add_peer(*table, contact)) {
+
       return true;
     }
-    if (table->peers == nullptr) {
+    if (!table->peers) {
       // TODO if add false and create needle reclaim needle
     }
   }

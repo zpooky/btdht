@@ -303,6 +303,8 @@ struct Contact {
   Port port;
   Contact(Ipv4, Port) noexcept;
   Contact() noexcept;
+  bool
+  operator==(const Contact &) const noexcept;
 };
 
 /*Peer*/
@@ -312,9 +314,16 @@ struct Peer {
   // {
   Peer *next;
   // }
+  // {
+  Peer *timeout_priv;
+  Peer *timeout_next;
+  // }
   Peer(Ipv4, Port, time_t) noexcept;
   Peer(const Contact &, time_t, Peer *next) noexcept;
   Peer() noexcept;
+
+  bool
+  operator==(const Contact &) const noexcept;
 };
 
 template <typename F>
