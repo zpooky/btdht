@@ -66,13 +66,14 @@ struct DHT {
   KeyValue *lookup_table;
   Token tokens[token_table];
   dht::Peer *timeout_peer;
+  time_t timeout_peer_next;
   //}}}
   // routing-table {{{
   RoutingTable *root;
   //}}}
   // timeout {{{
   time_t timeout_next;
-  Node *timeout_head;
+  Node *timeout_node;
   //}}}
   // recycle contact list {{{
   sp::list<Node> contact_list;

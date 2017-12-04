@@ -87,7 +87,7 @@ take(dht::DHT &ctx, time_t now) noexcept {
   };
 
   dht::Node *result = nullptr;
-  dht::Node *const head = ctx.timeout_head;
+  dht::Node *const head = ctx.timeout_node;
   dht::Node *current = head;
 Lstart:
   if (current) {
@@ -106,7 +106,7 @@ Lstart:
         current = next;
         goto Lstart;
       } else {
-        ctx.timeout_head = nullptr;
+        ctx.timeout_node = nullptr;
       }
     }
   }
@@ -116,7 +116,7 @@ Lstart:
 
 static dht::Node *
 head(dht::DHT &ctx) noexcept {
-  return ctx.timeout_head;
+  return ctx.timeout_node;
 } // timeout::head()
 
 static void
@@ -143,48 +143,63 @@ namespace dht {
 // deciding on which X best Contact Nodes when returning find_node/get_peers
 
 static Timeout
+awake_ping(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
+  /*pings*/
+  {
+    Node *timedout = timeout::take(ctx, now);
+    for_each(timedout, [&ctx, &udp, &out, now](Node *node) { //
+      krpc::Transaction t;
+      mintTransaction(ctx, now, t);
+
+      krpc::request::ping(out, t, node->id);
+      sp::flip(out);
+      udp::send(udp, node->peer, out);
+      increment_outstanding(node);
+
+      // Fake update activity otherwise if all nodes have to same timeout we
+      // will spam out pings, ex: 3 noes timed out ,send ping, append, get the
+      // next timeout date, since there is only 3 in the queue and we will
+      // immediately awake and send ping  to the same 3 nodes
+      node->ping_sent = now;
+    });
+    timeout::append_all(ctx, timedout);
+  }
+
+  /*calculate next timeout*/
+  Config config;
+  Node *const tHead = timeout::head(ctx);
+  if (tHead) {
+
+    time_t ping_secs_ago = now - tHead->ping_sent;
+    time_t next_timeout = config.refresh_interval > ping_secs_ago
+                              ? config.refresh_interval - ping_secs_ago
+                              : 0;
+    time_t normalized = std::max(config.min_timeout_interval, next_timeout);
+
+    ctx.timeout_next = now + normalized;
+    return Timeout(normalized * 1000);
+  }
+
+  // timeout queue is empty
+  ctx.timeout_next = config.refresh_interval;
+  return Timeout(-1);
+}
+
+static Timeout
+awake_peer_db(DHT &ctx, time_t now) {
+  return Timeout(0);
+}
+
+static Timeout
 awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
   reset(out);
+  // TODO timeout peer
+  Timeout next(-1);
   if (ctx.timeout_next >= now) {
-    /*pings*/
-    {
-      Node *timedout = timeout::take(ctx, now);
-      for_each(timedout, [&ctx, &udp, &out, now](Node *node) { //
-        krpc::Transaction t;
-        mintTransaction(ctx, now, t);
-
-        krpc::request::ping(out, t, node->id);
-        sp::flip(out);
-        udp::send(udp, node->peer, out);
-        increment_outstanding(node);
-
-        // Fake update activity otherwise if all nodes have to same timeout we
-        // will spam out pings, ex: 3 noes timed out ,send ping, append, get the
-        // next timeout date, since there is only 3 in the queue and we will
-        // immediately awake and send ping  to the same 3 nodes
-        node->ping_sent = now;
-      });
-      timeout::append_all(ctx, timedout);
-    }
-
-    /*calculate next timeout*/
-    Config config;
-    Node *const tHead = timeout::head(ctx);
-    if (tHead) {
-
-      time_t ping_secs_ago = now - tHead->ping_sent;
-      time_t next_timeout = config.refresh_interval > ping_secs_ago
-                                ? config.refresh_interval - ping_secs_ago
-                                : 0;
-      time_t normalized = std::max(config.min_timeout_interval, next_timeout);
-
-      ctx.timeout_next = now + normalized;
-      return Timeout(normalized * 1000);
-    }
-
-    // timeout queue is empty
-    ctx.timeout_next = config.refresh_interval;
-    return Timeout(-1);
+    Timeout node_timeout = awake_ping(ctx, udp, out, now);
+  }
+  if (ctx.timeout_peer_next >= now) {
+    Timeout peer_timeout = awake_peer_db(ctx, now);
   }
   // recalculate
   return now - ctx.timeout_next;

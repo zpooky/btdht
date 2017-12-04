@@ -359,13 +359,14 @@ DHT::DHT()
     , lookup_table(nullptr)
     , tokens()
     , timeout_peer(nullptr)
+    , timeout_peer_next(0)
     //}}}
     // routing-table {{{
     , root(nullptr)
     //}}}
     // timeout{{{
     , timeout_next(0)
-    , timeout_head(nullptr)
+    , timeout_node(nullptr)
     //}}}
     // recycle contact list {{{
     , contact_list()
@@ -595,7 +596,7 @@ internal_unlink(T *&head, T *const contact) noexcept {
 
 void
 unlink(dht::DHT &ctx, dht::Node *contact) noexcept {
-  return internal_unlink(ctx.timeout_head, contact);
+  return internal_unlink(ctx.timeout_node, contact);
 } // timeout::unlink()
 
 static void
@@ -628,7 +629,7 @@ internal_append_all(T *&head, T *const node) noexcept {
 
 void
 append_all(dht::DHT &ctx, dht::Node *node) noexcept {
-  return internal_append_all(ctx.timeout_head, node);
+  return internal_append_all(ctx.timeout_node, node);
 } // timeout::append_all()
 
 static void
