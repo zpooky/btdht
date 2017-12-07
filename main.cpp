@@ -86,8 +86,10 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
     time_t now = std::max(time(0), previous);
 
     for (int i = 0; i < no_events; ++i) {
+
       ::epoll_event &current = events[i];
       if (current.events & EPOLLIN) {
+
         sp::Buffer inBuffer(in);
         sp::Buffer outBuffer(out);
 
@@ -134,6 +136,28 @@ module_for(dht::Modules &ms, const char *key, dht::Module &error) noexcept {
   return error;
 }
 
+struct Transaction {
+  bool (*handle)(dht::MessageContext &) noexcept;
+
+  Transaction *timeout_next;
+  Transaction *timeout_priv;
+  //TODO
+
+  time_t sent;
+
+  sp::byte prefix[2];
+  sp::byte suffix[2];
+
+  Transaction();
+
+  explicit operator bool() const noexcept;
+};
+
+static Transaction *
+tx_for(const krpc::Transaction &tx) noexcept {
+  return nullptr;
+}
+
 static bool
 parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
       sp::Buffer &in, sp::Buffer &out, time_t now) noexcept {
@@ -151,15 +175,17 @@ parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
       dht::Module &m = module_for(modules, pctx.query, error);
       return m.request(ctx);
     } else if (std::strcmp(pctx.msg_type, "r") == 0) {
+      assert(pctx.query == nullptr);
       /*response*/
       if (!bencode::d::value(pctx.decoder, "r")) {
         return false;
       }
-      dht::Module &m = module_for(modules, pctx.query, error);
-      return m.response(ctx);
-    } else {
-      return false;
+      Transaction *tx = tx_for(pctx.tx);
+      if (tx) {
+        return tx->handle(ctx);
+      }
     }
+    return false;
   };
 
   bencode::d::Decoder d(in);

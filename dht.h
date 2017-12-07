@@ -56,6 +56,14 @@ struct TokenPair {
   operator bool() const noexcept;
 };
 
+
+// struct TransactionTree {
+//   static constexpr std::size_t levels = 9;
+//   static constexpr std::size_t capacity = static_size<levels>::value;
+//
+//   T storagex[capacity];
+// };
+
 /*DHT*/
 struct DHT {
   static const std::size_t token_table = 64;
@@ -83,6 +91,8 @@ struct DHT {
   std::uint16_t sequence;
   time_t last_activity;
   std::uint32_t total_nodes;
+  // }}}
+  // {{{
   // }}}
 
   DHT();
