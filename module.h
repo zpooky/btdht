@@ -1,6 +1,7 @@
 #ifndef SP_MAINLINE_DHT_MODUE_H
 #define SP_MAINLINE_DHT_MODUE_H
 
+#include "client.h"
 #include "dht.h"
 #include "shared.h"
 
@@ -8,19 +9,6 @@
 // Module
 //===========================================================
 namespace dht {
-
-/*MessageContext*/
-struct MessageContext {
-  const char *query;
-  DHT &dht;
-  bencode::d::Decoder &in;
-  sp::Buffer &out;
-  const krpc::Transaction &transaction;
-  Contact remote;
-  const time_t now;
-  MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &, Contact,
-                 time_t) noexcept;
-};
 
 /*Module*/
 struct Module {
@@ -36,7 +24,7 @@ struct Module {
 struct Modules {
   dht::Module module[24];
   std::size_t length;
-  Timeout (*on_awake)(dht::DHT &, fd &, sp::Buffer &, time_t);
+  Timeout (*on_awake)(dht::DHT &, Client &, sp::Buffer &, time_t);
 
   Modules() noexcept;
 };

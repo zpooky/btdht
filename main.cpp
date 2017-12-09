@@ -1,3 +1,4 @@
+#include "client.h"
 #include "dht.h"
 #include "udp.h"
 #include <stdio.h>
@@ -53,17 +54,18 @@ setup_epoll(fd &udp) noexcept {
 }
 
 static bool
-bootstrap(fd &udp, const dht::NodeId &self, const dht::Contact &dest) noexcept {
-  // TODO manually insert bootstrap node into routing table
+bootstrap(dht::Client &c, const dht::NodeId &self, dht::Contact dest) noexcept {
+  // TODO manually insert bootstrap node into routing table use 000... Key which
+  // should be updated when we get a response
   sp::byte rawb[1024];
   sp::Buffer buf(rawb);
+
+  // TODO generate transaction
   krpc::Transaction t;
-  if (!krpc::request::find_node(buf, t, self, self)) {
-    return false;
-  }
+  assert(krpc::request::find_node(buf, t, self, self));
 
   flip(buf);
-  return udp::send(int(udp), dest, buf);
+  return dht::send(c, dest, t, buf);
 }
 
 template <typename Handle, typename Awake>
@@ -83,6 +85,7 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
       die("epoll_wait");
     }
 
+    // always increasing clock
     time_t now = std::max(time(0), previous);
 
     for (int i = 0; i < no_events; ++i) {
@@ -99,7 +102,6 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
         flip(inBuffer);
 
         if (inBuffer.length > 0) {
-          dht::Peer remote;
           handle(from, inBuffer, outBuffer, now);
           flip(outBuffer);
 
@@ -136,28 +138,6 @@ module_for(dht::Modules &ms, const char *key, dht::Module &error) noexcept {
   return error;
 }
 
-struct Transaction {
-  bool (*handle)(dht::MessageContext &) noexcept;
-
-  Transaction *timeout_next;
-  Transaction *timeout_priv;
-  //TODO
-
-  time_t sent;
-
-  sp::byte prefix[2];
-  sp::byte suffix[2];
-
-  Transaction();
-
-  explicit operator bool() const noexcept;
-};
-
-static Transaction *
-tx_for(const krpc::Transaction &tx) noexcept {
-  return nullptr;
-}
-
 static bool
 parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
       sp::Buffer &in, sp::Buffer &out, time_t now) noexcept {
@@ -172,6 +152,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
       if (!bencode::d::value(pctx.decoder, "a")) {
         return false;
       }
+
       dht::Module &m = module_for(modules, pctx.query, error);
       return m.request(ctx);
     } else if (std::strcmp(pctx.msg_type, "r") == 0) {
@@ -180,9 +161,10 @@ parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
       if (!bencode::d::value(pctx.decoder, "r")) {
         return false;
       }
-      Transaction *tx = tx_for(pctx.tx);
+
+      dht::Tx *const tx = dht::tx_for(pctx.tx);
       if (tx) {
-        return tx->handle(ctx);
+        return tx->handle(&ctx);
       }
     }
     return false;
@@ -218,19 +200,20 @@ main() {
   printf("bind(%u)\n", udp::port(udp));
 
   fd poll = setup_epoll(udp);
-  bootstrap(udp, dht.id, bs_node);
+  dht::Client client(udp);
+  bootstrap(client, dht.id, bs_node);
 
   dht::Modules modules;
   setup(modules);
 
-  auto handle = [&](dht::Contact from, sp::Buffer &in, sp::Buffer &out,
-                    time_t now) {
-    dht.last_activity = now;
-    return parse(dht, modules, from, in, out, now);
-  };
+  auto handle = //
+      [&](dht::Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
+        dht.last_activity = now;
+        return parse(dht, modules, from, in, out, now);
+      };
 
-  auto awake = [&udp, &modules, &dht](sp::Buffer &out, time_t now) {
-    return modules.on_awake(dht, udp, out, now);
+  auto awake = [&client, &modules, &dht](sp::Buffer &out, time_t now) {
+    return modules.on_awake(dht, client, out, now);
   };
 
   loop(poll, handle, awake);

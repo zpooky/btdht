@@ -22,43 +22,6 @@ randomize(NodeId &id) noexcept {
   }
 }
 
-/*KeyValue*/
-KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
-    : next(nxt)
-    , peers(nullptr)
-    , id() {
-  std::memcpy(id.id, pid.id, sizeof(id.id));
-}
-
-/*Bucket*/
-Bucket::Bucket()
-    : contacts() {
-}
-
-Bucket::~Bucket() {
-}
-
-/*RoutingTable*/
-RoutingTable::RoutingTable(RoutingTable *h, RoutingTable *l)
-    : type(NodeType::NODE) {
-  node.higher = h;
-  node.lower = l;
-}
-
-RoutingTable::RoutingTable()
-    : bucket()
-    , type(NodeType::LEAF) {
-}
-
-RoutingTable::~RoutingTable() {
-  // DHT dht;
-  if (type == NodeType::LEAF) {
-    bucket.~Bucket();
-  } else {
-    // dealloc(dht, lower);
-    // dealloc(dht, higher);
-  }
-}
 
 /**/
 // static void
@@ -348,39 +311,6 @@ TokenPair::TokenPair()
 
 TokenPair::operator bool() const noexcept {
   return ip != Ipv4(0);
-}
-
-/*DHT*/
-DHT::DHT()
-    // self {{{
-    : id()
-    //}}}
-    // peer-lookup db {{{
-    , lookup_table(nullptr)
-    , tokens()
-    , timeout_peer(nullptr)
-    , timeout_peer_next(0)
-    //}}}
-    // routing-table {{{
-    , root(nullptr)
-    //}}}
-    // timeout{{{
-    , timeout_next(0)
-    , timeout_node(nullptr)
-    //}}}
-    // recycle contact list {{{
-    , contact_list()
-    , value_list()
-    // }}}
-    // {{{
-    /* sequence number of request used in transaction id gen?*/
-    , sequence(0)
-    /*timestamp of received request&response*/
-    , last_activity(0)
-    /*total nodes present intthe routing table*/
-    , total_nodes(0)
-//}}}
-{
 }
 
 static std::size_t

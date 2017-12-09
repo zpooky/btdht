@@ -79,24 +79,6 @@ bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
 } // namespace response
 
-struct ParseContext {
-  bencode::d::Decoder &decoder;
-  Transaction tx;
-  char msg_type[16];
-  char query[16];
-  sp::byte version[16];
-  sp::byte ext_ip[16];
-
-  explicit ParseContext(bencode::d::Decoder &d) noexcept
-      : decoder(d)
-      , tx()
-      , msg_type{0}
-      , query{0}
-      , version{0}
-      , ext_ip{0} {
-  }
-}; // krpc::ParseContext
-
 namespace d {
 
 template <typename F>

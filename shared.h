@@ -3,264 +3,41 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <time.h>
 
+#include "util.h"
 #include <stdio.h> //debug
 #include <stdlib.h>
 
-/*fd*/
-class fd {
-private:
-  int m_fd;
-
-public:
-  explicit fd(int p_fd);
-
-  fd(const fd &) = delete;
-  fd(fd &&o);
-  fd &
-  operator=(const fd &) = delete;
-  fd &
-  operator=(const fd &&) = delete;
-
-  ~fd();
-
-  explicit operator int() noexcept;
-};
-
-namespace sp {
-using byte = unsigned char;
-}
-
-using Port = std::uint16_t;
-using Ipv4 = std::uint32_t;
-struct Ipv6 {
-  sp::byte raw[16];
-};
-
-enum class IpType : uint8_t { IPV4, IPV6 };
-
-/*ExternalIp*/
-struct ExternalIp {
-  union {
-    Ipv4 v4;
-    Ipv6 v6;
-  };
-
-  Port port;
-  IpType type;
-
-  ExternalIp(Ipv4, Port) noexcept;
-  ExternalIp(const Ipv6 &, Port) noexcept;
-};
-
-using Timeout = int;
-using Seconds = std::uint32_t;
-
-//---------------------------
-namespace sp {
-/*Buffer*/
-struct Buffer {
-  byte *raw;
-  const std::size_t capacity;
-  std::size_t length;
-  std::size_t pos;
-
-  Buffer(byte *, std::size_t) noexcept;
-
-  template <std::size_t SIZE>
-  explicit Buffer(byte (&buffer)[SIZE]) noexcept
-      : Buffer(buffer, SIZE) {
-  }
-
-  byte &operator[](std::size_t) noexcept;
-  const byte &operator[](std::size_t) const noexcept;
-};
-
-void
-flip(Buffer &) noexcept;
-
-void
-reset(Buffer &) noexcept;
-
-byte *
-offset(Buffer &) noexcept;
-
-std::size_t
-remaining_read(const Buffer &) noexcept;
-
-std::size_t
-remaining_write(const Buffer &) noexcept;
-
-} // namespace sp
+#include "bencode.h"
 
 //---------------------------
 namespace krpc {
-struct Transaction {
-  sp::byte id[16];
-  std::size_t length;
-  Transaction();
+/*krpc::ParseContext*/
+struct ParseContext {
+  bencode::d::Decoder &decoder;
+  Transaction tx;
+
+  char msg_type[16];
+  char query[16];
+  sp::byte version[16];
+  sp::byte ext_ip[16];
+
+  //TODO move to src
+  explicit ParseContext(bencode::d::Decoder &d) noexcept
+      : decoder(d)
+      , tx()
+      , msg_type{0}
+      , query{0}
+      , version{0}
+      , ext_ip{0} {
+  }
 };
+
 } // namespace krpc
 
 //---------------------------
-namespace sp {
-/*list*/
-template <typename T>
-struct node {
-  node *next;
-  T value;
-
-  explicit node(sp::node<T> *n)
-      : next(n)
-      , value() {
-  }
-};
-
-template <typename T>
-struct list {
-  node<T> *root;
-  std::size_t size;
-  std::size_t capacity;
-
-  list()
-      : root(nullptr)
-      , size(0)
-      , capacity(0) {
-  }
-
-  list(const list<T> &) = delete;
-  list(const list<T> &&) = delete;
-
-  list<T> &
-  operator=(const list<T> &) = delete;
-  list<T> &
-  operator=(const list<T> &&) = delete;
-
-  ~list() {
-  Lstart:
-    if (root) {
-      sp::node<T> *next = root->next;
-      delete root;
-      root = next;
-      goto Lstart;
-    }
-  }
-};
-
-template <typename T>
-static bool
-init(sp::list<T> &l, std::size_t capacity) noexcept {
-  sp::node<T> *next = l.root;
-
-  while (l.capacity < capacity) {
-    sp::node<T> *c = new sp::node<T>(next);
-    if (!c) {
-      return false;
-    }
-
-    l.root = next = c;
-    l.capacity++;
-  }
-  return true;
-}
-
-template <typename T>
-static T *
-get(sp::list<T> &l, std::size_t idx) noexcept {
-  sp::node<T> *current = l.root;
-Lstart:
-  if (current) {
-    if (idx == 0) {
-      return &current->value;
-    }
-    --idx;
-    current = current->next;
-    goto Lstart;
-  }
-  return nullptr;
-}
-
-template <typename T>
-static void
-clear(sp::list<T> &l) {
-  sp::node<T> *current = l.root;
-  std::size_t size = l.size;
-Lstart:
-  if (current) {
-    if (size-- > 0) {
-      current->value.~T();
-      new (&current->value) T;
-      current = current->next;
-      goto Lstart;
-    }
-  }
-  size = 0;
-}
-
-template <typename T>
-static const T *
-get(const sp::list<T> &l, std::size_t idx) noexcept {
-  const sp::node<T> *current = l.root;
-Lstart:
-  if (current) {
-    if (idx == 0) {
-      return &current->value;
-    }
-    --idx;
-    current = current->next;
-    goto Lstart;
-  }
-  return nullptr;
-}
-
-template <typename T>
-static bool
-push_back(sp::list<T> &list, const T &val) noexcept {
-  if (list.size < list.capacity) {
-    T *const value = get(list, list.size);
-    if (value) {
-      *value = val;
-      list.size++;
-      return true;
-    }
-  }
-  return false;
-}
-
-template <typename T, typename F>
-void
-for_each(const sp::list<T> &list, F f) noexcept {
-  sp::node<T> *l = list.root;
-  for (std::size_t i = 0; i < list.size; ++i) {
-    // assert(l);
-
-    f(l->value);
-    l = l->next;
-  }
-}
-
-template <typename T, typename F>
-bool
-for_all(const sp::list<T> &list, F f) noexcept {
-  sp::node<T> *l = list.root;
-  for (std::size_t i = 0; i < list.size; ++i) {
-    // assert(l);
-
-    bool r = f(l->value);
-    if (!r) {
-      return false;
-    }
-    l = l->next;
-  }
-  return true;
-}
-
-} // namespace sp
-
-//---------------------------
-/*dht*/
 namespace dht {
+/*dht::Config*/
 struct Config {
   time_t min_timeout_interval;
   time_t refresh_interval;
@@ -270,9 +47,7 @@ struct Config {
   Config() noexcept;
 };
 
-using Key = sp::byte[20];
-
-/*Infohash*/
+/*dht::Infohash*/
 struct Infohash {
   Key id;
   Infohash()
@@ -280,16 +55,10 @@ struct Infohash {
   }
 };
 
-/*NodeId*/
-struct NodeId {
-  Key id;
-  NodeId();
-};
-
 bool
 is_valid(const NodeId &) noexcept;
 
-/*Token*/
+/*dht::Token*/
 struct Token {
   sp::byte id[20];
   Token()
@@ -297,17 +66,7 @@ struct Token {
   }
 };
 
-/*Contact*/
-struct Contact {
-  Ipv4 ip;
-  Port port;
-  Contact(Ipv4, Port) noexcept;
-  Contact() noexcept;
-  bool
-  operator==(const Contact &) const noexcept;
-};
-
-/*Peer*/
+/*dht::Peer*/
 struct Peer {
   Contact contact;
   time_t activity;
@@ -338,32 +97,95 @@ for_all(const dht::Peer *l, F f) noexcept {
   return true;
 }
 
-/*Contact*/
-// 15 min refresh
-struct Node {
-  time_t request_activity;
-  time_t response_activity;
-  time_t ping_sent;
-  NodeId id;
-  Contact peer;
-  std::uint8_t ping_outstanding;
-
-  // timeout {{{
-  Node *timeout_next;
-  Node *timeout_priv;
-  // }}}
-
-  Node() noexcept;
-  Node(const NodeId &, Ipv4, Port, time_t) noexcept;
-  Node(const NodeId &, const Contact &, time_t) noexcept;
-  Node(const Node &, time_t) noexcept;
-
-  explicit operator bool() const noexcept;
-};
-
 time_t
 activity(const Node &) noexcept;
 
+/*dht::Bucket*/
+struct Bucket {
+  static constexpr std::size_t K = 8;
+  Node contacts[K];
+
+  Bucket();
+  ~Bucket();
+};
+
+/*dht::RoutingTable*/
+enum class NodeType { NODE, LEAF };
+struct RoutingTable {
+  union {
+    struct {
+      RoutingTable *higher;
+      RoutingTable *lower;
+      Key middle;
+    } node;
+    Bucket bucket;
+  };
+  NodeType type;
+
+  RoutingTable(RoutingTable *h, RoutingTable *l);
+  RoutingTable();
+
+  ~RoutingTable();
+};
+
+/*dht::KeyValue*/
+struct KeyValue {
+  KeyValue *next;
+  Peer *peers;
+  Infohash id;
+  //
+  KeyValue(const Infohash &, KeyValue *);
+};
+
+/*dht::DHT*/
+struct DHT {
+  static const std::size_t token_table = 64;
+  // self {{{
+  NodeId id;
+  //}}}
+  // peer-lookup db {{{
+  KeyValue *lookup_table;
+  Token tokens[token_table];
+  Peer *timeout_peer;
+  time_t timeout_peer_next;
+  //}}}
+  // routing-table {{{
+  RoutingTable *root;
+  //}}}
+  // timeout {{{
+  time_t timeout_next;
+  Node *timeout_node;
+  //}}}
+  // recycle contact list {{{
+  sp::list<Node> contact_list;
+  sp::list<dht::Contact> value_list;
+  // }}}
+  // {{{
+  std::uint16_t sequence;
+  time_t last_activity;
+  std::uint32_t total_nodes;
+  // }}}
+  // {{{
+  // }}}
+
+  DHT();
+};
+
+/*dht::MessageContext*/
+struct MessageContext {
+  const char *query;
+
+  DHT &dht;
+
+  bencode::d::Decoder &in;
+  sp::Buffer &out;
+
+  const krpc::Transaction &transaction;
+  Contact remote;
+  const time_t now;
+  MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &, Contact,
+                 time_t) noexcept;
+};
 } // namespace dht
 
 #endif

@@ -1,8 +1,8 @@
 #include "bencode.h"
+#include "client.h"
 #include "dht.h"
 #include "krpc.h"
 #include "module.h"
-#include "udp.h"
 #include <algorithm>
 #include <cassert>
 #include <cstring>
@@ -13,34 +13,16 @@
 namespace dht {
 
 static bool
-mintTransaction(DHT &dht, time_t now, krpc::Transaction &t) noexcept {
+mintTransaction(DHT &dht, krpc::Transaction &t) noexcept {
   int r = rand();
   std::memcpy(t.id, &r, 2);
-
-  uint16_t seq = ++dht.sequence;
-  std::memcpy(t.id + 2, &seq, 2);
-
-  t.length = 4;
-  // TODO keep track of transaction
+  t.length = 2;
 
   return true;
 }
 
 static Timeout
-awake(DHT &, fd &, sp::Buffer &, time_t) noexcept;
-
-/*MessageContext*/
-MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
-                               sp::Buffer &p_out, Contact p_remote,
-                               time_t p_now) noexcept
-    : query(ctx.query)
-    , dht{p_dht}
-    , in{ctx.decoder}
-    , out{p_out}
-    , transaction{ctx.tx}
-    , remote{p_remote}
-    , now{p_now} {
-}
+awake(DHT &, Client &, sp::Buffer &, time_t) noexcept;
 
 /*Module*/
 Module::Module() noexcept
@@ -68,7 +50,7 @@ Lstart:
 }
 
 static void
-increment_outstanding(Node *node) noexcept {
+inc_outstanding(Node *node) noexcept {
   std::uint8_t &data = node->ping_outstanding;
   if (data != ~std::uint8_t(0)) {
     ++data;
@@ -142,19 +124,19 @@ namespace dht {
 // deciding factor when inserting to a full not expandable bucket. Or
 // deciding on which X best Contact Nodes when returning find_node/get_peers
 
+/*pings*/
 static Timeout
-awake_ping(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
-  /*pings*/
+awake_ping(DHT &ctx, Client &client, sp::Buffer &out, time_t now) noexcept {
   {
     Node *timedout = timeout::take(ctx, now);
-    for_each(timedout, [&ctx, &udp, &out, now](Node *node) { //
+    for_each(timedout, [&ctx, &client, &out, now](Node *node) { //
       krpc::Transaction t;
-      mintTransaction(ctx, now, t);
+      mintTransaction(ctx, t);
 
       krpc::request::ping(out, t, node->id);
       sp::flip(out);
-      udp::send(udp, node->peer, out);
-      increment_outstanding(node);
+      dht::send(client, node->peer, t, out);
+      inc_outstanding(node);
 
       // Fake update activity otherwise if all nodes have to same timeout we
       // will spam out pings, ex: 3 noes timed out ,send ping, append, get the
@@ -191,12 +173,12 @@ awake_peer_db(DHT &ctx, time_t now) {
 }
 
 static Timeout
-awake(DHT &ctx, fd &udp, sp::Buffer &out, time_t now) noexcept {
+awake(DHT &ctx, Client &client, sp::Buffer &out, time_t now) noexcept {
   reset(out);
   // TODO timeout peer
   Timeout next(-1);
   if (ctx.timeout_next >= now) {
-    Timeout node_timeout = awake_ping(ctx, udp, out, now);
+    Timeout node_timeout = awake_ping(ctx, client, out, now);
   }
   if (ctx.timeout_peer_next >= now) {
     Timeout peer_timeout = awake_peer_db(ctx, now);

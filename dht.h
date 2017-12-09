@@ -11,42 +11,7 @@ namespace dht {
 void
 randomize(NodeId &) noexcept;
 
-/*lookup*/
-struct KeyValue {
-  KeyValue *next;
-  Peer *peers;
-  Infohash id;
-  //
-  KeyValue(const Infohash &, KeyValue *);
-};
-
-/*Bucket*/
-struct Bucket {
-  static constexpr std::size_t K = 8;
-  Node contacts[K];
-
-  Bucket();
-  ~Bucket();
-};
-
-/*RoutingTable*/
-enum class NodeType { NODE, LEAF };
-struct RoutingTable {
-  union {
-    struct {
-      RoutingTable *higher;
-      RoutingTable *lower;
-      Key middle;
-    } node;
-    Bucket bucket;
-  };
-  NodeType type;
-
-  RoutingTable(RoutingTable *h, RoutingTable *l);
-  RoutingTable();
-  ~RoutingTable();
-};
-
+/*TokenPair*/
 struct TokenPair {
   Ipv4 ip;
   Token token;
@@ -56,47 +21,6 @@ struct TokenPair {
   operator bool() const noexcept;
 };
 
-
-// struct TransactionTree {
-//   static constexpr std::size_t levels = 9;
-//   static constexpr std::size_t capacity = static_size<levels>::value;
-//
-//   T storagex[capacity];
-// };
-
-/*DHT*/
-struct DHT {
-  static const std::size_t token_table = 64;
-  // self {{{
-  NodeId id;
-  //}}}
-  // peer-lookup db {{{
-  KeyValue *lookup_table;
-  Token tokens[token_table];
-  dht::Peer *timeout_peer;
-  time_t timeout_peer_next;
-  //}}}
-  // routing-table {{{
-  RoutingTable *root;
-  //}}}
-  // timeout {{{
-  time_t timeout_next;
-  Node *timeout_node;
-  //}}}
-  // recycle contact list {{{
-  sp::list<Node> contact_list;
-  sp::list<dht::Contact> value_list;
-  // }}}
-  // {{{
-  std::uint16_t sequence;
-  time_t last_activity;
-  std::uint32_t total_nodes;
-  // }}}
-  // {{{
-  // }}}
-
-  DHT();
-};
 
 bool
 is_good(DHT &, const Node &) noexcept;

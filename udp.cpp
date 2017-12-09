@@ -87,7 +87,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   socklen_t slen = sizeof(other);
 
   sp::byte *const raw = offset(buf);
-  const std::size_t raw_len = remaining_write(buf);
+  std::size_t raw_len = remaining_write(buf);
 
   ssize_t len = 0;
   do {
@@ -98,14 +98,14 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
     die("recvfrom()");
   }
   buf.pos += len;
-}
+} // udp::receive()
 
 void
 receive(int fd, dht::Contact &other, sp::Buffer &buf) noexcept {
   ::sockaddr_in o;
   receive(fd, o, buf);
   to_peer(o, other);
-}
+} // udp::receive()
 
 static bool
 send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
@@ -124,21 +124,22 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
   if (sent < 0) {
     die("recvfrom()");
   }
+
   buf.pos += sent;
 
   return true;
-}
+} // udp::send()
 
 bool
 send(int fd, const dht::Contact &dest, sp::Buffer &buf) noexcept {
   ::sockaddr_in d;
   to_sockaddr(dest, d);
   return send(fd, d, buf);
-}
+} // udp::send()
 
 bool
 send(fd &fd, const dht::Contact &dest, sp::Buffer &buf) noexcept {
   return send(int(fd), dest, buf);
-}
+} // udp::send()
 
 } // namespace udp
