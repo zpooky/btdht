@@ -437,12 +437,6 @@ find_closest(DHT &dht, const Infohash &id, Node *(&res)[Bucket::K]) noexcept {
   return find_closest_nodes(dht, id.id, res);
 } // dht::find_closest()
 
-bool
-valid(DHT &, const krpc::Transaction &) noexcept {
-  // TODO list of active transaction
-  return true;
-} // dht::valid()
-
 Node *
 find_contact(DHT &dht, const NodeId &id) noexcept {
   bool inTree = false;

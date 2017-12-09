@@ -1,7 +1,7 @@
 #ifndef SP_MAINLINE_CLIENT_H
 #define SP_MAINLINE_CLIENT_H
 
-#include "dht.h"
+#include "shared.h"
 
 namespace dht {
 
@@ -25,14 +25,10 @@ struct Tx {
   explicit operator bool() const noexcept;
 };
 
+/*dht::TxTree*/
 struct TxTree {
   TxTree() noexcept;
 };
-
-static Tx *
-tx_for(const krpc::Transaction &tx) noexcept {
-  return nullptr;
-}
 
 /*dht::Client*/
 struct Client {
@@ -41,6 +37,12 @@ struct Client {
 
   explicit Client(fd &) noexcept;
 };
+
+Tx *
+tx_for(Client &, const krpc::Transaction &) noexcept;
+
+bool
+mint_transaction(Client &, krpc::Transaction &, time_t) noexcept;
 
 /*
  * keep tracks of active outgoing transactions and what module should handle the

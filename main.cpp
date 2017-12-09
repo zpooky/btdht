@@ -54,14 +54,15 @@ setup_epoll(fd &udp) noexcept {
 }
 
 static bool
-bootstrap(dht::Client &c, const dht::NodeId &self, dht::Contact dest) noexcept {
+bootstrap(dht::Client &c, const dht::NodeId &self, dht::Contact dest,
+          time_t now) noexcept {
   // TODO manually insert bootstrap node into routing table use 000... Key which
   // should be updated when we get a response
   sp::byte rawb[1024];
   sp::Buffer buf(rawb);
 
-  // TODO generate transaction
   krpc::Transaction t;
+  mint_transaction(c, t, now);
   assert(krpc::request::find_node(buf, t, self, self));
 
   flip(buf);
@@ -139,36 +140,38 @@ module_for(dht::Modules &ms, const char *key, dht::Module &error) noexcept {
 }
 
 static bool
-parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
-      sp::Buffer &in, sp::Buffer &out, time_t now) noexcept {
+parse(dht::DHT &dht, dht::Client &client, dht::Modules &modules,
+      const dht::Contact &peer, sp::Buffer &in, sp::Buffer &out,
+      time_t now) noexcept {
 
-  auto f = [&dht, &modules, &peer, &out, now](krpc::ParseContext &pctx) {
-    dht::Module error;
-    error::setup(error);
+  auto f = //
+      [&dht, &client, &modules, &peer, &out, now](krpc::ParseContext &pctx) {
+        dht::Module error;
+        error::setup(error);
 
-    dht::MessageContext ctx{dht, pctx, out, peer, now};
-    if (std::strcmp(pctx.msg_type, "q") == 0) {
-      /*query*/
-      if (!bencode::d::value(pctx.decoder, "a")) {
+        dht::MessageContext ctx{dht, pctx, out, peer, now};
+        if (std::strcmp(pctx.msg_type, "q") == 0) {
+          /*query*/
+          if (!bencode::d::value(pctx.decoder, "a")) {
+            return false;
+          }
+
+          dht::Module &m = module_for(modules, pctx.query, error);
+          return m.request(ctx);
+        } else if (std::strcmp(pctx.msg_type, "r") == 0) {
+          assert(pctx.query == nullptr);
+          /*response*/
+          if (!bencode::d::value(pctx.decoder, "r")) {
+            return false;
+          }
+
+          dht::Tx *const tx = dht::tx_for(client, pctx.tx);
+          if (tx) {
+            return tx->handle(&ctx);
+          }
+        }
         return false;
-      }
-
-      dht::Module &m = module_for(modules, pctx.query, error);
-      return m.request(ctx);
-    } else if (std::strcmp(pctx.msg_type, "r") == 0) {
-      assert(pctx.query == nullptr);
-      /*response*/
-      if (!bencode::d::value(pctx.decoder, "r")) {
-        return false;
-      }
-
-      dht::Tx *const tx = dht::tx_for(pctx.tx);
-      if (tx) {
-        return tx->handle(&ctx);
-      }
-    }
-    return false;
-  };
+      };
 
   bencode::d::Decoder d(in);
   krpc::ParseContext pctx(d);
@@ -201,7 +204,8 @@ main() {
 
   fd poll = setup_epoll(udp);
   dht::Client client(udp);
-  bootstrap(client, dht.id, bs_node);
+  time_t tnow = time(nullptr);
+  bootstrap(client, dht.id, bs_node, tnow);
 
   dht::Modules modules;
   setup(modules);
@@ -209,7 +213,8 @@ main() {
   auto handle = //
       [&](dht::Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
         dht.last_activity = now;
-        return parse(dht, modules, from, in, out, now);
+
+        return parse(dht, client, modules, from, in, out, now);
       };
 
   auto awake = [&client, &modules, &dht](sp::Buffer &out, time_t now) {

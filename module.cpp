@@ -12,15 +12,6 @@
 //===========================================================
 namespace dht {
 
-static bool
-mintTransaction(DHT &dht, krpc::Transaction &t) noexcept {
-  int r = rand();
-  std::memcpy(t.id, &r, 2);
-  t.length = 2;
-
-  return true;
-}
-
 static Timeout
 awake(DHT &, Client &, sp::Buffer &, time_t) noexcept;
 
@@ -129,13 +120,16 @@ static Timeout
 awake_ping(DHT &ctx, Client &client, sp::Buffer &out, time_t now) noexcept {
   {
     Node *timedout = timeout::take(ctx, now);
-    for_each(timedout, [&ctx, &client, &out, now](Node *node) { //
+    for_each(timedout, [&ctx, &client, &out, now](Node *const node) {
+      sp::reset(out);
+
       krpc::Transaction t;
-      mintTransaction(ctx, t);
+      mint_transaction(client, t, now);
 
       krpc::request::ping(out, t, node->id);
       sp::flip(out);
       dht::send(client, node->peer, t, out);
+
       inc_outstanding(node);
 
       // Fake update activity otherwise if all nodes have to same timeout we
@@ -218,12 +212,6 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 template <typename F>
 static dht::Node *
 dht_request(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
-
-  dht::DHT &dht = ctx.dht;
-  if (!dht::valid(dht, ctx.transaction)) {
-    return nullptr;
-  }
-
   dht::Node *contact = dht_activity(ctx, sender);
   if (contact) {
     contact->request_activity = ctx.now;

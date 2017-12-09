@@ -1,5 +1,6 @@
 #include "client.h"
 #include "udp.h"
+#include <cstring>
 
 namespace dht {
 /*Tx*/
@@ -13,8 +14,7 @@ Tx::Tx() noexcept
 }
 
 Tx::operator bool() const noexcept {
-  // TODO
-  return true;
+  return handle != nullptr;
 }
 
 /*TxTree*/
@@ -26,9 +26,25 @@ Client::Client(fd &fd) noexcept
     : udp(fd) {
 }
 
+Tx *
+tx_for(Client &client, const krpc::Transaction &tx) noexcept {
+  return nullptr;
+}
+
+bool
+mint_transaction(Client &, krpc::Transaction &t, time_t now) noexcept {
+  // TODO
+  int r = rand();
+  std::memcpy(t.id, &r, 2);
+  t.length = 2;
+
+  return true;
+}
+
 bool
 send(Client &c, const Contact &dest, const krpc::Transaction &,
      sp::Buffer &buf) noexcept {
+  // TODO need to know which fp
   // TODO maintain transaction tree
 
   return udp::send(c.udp, dest, buf);
