@@ -165,9 +165,9 @@ parse(dht::DHT &dht, dht::Client &client, dht::Modules &modules,
             return false;
           }
 
-          dht::Tx *const tx = dht::tx_for(client, pctx.tx);
+          dht::TxHandle tx = dht::take_tx(client, pctx.tx);
           if (tx) {
-            return tx->handle(&ctx);
+            return tx(ctx);
           }
         }
         return false;
@@ -204,6 +204,8 @@ main() {
 
   fd poll = setup_epoll(udp);
   dht::Client client(udp);
+  dht::init(client);
+
   time_t tnow = time(nullptr);
   bootstrap(client, dht.id, bs_node, tnow);
 

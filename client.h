@@ -3,17 +3,19 @@
 
 #include "shared.h"
 
+// TODO rename client to transaction
 namespace dht {
 
 struct MessageContext;
 
+using TxHandle = bool (*)(MessageContext &) noexcept;
+
 /*dht::TxStore*/
 struct Tx {
-  bool (*handle)(MessageContext *) noexcept;
+  TxHandle handle;
 
   Tx *timeout_next;
   Tx *timeout_priv;
-  // TODO
 
   time_t sent;
 
@@ -22,11 +24,18 @@ struct Tx {
 
   Tx() noexcept;
 
-  explicit operator bool() const noexcept;
+  bool
+  operator==(const krpc::Transaction &) const noexcept;
+
+  int
+  cmp(const krpc::Transaction &) const noexcept;
 };
 
 /*dht::TxTree*/
 struct TxTree {
+  static constexpr std::size_t levels = 7;
+  Tx storage[127];
+
   TxTree() noexcept;
 };
 
@@ -34,12 +43,16 @@ struct TxTree {
 struct Client {
   fd &udp;
   TxTree tree;
+  Tx *timeout_head;
 
   explicit Client(fd &) noexcept;
 };
 
-Tx *
-tx_for(Client &, const krpc::Transaction &) noexcept;
+bool
+init(Client &) noexcept;
+
+TxHandle
+take_tx(Client &, const krpc::Transaction &) noexcept;
 
 bool
 mint_transaction(Client &, krpc::Transaction &, time_t) noexcept;
