@@ -20,6 +20,11 @@
         "file": "/home/spooky/development/repos/dht/dht.cpp"
     },
     {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/client.o client.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/client.cpp"
+    },
+    {
         "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/module.o module.cpp",
         "directory": "/home/spooky/development/repos/dht",
         "file": "/home/spooky/development/repos/dht/module.cpp"
@@ -33,5 +38,10 @@
         "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/main.o main.cpp",
         "directory": "/home/spooky/development/repos/dht",
         "file": "/home/spooky/development/repos/dht/main.cpp"
+    },
+    {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/util.o util.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/util.cpp"
     }
 ]
