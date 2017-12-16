@@ -4,6 +4,14 @@
 #include <cstring>
 
 namespace dht {
+
+template <typename F>
+static void
+in_order(TxTree &, F) noexcept;
+
+static void
+timeout_append(Client &, Tx *) noexcept;
+
 /*dht::Tx*/
 Tx::Tx() noexcept
     : handle(nullptr)
@@ -31,14 +39,16 @@ Tx::operator==(const krpc::Transaction &t) const noexcept {
 
 int
 Tx::cmp(const krpc::Transaction &tx) const noexcept {
-  // TODO
-  return 0;
+  return std::memcmp(prefix, tx.id, sizeof(prefix));
 }
 
 static void
 reset(Tx &tx) noexcept {
   tx.handle = nullptr;
   tx.sent = 0;
+
+  tx.suffix[0] = '\0';
+  tx.suffix[1] = '\0';
 }
 
 /*dht::TxTree*/
@@ -54,8 +64,18 @@ Client::Client(fd &fd) noexcept
 }
 
 bool
-init(Client &) noexcept {
-  // TODO
+init(Client &client) noexcept {
+  sp::byte a = 'a';
+  sp::byte b = 'a';
+  in_order(client.tree, [&client, &prefix, &a, &b](Tx &tx) {
+    tx.prefix[0] = a;
+    tx.prefix[1] = b++;
+    if (b == sp::byte('z')) {
+      ++a;
+      b = 'a';
+    }
+    timeout_append(client, &tx);
+  });
   return true;
 }
 
@@ -193,12 +213,16 @@ Lstart:
 
 TxHandle
 take_tx(Client &client, const krpc::Transaction &needle) noexcept {
-  if (needle.length > 0) {
+  constexpr std::size_t c = sizeof(Tx::prefix) + sizeof(Tx::suffix);
+  if (needle.length == c) {
+
     Tx *const tx = search(client.tree, needle);
     if (tx) {
+
       if (*tx == needle) {
         TxHandle handle = tx->handle;
         reset(*tx);
+        // TODO move to front
 
         return handle;
       }
@@ -209,30 +233,46 @@ take_tx(Client &client, const krpc::Transaction &needle) noexcept {
 } // dht::take_tx()
 
 static Tx *
-next_free(Client &client) noexcept {
+next_free(Client &client, time_t now) noexcept {
   // TODO
   return nullptr;
 }
 
-void
-timeout_append(Client &client, Tx *) noexcept {
-  // TODO
+static void
+timeout_append(Client &client, Tx *const t) noexcept { // TODO rename
+  assert(t->timeout_next == nullptr);
+  assert(t->timeout_priv == nullptr);
+
+  if (client.timeout_head) {
+    auto *next = client.timeout_head;
+    auto *priv = next->timeout_priv;
+
+    next->timeout_priv = t;
+    priv->timeout_next = t;
+
+    t->timeout_next = next;
+    t->timeout_priv = priv;
+  } else {
+    client.timeout_head = t;
+    t->timeout_next = t;
+    t->timeout_priv = t;
+  }
 }
 
 bool
 mint_transaction(Client &client, krpc::Transaction &out, time_t now) noexcept {
-  Tx *const t = next_free(client);
+  Tx *const t = next_free(client, now);
   if (t) {
     {
-      std::memcpy(out.id, t->prefix, sizeof(out.id));
-      out.length = sizeof(out.id);
-
       const int r = rand();
-      std::memcpy(out.id + out.length, &r, 2);
-      out.length += 2;
-
-      std::memcpy(t->suffix, &r, 2);
+      static_assert(sizeof(t->suffix) <= sizeof(r), "");
+      std::memcpy(t->suffix, &r, sizeof(t->suffix));
     }
+
+    std::memcpy(out.id, t->prefix, sizeof(t->prefix));
+    out.length = sizeof(t->prefix);
+    std::memcpy(out.id + out.length, t->suffix, sizeof(t->suffix));
+    out.length += sizeof(t->suffix);
 
     t->handle = nullptr; // TODO
     t->sent = now;
