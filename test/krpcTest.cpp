@@ -81,7 +81,7 @@ TEST(krpcTest, test_ping) {
     //--
     assert_eq(ctx.msg_type, "r");
     assert_eq(t.id, ctx.tx.id);
-    ASSERT_EQ(0, std::strlen(ctx.query));
+    ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
 }
 
@@ -127,8 +127,8 @@ TEST(krpcTest, test_find_node) {
     const dht::Node *in[nodes];
     for (std::size_t i = 0; i < nodes; ++i) {
       nodeId(node[i].id);
-      node[i].peer.ip = rand();
-      node[i].peer.port = rand();
+      node[i].contact.ip = rand();
+      node[i].contact.port = rand();
       in[i] = &node[i];
     }
 
@@ -159,7 +159,7 @@ TEST(krpcTest, test_find_node) {
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(ctx.msg_type, "r");
     assert_eq(t.id, ctx.tx.id);
-    ASSERT_EQ(0, std::strlen(ctx.query));
+    ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
 }
 
@@ -188,8 +188,8 @@ TEST(krpcTest, test_get_peers) {
     const dht::Node *in[NODE_SIZE];
     for (std::size_t i = 0; i < NODE_SIZE; ++i) {
       nodeId(node[i].id);
-      node[i].peer.ip = rand();
-      node[i].peer.port = rand();
+      node[i].contact.ip = rand();
+      node[i].contact.port = rand();
       in[i] = &node[i];
     }
 
@@ -229,7 +229,7 @@ TEST(krpcTest, test_get_peers) {
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(ctx.msg_type, "r");
     assert_eq(t.id, ctx.tx.id);
-    ASSERT_EQ(0, std::strlen(ctx.query));
+    ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
   /*response Peers*/
   {
@@ -324,6 +324,6 @@ TEST(krpcTest, test_anounce_peer) {
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(ctx.msg_type, "r");
     assert_eq(t.id, ctx.tx.id);
-    ASSERT_EQ(0, std::strlen(ctx.query));
+    ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
 }

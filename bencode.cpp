@@ -465,7 +465,7 @@ value_to_peer(const char *str, dht::Contact &peer) noexcept {
 
 static bool
 value(Decoder &d, dht::Node &value) noexcept {
-  dht::Contact &peer = value.peer;
+  dht::Contact &contact = value.contact;
   sp::Buffer &buf = d.buf;
 
   const std::size_t pos = buf.pos;
@@ -477,7 +477,9 @@ value(Decoder &d, dht::Node &value) noexcept {
     return false;
   }
 
-  if (len != (sizeof(value.id.id) + sizeof(peer.ip) + sizeof(peer.port))) {
+  constexpr std::size_t cmp =
+      (sizeof(value.id.id) + sizeof(contact.ip) + sizeof(contact.port));
+  if (len != cmp) {
     buf.pos = pos;
     return false;
   }
@@ -485,7 +487,7 @@ value(Decoder &d, dht::Node &value) noexcept {
   std::memcpy(value.id.id, str, sizeof(value.id.id));
   str += sizeof(value.id.id);
 
-  value_to_peer(str, peer);
+  value_to_peer(str, contact);
 
   return true;
 } // bencode::d::value()

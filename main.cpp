@@ -1,4 +1,3 @@
-#include "client.h"
 #include "dht.h"
 #include "udp.h"
 #include <stdio.h>
@@ -54,19 +53,11 @@ setup_epoll(fd &udp) noexcept {
 }
 
 static bool
-bootstrap(dht::Client &c, const dht::NodeId &self, dht::Contact dest,
-          time_t now) noexcept {
-  // TODO manually insert bootstrap node into routing table use 000... Key which
-  // should be updated when we get a response
-  sp::byte rawb[1024];
-  sp::Buffer buf(rawb);
-
-  krpc::Transaction t;
-  mint_transaction(c, t, now);
-  assert(krpc::request::find_node(buf, t, self, self));
-
-  flip(buf);
-  return dht::send(c, dest, t, buf);
+bootstrap(dht::DHT &dht, dht::Contact dest, time_t now) noexcept {
+  // placeholder 000 id
+  dht::NodeId id;
+  dht::Node contact(id, dest, now);
+  return dht::insert(dht, contact) != nullptr;
 }
 
 template <typename Handle, typename Awake>
@@ -122,7 +113,7 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
       }
     }
     sp::Buffer outBuffer(out);
-    timeout = on_awake(outBuffer, now);
+    timeout = on_awake(outBuffer);
 
     previous = now;
   } // for
@@ -140,12 +131,11 @@ module_for(dht::Modules &ms, const char *key, dht::Module &error) noexcept {
 }
 
 static bool
-parse(dht::DHT &dht, dht::Client &client, dht::Modules &modules,
-      const dht::Contact &peer, sp::Buffer &in, sp::Buffer &out,
-      time_t now) noexcept {
+parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
+      sp::Buffer &in, sp::Buffer &out, time_t now) noexcept {
 
   auto f = //
-      [&dht, &client, &modules, &peer, &out, now](krpc::ParseContext &pctx) {
+      [&dht, &modules, &peer, &out, now](krpc::ParseContext &pctx) {
         dht::Module error;
         error::setup(error);
 
@@ -165,9 +155,9 @@ parse(dht::DHT &dht, dht::Client &client, dht::Modules &modules,
             return false;
           }
 
-          dht::TxHandle tx = dht::take_tx(client, pctx.tx);
-          if (tx) {
-            return tx(ctx);
+          dht::TxHandle handle = dht::take_tx(dht.client, pctx.tx);
+          if (handle) {
+            return handle(ctx);
           }
         }
         return false;
@@ -194,33 +184,35 @@ setup(dht::Modules &modules) noexcept {
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
 main() {
-  dht::DHT dht;
-  dht::randomize(dht.id);
-
   fd udp = udp::bind(INADDR_ANY, 0);
+
+  dht::DHT dht(udp);
+  if (!dht::init(dht)) {
+    die("failed to init dht");
+  }
   dht::Contact bs_node(INADDR_ANY, udp::port(udp)); // TODO
 
   printf("bind(%u)\n", udp::port(udp));
 
   fd poll = setup_epoll(udp);
-  dht::Client client(udp);
-  dht::init(client);
 
   time_t tnow = time(nullptr);
-  bootstrap(client, dht.id, bs_node, tnow);
+  bootstrap(dht, bs_node, tnow);
 
   dht::Modules modules;
   setup(modules);
 
   auto handle = //
       [&](dht::Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
+        // TODO set last activit after, and how to handle first time
         dht.last_activity = now;
+        dht.now = now;
 
-        return parse(dht, client, modules, from, in, out, now);
+        return parse(dht, modules, from, in, out, now);
       };
 
-  auto awake = [&client, &modules, &dht](sp::Buffer &out, time_t now) {
-    return modules.on_awake(dht, client, out, now);
+  auto awake = [&modules, &dht](sp::Buffer &out) {
+    return modules.on_awake(dht, out);
   };
 
   loop(poll, handle, awake);

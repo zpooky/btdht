@@ -22,7 +22,7 @@ struct ParseContext {
   sp::byte version[16];
   sp::byte ext_ip[16];
 
-  //TODO move to src
+  // TODO move to src
   explicit ParseContext(bencode::d::Decoder &d) noexcept
       : decoder(d)
       , tx()
@@ -37,12 +37,64 @@ struct ParseContext {
 
 //---------------------------
 namespace dht {
+
+struct MessageContext;
+
+using TxHandle = bool (*)(MessageContext &) noexcept;
+
+/*dht::TxStore*/
+struct Tx {
+  TxHandle handle;
+
+  Tx *timeout_next;
+  Tx *timeout_priv;
+
+  time_t sent;
+
+  sp::byte prefix[2];
+  sp::byte suffix[2];
+
+  Tx() noexcept;
+
+  bool
+  operator==(const krpc::Transaction &) const noexcept;
+
+  int
+  cmp(const krpc::Transaction &) const noexcept;
+};
+
+/*dht::TxTree*/
+struct TxTree {
+  static constexpr std::size_t levels = 7;
+  Tx storage[127];
+
+  TxTree() noexcept;
+};
+
+/*dht::Client*/
+struct Client {
+  fd &udp;
+  TxTree tree;
+  Tx *timeout_head;
+
+  explicit Client(fd &) noexcept;
+};
+
+} // namespace dht
+
+//---------------------------
+namespace dht {
 /*dht::Config*/
 struct Config {
   time_t min_timeout_interval;
   time_t refresh_interval;
   time_t peer_age_refresh;
   time_t token_max_age;
+  /*
+   * Transaction max age of transaction created for outgoing request.
+   * Used when reclaiming transaction id.
+   */
+  time_t transaction_timeout;
 
   Config() noexcept;
 };
@@ -142,6 +194,7 @@ struct DHT {
   static const std::size_t token_table = 64;
   // self {{{
   NodeId id;
+  Client client;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;
@@ -164,11 +217,12 @@ struct DHT {
   std::uint16_t sequence;
   time_t last_activity;
   std::uint32_t total_nodes;
+  time_t now;
   // }}}
   // {{{
   // }}}
 
-  DHT();
+  explicit DHT(fd&);
 };
 
 /*dht::MessageContext*/

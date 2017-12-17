@@ -1,8 +1,8 @@
 #include "util.h"
-#include <unistd.h> //close
-#include <memory>
-#include <cstring>
 #include <cassert>
+#include <cstring>
+#include <memory>
+#include <unistd.h> //close
 
 /*fd*/
 fd::fd(int p_fd)
@@ -123,7 +123,7 @@ Node::Node() noexcept
     , response_activity(0)
     , ping_sent(0)
     , id()
-    , peer()
+    , contact()
     , ping_outstanding(0)
     // timeout{{{
     , timeout_next(nullptr)
@@ -138,7 +138,7 @@ Node::Node(const NodeId &nid, Ipv4 ip, Port port, time_t la) noexcept
     , response_activity(la) // TODO??
     , ping_sent(la)         // TODO??
     , id(nid)
-    , peer(ip, port)
+    , contact(ip, port)
     , ping_outstanding(0)
     // timeout{{{
     , timeout_next(nullptr)
@@ -152,11 +152,11 @@ Node::Node(const NodeId &nid, const Contact &p, time_t act) noexcept
 }
 
 Node::Node(const Node &node, time_t now) noexcept
-    : Node(node.id, node.peer, now) {
+    : Node(node.id, node.contact, now) {
 }
 
 Node::operator bool() const noexcept {
-  return peer.ip == 0;
+  return contact.ip == 0;
 }
 
 } // namespace dht

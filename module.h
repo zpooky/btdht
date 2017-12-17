@@ -1,7 +1,6 @@
 #ifndef SP_MAINLINE_DHT_MODUE_H
 #define SP_MAINLINE_DHT_MODUE_H
 
-#include "client.h"
 #include "dht.h"
 #include "shared.h"
 
@@ -24,7 +23,7 @@ struct Module {
 struct Modules {
   dht::Module module[24];
   std::size_t length;
-  Timeout (*on_awake)(dht::DHT &, Client &, sp::Buffer &, time_t);
+  Timeout (*on_awake)(dht::DHT &, sp::Buffer &);
 
   Modules() noexcept;
 };

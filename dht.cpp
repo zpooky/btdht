@@ -7,7 +7,7 @@
 
 namespace dht {
 
-void
+static bool
 randomize(NodeId &id) noexcept {
   sp::byte *it = id.id;
   std::size_t remaining = sizeof(id.id);
@@ -20,8 +20,8 @@ randomize(NodeId &id) noexcept {
     remaining -= length;
     it += length;
   }
+  return true;
 }
-
 
 /**/
 // static void
@@ -303,6 +303,16 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
 // }
 
 /*TokenPair*/
+struct TokenPair {
+  Ipv4 ip;
+  Token token;
+  time_t created;
+
+  TokenPair();
+  operator bool() const noexcept;
+};
+
+/*TokenPair*/
 TokenPair::TokenPair()
     : ip()
     , token()
@@ -386,11 +396,6 @@ start:
 } // dht::find_closest_nodes()
 
 //============================================================
-void
-mintToken(DHT &, Ipv4, Token &, time_t) noexcept {
-  // TODO
-}
-
 bool
 is_blacklisted(DHT &, const dht::Contact &) noexcept {
   // XXX
@@ -421,6 +426,12 @@ init(dht::DHT &dht) noexcept {
     return false;
   }
   if (!sp::init(dht.value_list, 64)) {
+    return false;
+  }
+  if (!randomize(dht.id)) {
+    return false;
+  }
+  if (!init(dht.client)) {
     return false;
   }
   return true;
@@ -463,11 +474,11 @@ start:
     Bucket &bucket = leaf->bucket;
     // when we are intree meaning we can add another bucket we do not
     // necessarily need to evict a node that might be late responding to pings
-
     bool eager_merge = !inTree;
     bool replaced = false;
     Node *result =
         do_insert(dht, bucket, contact, eager_merge, /*OUT*/ replaced);
+
     if (result) {
       if (!replaced) {
         ++dht.total_nodes;
@@ -565,7 +576,7 @@ append_all(dht::DHT &ctx, dht::Peer *peer) noexcept {
 
 namespace lookup {
 dht::KeyValue *
-lookup(dht::DHT &dht, const dht::Infohash &infohash, time_t now) noexcept {
+lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
   auto find_haystack = [](dht::KeyValue *current, const dht::Infohash &id) {
     // XXX tree?
   start:
@@ -580,7 +591,7 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash, time_t now) noexcept {
     return current;
   };
 
-  auto is_expired = [&dht, now](dht::Peer &peer) {
+  auto is_expired = [&dht](dht::Peer &peer) {
     time_t peer_activity = peer.activity;
 
     // Determine to age if end of life is higher than now and make sure that
@@ -588,7 +599,7 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash, time_t now) noexcept {
     // updates at all
     dht::Config config;
     time_t peer_eol = peer_activity + config.peer_age_refresh;
-    if (peer_eol < now) {
+    if (peer_eol < dht.now) {
       if (dht.last_activity > peer_eol) {
         return true;
       }
@@ -635,7 +646,7 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash, time_t now) noexcept {
 
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash,
-       const dht::Contact &contact, time_t now) noexcept {
+       const dht::Contact &contact) noexcept {
 
   auto new_table = [&dht, infohash]() -> dht::KeyValue * {
     auto result = new dht::KeyValue(infohash, dht.lookup_table);
@@ -645,8 +656,8 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     return result;
   };
 
-  auto add_peer = [&dht, now](dht::KeyValue &s, const dht::Contact &c) {
-    auto p = new dht::Peer(c, now, s.peers);
+  auto add_peer = [&dht](dht::KeyValue &s, const dht::Contact &c) {
+    auto p = new dht::Peer(c, dht.now, s.peers);
     if (p) {
       s.peers = p;
       return true;
@@ -668,7 +679,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     return (dht::Peer *)nullptr;
   };
 
-  dht::KeyValue *table = lookup(dht, infohash, now);
+  dht::KeyValue *table = lookup(dht, infohash);
   if (!table) {
     table = new_table();
   }
@@ -677,7 +688,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     dht::Peer *const existing = find(*table, contact);
     if (existing) {
       // TODO timeout::unlink_x(dht, existing);
-      existing->activity = now;
+      existing->activity = dht.now;
       timeout::append_all(dht, existing);
 
       return true;
@@ -693,10 +704,15 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
   return false;
 } // lookup::insert()
 
+void
+mint_token(dht::DHT &, Ipv4, dht::Token &) noexcept {
+  // TODO
+} // lookup::mint_token()
+
 bool
 valid(dht::DHT &, const dht::Token &) noexcept {
   // TODO
   return true;
-}
+} // lookup::valid()
 
 } // namespace lookup

@@ -38,15 +38,15 @@ value(sp::Buffer &buffer, const dht::Contact &p) noexcept {
 
 bool
 value(sp::Buffer &buffer, const dht::Node &node) noexcept {
-  sp::byte scratch[sizeof(node.id.id) + sizeof(node.peer.ip) +
-                   sizeof(node.peer.port)] = {0};
+  sp::byte scratch[sizeof(node.id.id) + sizeof(node.contact.ip) +
+                   sizeof(node.contact.port)] = {0};
   static_assert(sizeof(scratch) == 26, "");
   sp::byte *b = scratch;
 
   std::memcpy(b, node.id.id, sizeof(node.id.id));
   b += sizeof(node.id.id);
 
-  serialize(b, node.peer);
+  serialize(b, node.contact);
   return value(buffer, scratch, sizeof(scratch));
 } // bencode::e::value()
 

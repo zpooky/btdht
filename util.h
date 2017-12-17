@@ -285,7 +285,7 @@ struct Node {
   time_t ping_sent;
 
   NodeId id;
-  Contact peer;
+  Contact contact;
   std::uint8_t ping_outstanding;
 
   // timeout {{{

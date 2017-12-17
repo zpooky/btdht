@@ -1,20 +1,15 @@
-#Routing table maintanance
-RoutingTable-Node timeout queue if outstanding pings > config.outstanding_ping_threshold and
-dht.last_activity > node.last_activity+config.node_timeout then remove node from
-routing table and timeout queue
-
-----
 #bootstrap & survivor strategy
 config[outstanding_ping_questionable_threshold]
 
 On DHT level have a count of questionable nodes and total nodes.
 
 Have questionable flag on node that is set if node.outstanding_pings > config
-and node.last_activity+config.node_timeout also DHT.questionable incremented. When ping receive uncheck
-questionable decrement and decrement DHT.questionable is node was questionable.
+and node.last_activity+config.node_timeout also DHT.questionable incremented.
+When ping receive uncheck questionable decrement and decrement DHT.questionable
+is node was questionable.
 
-Have the same criteria for inserting new contact and that also determine if
-a contact node is questionable in the awake function.
+Have the same criteria for inserting new contact and that also determine if a
+contact node is questionable in the awake function.
 
 ----
 #Peer table clean-up
@@ -26,8 +21,6 @@ the node timeout-queue.
 ...
 
 ----
-#Transaction table
-...
 
 
 #Statistics
@@ -37,6 +30,20 @@ the node timeout-queue.
 how to handle this?
 
 #bep42
-bep42 assume ip is not nat and create confiming nodeid from that if it sees
-that the ip is not correct regenerate nodeid from that external ip insert from
-old RoutingTable in new
+bep42 assume ip is not nat and create confiming nodeid from that if it sees that
+the ip is not correct regenerate nodeid from that external ip insert from old
+RoutingTable in new
+-----------------
+
+keep track of transaction ids we sent out in requests,bounded queue of active
+transaction with a timout only send out pings based on how many free slots in
+queue,delay the rest ready for ping the next 'awake' slot.
+-----------------
+
+check that peer owns nodeid before change anything
+--------------
+
+calculate latency by having a list of active transaction{id,time_sent} latency =
+now - time_sent. To be used an deciding factor when inserting to a full not
+expandable bucket. Or deciding on which X best Contact Nodes when returning
+find_node/get_peers

@@ -7,6 +7,51 @@
 
 //---------------------------
 namespace dht {
+/*dht::Tx*/
+Tx::Tx() noexcept
+    : handle(nullptr)
+    , timeout_next(nullptr)
+    , timeout_priv(nullptr)
+    , sent(0)
+    , prefix{0}
+    , suffix{0} {
+}
+
+bool
+Tx::operator==(const krpc::Transaction &tx) const noexcept {
+  constexpr std::size_t p_len = sizeof(prefix);
+  constexpr std::size_t s_len = sizeof(suffix);
+
+  if (tx.length == (p_len + s_len)) {
+    if (std::memcmp(tx.id, prefix, p_len) == 0) {
+      if (std::memcmp(tx.id + p_len, suffix, s_len) == 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+int
+Tx::cmp(const krpc::Transaction &tx) const noexcept {
+  return std::memcmp(prefix, tx.id, sizeof(prefix));
+}
+
+/*dht::TxTree*/
+TxTree::TxTree() noexcept
+    : storage{} {
+}
+
+/*dht::Client*/
+Client::Client(fd &fd) noexcept
+    : udp(fd)
+    , tree()
+    , timeout_head(nullptr) {
+}
+
+} // namespace dht
+//---------------------------
+namespace dht {
 /*dht::Config*/
 Config::Config() noexcept
     // seconds
@@ -21,7 +66,6 @@ is_valid(const NodeId &id) noexcept {
   constexpr Key allzeros = {0};
   return std::memcmp(id.id, allzeros, sizeof(allzeros)) != 0;
 }
-
 
 /*dht::Peer*/
 Peer::Peer(Ipv4 i, Port p, time_t n) noexcept
@@ -58,7 +102,6 @@ bool
 Peer::operator==(const Contact &c) const noexcept {
   return contact.operator==(c);
 }
-
 
 time_t
 activity(const Node &head) noexcept {
@@ -103,11 +146,11 @@ KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
   std::memcpy(id.id, pid.id, sizeof(id.id));
 }
 
-
 /*dht::DHT*/
-DHT::DHT()
+DHT::DHT(fd&udp)
     // self {{{
     : id()
+    , client(udp)
     //}}}
     // peer-lookup db {{{
     , lookup_table(nullptr)
@@ -133,6 +176,7 @@ DHT::DHT()
     , last_activity(0)
     /*total nodes present intthe routing table*/
     , total_nodes(0)
+    , now(0)
 //}}}
 {
 }
@@ -149,6 +193,5 @@ MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
     , remote{p_remote}
     , now{p_now} {
 }
-
 
 } // namespace dht
