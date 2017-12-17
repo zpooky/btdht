@@ -113,7 +113,7 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
       }
     }
     sp::Buffer outBuffer(out);
-    timeout = on_awake(outBuffer);
+    timeout = on_awake(outBuffer, now);
 
     previous = now;
   } // for
@@ -204,15 +204,16 @@ main() {
 
   auto handle = //
       [&](dht::Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
-        // TODO set last activit after, and how to handle first time
-        dht.last_activity = now;
+        dht.last_activity = dht.last_activity == 0 ? now : dht.last_activity;
         dht.now = now;
 
         return parse(dht, modules, from, in, out, now);
       };
 
-  auto awake = [&modules, &dht](sp::Buffer &out) {
-    return modules.on_awake(dht, out);
+  auto awake = [&modules, &dht](sp::Buffer &out, time_t now) {
+    auto result = modules.on_awake(dht, out);
+    dht.last_activity = now;
+    return result;
   };
 
   loop(poll, handle, awake);
