@@ -1,10 +1,10 @@
+#include "module.h"
 #include "bencode.h"
 #include "client.h"
 #include "dht.h"
 #include "krpc.h"
-#include "module.h"
 #include "transaction.h"
-#include "udp.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstring>

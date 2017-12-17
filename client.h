@@ -4,6 +4,7 @@
 #include "transaction.h"
 
 namespace client { //
+
 bool
 ping(dht::DHT &, sp::Buffer &, const dht::Node &) noexcept;
 }
