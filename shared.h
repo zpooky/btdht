@@ -260,9 +260,8 @@ struct MessageContext {
 
   const krpc::Transaction &transaction;
   Contact remote;
-  const time_t now;
-  MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &, Contact,
-                 time_t) noexcept;
+  MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &,
+                 Contact) noexcept;
 };
 } // namespace dht
 

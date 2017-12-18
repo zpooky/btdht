@@ -132,14 +132,14 @@ module_for(dht::Modules &ms, const char *key, dht::Module &error) noexcept {
 
 static bool
 parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
-      sp::Buffer &in, sp::Buffer &out, time_t now) noexcept {
+      sp::Buffer &in, sp::Buffer &out) noexcept {
 
   auto f = //
-      [&dht, &modules, &peer, &out, now](krpc::ParseContext &pctx) {
+      [&dht, &modules, &peer, &out](krpc::ParseContext &pctx) {
         dht::Module error;
         error::setup(error);
 
-        dht::MessageContext ctx{dht, pctx, out, peer, now};
+        dht::MessageContext ctx{dht, pctx, out, peer};
         if (std::strcmp(pctx.msg_type, "q") == 0) {
           /*query*/
           if (!bencode::d::value(pctx.decoder, "a")) {
@@ -210,7 +210,7 @@ main() {
         dht.last_activity = dht.last_activity == 0 ? now : dht.last_activity;
         dht.now = now;
 
-        return parse(dht, modules, from, in, out, now);
+        return parse(dht, modules, from, in, out);
       };
 
   auto awake = [&modules, &dht](sp::Buffer &out, time_t now) {

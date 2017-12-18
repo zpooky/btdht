@@ -113,7 +113,7 @@ template <typename F>
 static void
 in_order(TxTree &tree, F f) noexcept {
   enum class Traversal : uint8_t { UP, DOWN };
-  printf("tree:%zu\n", TxTree::capacity);
+  // printf("tree:%zu\n", TxTree::capacity);
 
   Direction d[TxTree::levels + 1]{Direction::LEFT};
   Traversal t = Traversal::UP;

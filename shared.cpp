@@ -189,15 +189,13 @@ DHT::DHT(fd &udp, const ExternalIp &i)
 
 /*dht::MessageContext*/
 MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
-                               sp::Buffer &p_out, Contact p_remote,
-                               time_t p_now) noexcept
+                               sp::Buffer &p_out, Contact p_remote) noexcept
     : query(ctx.query)
     , dht{p_dht}
     , in{ctx.decoder}
     , out{p_out}
     , transaction{ctx.tx}
-    , remote{p_remote}
-    , now{p_now} {
+    , remote{p_remote} {
 }
 
 } // namespace dht

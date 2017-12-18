@@ -151,7 +151,6 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   return Timeout(-1);
 }
 
-// TODO self assignment routing tablething
 // TODO verify self node id is sent out not remote id
 // TODO when lookup in routing table check 000 for bootstrap also
 
@@ -183,11 +182,16 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   }
 
   DHT &dht = ctx.dht;
+  /*request from self*/
+  if (std::memcmp(dht.id.id, sender.id, sizeof(sender.id)) == 0) {
+    return nullptr;
+  }
+
   if (dht::is_blacklisted(dht, ctx.remote)) {
     return nullptr;
   }
 
-  time_t now = ctx.now;
+  time_t now = dht.now;
 
   Node *result = find_contact(dht, sender);
   if (result) {
@@ -209,7 +213,7 @@ static dht::Node *
 dht_request(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
   dht::Node *contact = dht_activity(ctx, sender);
   if (contact) {
-    contact->request_activity = ctx.now;
+    contact->request_activity = ctx.dht.now;
     f(*contact);
   }
 
@@ -222,7 +226,7 @@ dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
              F f) noexcept {
   dht::Node *contact = dht_activity(ctx, sender);
   if (contact) {
-    contact->response_activity = ctx.now;
+    contact->response_activity = ctx.dht.now;
     f(*contact);
   }
 
@@ -298,7 +302,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
     dht::DHT &dht = ctx.dht;
     for_each(contacts, [&](const auto &contact) { //
 
-      dht::Node ins(contact, ctx.now);
+      dht::Node ins(contact, ctx.dht.now);
       dht::insert(dht, ins);
     });
 
@@ -425,7 +429,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht_request(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) { //
 
-      dht::Node ins(contact, ctx.now);
+      dht::Node ins(contact, dht.now);
       dht::insert(dht, ins);
     });
   });
