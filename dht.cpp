@@ -8,7 +8,7 @@
 namespace dht {
 
 static bool
-randomize(NodeId &id) noexcept {
+randomize(const ExternalIp &ip, NodeId &id) noexcept {
   sp::byte *it = id.id;
   std::size_t remaining = sizeof(id.id);
 
@@ -428,7 +428,7 @@ init(dht::DHT &dht) noexcept {
   if (!sp::init(dht.value_list, 64)) {
     return false;
   }
-  if (!randomize(dht.id)) {
+  if (!randomize(dht.ip, dht.id)) {
     return false;
   }
   if (!init(dht.client)) {

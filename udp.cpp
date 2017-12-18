@@ -45,8 +45,8 @@ to_peer(const ::sockaddr_in &src, dht::Contact &dest) noexcept {
 //     die("recvfrom()");
 //   }
 // }
-Port
-port(fd &listen) noexcept {
+ExternalIp
+local(fd &listen) noexcept {
   sockaddr_in addr;
   std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);
@@ -56,7 +56,15 @@ port(fd &listen) noexcept {
   if (ret < 0) {
     die("getsockname()");
   }
-  return ntohs(addr.sin_port);
+
+  if (saddr->sa_family == AF_INET6) {
+    // TODO
+    // return ExternalIp(ip, ntohs(addr.sin_port));
+  } else {
+    Ipv4 ip = ntohl(addr.sin_addr.s_addr);
+
+    return ExternalIp(ip, ntohs(addr.sin_port));
+  }
 }
 
 fd

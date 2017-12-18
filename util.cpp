@@ -1,4 +1,5 @@
 #include "util.h"
+#include <arpa/inet.h>
 #include <cassert>
 #include <cstring>
 #include <memory>
@@ -37,6 +38,44 @@ ExternalIp::ExternalIp(const Ipv6 &ipv6, Port p) noexcept
     , port(p)
     , type(IpType::IPV6) {
   std::memcpy(v6.raw, ipv6.raw, sizeof(v6));
+}
+
+bool
+to_string(const ExternalIp &ip, char *str, std::size_t length) noexcept {
+  if (ip.type == IpType::IPV6) {
+    if (length < (INET6_ADDRSTRLEN + 1 + 5 + 1)) {
+      return false;
+    }
+
+    sockaddr_in6 addr;
+    memset(&addr, 0, sizeof(sockaddr_in6));
+    addr.sin6_family = AF_INET6;
+    addr.sin6_port = htons(ip.port);
+    // TODO copy over ip
+
+    if (inet_ntop(AF_INET6, &addr.sin6_addr, str, socklen_t(length)) ==
+        nullptr) {
+      return false;
+    }
+  } else {
+    if (length < (INET_ADDRSTRLEN + 1 + 5 + 1)) {
+      return false;
+    }
+
+    sockaddr_in addr;
+    memset(&addr, 0, sizeof(sockaddr_in));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(ip.v4);
+
+    if (inet_ntop(AF_INET, &addr.sin_addr, str, socklen_t(length)) == nullptr) {
+      return false;
+    }
+    std::strcat(str, ":");
+    char pstr[6] = {0};
+    sprintf(pstr, "%d", ip.port);
+    std::strcat(str, pstr);
+  }
+  return true;
 }
 
 //---------------------------

@@ -63,12 +63,35 @@ struct Tx {
   cmp(const krpc::Transaction &) const noexcept;
 };
 
+template <std::size_t level>
+struct static_breadth {
+  static constexpr std::size_t value = std::size_t(std::size_t(1) << level);
+};
+
+template <>
+struct static_breadth<0> {
+  static constexpr std::size_t value = 1;
+};
+
+template <std::size_t level>
+struct static_size {
+  static constexpr std::size_t value =
+      static_breadth<level>::value + static_size<level - 1>::value;
+};
+template <>
+struct static_size<0> {
+  static constexpr std::size_t value = 1;
+};
+
 /*dht::TxTree*/
 struct TxTree {
   static constexpr std::size_t levels = 7;
-  Tx storage[127];
+  static constexpr std::size_t capacity = static_size<levels>::value;
+  Tx storagex[capacity];
 
   TxTree() noexcept;
+
+  Tx &operator[](std::size_t) noexcept;
 };
 
 /*dht::Client*/
@@ -195,6 +218,7 @@ struct DHT {
   // self {{{
   NodeId id;
   Client client;
+  ExternalIp ip;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;
@@ -222,7 +246,7 @@ struct DHT {
   // {{{
   // }}}
 
-  explicit DHT(fd&);
+  explicit DHT(fd &, const ExternalIp &);
 };
 
 /*dht::MessageContext*/

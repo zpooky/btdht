@@ -39,7 +39,12 @@ Tx::cmp(const krpc::Transaction &tx) const noexcept {
 
 /*dht::TxTree*/
 TxTree::TxTree() noexcept
-    : storage{} {
+    : storagex{} {
+}
+
+Tx &TxTree::operator[](std::size_t idx) noexcept {
+  assert(idx < capacity);
+  return storagex[idx];
 }
 
 /*dht::Client*/
@@ -147,10 +152,11 @@ KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
 }
 
 /*dht::DHT*/
-DHT::DHT(fd&udp)
+DHT::DHT(fd &udp, const ExternalIp &i)
     // self {{{
     : id()
     , client(udp)
+    , ip(i)
     //}}}
     // peer-lookup db {{{
     , lookup_table(nullptr)

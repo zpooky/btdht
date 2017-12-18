@@ -185,14 +185,17 @@ setup(dht::Modules &modules) noexcept {
 int
 main() {
   fd udp = udp::bind(INADDR_ANY, 0);
+  ExternalIp local = udp::local(udp);
 
-  dht::DHT dht(udp);
+  dht::DHT dht(udp, local);
   if (!dht::init(dht)) {
     die("failed to init dht");
   }
-  dht::Contact bs_node(INADDR_ANY, udp::port(udp)); // TODO
+  dht::Contact bs_node(INADDR_ANY, local.port); // TODO
 
-  printf("bind(%u)\n", udp::port(udp));
+  char str[256] = {0};
+  assert(to_string(local, str, sizeof(str)));
+  printf("bind(%s)\n", str);
 
   fd poll = setup_epoll(udp);
 

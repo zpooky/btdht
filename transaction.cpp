@@ -26,12 +26,16 @@ init(Client &client) noexcept {
   sp::byte a = 'a';
   sp::byte b = 'a';
   in_order(client.tree, [&client, &a, &b](Tx &tx) {
+    assert(tx.prefix[0] == '\0');
+    assert(tx.prefix[1] == '\0');
+
     tx.prefix[0] = a;
     tx.prefix[1] = b++;
     if (b == sp::byte('z')) {
       ++a;
       b = 'a';
     }
+    // printf("prefix: %c%c\n", tx.prefix[0], tx.prefix[1]);
     add_front(client, &tx);
   });
   return true;
@@ -85,13 +89,12 @@ static Tx *
 search(TxTree &tree, const krpc::Transaction &needle) noexcept {
   std::size_t level(0);
   std::size_t idx(0);
-  constexpr std::size_t capacity = sizeof(TxTree::storage);
 
 Lstart:
   const std::size_t abs_idx = translate(level, idx);
 
-  if (abs_idx < capacity) {
-    Tx &current = tree.storage[abs_idx];
+  if (abs_idx < TxTree::capacity) {
+    Tx &current = tree[abs_idx];
     int c = current.cmp(needle);
     if (c == 0) {
       return &current;
@@ -110,6 +113,7 @@ template <typename F>
 static void
 in_order(TxTree &tree, F f) noexcept {
   enum class Traversal : uint8_t { UP, DOWN };
+  printf("tree:%zu\n", TxTree::capacity);
 
   Direction d[TxTree::levels + 1]{Direction::LEFT};
   Traversal t = Traversal::UP;
@@ -142,7 +146,8 @@ Lstart:
         // Indicate that we have consumed right when returning to this level[0]
         d[level] = Direction::RIGHT;
 
-        f(tree.storage[translate(level, idx)]);
+        const std::size_t abs_idx = translate(level, idx);
+        f(tree[abs_idx]);
 
         t = Traversal::UP;
         ++level;

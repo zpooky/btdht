@@ -5,20 +5,20 @@
 
 namespace udp { //
 
-Port
-port(fd &listen) noexcept;
+ExternalIp
+local(fd &) noexcept;
 
 fd
 bind(Ipv4 ip, Port port) noexcept;
 
 void
-receive(int fd, dht::Contact &other, sp::Buffer &buf) noexcept;
+receive(int fd, dht::Contact &, sp::Buffer &) noexcept;
 
 bool
-send(int fd, const dht::Contact &dest, sp::Buffer &buf) noexcept;
+send(int fd, const dht::Contact &, sp::Buffer &) noexcept;
 
 bool
-send(fd &, const dht::Contact &dest, sp::Buffer &buf) noexcept;
+send(fd &, const dht::Contact &, sp::Buffer &) noexcept;
 
 } // namespace udp
 

@@ -1,8 +1,8 @@
-#include "module.h"
 #include "bencode.h"
 #include "client.h"
 #include "dht.h"
 #include "krpc.h"
+#include "module.h"
 #include "transaction.h"
 
 #include <algorithm>
@@ -150,6 +150,10 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   ctx.timeout_next = config.refresh_interval;
   return Timeout(-1);
 }
+
+// TODO self assignment routing tablething
+// TODO verify self node id is sent out not remote id
+// TODO when lookup in routing table check 000 for bootstrap also
 
 static Timeout
 awake_peer_db(DHT &) noexcept {

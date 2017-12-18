@@ -52,6 +52,9 @@ struct ExternalIp {
   ExternalIp(const Ipv6 &, Port) noexcept;
 };
 
+bool
+to_string(const ExternalIp &, char *msg, std::size_t) noexcept;
+
 using Timeout = int;
 using Seconds = std::uint32_t;
 
