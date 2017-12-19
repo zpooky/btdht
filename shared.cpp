@@ -160,7 +160,6 @@ DHT::DHT(fd &udp, const ExternalIp &i)
     //}}}
     // peer-lookup db {{{
     , lookup_table(nullptr)
-    , tokens()
     , timeout_peer(nullptr)
     , timeout_peer_next(0)
     //}}}

@@ -151,13 +151,16 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   return Timeout(-1);
 }
 
-// TODO verify self node id is sent out not remote id
-// TODO when lookup in routing table check 000 for bootstrap also
-
 static Timeout
 awake_peer_db(DHT &) noexcept {
   // TODO
   return Timeout(0);
+}
+
+static void
+look_for_nodes(DHT &ctx) {
+  // TODO lookup boostrap nodes
+  // TODO
 }
 
 static Timeout
@@ -171,6 +174,11 @@ awake(DHT &ctx, sp::Buffer &out) noexcept {
   if (ctx.timeout_peer_next >= ctx.now) {
     Timeout peer_timeout = awake_peer_db(ctx);
   }
+  if (true) {
+    look_for_nodes(ctx);
+  }
+  // TODO search for more nodes
+
   // recalculate
   return ctx.now - ctx.timeout_next;
 }
@@ -284,10 +292,10 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search) noexcept {
   dht_request(ctx, sender, [&](auto &) {
     dht::DHT &dht = ctx.dht;
-    constexpr std::size_t capacity = 8;
+    constexpr std::size_t capacity = dht::Bucket::K;
 
     const krpc::Transaction &t = ctx.transaction;
-    dht::Node *result[dht::Bucket::K] = {nullptr};
+    dht::Node *result[capacity] = {nullptr};
     dht::find_closest(dht, search, result);
     const dht::Node **r = (const dht::Node **)&result;
 

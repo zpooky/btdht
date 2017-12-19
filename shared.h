@@ -222,7 +222,6 @@ struct DHT {
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;
-  Token tokens[token_table];
   Peer *timeout_peer;
   time_t timeout_peer_next;
   //}}}
@@ -237,13 +236,11 @@ struct DHT {
   sp::list<Node> contact_list;
   sp::list<dht::Contact> value_list;
   // }}}
-  // {{{
+  // stuff {{{
   std::uint16_t sequence;
   time_t last_activity;
   std::uint32_t total_nodes;
   time_t now;
-  // }}}
-  // {{{
   // }}}
 
   explicit DHT(fd &, const ExternalIp &);

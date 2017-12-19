@@ -23,15 +23,6 @@ randomize(const ExternalIp &ip, NodeId &id) noexcept {
   return true;
 }
 
-/**/
-// static void
-// distance(const Key &a, const Key &b, Key &result) {
-//   // distance(A,B) = |A xor B| Smaller values are closer.
-//   for (std::size_t i = 0; i < sizeof(Key); ++i) {
-//     result[i] = a[i] ^ b[i];
-//   }
-// }
-
 static bool
 bit(const Key &key, std::size_t idx) noexcept {
   const std::size_t byte = idx / 8;

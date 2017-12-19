@@ -281,19 +281,30 @@ struct Contact {
   operator==(const Contact &) const noexcept;
 };
 
+/*valid BEP42 conforming NodeId*/
+// TODO
+enum class NodeIdValid : std::uint8_t { VALID, NOT_VALID, NOT_YET };
 /*dht::Node*/
 struct Node {
-  time_t request_activity;
-  time_t response_activity;
-  time_t ping_sent;
-
-  NodeId id;
-  Contact contact;
-  std::uint8_t ping_outstanding;
-
   // timeout {{{
   Node *timeout_next;
   Node *timeout_priv;
+  // }}}
+
+  //{{{
+  NodeId id;
+  Contact contact;
+  // }}}
+
+  // activity {{{
+  time_t request_activity;
+  time_t response_activity;
+  time_t ping_sent;
+  //}}}
+
+  //{{{
+  std::uint8_t ping_outstanding;
+  NodeIdValid valid_id;
   // }}}
 
   Node() noexcept;

@@ -158,30 +158,43 @@ Contact::operator==(const Contact &c) const noexcept {
 
 /*Node*/
 Node::Node() noexcept
-    : request_activity(0)
-    , response_activity(0)
-    , ping_sent(0)
+    // timeout{{{
+    : timeout_next(nullptr)
+    , timeout_priv(nullptr)
+    //}}}
+    //{{{
     , id()
     , contact()
+    //}}}
+    , request_activity(0)
+    , response_activity(0)
+    , ping_sent(0)
+    //}}}
+    //{{{
     , ping_outstanding(0)
-    // timeout{{{
-    , timeout_next(nullptr)
-    , timeout_priv(nullptr)
+    , valid_id(NodeIdValid::NOT_YET)
 //}}}
 {
 }
 
 /*Node*/
 Node::Node(const NodeId &nid, Ipv4 ip, Port port, time_t la) noexcept
-    : request_activity(la)
-    , response_activity(la) // TODO??
-    , ping_sent(la)         // TODO??
+    // timeout{{{
+    : timeout_next(nullptr)
+    , timeout_priv(nullptr)
+    //}}}
+    //{{{
     , id(nid)
     , contact(ip, port)
+    //}}}
+    // activity {{{
+    , request_activity(la)
+    , response_activity(la) // TODO??
+    , ping_sent(la)         // TODO??
+    //}}}
+    //{{{
     , ping_outstanding(0)
-    // timeout{{{
-    , timeout_next(nullptr)
-    , timeout_priv(nullptr)
+    , valid_id(NodeIdValid::NOT_YET)
 //}}}
 {
 }

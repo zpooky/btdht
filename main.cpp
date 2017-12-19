@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include <cstring>
+#include <errno.h>
 #include <exception>
 #include <sys/epoll.h> //epoll
 
@@ -64,9 +65,10 @@ template <typename Handle, typename Awake>
 static void
 loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
   time_t previous = 0;
+
+  sp::byte in[2048];
+  sp::byte out[2048];
   for (;;) {
-    sp::byte in[2048];
-    sp::byte out[2048];
 
     constexpr std::size_t max_events = 1024;
     ::epoll_event events[max_events];
@@ -74,6 +76,10 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
     Timeout timeout = -1;
     int no_events = ::epoll_wait(int(fdpoll), events, max_events, timeout);
     if (no_events < 0) {
+      if (errno == EINTR) {
+        // TODO handle specific interrupt
+        continue;
+      }
       die("epoll_wait");
     }
 
