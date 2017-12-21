@@ -109,7 +109,14 @@ struct Client {
 namespace dht {
 /*dht::Config*/
 struct Config {
+  // TODO change from time_t since time_t is a abs timestamp?
+  /*
+   * Min Node refresh await timeout
+   */
   time_t min_timeout_interval;
+  /*
+   * Node refresh interval
+   */
   time_t refresh_interval;
   time_t peer_age_refresh;
   time_t token_max_age;

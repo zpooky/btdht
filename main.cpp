@@ -68,12 +68,13 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
 
   sp::byte in[2048];
   sp::byte out[2048];
+
+  Timeout timeout = 0;
   for (;;) {
 
     constexpr std::size_t max_events = 1024;
     ::epoll_event events[max_events];
 
-    Timeout timeout = -1;
     int no_events = ::epoll_wait(int(fdpoll), events, max_events, timeout);
     if (no_events < 0) {
       if (errno == EINTR) {

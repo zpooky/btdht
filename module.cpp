@@ -55,7 +55,7 @@ inc_outstanding(Node *node) noexcept {
 namespace timeout {
 
 static dht::Node *
-take(dht::DHT &ctx) noexcept {
+take(dht::DHT &ctx, std::size_t max) noexcept {
   auto is_expired = [](auto &node, time_t cmp) { //
     time_t exp = dht::activity(node);
     return exp <= cmp;
@@ -64,8 +64,9 @@ take(dht::DHT &ctx) noexcept {
   dht::Node *result = nullptr;
   dht::Node *const head = ctx.timeout_node;
   dht::Node *current = head;
+  std::size_t cnt = 0;
 Lstart:
-  if (current) {
+  if (current && cnt < max) {
     if (is_expired(*current, ctx.now)) {
       dht::Node *const next = current->timeout_next;
       timeout::unlink(ctx, current);
@@ -76,6 +77,7 @@ Lstart:
         current->timeout_next = result;
         result = current;
       }
+      ++cnt;
 
       if (next != head) {
         current = next;
@@ -88,6 +90,24 @@ Lstart:
 
   return result;
 } // timeout::take()
+
+static void
+Return(dht::DHT &ctx, dht::Node *ret) noexcept {
+  assert(ret->timeout_next == nullptr);
+  assert(ret->timeout_priv == nullptr);
+
+  dht::Node *const head = ctx.timeout_node;
+  if (head) {
+    dht::Node *next = head->timeout_next;
+    head->timeout_next = ret;
+    next->timeout_priv = ret;
+
+    ret->timeout_priv = head;
+    ret->timeout_next = next;
+  } else {
+    ctx.timeout_node = ret->timeout_priv = ret->timeout_next = ret;
+  }
+}
 
 static dht::Node *
 head(dht::DHT &ctx) noexcept {
@@ -112,43 +132,55 @@ namespace dht {
 static Timeout
 awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   {
-    Node *timedout = timeout::take(ctx);
-    for_each(timedout, [&ctx, &out](Node *node) {
-      assert(node);
+  Lstart:
+    Node *const node = timeout::take(ctx, 1);
+    if (node) {
+      assert(node->timeout_next == nullptr);
+      assert(node->timeout_priv == nullptr);
 
-      if (!client::ping(ctx, out, *node)) {
-        // TODO abort the loop return un:pinged nodes to front
+      if (client::ping(ctx, out, *node)) {
+        inc_outstanding(node);
+
+        // Fake update activity otherwise if all nodes have to same timeout we
+        // will spam out pings, ex: 3 noes timed out, send ping, append, get the
+        // next timeout date, since there is only 3 in the queue and we will
+        // immediately awake and send ping  to the same 3 nodes
+        node->ping_sent = ctx.now;
+        assert(node->timeout_next == nullptr);
+        timeout::append_all(ctx, node);
+
+        goto Lstart;
+      } else {
+        timeout::Return(ctx, node);
       }
-      inc_outstanding(node);
-
-      // Fake update activity otherwise if all nodes have to same timeout we
-      // will spam out pings, ex: 3 noes timed out, send ping, append, get the
-      // next timeout date, since there is only 3 in the queue and we will
-      // immediately awake and send ping  to the same 3 nodes
-      node->ping_sent = ctx.now;
-
-    });
-    timeout::append_all(ctx, timedout);
+    }
   }
+
+  /*
+   * TODO return min(min_timeout,next_timeout) and set timeout_next to the next
+   * node timeout.
+   */
 
   /*calculate next timeout*/
   Config config;
   Node *const tHead = timeout::head(ctx);
   if (tHead) {
+    const time_t next = tHead->ping_sent + config.refresh_interval;
+    ctx.timeout_next = next;
+    if (next > ctx.now) {
 
-    time_t ping_secs_ago = ctx.now - tHead->ping_sent;
-    time_t next_timeout = config.refresh_interval > ping_secs_ago
-                              ? config.refresh_interval - ping_secs_ago
-                              : 0;
-    time_t normalized = std::max(config.min_timeout_interval, next_timeout);
+      time_t next_seconds = next - ctx.now;
+      time_t normalized = std::max(config.min_timeout_interval, next_seconds);
 
-    ctx.timeout_next = ctx.now + normalized;
-    return Timeout(normalized * 1000);
+      // seconds to ms
+      return Timeout(normalized * 1000);
+    }
+  } else {
+    // timeout queue is empty
+    ctx.timeout_next = ctx.now + config.refresh_interval;
   }
 
-  // timeout queue is empty
-  ctx.timeout_next = config.refresh_interval;
-  return Timeout(-1);
+  return Timeout(config.refresh_interval);
 }
 
 static Timeout
@@ -160,7 +192,7 @@ awake_peer_db(DHT &) noexcept {
 static void
 look_for_nodes(DHT &ctx) {
   // TODO lookup boostrap nodes
-  // TODO
+  // TODO search for more nodes
 }
 
 static Timeout
@@ -174,10 +206,10 @@ awake(DHT &ctx, sp::Buffer &out) noexcept {
   if (ctx.timeout_peer_next >= ctx.now) {
     Timeout peer_timeout = awake_peer_db(ctx);
   }
+  // TODO check threshold
   if (true) {
     look_for_nodes(ctx);
   }
-  // TODO search for more nodes
 
   // recalculate
   return ctx.now - ctx.timeout_next;
