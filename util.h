@@ -10,7 +10,7 @@ namespace sp {
 using byte = unsigned char;
 } // namespace sp
 
-/*fd*/
+// fd
 class fd {
 private:
   int m_fd;
@@ -38,7 +38,7 @@ struct Ipv6 {
 };
 
 enum class IpType : uint8_t { IPV4, IPV6 };
-/*ExternalIp*/
+// ExternalIp
 struct ExternalIp {
   union {
     Ipv4 v4;
@@ -60,7 +60,7 @@ using Seconds = std::uint32_t;
 
 //---------------------------
 namespace sp {
-/*sp::Buffer*/
+// sp::Buffer
 struct Buffer {
   byte *raw;
   const std::size_t capacity;
@@ -94,7 +94,7 @@ std::size_t
 remaining_write(const Buffer &) noexcept;
 
 //---------------------------
-/*sp::list*/
+// sp::list
 template <typename T>
 struct node {
   node *next;
@@ -249,7 +249,7 @@ for_all(const sp::list<T> &list, F f) noexcept {
 
 //---------------------------
 namespace krpc {
-/*krpc::Transaction*/
+// krpc::Transaction
 struct Transaction {
   sp::byte id[16];
   std::size_t length;
@@ -260,7 +260,7 @@ struct Transaction {
 
 //---------------------------
 namespace dht {
-/*dht::Key*/
+// dht::Key
 using Key = sp::byte[20];
 
 /*dht::NodeId*/
@@ -269,7 +269,7 @@ struct NodeId {
   NodeId();
 };
 
-/*dht::Contact*/
+// dht::Contact
 struct Contact {
   Ipv4 ip;
   Port port;
@@ -284,7 +284,7 @@ struct Contact {
 /*valid BEP42 conforming NodeId*/
 // TODO
 enum class NodeIdValid : std::uint8_t { VALID, NOT_VALID, NOT_YET };
-/*dht::Node*/
+// dht::Node
 struct Node {
   // timeout {{{
   Node *timeout_next;

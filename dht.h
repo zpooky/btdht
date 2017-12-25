@@ -10,6 +10,9 @@
 
 namespace dht {
 
+void
+randomize(NodeId &) noexcept;
+
 bool
 is_good(const DHT &, const Node &) noexcept;
 

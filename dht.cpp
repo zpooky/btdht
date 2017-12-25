@@ -7,20 +7,32 @@
 
 namespace dht {
 
+template <std::size_t SIZE>
 static bool
-randomize(const ExternalIp &ip, NodeId &id) noexcept {
-  sp::byte *it = id.id;
-  std::size_t remaining = sizeof(id.id);
+randomize(sp::byte (&buffer)[SIZE]) noexcept {
+  sp::byte *it = buffer;
+  std::size_t remaining = SIZE;
 
   while (remaining > 0) {
     const int r = rand();
-    std::size_t length = std::min(sizeof(int), remaining);
+    std::size_t length = std::min(sizeof(r), remaining);
 
     std::memcpy(it, &r, length);
     remaining -= length;
     it += length;
   }
   return true;
+}
+
+static bool
+randomize(const ExternalIp &, NodeId &id) noexcept {
+  // TODO
+  return randomize(id.id);
+}
+
+void
+randomize(NodeId &id) noexcept {
+  randomize(id.id);
 }
 
 static bool
@@ -110,7 +122,7 @@ find(Bucket &bucket, const NodeId &id) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];
     if (contact) {
-      if (std::memcmp(contact.id.id, id.id, sizeof(id)) == 0) {
+      if (std::memcmp(contact.id.id, id.id, sizeof(id.id)) == 0) {
         return &contact;
       }
     }
@@ -464,14 +476,20 @@ bucket_for(DHT &dht, const NodeId &id) noexcept {
 
 Node *
 insert(DHT &dht, const Node &contact) noexcept {
-start:
+Lstart:
   bool inTree = false;
   std::size_t idx = 0;
 
-  RoutingTable *leaf = find_closest(dht, contact.id, inTree, idx);
+  RoutingTable *const leaf = find_closest(dht, contact.id, inTree, idx);
   if (leaf) {
 
     Bucket &bucket = leaf->bucket;
+    {
+      Node *const existing = find(bucket, contact.id);
+      if (existing) {
+        return existing;
+      }
+    }
     // when we are intree meaning we can add another bucket we do not
     // necessarily need to evict a node that might be late responding to pings
     bool eager_merge = !inTree;
@@ -486,7 +504,7 @@ start:
       if (inTree) {
         split(dht, leaf, idx);
         // XXX make better
-        goto start;
+        goto Lstart;
       }
     }
 
@@ -712,7 +730,8 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
 } // lookup::insert()
 
 void
-mint_token(dht::DHT &, Ipv4, dht::Token &) noexcept {
+mint_token(dht::DHT &, Ipv4, dht::Token &t) noexcept {
+  dht::randomize(t.id);
   // TODO
 } // lookup::mint_token()
 

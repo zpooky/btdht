@@ -22,6 +22,7 @@ awake(DHT &, sp::Buffer &) noexcept;
 Module::Module() noexcept
     : query(nullptr)
     , response(nullptr)
+    , response_timeout(nullptr)
     , request(nullptr) {
 }
 
@@ -157,7 +158,7 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
       }
     }
   }
-  // TODO remove if is_bad(node)
+  // XXX remove if is_bad(node)
 
   /*calculate next timeout*/
   Config config;
@@ -190,38 +191,33 @@ awake_peer_db(DHT &dht) noexcept {
   //     assert(peer->timeout_next == nullptr);
   //     assert(peer->timeout_priv == nullptr);
   //   }
-  //   // TODO cleanup
   // }
-  // TODO timeout peer
+  // TODO
 
   Config config;
   return Timeout(config.refresh_interval);
 }
 
 static void
-random(NodeId &id) noexcept {
-}
-
-static void
-look_for_nodes(DHT &ctx, sp::Buffer &out, std::uint32_t missing_contacts) {
-  std::uint32_t searches = ctx.bootstrap_ongoing_searches * dht::Bucket::K;
+look_for_nodes(DHT &dht, sp::Buffer &out, std::uint32_t missing_contacts) {
+  std::uint32_t searches = dht.bootstrap_ongoing_searches * dht::Bucket::K;
   missing_contacts -= std::min(missing_contacts, searches);
 
-  auto inc_ongoing = [&ctx, &missing_contacts]() {
+  auto inc_ongoing = [&dht, &missing_contacts]() {
     std::uint32_t K(dht::Bucket::K);
     missing_contacts -= std::min(missing_contacts, K);
-    ctx.bootstrap_ongoing_searches++;
+    dht.bootstrap_ongoing_searches++;
   };
 
 Lstart:
   NodeId id;
-  random(id);
+  dht::randomize(id);
 
-  auto search_id = [&ctx, &id](dht::Bucket &b) -> NodeId & {
+  auto search_id = [&dht, &id](dht::Bucket &b) -> NodeId & {
     Lretry:
       if (b.bootstrap_generation == 0) {
         b.bootstrap_generation++;
-        return ctx.id;
+        return dht.id;
       }
 
       b.bootstrap_generation++;
@@ -236,16 +232,13 @@ Lstart:
   // XXX how to handle the same bucket will be reselected to send find_nodes
   // multiple times in a row
 
-  // TODO update ctx.bad_nodes count
-
-  // TODO support on cancelation callbck tx for transaction. for find_node
-  // cancel callback we decrement the coint of ongoing bootstrap searches.
+  // TODO update dht.bad_nodes count
 
   // XXX if no good node is avaiable try bad/questionable nodes
-  auto &bs = ctx.bootstrap_contacts;
-  for_each(bs, [&ctx, &out, inc_ongoing, id](const Contact &remote) {
+  auto &bs = dht.bootstrap_contacts;
+  for_each(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
 
-    bool res = client::find_node(ctx, out, remote, id);
+    bool res = client::find_node(dht, out, remote, id);
     if (res) {
       inc_ongoing();
     }
@@ -253,14 +246,14 @@ Lstart:
   });
 
   if (missing_contacts > 0) {
-    dht::Bucket *const b = dht::bucket_for(ctx, id);
+    dht::Bucket *const b = dht::bucket_for(dht, id);
     if (b) {
       const NodeId &sid = search_id(*b);
-      bool ok = for_all(*b, [&ctx, &out, inc_ongoing, sid](Node &remote) {
-        if (dht::is_good(ctx, remote)) {
+      bool ok = for_all(*b, [&dht, &out, inc_ongoing, sid](Node &remote) {
+        if (dht::is_good(dht, remote)) {
 
           Contact &c = remote.contact;
-          bool res = client::find_node(ctx, out, c, sid);
+          bool res = client::find_node(dht, out, c, sid);
           if (res) {
             inc_ongoing();
           }
@@ -278,21 +271,20 @@ Lstart:
 
 static Timeout
 awake(DHT &dht, sp::Buffer &out) noexcept {
-  reset(out);
-  Timeout next(-1); // TODO
+  Timeout next(-1);
   if (dht.timeout_next >= dht.now) {
-    Timeout node_timeout = awake_ping(dht, out);
+    next = awake_ping(dht, out);
   }
   if (dht.timeout_peer_next >= dht.now) {
-    Timeout peer_timeout = awake_peer_db(dht);
+    // Timeout peer_timeout = awake_peer_db(dht);
   }
 
   {
     auto percentage = [](std::uint32_t t, std::uint32_t c) {
-      return uint8_t(0); // TODO
+      return c / (t / 100);
     };
     std::uint32_t good = dht.total_nodes - dht.bad_nodes;
-    std::uint32_t total = 0; // TODO
+    std::uint32_t total = std::max(std::uint32_t(365), good); // TODO
     std::uint32_t look_for = total - good;
     Config config;
     if (percentage(total, good) < config.percentage_seek) {
@@ -427,18 +419,26 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const sp::list<dht::Node> &contacts) noexcept {
+  dht::DHT &dht = ctx.dht;
+  assert(dht.bootstrap_ongoing_searches > 0);
+  dht.bootstrap_ongoing_searches--;
+
   dht_response(ctx, sender, [&](auto &) {
-    dht::DHT &dht = ctx.dht;
     for_each(contacts, [&](const auto &contact) { //
 
       dht::Node node(contact, ctx.dht.now);
-      // TODO ignore duplicate
       dht::insert(dht, node);
     });
 
   });
 
 } // find_node::handle_response()
+
+static void
+handle_response_timeout(dht::DHT &dht) noexcept {
+  assert(dht.bootstrap_ongoing_searches > 0);
+  dht.bootstrap_ongoing_searches--;
+}
 
 static bool
 on_response(dht::MessageContext &ctx) {
@@ -503,6 +503,7 @@ setup(dht::Module &module) noexcept {
   module.query = "find_node";
   module.request = on_request;
   module.response = on_response;
+  module.response_timeout = handle_response_timeout;
 }
 
 } // namespace find_node

@@ -8,19 +8,19 @@ namespace client {
 
 template <typename F>
 static bool
-send(dht::DHT &ctx, const dht::Contact &contact, sp::Buffer &out,
+send(dht::DHT &ctx, const dht::Contact &remote, sp::Buffer &out,
      dht::Module module, F request) noexcept {
   sp::reset(out);
   dht::Client &client = ctx.client;
 
   bool result = false;
   krpc::Transaction t;
-  if (mint_tx(client, t, ctx.now, module.response)) {
+  if (mint_tx(ctx, t, ctx.now, module.response, module.response_timeout)) {
 
     result = request(out, t);
     if (result) {
       sp::flip(out);
-      result = udp::send(client.udp, contact, out);
+      result = udp::send(client.udp, remote, out);
     }
     if (!result) {
       // since we fail to send request, we clear the transaction

@@ -10,6 +10,7 @@ namespace dht {
 /*dht::Tx*/
 Tx::Tx() noexcept
     : handle(nullptr)
+    , cancel(nullptr)
     , timeout_next(nullptr)
     , timeout_priv(nullptr)
     , sent(0)

@@ -15,6 +15,7 @@ add_front(Client &, Tx *) noexcept;
 static void
 reset(Tx &tx) noexcept {
   tx.handle = nullptr;
+  tx.cancel = nullptr;
   tx.sent = 0;
 
   tx.suffix[0] = '\0';
@@ -194,8 +195,13 @@ unlink(Client &client, Tx *t) noexcept {
 }
 
 static bool
+is_sent(const Tx &tx) noexcept {
+  return tx.sent != 0;
+}
+
+static bool
 is_expired(const Tx &tx, time_t now) noexcept {
-  if (tx.sent != 0) {
+  if (is_sent(tx)) {
     Config config;
     if ((tx.sent + config.transaction_timeout) < now) {
       return false;
@@ -263,11 +269,20 @@ take_tx(Client &client, const krpc::Transaction &needle) noexcept {
 } // dht::take_tx()
 
 static Tx *
-unlink_free(Client &client, time_t now) noexcept {
+unlink_free(DHT &dht, time_t now) noexcept {
+  Client &client = dht.client;
   Tx *const head = client.timeout_head;
+
   if (head) {
 
     if (is_expired(*head, now)) {
+      if (is_sent(*head)) {
+
+        if (head->cancel) {
+          head->cancel(dht);
+        }
+      }
+      reset(*head);
 
       return unlink(client, head);
     }
@@ -277,11 +292,14 @@ unlink_free(Client &client, time_t now) noexcept {
 }
 
 bool
-mint_tx(Client &client, krpc::Transaction &out, time_t now,
-        TxHandle h) noexcept {
+mint_tx(DHT &dht, krpc::Transaction &out, time_t now, TxHandle h,
+        TxCancelHandle ch) noexcept {
   assert(h);
+  assert(ch);
 
-  Tx *const tx = unlink_free(client, now);
+  Client &client = dht.client;
+
+  Tx *const tx = unlink_free(dht, now);
   if (tx) {
     {
       const int r = rand();

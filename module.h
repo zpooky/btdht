@@ -14,6 +14,7 @@ struct Module {
   const char *query;
 
   bool (*response)(MessageContext &);
+  void (*response_timeout)(DHT &);
   bool (*request)(MessageContext &);
 
   Module() noexcept;

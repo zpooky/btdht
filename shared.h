@@ -12,7 +12,7 @@
 
 //---------------------------
 namespace krpc {
-/*krpc::ParseContext*/
+// krpc::ParseContext
 struct ParseContext {
   bencode::d::Decoder &decoder;
   Transaction tx;
@@ -39,12 +39,15 @@ struct ParseContext {
 namespace dht {
 
 struct MessageContext;
+struct DHT;
 
+using TxCancelHandle = void (*)(DHT &) noexcept;
 using TxHandle = bool (*)(MessageContext &) noexcept;
 
-/*dht::TxStore*/
+// dht::TxStore
 struct Tx {
   TxHandle handle;
+  TxCancelHandle cancel;
 
   Tx *timeout_next;
   Tx *timeout_priv;
@@ -83,7 +86,7 @@ struct static_size<0> {
   static constexpr std::size_t value = 1;
 };
 
-/*dht::TxTree*/
+// dht::TxTree
 struct TxTree {
   static constexpr std::size_t levels = 7;
   static constexpr std::size_t capacity = static_size<levels>::value;
@@ -94,7 +97,7 @@ struct TxTree {
   Tx &operator[](std::size_t) noexcept;
 };
 
-/*dht::Client*/
+// dht::Client
 struct Client {
   fd &udp;
   TxTree tree;
@@ -107,7 +110,7 @@ struct Client {
 
 //---------------------------
 namespace dht {
-/*dht::Config*/
+// dht::Config
 struct Config {
   // TODO change from time_t since time_t is a abs timestamp?
   /*
@@ -143,7 +146,7 @@ struct Config {
   Config() noexcept;
 };
 
-/*dht::Infohash*/
+// dht::Infohash
 struct Infohash {
   Key id;
   Infohash()
@@ -154,7 +157,7 @@ struct Infohash {
 bool
 is_valid(const NodeId &) noexcept;
 
-/*dht::Token*/
+// dht::Token
 struct Token {
   sp::byte id[20];
   Token()
@@ -162,7 +165,7 @@ struct Token {
   }
 };
 
-/*dht::Peer*/
+// dht::Peer
 struct Peer {
   Contact contact;
   time_t activity;
@@ -219,7 +222,7 @@ for_all(Bucket &b, F f) {
   return result;
 }
 
-/*dht::RoutingTable*/
+// dht::RoutingTable
 enum class NodeType { NODE, LEAF };
 struct RoutingTable {
   union {
@@ -238,7 +241,7 @@ struct RoutingTable {
   ~RoutingTable();
 };
 
-/*dht::KeyValue*/
+// dht::KeyValue
 struct KeyValue {
   KeyValue *next;
   Peer *peers;
@@ -247,12 +250,16 @@ struct KeyValue {
   KeyValue(const Infohash &, KeyValue *);
 };
 
-/*dht::DHT*/
+// dht::log
+struct Log {};
+
+// dht::DHT
 struct DHT {
   static const std::size_t token_table = 64;
   // self {{{
   NodeId id;
   Client client;
+  Log log;
   ExternalIp ip;
   //}}}
   // peer-lookup db {{{
@@ -286,7 +293,7 @@ struct DHT {
   explicit DHT(fd &, const ExternalIp &);
 };
 
-/*dht::MessageContext*/
+// dht::MessageContext
 struct MessageContext {
   const char *query;
 
