@@ -271,12 +271,14 @@ Lstart:
 
 static Timeout
 awake(DHT &dht, sp::Buffer &out) noexcept {
-  Timeout next(-1);
+  Config config;
+  Timeout next(config.refresh_interval);
+
   if (dht.timeout_next >= dht.now) {
-    next = awake_ping(dht, out);
+    next = std::min(awake_ping(dht, out), next);
   }
   if (dht.timeout_peer_next >= dht.now) {
-    // Timeout peer_timeout = awake_peer_db(dht);
+    next = std::min(awake_peer_db(dht), next);
   }
 
   {
@@ -292,8 +294,8 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
     }
   }
 
-  // recalculate
-  return dht.now - dht.timeout_next;
+  // Recalculate
+  return dht.now + next;
 }
 
 static Node *
