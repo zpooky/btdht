@@ -121,10 +121,24 @@ struct Config {
   time_t peer_age_refresh;
   time_t token_max_age;
   /*
-   * Transaction max age of transaction created for outgoing request.
-   * Used when reclaiming transaction id.
+   * Max age of transaction created for outgoing request. Used when reclaiming
+   * transaction id. if age is greater than max age then we can reuse the
+   * transaction.
    */
   time_t transaction_timeout;
+  /*
+   * the generation of find_node request sent to bootstrap our routing table.
+   * When max generation is reached we start from zero again. when generation is
+   * zero we send find_node(self) otherwise we randomize node id
+   */
+  std::uint8_t bootstrap_generation_max;
+  /*
+   * A low water mark indecating when we need to find_nodes to supplement nodes
+   * present in our RoutingTable. Is used when comparing active with total
+   * nodes if there are < percentage active nodes than /percentage_seek/ we
+   * start a search for more nodes.
+   */
+  std::uint8_t percentage_seek;
 
   Config() noexcept;
 };
@@ -182,14 +196,28 @@ for_all(const dht::Peer *l, F f) noexcept {
 time_t
 activity(const Node &) noexcept;
 
+time_t
+activity(const Peer &) noexcept;
+
 /*dht::Bucket*/
 struct Bucket {
   static constexpr std::size_t K = 8;
   Node contacts[K];
+  std::uint8_t bootstrap_generation;
 
   Bucket();
   ~Bucket();
 };
+
+template <typename F>
+bool
+for_all(Bucket &b, F f) {
+  bool result = true;
+  for (std::size_t i = 0; i < Bucket::K && result; ++i) {
+    result = f(b.contacts[i]);
+  }
+  return result;
+}
 
 /*dht::RoutingTable*/
 enum class NodeType { NODE, LEAF };
@@ -244,10 +272,15 @@ struct DHT {
   sp::list<dht::Contact> value_list;
   // }}}
   // stuff {{{
-  std::uint16_t sequence;
   time_t last_activity;
+
   std::uint32_t total_nodes;
+  std::uint32_t bad_nodes;
   time_t now;
+  // }}}
+  // boostrap {{{
+  sp::list<Contact> bootstrap_contacts;
+  std::size_t bootstrap_ongoing_searches;
   // }}}
 
   explicit DHT(fd &, const ExternalIp &);

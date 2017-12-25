@@ -63,7 +63,11 @@ Config::Config() noexcept
     : min_timeout_interval(60)
     , refresh_interval(15 * 60)
     , peer_age_refresh(60 * 45)
-    , token_max_age(15 * 60) {
+    , token_max_age(15 * 60)
+    , transaction_timeout(1 * 60)
+    //
+    , bootstrap_generation_max(16)
+    , percentage_seek(90) {
 }
 
 bool
@@ -113,9 +117,15 @@ activity(const Node &head) noexcept {
   return std::max(head.request_activity, head.response_activity);
 }
 
+time_t
+activity(const Peer &peer) noexcept {
+  return peer.activity;
+}
+
 /*dht::Bucket*/
 Bucket::Bucket()
-    : contacts() {
+    : contacts()
+    , bootstrap_generation(0) {
 }
 
 Bucket::~Bucket() {
@@ -175,13 +185,17 @@ DHT::DHT(fd &udp, const ExternalIp &i)
     , value_list()
     // }}}
     // {{{
-    /* sequence number of request used in transaction id gen?*/
-    , sequence(0)
     /*timestamp of received request&response*/
     , last_activity(0)
-    /*total nodes present intthe routing table*/
+    /*total nodes present in the routing table*/
     , total_nodes(0)
+    , bad_nodes(0)
     , now(0)
+    // boostrap {{{
+    , bootstrap_contacts()
+    , bootstrap_ongoing_searches(0)
+// }}}
+
 //}}}
 {
 }

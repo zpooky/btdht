@@ -394,7 +394,7 @@ is_blacklisted(DHT &, const dht::Contact &) noexcept {
 }
 
 bool
-is_good(DHT &dht, const Node &contact) noexcept {
+is_good(const DHT &dht, const Node &contact) noexcept {
   Config config;
   // XXX configurable non arbitrary limit?
   if (contact.ping_outstanding > 2) {
@@ -453,6 +453,15 @@ find_contact(DHT &dht, const NodeId &id) noexcept {
   return nullptr;
 } // dht::find_contact()
 
+Bucket *
+bucket_for(DHT &dht, const NodeId &id) noexcept {
+  bool inTree = false;
+  std::size_t idx = 0;
+
+  RoutingTable *leaf = find_closest(dht, id, inTree, idx);
+  return leaf ? &leaf->bucket : nullptr;
+}
+
 Node *
 insert(DHT &dht, const Node &contact) noexcept {
 start:
@@ -466,9 +475,8 @@ start:
     // when we are intree meaning we can add another bucket we do not
     // necessarily need to evict a node that might be late responding to pings
     bool eager_merge = !inTree;
-    bool replaced = false;
-    Node *result =
-        do_insert(dht, bucket, contact, eager_merge, /*OUT*/ replaced);
+    bool /*OUT*/ replaced = false;
+    Node *result = do_insert(dht, bucket, contact, eager_merge, replaced);
 
     if (result) {
       if (!replaced) {
@@ -521,13 +529,18 @@ internal_unlink(T *&head, T *const contact) noexcept {
 }
 
 void
-unlink(dht::DHT &ctx, dht::Node *contact) noexcept {
-  return internal_unlink(ctx.timeout_node, contact);
+unlink(dht::Node *&head, dht::Node *contact) noexcept {
+  return internal_unlink(head, contact);
 } // timeout::unlink()
 
-static void
-unlink(dht::DHT &ctx, dht::Peer *peer) noexcept {
-  return internal_unlink(ctx.timeout_peer, peer);
+void
+unlink(dht::DHT &ctx, dht::Node *contact) noexcept {
+  return unlink(ctx.timeout_node, contact);
+} // timeout::unlink()
+
+void
+unlink(dht::Peer *&head, dht::Peer *peer) noexcept {
+  return internal_unlink(head, peer);
 } // timeout::unlink()
 
 template <typename T>
@@ -570,13 +583,13 @@ dht::KeyValue *
 lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
   auto find_haystack = [](dht::KeyValue *current, const dht::Infohash &id) {
     // XXX tree?
-  start:
+  Lstart:
     if (current) {
       if (std::memcmp(id.id, current->id.id, sizeof(id)) == 0) {
         return current;
       }
       current = current->next;
-      goto start;
+      goto Lstart;
     }
 
     return current;
@@ -620,18 +633,21 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
       if (is_expired(*it)) {
         reclaim(it);
         previous->next = next;
+      } else {
+        previous = it;
       }
-      previous = it;
 
       it = next;
       goto Lloop;
     }
+
     needle->peers = dummy.next;
     if (needle->peers) {
       return needle;
     }
     reclaim_table(needle);
   }
+
   return nullptr;
 } // lookup::lookup()
 

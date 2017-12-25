@@ -1,5 +1,10 @@
 [
     {
+        "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/transaction.o transaction.cpp",
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "/home/spooky/development/repos/dht/transaction.cpp"
+    },
+    {
         "command": "c++ -c -Iexternal -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/udp.o udp.cpp",
         "directory": "/home/spooky/development/repos/dht",
         "file": "/home/spooky/development/repos/dht/udp.cpp"

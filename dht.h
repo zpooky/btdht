@@ -11,7 +11,7 @@
 namespace dht {
 
 bool
-is_good(DHT &, const Node &) noexcept;
+is_good(const DHT &, const Node &) noexcept;
 
 bool
 init(dht::DHT &) noexcept;
@@ -32,6 +32,9 @@ valid(DHT &, const krpc::Transaction &) noexcept;
 Node *
 find_contact(DHT &, const NodeId &) noexcept;
 
+Bucket *
+bucket_for(DHT &, const NodeId &) noexcept;
+
 Node *
 insert(DHT &, const Node &) noexcept;
 
@@ -39,7 +42,13 @@ insert(DHT &, const Node &) noexcept;
 
 namespace timeout {
 void
-unlink(dht::DHT &, dht::Node *) noexcept;
+unlink(dht::Node *&head, dht::Node *) noexcept;
+
+void
+unlink(dht::DHT &ctx, dht::Node *contact) noexcept;
+
+void
+unlink(dht::Peer *&head, dht::Peer *) noexcept;
 
 void
 append_all(dht::DHT &, dht::Node *) noexcept;

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <utility>
 
 //===========================================================
 // Module
@@ -54,22 +55,23 @@ inc_outstanding(Node *node) noexcept {
 
 namespace timeout {
 
-static dht::Node *
-take(dht::DHT &ctx, std::size_t max) noexcept {
+template <typename T>
+static T *
+take(time_t now, T *&the_head, std::size_t max) noexcept {
   auto is_expired = [](auto &node, time_t cmp) { //
     time_t exp = dht::activity(node);
     return exp <= cmp;
   };
 
-  dht::Node *result = nullptr;
-  dht::Node *const head = ctx.timeout_node;
-  dht::Node *current = head;
+  T *result = nullptr;
+  T *const head = the_head;
+  T *current = head;
   std::size_t cnt = 0;
 Lstart:
   if (current && cnt < max) {
-    if (is_expired(*current, ctx.now)) {
-      dht::Node *const next = current->timeout_next;
-      timeout::unlink(ctx, current);
+    if (is_expired(*current, now)) {
+      T *const next = current->timeout_next;
+      timeout::unlink(the_head, current);
 
       if (!result) {
         result = current;
@@ -83,7 +85,7 @@ Lstart:
         current = next;
         goto Lstart;
       } else {
-        ctx.timeout_node = nullptr;
+        the_head = nullptr;
       }
     }
   }
@@ -133,7 +135,7 @@ static Timeout
 awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   {
   Lstart:
-    Node *const node = timeout::take(ctx, 1);
+    Node *const node = timeout::take(ctx.now, ctx.timeout_node, 1);
     if (node) {
       assert(node->timeout_next == nullptr);
       assert(node->timeout_priv == nullptr);
@@ -155,11 +157,7 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
       }
     }
   }
-
-  /*
-   * TODO return min(min_timeout,next_timeout) and set timeout_next to the next
-   * node timeout.
-   */
+  // TODO remove if is_bad(node)
 
   /*calculate next timeout*/
   Config config;
@@ -184,35 +182,126 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 }
 
 static Timeout
-awake_peer_db(DHT &) noexcept {
-  // TODO
-  return Timeout(0);
+awake_peer_db(DHT &dht) noexcept {
+  // {
+  // Lstart:
+  //   Peer *const peer = timeout::take(dht.now, dht.timeout_peer, 1);
+  //   if (peer) {
+  //     assert(peer->timeout_next == nullptr);
+  //     assert(peer->timeout_priv == nullptr);
+  //   }
+  //   // TODO cleanup
+  // }
+  // TODO timeout peer
+
+  Config config;
+  return Timeout(config.refresh_interval);
 }
 
 static void
-look_for_nodes(DHT &ctx) {
-  // TODO lookup boostrap nodes
-  // TODO search for more nodes
+random(NodeId &id) noexcept {
+}
+
+static void
+look_for_nodes(DHT &ctx, sp::Buffer &out, std::uint32_t missing_contacts) {
+  std::uint32_t searches = ctx.bootstrap_ongoing_searches * dht::Bucket::K;
+  missing_contacts -= std::min(missing_contacts, searches);
+
+  auto inc_ongoing = [&ctx, &missing_contacts]() {
+    std::uint32_t K(dht::Bucket::K);
+    missing_contacts -= std::min(missing_contacts, K);
+    ctx.bootstrap_ongoing_searches++;
+  };
+
+Lstart:
+  NodeId id;
+  random(id);
+
+  auto search_id = [&ctx, &id](dht::Bucket &b) -> NodeId & {
+    Lretry:
+      if (b.bootstrap_generation == 0) {
+        b.bootstrap_generation++;
+        return ctx.id;
+      }
+
+      b.bootstrap_generation++;
+      Config config;
+      if (config.bootstrap_generation_max >= b.bootstrap_generation) {
+        b.bootstrap_generation = 0;
+        goto Lretry;
+      }
+      return id;
+  };
+  // TODO how to handle that bootstrap contact is in current Bucket
+  // XXX how to handle the same bucket will be reselected to send find_nodes
+  // multiple times in a row
+
+  // TODO update ctx.bad_nodes count
+
+  // TODO support on cancelation callbck tx for transaction. for find_node
+  // cancel callback we decrement the coint of ongoing bootstrap searches.
+
+  // XXX if no good node is avaiable try bad/questionable nodes
+  auto &bs = ctx.bootstrap_contacts;
+  for_each(bs, [&ctx, &out, inc_ongoing, id](const Contact &remote) {
+
+    bool res = client::find_node(ctx, out, remote, id);
+    if (res) {
+      inc_ongoing();
+    }
+    return res;
+  });
+
+  if (missing_contacts > 0) {
+    dht::Bucket *const b = dht::bucket_for(ctx, id);
+    if (b) {
+      const NodeId &sid = search_id(*b);
+      bool ok = for_all(*b, [&ctx, &out, inc_ongoing, sid](Node &remote) {
+        if (dht::is_good(ctx, remote)) {
+
+          Contact &c = remote.contact;
+          bool res = client::find_node(ctx, out, c, sid);
+          if (res) {
+            inc_ongoing();
+          }
+          return res;
+        }
+        return true;
+      });
+
+      if (ok) {
+        goto Lstart;
+      }
+    }
+  }
 }
 
 static Timeout
-awake(DHT &ctx, sp::Buffer &out) noexcept {
+awake(DHT &dht, sp::Buffer &out) noexcept {
   reset(out);
-  // TODO timeout peer
-  Timeout next(-1);
-  if (ctx.timeout_next >= ctx.now) {
-    Timeout node_timeout = awake_ping(ctx, out);
+  Timeout next(-1); // TODO
+  if (dht.timeout_next >= dht.now) {
+    Timeout node_timeout = awake_ping(dht, out);
   }
-  if (ctx.timeout_peer_next >= ctx.now) {
-    Timeout peer_timeout = awake_peer_db(ctx);
+  if (dht.timeout_peer_next >= dht.now) {
+    Timeout peer_timeout = awake_peer_db(dht);
   }
-  // TODO check threshold
-  if (true) {
-    look_for_nodes(ctx);
+
+  {
+    auto percentage = [](std::uint32_t t, std::uint32_t c) {
+      return uint8_t(0); // TODO
+    };
+    std::uint32_t good = dht.total_nodes - dht.bad_nodes;
+    std::uint32_t total = 0; // TODO
+    std::uint32_t look_for = total - good;
+    Config config;
+    if (percentage(total, good) < config.percentage_seek) {
+      look_for_nodes(dht, out, look_for);
+    }
   }
 
   // recalculate
-  return ctx.now - ctx.timeout_next;
+  return dht.now - dht.timeout_next;
 }
 
 static Node *
@@ -342,8 +431,9 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
     dht::DHT &dht = ctx.dht;
     for_each(contacts, [&](const auto &contact) { //
 
-      dht::Node ins(contact, ctx.dht.now);
-      dht::insert(dht, ins);
+      dht::Node node(contact, ctx.dht.now);
+      // TODO ignore duplicate
+      dht::insert(dht, node);
     });
 
   });

@@ -3,7 +3,7 @@
 
 #include "transaction.h"
 
-namespace client { //
+namespace client {
 
 bool
 ping(dht::DHT &, sp::Buffer &, const dht::Node &) noexcept;

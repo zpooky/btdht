@@ -55,10 +55,7 @@ setup_epoll(fd &udp) noexcept {
 
 static bool
 bootstrap(dht::DHT &dht, dht::Contact dest, time_t now) noexcept {
-  // placeholder 000 id
-  dht::NodeId id;
-  dht::Node contact(id, dest, now);
-  return dht::insert(dht, contact) != nullptr;
+  return sp::push_back(dht.bootstrap_contacts, dest);
 }
 
 template <typename Handle, typename Awake>
