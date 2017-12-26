@@ -9,10 +9,10 @@
 //=BEncode==================================================================
 namespace bencode {
 namespace e {
-static bool
-value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
-  return value(buffer, id.id, sizeof(id.id));
-} // bencode::e::value()
+// static bool
+// value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
+//   return value(buffer, id.id, sizeof(id.id));
+// } // bencode::e::value()
 
 static sp::byte *
 serialize(sp::byte *b, const dht::Contact &p) noexcept {
@@ -62,9 +62,9 @@ pair(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
     const dht::Peer *l = (const dht::Peer *)a;
     assert(l);
 
-    return dht::for_all(l, [&b](const auto &l) {
+    return dht::for_all(l, [&b](const auto &ls) {
 
-      if (!bencode::e::value(b, l.contact)) {
+      if (!bencode::e::value(b, ls.contact)) {
         return false;
       }
       return true;
@@ -267,11 +267,11 @@ get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
 } // request::get_peers()
 
 bool
-announce_peer(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
+announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &id,
               bool implied_port, const dht::Infohash &infohash,
               std::uint16_t port, const char *token) noexcept {
   return req(
-      buf, t, "announce_peer",
+      buffer, t, "announce_peer",
       [&id, &implied_port, &infohash, &port, &token](sp::Buffer &buf) { //
         if (!bencode::e::pair(buf, "id", id.id, sizeof(id.id))) {
           return false;

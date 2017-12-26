@@ -59,7 +59,7 @@ local(fd &listen) noexcept {
 
   if (saddr->sa_family == AF_INET6) {
     // TODO
-    // return ExternalIp(ip, ntohs(addr.sin_port));
+    return ExternalIp(0, 0);
   } else {
     Ipv4 ip = ntohl(addr.sin_addr.s_addr);
 

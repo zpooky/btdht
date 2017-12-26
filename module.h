@@ -13,9 +13,9 @@ namespace dht {
 struct Module {
   const char *query;
 
-  bool (*response)(MessageContext &);
-  void (*response_timeout)(DHT &);
-  bool (*request)(MessageContext &);
+  bool (*response)(MessageContext &) noexcept;
+  void (*response_timeout)(DHT &) noexcept;
+  bool (*request)(MessageContext &) noexcept;
 
   Module() noexcept;
 };

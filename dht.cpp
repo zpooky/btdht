@@ -37,9 +37,10 @@ randomize(NodeId &id) noexcept {
 
 static bool
 bit(const Key &key, std::size_t idx) noexcept {
-  const std::size_t byte = idx / 8;
-  const std::uint8_t bit = idx % 8;
-  const std::uint8_t bitMask = std::uint8_t(0b1000'0000) >> bit;
+  std::size_t byte = idx / 8;
+  std::uint8_t bit = idx % 8;
+  std::uint8_t high_bit(1 << 7);
+  std::uint8_t bitMask = std::uint8_t(high_bit >> bit);
   return key[byte] & bitMask;
 }
 
@@ -326,11 +327,6 @@ TokenPair::operator bool() const noexcept {
   return ip != Ipv4(0);
 }
 
-static std::size_t
-index(Ipv4 ip) noexcept {
-  return ip % DHT::token_table;
-}
-
 static void
 find_closest_nodes(DHT &dht, const Key &search,
                    Node *(&result)[Bucket::K]) noexcept {
@@ -411,6 +407,10 @@ is_good(const DHT &dht, const Node &contact) noexcept {
   // XXX configurable non arbitrary limit?
   if (contact.ping_outstanding > 2) {
 
+    /*
+     * Using dht.last_activty to better handle a general outgate of network
+     * connectivity
+     */
     time_t resp_timeout = contact.response_activity + config.refresh_interval;
     if (resp_timeout > dht.last_activity) {
 

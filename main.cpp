@@ -54,7 +54,7 @@ setup_epoll(fd &udp) noexcept {
 }
 
 static bool
-bootstrap(dht::DHT &dht, dht::Contact dest, time_t now) noexcept {
+bootstrap(dht::DHT &dht, dht::Contact dest) noexcept {
   return sp::push_back(dht.bootstrap_contacts, dest);
 }
 
@@ -203,8 +203,8 @@ main() {
 
   fd poll = setup_epoll(udp);
 
-  time_t tnow = time(nullptr);
-  bootstrap(dht, bs_node, tnow);
+  dht.now = time(nullptr);
+  bootstrap(dht, bs_node);
 
   dht::Modules modules;
   setup(modules);

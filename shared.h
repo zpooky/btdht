@@ -120,7 +120,7 @@ struct Config {
   /*
    * Node refresh interval
    */
-  time_t refresh_interval;
+  Timeout refresh_interval;
   time_t peer_age_refresh;
   time_t token_max_age;
   /*

@@ -65,7 +65,7 @@ Config::Config() noexcept
     , refresh_interval(15 * 60)
     , peer_age_refresh(60 * 45)
     , token_max_age(15 * 60)
-    , transaction_timeout(1 * 60)
+    , transaction_timeout(1 * 30)
     //
     , bootstrap_generation_max(16)
     , percentage_seek(90) {

@@ -45,10 +45,10 @@ Lstart:
 }
 
 static void
-inc_outstanding(Node *node) noexcept {
-  std::uint8_t &data = node->ping_outstanding;
-  if (data != ~std::uint8_t(0)) {
-    ++data;
+inc_outstanding(Node &node) noexcept {
+  const std::uint8_t max = ~0;
+  if (node.ping_outstanding != max) {
+    ++node.ping_outstanding;
   }
 }
 
@@ -142,7 +142,7 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
       assert(node->timeout_priv == nullptr);
 
       if (client::ping(ctx, out, *node)) {
-        inc_outstanding(node);
+        inc_outstanding(*node);
 
         // Fake update activity otherwise if all nodes have to same timeout we
         // will spam out pings, ex: 3 noes timed out, send ping, append, get the
@@ -158,7 +158,6 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
       }
     }
   }
-  // XXX remove if is_bad(node)
 
   /*calculate next timeout*/
   Config config;
@@ -183,7 +182,7 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 }
 
 static Timeout
-awake_peer_db(DHT &dht) noexcept {
+awake_peer_db(DHT &) noexcept {
   // {
   // Lstart:
   //   Peer *const peer = timeout::take(dht.now, dht.timeout_peer, 1);
@@ -199,12 +198,12 @@ awake_peer_db(DHT &dht) noexcept {
 }
 
 static void
-look_for_nodes(DHT &dht, sp::Buffer &out, std::uint32_t missing_contacts) {
-  std::uint32_t searches = dht.bootstrap_ongoing_searches * dht::Bucket::K;
+look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
+  std::size_t searches = dht.bootstrap_ongoing_searches * dht::Bucket::K;
   missing_contacts -= std::min(missing_contacts, searches);
 
   auto inc_ongoing = [&dht, &missing_contacts]() {
-    std::uint32_t K(dht::Bucket::K);
+    std::size_t K = dht::Bucket::K;
     missing_contacts -= std::min(missing_contacts, K);
     dht.bootstrap_ongoing_searches++;
   };
@@ -288,14 +287,13 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
     std::uint32_t good = dht.total_nodes - dht.bad_nodes;
     std::uint32_t total = std::max(std::uint32_t(365), good); // TODO
     std::uint32_t look_for = total - good;
-    Config config;
     if (percentage(total, good) < config.percentage_seek) {
       look_for_nodes(dht, out, look_for);
     }
   }
 
   // Recalculate
-  return dht.now + next;
+  return next;
 }
 
 static Node *
@@ -443,7 +441,7 @@ handle_response_timeout(dht::DHT &dht) noexcept {
 }
 
 static bool
-on_response(dht::MessageContext &ctx) {
+on_response(dht::MessageContext &ctx) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     bool b_id = false;
     bool b_n = false;
@@ -473,7 +471,7 @@ on_response(dht::MessageContext &ctx) {
 }
 
 static bool
-on_request(dht::MessageContext &ctx) {
+on_request(dht::MessageContext &ctx) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     bool b_id = false;
     bool b_t = false;
@@ -569,7 +567,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 }
 
 static bool
-on_response(dht::MessageContext &ctx) {
+on_response(dht::MessageContext &ctx) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     bool b_id = false;
     bool b_t = false;
@@ -623,7 +621,7 @@ on_response(dht::MessageContext &ctx) {
 }
 
 static bool
-on_request(dht::MessageContext &ctx) {
+on_request(dht::MessageContext &ctx) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) {
     bool b_id = false;
     bool b_ih = false;
@@ -692,7 +690,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 }
 
 static bool
-on_response(dht::MessageContext &ctx) {
+on_response(dht::MessageContext &ctx) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     dht::NodeId id;
     if (!bencode::d::pair(p, "id", id.id)) {
@@ -705,7 +703,7 @@ on_response(dht::MessageContext &ctx) {
 }
 
 static bool
-on_request(dht::MessageContext &ctx) {
+on_request(dht::MessageContext &ctx) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) {
     bool b_id = false;
     bool b_ip = false;
@@ -764,13 +762,13 @@ setup(dht::Module &module) noexcept {
 //===========================================================
 namespace error {
 static bool
-on_response(dht::MessageContext &ctx) {
+on_response(dht::MessageContext &ctx) noexcept {
   printf("unknow response query type %s\n", ctx.query);
   return true;
 }
 
 static bool
-on_request(dht::MessageContext &ctx) {
+on_request(dht::MessageContext &ctx) noexcept {
   printf("unknow request query type %s\n", ctx.query);
 
   krpc::Error e = krpc::Error::method_unknown;

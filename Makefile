@@ -4,7 +4,7 @@
 CXX = g++
 HEADER_DIRS = -Iexternal
 # ovrrides makes it possible to externaly append extra flags
-override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb
+override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb
 LDFLAGS =
 LDLIBS =
