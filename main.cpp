@@ -2,6 +2,7 @@
 #include "udp.h"
 #include <stdio.h>
 
+#include "Options.h"
 #include "bencode.h"
 #include "krpc.h"
 #include "module.h"
@@ -82,7 +83,7 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
     }
 
     // always increasing clock
-    time_t now = std::max(time(0), previous);
+    time_t now = std::max(time(nullptr), previous);
 
     for (int i = 0; i < no_events; ++i) {
 
@@ -187,7 +188,11 @@ setup(dht::Modules &modules) noexcept {
 
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
-main() {
+main(int argc, char **argv) {
+  dht::Options options;
+  // if (!dht::parse(argc, argv, options)) {
+  //   die("TODO");
+  // }
   fd udp = udp::bind(INADDR_ANY, 0);
   ExternalIp local = udp::local(udp);
 
@@ -204,7 +209,9 @@ main() {
   fd poll = setup_epoll(udp);
 
   dht.now = time(nullptr);
-  bootstrap(dht, bs_node);
+  if (!bootstrap(dht, bs_node)) {
+    die("failed to setup bootstrap");
+  }
 
   dht::Modules modules;
   setup(modules);

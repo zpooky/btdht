@@ -8,14 +8,14 @@ namespace client {
 
 template <typename F>
 static bool
-send(dht::DHT &ctx, const dht::Contact &remote, sp::Buffer &out,
+send(dht::DHT &dht, const dht::Contact &remote, sp::Buffer &out,
      dht::Module module, F request) noexcept {
   sp::reset(out);
-  dht::Client &client = ctx.client;
+  dht::Client &client = dht.client;
 
   bool result = false;
   krpc::Transaction t;
-  if (mint_tx(ctx, t, ctx.now, module.response, module.response_timeout)) {
+  if (mint_tx(dht, t, dht.now, module.response, module.response_timeout)) {
 
     result = request(out, t);
     if (result) {
@@ -32,28 +32,28 @@ send(dht::DHT &ctx, const dht::Contact &remote, sp::Buffer &out,
 }
 
 bool
-ping(dht::DHT &ctx, sp::Buffer &b, const dht::Node &node) noexcept {
+ping(dht::DHT &dht, sp::Buffer &b, const dht::Node &node) noexcept {
   dht::Module ping;
   ping::setup(ping);
 
-  auto serialize = [&ctx, &node](sp::Buffer &out, const krpc::Transaction &t) {
-    return krpc::request::ping(out, t, ctx.id);
+  auto serialize = [&dht, &node](sp::Buffer &out, const krpc::Transaction &t) {
+    return krpc::request::ping(out, t, dht.id);
   };
 
-  return send(ctx, node.contact, b, ping, serialize);
+  return send(dht, node.contact, b, ping, serialize);
 }
 
 bool
-find_node(dht::DHT &ctx, sp::Buffer &b, const dht::Contact &dest,
+find_node(dht::DHT &dht, sp::Buffer &b, const dht::Contact &dest,
           const dht::NodeId &search) noexcept {
   dht::Module find_node;
   find_node::setup(find_node);
 
-  auto serialize = [&ctx, &search](sp::Buffer &o, const krpc::Transaction &t) {
-    return krpc::request::find_node(o, t, ctx.id, search);
+  auto serialize = [&dht, &search](sp::Buffer &o, const krpc::Transaction &t) {
+    return krpc::request::find_node(o, t, dht.id, search);
   };
 
-  return send(ctx, dest, b, find_node, serialize);
+  return send(dht, dest, b, find_node, serialize);
 }
 
 } // namespace client

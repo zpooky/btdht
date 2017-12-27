@@ -1,3 +1,4 @@
+#include "Log.h"
 #include "bencode.h"
 #include "client.h"
 #include "dht.h"
@@ -208,7 +209,7 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     dht.bootstrap_ongoing_searches++;
   };
 
-Lstart:
+  // Lstart:
   NodeId id;
   dht::randomize(id);
 
@@ -219,12 +220,12 @@ Lstart:
         return dht.id;
       }
 
-      b.bootstrap_generation++;
       Config config;
-      if (config.bootstrap_generation_max >= b.bootstrap_generation) {
+      if (b.bootstrap_generation >= config.bootstrap_generation_max) {
         b.bootstrap_generation = 0;
         goto Lretry;
       }
+      b.bootstrap_generation++;
       return id;
   };
   // TODO how to handle that bootstrap contact is in current Bucket
@@ -232,6 +233,8 @@ Lstart:
   // multiple times in a row
 
   // TODO update dht.bad_nodes count
+  // TODO How to avoid flooding the same nodes with request especially when we
+  // only have a frew nodes in routing table?
 
   // XXX if no good node is avaiable try bad/questionable nodes
   auto &bs = dht.bootstrap_contacts;
@@ -262,7 +265,7 @@ Lstart:
       });
 
       if (ok) {
-        goto Lstart;
+        // goto Lstart;
       }
     }
   }
@@ -360,6 +363,8 @@ dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 namespace ping {
 static bool
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
+  log::receive::req::ping(ctx);
+
   dht_response(ctx, sender, [&ctx](auto &) { //
     dht::DHT &dht = ctx.dht;
     krpc::response::ping(ctx.out, ctx.transaction, dht.id);
@@ -371,6 +376,8 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
 static bool
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
+  log::receive::res::ping(ctx);
+
   dht_response(ctx, sender, [](auto &node) { //
     node.ping_outstanding = 0;
   });
@@ -403,6 +410,8 @@ namespace find_node {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search) noexcept {
+  log::receive::req::find_node(ctx);
+
   dht_request(ctx, sender, [&](auto &) {
     dht::DHT &dht = ctx.dht;
     constexpr std::size_t capacity = dht::Bucket::K;
@@ -419,6 +428,8 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const sp::list<dht::Node> &contacts) noexcept {
+  log::receive::res::find_node(ctx);
+
   dht::DHT &dht = ctx.dht;
   assert(dht.bootstrap_ongoing_searches > 0);
   dht.bootstrap_ongoing_searches--;
@@ -426,7 +437,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht_response(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) { //
 
-      dht::Node node(contact, ctx.dht.now);
+      dht::Node node(contact, dht.now);
       dht::insert(dht, node);
     });
 
@@ -515,6 +526,8 @@ namespace get_peers {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search) noexcept {
+  log::receive::req::get_peers(ctx);
+
   dht_request(ctx, id, [&](auto &) {
     dht::Token token;
     dht::DHT &dht = ctx.dht;
@@ -540,6 +553,7 @@ static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &, // XXX store token to used for announce
                 const sp::list<dht::Contact> &) noexcept {
+  log::receive::res::get_peers(ctx);
   /*
    * infohash lookup query found result, sender returns requested data.
    */
@@ -552,6 +566,7 @@ static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &, // XXX store token to used for announce
                 const sp::list<dht::Node> &contacts) noexcept {
+  log::receive::res::get_peers(ctx);
   /*
    * sender has no information for queried infohash, returns the closest
    * contacts.
@@ -664,8 +679,9 @@ static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                bool implied_port, const dht::Infohash &infohash, Port port,
                const dht::Token &token) noexcept {
-  dht::DHT &dht = ctx.dht;
+  log::receive::req::announce_peer(ctx);
 
+  dht::DHT &dht = ctx.dht;
   if (lookup::valid(dht, token)) {
     dht_request(ctx, sender, [&](auto &) {
       dht::Contact peer;
@@ -684,6 +700,8 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
+  log::receive::res::announce_peer(ctx);
+
   dht_response(ctx, sender, [](auto &) { //
 
   });
@@ -763,19 +781,21 @@ setup(dht::Module &module) noexcept {
 namespace error {
 static bool
 on_response(dht::MessageContext &ctx) noexcept {
-  printf("unknow response query type %s\n", ctx.query);
+  log::receive::res::error(ctx);
+
   return true;
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  printf("unknow request query type %s\n", ctx.query);
+  log::receive::req::error(ctx);
 
   krpc::Error e = krpc::Error::method_unknown;
   const char *msg = "unknown method";
   krpc::response::error(ctx.out, ctx.transaction, e, msg);
   return true;
 }
+
 void
 setup(dht::Module &module) noexcept {
   module.query = "";
