@@ -8,8 +8,9 @@ namespace dht {
 bool
 init(Client &) noexcept;
 
-TxHandle
-take_tx(Client &, const krpc::Transaction &) noexcept;
+bool
+take_tx(Client &, const krpc::Transaction &,
+        /*OUT*/ TxContext &) noexcept;
 
 /*
  * keep tracks of active outgoing transactions and what module should handle the
@@ -18,8 +19,7 @@ take_tx(Client &, const krpc::Transaction &) noexcept;
  * handle the response.
  */
 bool
-mint_tx(DHT &, /*OUT*/ krpc::Transaction &, time_t, TxHandle,
-        TxCancelHandle) noexcept;
+mint_tx(DHT &, /*OUT*/ krpc::Transaction &, TxContext &ctx) noexcept;
 
 } // namespace dht
 

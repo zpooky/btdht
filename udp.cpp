@@ -130,7 +130,10 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
   } while (sent < 0 && errno == EAGAIN);
 
   if (sent < 0) {
-    die("recvfrom()");
+    printf("sent[%zd] = "
+           "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),destaddr[%s])\n", //
+           sent, int(fd), raw_len, flag, "");
+    die("sendto()");
   }
 
   buf.pos += sent;

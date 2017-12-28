@@ -41,13 +41,31 @@ namespace dht {
 struct MessageContext;
 struct DHT;
 
-using TxCancelHandle = void (*)(DHT &) noexcept;
-using TxHandle = bool (*)(MessageContext &) noexcept;
+using TxCancelHandle = void (*)(DHT &, void *) noexcept;
+using TxHandle = bool (*)(MessageContext &, void *) noexcept;
+
+// dht::TxContext
+struct TxContext {
+  TxHandle int_handle;
+  TxCancelHandle int_cancel;
+  void *closure;
+
+  TxContext(TxHandle, TxCancelHandle, void *) noexcept;
+  TxContext() noexcept;
+
+  bool
+  handle(MessageContext &) noexcept;
+
+  void
+  cancel(DHT &) noexcept;
+};
+
+void
+reset(TxContext &) noexcept;
 
 // dht::TxStore
 struct Tx {
-  TxHandle handle;
-  TxCancelHandle cancel;
+  TxContext context;
 
   Tx *timeout_next;
   Tx *timeout_priv;

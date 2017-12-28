@@ -14,8 +14,7 @@ add_front(Client &, Tx *) noexcept;
 
 static void
 reset(Tx &tx) noexcept {
-  tx.handle = nullptr;
-  tx.cancel = nullptr;
+  reset(tx.context);
   tx.sent = 0;
 
   tx.suffix[0] = '\0';
@@ -247,8 +246,9 @@ move_front(Client &client, Tx *tx) noexcept {
   add_front(client, tx);
 }
 
-TxHandle
-take_tx(Client &client, const krpc::Transaction &needle) noexcept {
+bool
+take_tx(Client &client, const krpc::Transaction &needle,
+        /*OUT*/ TxContext &out) noexcept {
   constexpr std::size_t c = sizeof(Tx::prefix) + sizeof(Tx::suffix);
   if (needle.length == c) {
 
@@ -256,16 +256,16 @@ take_tx(Client &client, const krpc::Transaction &needle) noexcept {
     if (tx) {
 
       if (*tx == needle) {
-        TxHandle handle = tx->handle;
+        out = tx->context;
         reset(*tx);
         move_front(client, tx);
 
-        return handle;
+        return true;
       }
     }
   }
 
-  return nullptr;
+  return true;
 } // dht::take_tx()
 
 static Tx *
@@ -276,12 +276,7 @@ unlink_free(DHT &dht, time_t now) noexcept {
   if (head) {
 
     if (is_expired(*head, now)) {
-      if (is_sent(*head)) {
-
-        if (head->cancel) {
-          head->cancel(dht);
-        }
-      }
+      head->context.cancel(dht);
       reset(*head);
 
       return unlink(client, head);
@@ -292,14 +287,10 @@ unlink_free(DHT &dht, time_t now) noexcept {
 }
 
 bool
-mint_tx(DHT &dht, krpc::Transaction &out, time_t now, TxHandle h,
-        TxCancelHandle ch) noexcept {
-  assert(h);
-  assert(ch);
-
+mint_tx(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
   Client &client = dht.client;
 
-  Tx *const tx = unlink_free(dht, now);
+  Tx *const tx = unlink_free(dht, dht.now);
   if (tx) {
     {
       const int r = rand();
@@ -312,8 +303,8 @@ mint_tx(DHT &dht, krpc::Transaction &out, time_t now, TxHandle h,
     std::memcpy(out.id + out.length, tx->suffix, sizeof(tx->suffix));
     out.length += sizeof(tx->suffix);
 
-    tx->handle = h;
-    tx->sent = now;
+    tx->context = ctx;
+    tx->sent = dht.now;
     add_back(client, tx);
 
     return true;

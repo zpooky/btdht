@@ -7,10 +7,39 @@
 
 //---------------------------
 namespace dht {
+
+void
+TxContext::cancel(DHT &dht) noexcept {
+  if (int_cancel) {
+    int_cancel(dht, closure);
+  }
+}
+
+bool
+TxContext::handle(MessageContext &ctx) noexcept {
+  assert(int_handle);
+  return int_handle(ctx, closure);
+}
+
+TxContext::TxContext(TxHandle h, TxCancelHandle ch, void *c) noexcept
+    : int_handle(h)
+    , int_cancel(ch)
+    , closure(c) {
+}
+TxContext::TxContext() noexcept
+    : TxContext(nullptr, nullptr, nullptr) {
+}
+
+void
+reset(TxContext &ctx) noexcept {
+  ctx.int_handle = nullptr;
+  ctx.int_cancel = nullptr;
+  ctx.closure = nullptr;
+}
+
 /*dht::Tx*/
 Tx::Tx() noexcept
-    : handle(nullptr)
-    , cancel(nullptr)
+    : context{nullptr, nullptr, nullptr}
     , timeout_next(nullptr)
     , timeout_priv(nullptr)
     , sent(0)

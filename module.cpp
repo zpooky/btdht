@@ -235,7 +235,6 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
       return id;
   };
   // TODO self should not be in boottstrap list
-  // TODO how to handle that bootstrap contact is in current Bucket
   // XXX how to handle the same bucket will be reselected to send find_nodes
   // multiple times in a row
 
@@ -246,7 +245,7 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   auto &bs = dht.bootstrap_contacts;
   for_each(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
 
-    bool res = client::find_node(dht, out, remote, id);
+    bool res = client::find_node(dht, out, remote, id, new Contact(remote));
     if (res) {
       inc_ongoing();
     }
@@ -261,7 +260,7 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
         if (dht::is_good(dht, remote)) {
 
           Contact &c = remote.contact;
-          bool res = client::find_node(dht, out, c, sid);
+          bool res = client::find_node(dht, out, c, sid, nullptr);
           if (res) {
             inc_ongoing();
           }
@@ -397,7 +396,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 } // ping::handle_response()
 
 static bool
-on_response(dht::MessageContext &ctx) noexcept {
+on_response(dht::MessageContext &ctx, void *) noexcept {
   return krpc::d::response::ping(ctx, handle_response);
 }
 
@@ -441,13 +440,10 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const sp::list<dht::Node> &contacts) noexcept {
   log::receive::res::find_node(ctx);
 
-  dht::DHT &dht = ctx.dht;
-  assert(dht.bootstrap_ongoing_searches > 0);
-  dht.bootstrap_ongoing_searches--;
-
   dht_response(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) { //
 
+      dht::DHT &dht = ctx.dht;
       dht::Node node(contact, dht.now);
       dht::insert(dht, node);
     });
@@ -457,20 +453,34 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 } // find_node::handle_response()
 
 static void
-handle_response_timeout(dht::DHT &dht) noexcept {
+handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
+  if (closure) {
+    auto *bs = (dht::Contact *)closure;
+    delete bs;
+  }
+
   assert(dht.bootstrap_ongoing_searches > 0);
   dht.bootstrap_ongoing_searches--;
 }
 
 static bool
-on_response(dht::MessageContext &ctx) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
+on_response(dht::MessageContext &ctx, void *closure) noexcept {
+  dht::DHT &dht = ctx.dht;
+  if (closure) {
+    auto *bs = (dht::Contact *)closure;
+    sp::remove_first(dht.bootstrap_contacts,
+                     [&bs](const auto &cmp) { //
+                       return cmp == *bs;
+                     });
+  }
+  handle_response_timeout(ctx.dht, closure);
+
+  return bencode::d::dict(ctx.in, [&ctx, &dht](auto &p) { //
     bool b_id = false;
     bool b_n = false;
 
     dht::NodeId id;
 
-    dht::DHT &dht = ctx.dht;
     sp::list<dht::Node> &nodes = dht.contact_list;
     sp::clear(nodes);
 
@@ -593,7 +603,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 }
 
 static bool
-on_response(dht::MessageContext &ctx) noexcept {
+on_response(dht::MessageContext &ctx, void *) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     bool b_id = false;
     bool b_t = false;
@@ -719,7 +729,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 }
 
 static bool
-on_response(dht::MessageContext &ctx) noexcept {
+on_response(dht::MessageContext &ctx, void *) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     dht::NodeId id;
     if (!bencode::d::pair(p, "id", id.id)) {
@@ -791,7 +801,7 @@ setup(dht::Module &module) noexcept {
 //===========================================================
 namespace error {
 static bool
-on_response(dht::MessageContext &ctx) noexcept {
+on_response(dht::MessageContext &ctx, void *) noexcept {
   log::receive::res::error(ctx);
 
   return true;

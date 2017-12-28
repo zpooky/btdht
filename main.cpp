@@ -160,9 +160,9 @@ parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
             return false;
           }
 
-          dht::TxHandle handle = dht::take_tx(dht.client, pctx.tx);
-          if (handle) {
-            return handle(ctx);
+          dht::TxContext context;
+          if (dht::take_tx(dht.client, pctx.tx, context)) {
+            return context.handle(ctx);
           }
         }
         return false;

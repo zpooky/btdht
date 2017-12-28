@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <time.h>
+#include <cassert>
 
 namespace sp {
 /*sp::byte*/
@@ -222,7 +223,7 @@ void
 for_each(const sp::list<T> &list, F f) noexcept {
   sp::node<T> *l = list.root;
   for (std::size_t i = 0; i < list.size; ++i) {
-    // assert(l);
+    assert(l);
 
     f(l->value);
     l = l->next;
@@ -234,7 +235,7 @@ bool
 for_all(const sp::list<T> &list, F f) noexcept {
   sp::node<T> *l = list.root;
   for (std::size_t i = 0; i < list.size; ++i) {
-    // assert(l);
+    assert(l);
 
     bool r = f(l->value);
     if (!r) {
@@ -243,6 +244,35 @@ for_all(const sp::list<T> &list, F f) noexcept {
     l = l->next;
   }
   return true;
+}
+
+template <typename T, typename F>
+bool
+remove_first(sp::list<T> &list, F f) {
+  sp::node<T> *l = list.root;
+  sp::node<T> *priv = nullptr;
+  for (std::size_t i = 0; i < list.size; ++i) {
+    // assert(l);
+
+    if (f(l->value)) {
+      l->value.~T();
+      new (&l->value) T;
+
+      auto next = l->next;
+      if (priv){
+        priv->next = next;
+      } else {
+        list.root = next;
+      }
+      list.size--;
+
+      // TODO append end
+      return true;
+    }
+    priv = l;
+    l = l->next;
+  }
+  return false;
 }
 
 } // namespace sp

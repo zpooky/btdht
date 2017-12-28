@@ -9,22 +9,24 @@ namespace client {
 template <typename F>
 static bool
 send(dht::DHT &dht, const dht::Contact &remote, sp::Buffer &out,
-     dht::Module module, F request) noexcept {
+     dht::Module module, void *closure, F request) noexcept {
   sp::reset(out);
   dht::Client &client = dht.client;
 
   bool result = false;
-  krpc::Transaction t;
-  if (mint_tx(dht, t, dht.now, module.response, module.response_timeout)) {
+  krpc::Transaction tx;
+  dht::TxContext ctx{module.response, module.response_timeout, closure};
+  if (mint_tx(dht, tx, ctx)) {
 
-    result = request(out, t);
+    result = request(out, tx);
     if (result) {
       sp::flip(out);
       result = udp::send(client.udp, remote, out);
     }
     if (!result) {
       // since we fail to send request, we clear the transaction
-      take_tx(client, t);
+      dht::TxContext dummy;
+      assert(take_tx(client, tx, dummy));
     }
   }
 
@@ -40,12 +42,12 @@ ping(dht::DHT &dht, sp::Buffer &b, const dht::Node &node) noexcept {
     return krpc::request::ping(out, t, dht.id);
   };
 
-  return send(dht, node.contact, b, ping, serialize);
+  return send(dht, node.contact, b, ping, nullptr, serialize);
 }
 
 bool
 find_node(dht::DHT &dht, sp::Buffer &b, const dht::Contact &dest,
-          const dht::NodeId &search) noexcept {
+          const dht::NodeId &search, void *closure) noexcept {
   dht::Module find_node;
   find_node::setup(find_node);
 
@@ -53,7 +55,7 @@ find_node(dht::DHT &dht, sp::Buffer &b, const dht::Contact &dest,
     return krpc::request::find_node(o, t, dht.id, search);
   };
 
-  return send(dht, dest, b, find_node, serialize);
+  return send(dht, dest, b, find_node, closure, serialize);
 }
 
 } // namespace client
