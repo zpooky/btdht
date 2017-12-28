@@ -89,6 +89,15 @@ alloc(DHT &) {
   return new (result) T;
 }
 
+static void
+reset(DHT &dht, Node &contact) noexcept {
+  if (!contact.good) {
+    assert(dht.bad_nodes > 0);
+    dht.bad_nodes--;
+    contact.good = true;
+  }
+}
+
 static Node *
 do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
           bool &replaced) noexcept {
@@ -106,6 +115,7 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
       if (!is_good(dht, contact)) {
+        reset(dht, contact);
         timeout::unlink(dht, &contact);
         contact = c;
         timeout::append_all(dht, &contact);
@@ -132,7 +142,7 @@ find(Bucket &bucket, const NodeId &id) noexcept {
 }
 
 static bool
-split(DHT &dht, RoutingTable *parent, std::size_t idx) {
+split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
   auto higher = alloc<RoutingTable>(dht);
   if (!higher) {
     return false;
@@ -167,10 +177,12 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) {
       }
 
       assert(direction);
-      bool eager_merge = false;
-      bool replaced = false;
-      dht::Node *nc = do_insert(dht, direction->bucket, contact, eager_merge,
-                                /*OUT*/ replaced);
+      bool eager = false;
+      bool replaced /*OUT*/ = false;
+      dht::Node *nc =
+          do_insert(dht, direction->bucket, contact, eager, replaced);
+      assert(!replaced);
+      assert(nc);
       if (nc) {
         relink(nc);
       }
@@ -399,6 +411,12 @@ bool
 is_blacklisted(DHT &, const dht::Contact &) noexcept {
   // XXX
   return false;
+}
+
+bool
+should_mark_bad(DHT &dht, Node &contact) noexcept {
+  // TODO
+  return !is_good(dht, contact);
 }
 
 bool

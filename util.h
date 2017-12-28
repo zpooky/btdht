@@ -305,6 +305,7 @@ struct Node {
   //{{{
   std::uint8_t ping_outstanding;
   NodeIdValid valid_id;
+  bool good;
   // }}}
 
   Node() noexcept;

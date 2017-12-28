@@ -173,6 +173,7 @@ Node::Node() noexcept
     //{{{
     , ping_outstanding(0)
     , valid_id(NodeIdValid::NOT_YET)
+    , good(true)
 //}}}
 {
 }
@@ -195,6 +196,7 @@ Node::Node(const NodeId &nid, Ipv4 ip, Port port, time_t la) noexcept
     //{{{
     , ping_outstanding(0)
     , valid_id(NodeIdValid::NOT_YET)
+    , good(true)
 //}}}
 {
 }

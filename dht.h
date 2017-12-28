@@ -14,6 +14,9 @@ void
 randomize(NodeId &) noexcept;
 
 bool
+should_mark_bad(DHT &, Node &) noexcept;
+
+bool
 is_good(const DHT &, const Node &) noexcept;
 
 bool

@@ -124,7 +124,7 @@ update(dht::DHT &ctx, dht::Node *const contact, time_t now) noexcept {
   assert(now >= dht::activity(*contact));
 
   unlink(ctx, contact);
-  contact->ping_sent = now;
+  contact->ping_sent = now; // TODO change to activity
   append_all(ctx, contact);
 } // timeout::update()
 
@@ -141,6 +141,12 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
     if (node) {
       assert(node->timeout_next == nullptr);
       assert(node->timeout_priv == nullptr);
+      if (node->good) {
+        if (dht::should_mark_bad(ctx, *node)) {
+          node->good = false;
+          ctx.bad_nodes++;
+        }
+      }
 
       if (client::ping(ctx, out, *node)) {
         inc_outstanding(*node);
@@ -228,11 +234,11 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
       b.bootstrap_generation++;
       return id;
   };
+  // TODO self should not be in boottstrap list
   // TODO how to handle that bootstrap contact is in current Bucket
   // XXX how to handle the same bucket will be reselected to send find_nodes
   // multiple times in a row
 
-  // TODO update dht.bad_nodes count
   // TODO How to avoid flooding the same nodes with request especially when we
   // only have a frew nodes in routing table?
 
@@ -319,8 +325,13 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
   Node *result = find_contact(dht, sender);
   if (result) {
-
     timeout::update(dht, result, now);
+
+    if (!result->good) {
+      result->good = true;
+      assert(dht.bad_nodes > 0);
+      dht.bad_nodes--;
+    }
   } else {
 
     Node contact(sender, ctx.remote, now);
