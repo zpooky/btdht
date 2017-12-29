@@ -281,11 +281,15 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
   Config config;
   Timeout next(config.refresh_interval);
 
-  if (dht.timeout_next >= dht.now) {
-    next = std::min(awake_ping(dht, out), next);
+  if (dht.now >= dht.timeout_next) {
+    Timeout ap = awake_ping(dht, out);
+    log::awake::contact_ping(dht, ap);
+    next = std::min(ap, next);
   }
-  if (dht.timeout_peer_next >= dht.now) {
-    next = std::min(awake_peer_db(dht), next);
+  if (dht.now >= dht.timeout_peer_next) {
+    Timeout ap = awake_peer_db(dht);
+    log::awake::peer_db(dht, ap);
+    next = std::min(ap, next);
   }
 
   {
@@ -297,11 +301,12 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
     std::uint32_t look_for = total - good;
     if (percentage(total, good) < config.percentage_seek) {
       look_for_nodes(dht, out, look_for);
+      log::awake::contact_scan(dht);
     }
   }
 
   // Recalculate
-  return next;
+  return next * 1000;
 }
 
 static Node *

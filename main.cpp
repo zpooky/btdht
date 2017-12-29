@@ -2,6 +2,7 @@
 #include "udp.h"
 #include <stdio.h>
 
+#include "Log.h"
 #include "Options.h"
 #include "bencode.h"
 #include "krpc.h"
@@ -193,25 +194,33 @@ main(int argc, char **argv) {
   // if (!dht::parse(argc, argv, options)) {
   //   die("TODO");
   // }
-  fd udp = udp::bind(INADDR_ANY, 0);
+  fd udp = udp::bind(INADDR_ANY, 42605);
+  // fd udp = udp::bind(INADDR_ANY, 0);
   ExternalIp local = udp::local(udp);
 
   dht::DHT dht(udp, local);
   if (!dht::init(dht)) {
     die("failed to init dht");
   }
-  dht::Contact bs_node(INADDR_ANY, local.port); // TODO
+  /*boostrap*/ {
+    // dht::Contact bs_node(INADDR_ANY, local.port); // TODO
+    Ipv4 bs_ip;
+    if (!to_ipv4("46.59.127.198", bs_ip)) {
+      die("parse bootstrap ip failed");
+    }
+    dht::Contact bs_node(bs_ip, 13596); // TODO
 
-  char str[256] = {0};
-  assert(to_string(local, str, sizeof(str)));
-  printf("bind(%s)\n", str);
+    char str[256] = {0};
+    assert(to_string(local, str, sizeof(str)));
+    printf("bind(%s)\n", str);
+
+    dht.now = time(nullptr);
+    if (!bootstrap(dht, bs_node)) {
+      die("failed to setup bootstrap");
+    }
+  }
 
   fd poll = setup_epoll(udp);
-
-  dht.now = time(nullptr);
-  if (!bootstrap(dht, bs_node)) {
-    die("failed to setup bootstrap");
-  }
 
   dht::Modules modules;
   setup(modules);
@@ -221,11 +230,16 @@ main(int argc, char **argv) {
         dht.last_activity = dht.last_activity == 0 ? now : dht.last_activity;
         dht.now = now;
 
-        return parse(dht, modules, from, in, out);
+        if (!parse(dht, modules, from, in, out)) {
+          log::receive::parse::error(dht, in);
+          return false;
+        }
+        return true;
       };
 
   auto awake = [&modules, &dht](sp::Buffer &out, time_t now) {
     auto result = modules.on_awake(dht, out);
+    log::awake::timeout(dht, result);
     dht.last_activity = now;
     return result;
   };

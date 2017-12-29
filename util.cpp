@@ -41,6 +41,13 @@ ExternalIp::ExternalIp(const Ipv6 &ipv6, Port p) noexcept
 }
 
 bool
+to_ipv4(const char *str, Ipv4 &result) noexcept {
+  bool ret = inet_pton(AF_INET, str, &result) == 1;
+  result =ntohl(result);
+  return ret;
+}
+
+bool
 to_string(const ExternalIp &ip, char *str, std::size_t length) noexcept {
   if (ip.type == IpType::IPV6) {
     if (length < (INET6_ADDRSTRLEN + 1 + 5 + 1)) {

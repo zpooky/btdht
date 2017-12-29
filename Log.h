@@ -41,7 +41,34 @@ void
 error(const dht::MessageContext &) noexcept;
 } // namespace res
 
+namespace parse {
+void
+error(const dht::DHT &, const sp::Buffer &) noexcept;
+}
+
 } // namespace receive
+namespace awake {
+void
+timeout(const dht::DHT &, Timeout) noexcept;
+
+void
+contact_ping(const dht::DHT &, Timeout) noexcept;
+
+void
+peer_db(const dht::DHT &, Timeout) noexcept;
+
+void
+contact_scan(const dht::DHT &) noexcept;
+} // namespace awake
+
+namespace transmit {
+void
+ping(const dht::DHT &, const dht::Contact &, bool) noexcept;
+
+void
+find_node(const dht::DHT &, const dht::Contact &, bool) noexcept;
+} // namespace transmit
+
 } // namespace log
 
 #endif

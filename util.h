@@ -1,10 +1,10 @@
 #ifndef SP_MALLOC_UTIL_H
 #define SP_MALLOC_UTIL_H
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <time.h>
-#include <cassert>
 
 namespace sp {
 /*sp::byte*/
@@ -52,6 +52,9 @@ struct ExternalIp {
   ExternalIp(Ipv4, Port) noexcept;
   ExternalIp(const Ipv6 &, Port) noexcept;
 };
+
+bool
+to_ipv4(const char *, Ipv4 &) noexcept;
 
 bool
 to_string(const ExternalIp &, char *msg, std::size_t) noexcept;
@@ -259,7 +262,7 @@ remove_first(sp::list<T> &list, F f) {
       new (&l->value) T;
 
       auto next = l->next;
-      if (priv){
+      if (priv) {
         priv->next = next;
       } else {
         list.root = next;

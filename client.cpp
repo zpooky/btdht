@@ -1,3 +1,4 @@
+#include "Log.h"
 #include "client.h"
 #include "dht.h"
 #include "krpc.h"
@@ -42,7 +43,9 @@ ping(dht::DHT &dht, sp::Buffer &b, const dht::Node &node) noexcept {
     return krpc::request::ping(out, t, dht.id);
   };
 
-  return send(dht, node.contact, b, ping, nullptr, serialize);
+  bool result = send(dht, node.contact, b, ping, nullptr, serialize);
+  log::transmit::ping(dht, node.contact, result);
+  return result;
 }
 
 bool
@@ -55,7 +58,9 @@ find_node(dht::DHT &dht, sp::Buffer &b, const dht::Contact &dest,
     return krpc::request::find_node(o, t, dht.id, search);
   };
 
-  return send(dht, dest, b, find_node, closure, serialize);
+  bool result = send(dht, dest, b, find_node, closure, serialize);
+  log::transmit::find_node(dht, dest, result);
+  return result;
 }
 
 } // namespace client
