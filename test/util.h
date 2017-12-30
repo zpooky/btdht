@@ -66,6 +66,7 @@ nodeId(dht::NodeId &id) {
 static void
 transaction(krpc::Transaction &t) {
   memcpy(t.id, "aa", 3);
+  t.length = 2;
 }
 
 static void

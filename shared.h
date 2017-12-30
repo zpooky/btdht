@@ -19,7 +19,7 @@ struct ParseContext {
 
   char msg_type[16];
   char query[16];
-  sp::byte version[16];
+  sp::byte remote_version[16];
   sp::byte ext_ip[16];
 
   // TODO move to src
@@ -28,7 +28,7 @@ struct ParseContext {
       , tx()
       , msg_type{0}
       , query{0}
-      , version{0}
+      , remote_version{0}
       , ext_ip{0} {
   }
 };

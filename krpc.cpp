@@ -151,14 +151,16 @@ pair(sp::Buffer &buf, const char *key, const dht::Node **list,
 namespace krpc {
 template <typename F>
 static bool
-message(sp::Buffer &buf, const Transaction &t, const char *mt, const char *q,
-        F f) noexcept {
+message(sp::Buffer &buf, const Transaction &t, const char *mt,
+        const char *query, F f) noexcept {
   return bencode::e::dict(
       buf, //
-      [&t, &mt, q, &f](sp::Buffer &b) {
-        if (!bencode::e::pair(b, "t", t.id, 4)) {
+      [&t, &mt, query, &f](sp::Buffer &b) {
+        // transaction: t
+        if (!bencode::e::pair(b, "t", t.id, t.length)) {
           return false;
         }
+        // message_type[reply: r, query: q]
         if (!bencode::e::pair(b, "y", mt)) {
           return false;
         }
@@ -172,8 +174,8 @@ message(sp::Buffer &buf, const Transaction &t, const char *mt, const char *q,
         if (!bencode::e::pair(b, "v", version, sizeof(version))) {
           return false;
         }
-        if (q) {
-          if (!bencode::e::pair(b, "q", q)) {
+        if (query) {
+          if (!bencode::e::pair(b, "q", query)) {
             return false;
           }
         }
@@ -200,8 +202,8 @@ resp(sp::Buffer &buf, const Transaction &t, F f) noexcept {
 
 template <typename F>
 static bool
-req(sp::Buffer &buf, const Transaction &t, const char *q, F f) noexcept {
-  return message(buf, t, "q", q, [&f](auto &b) { //
+req(sp::Buffer &buf, const Transaction &t, const char *query, F f) noexcept {
+  return message(buf, t, "q", query, [&f](auto &b) { //
     if (!bencode::e::value(b, "a")) {
       return false;
     }

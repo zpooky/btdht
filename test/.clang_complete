@@ -10,7 +10,5 @@ c++
 -Wpedantic
 -Wpointer-arith
 -Wshadow
--std=c++14
+-std=c++17
 -std=gnu++14
--isystem
-../include

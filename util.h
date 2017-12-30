@@ -72,6 +72,7 @@ struct Buffer {
   std::size_t pos;
 
   Buffer(byte *, std::size_t) noexcept;
+  explicit Buffer(Buffer &) noexcept;
 
   template <std::size_t SIZE>
   explicit Buffer(byte (&buffer)[SIZE]) noexcept

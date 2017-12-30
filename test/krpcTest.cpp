@@ -1,4 +1,41 @@
 #include "util.h"
+template <typename SizeType>
+bool
+FromHex(sp::byte *theDest, const char *theSource, /*IN/OUT*/ SizeType &i) {
+  // TODO ('F'+1)-'0'
+  SizeType size = i;
+  i = 0;
+  const char *it = theSource;
+  std::uint8_t lookup['F' + 1];
+  lookup['0'] = 0x0;
+  lookup['1'] = 0x1;
+  lookup['2'] = 0x2;
+  lookup['3'] = 0x3;
+  lookup['4'] = 0x4;
+  lookup['5'] = 0x5;
+  lookup['6'] = 0x6;
+  lookup['7'] = 0x7;
+  lookup['8'] = 0x8;
+  lookup['9'] = 0x9;
+  lookup['A'] = 0xA;
+  lookup['B'] = 0xB;
+  lookup['C'] = 0xC;
+  lookup['D'] = 0xD;
+  lookup['E'] = 0xE;
+  lookup['F'] = 0xF;
+
+  while (*it) {
+    if (i > size) {
+      return false;
+    }
+
+    std::uint8_t f = lookup[static_cast<std::int32_t>(*it++)];
+    f = f << 4;
+    std::uint8_t s = lookup[static_cast<std::int32_t>(*it++)];
+    theDest[i++] = f | s;
+  }
+  return true;
+}
 
 template <typename F>
 static void
@@ -134,8 +171,7 @@ TEST(krpcTest, test_find_node) {
 
     sp::Buffer buff{b};
     ASSERT_TRUE(
-        krpc::response::find_node(buff, t, id, (const dht::Node **)&in,
-        nodes));
+        krpc::response::find_node(buff, t, id, (const dht::Node **)&in, nodes));
     sp::flip(buff);
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
 
@@ -161,6 +197,42 @@ TEST(krpcTest, test_find_node) {
     assert_eq(t.id, ctx.tx.id);
     ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
+}
+
+TEST(krpcTest, test_find_node2) {
+  const char hex[] =
+      "64313a7264323a696432303a7ac5c288bd9bd57d84365f95c89d5c623d2f943d353a6e6f"
+      "6465733230383afeaa84202c8d4830227a56c7544033e90623e0991fc154144bedfd5b89"
+      "203baa56b7e5bc1970f1b82ce5f503f9d80587bc371ae1fb7eeac476f8adb27c65126c20"
+      "297a6459bb2f782d20ce180ed8fb94cf49f1f1bbe9ebb3a6db3c870c3e99245e52463149"
+      "2ebe18fbaa87e69b6cf058a32389e55596e75df8c6d1ab5eecf7e57f56f4fa0b67662d02"
+      "dc5797b3e96028b4dd169b6eee4490f42a1ae9efef9fc925f49425d51833ac6d5988af65"
+      "cf5ad1023d4d4ca734e3bc83a1b3c0d01e3cea904ef91f8d69ba32cc2b05c44b0bc8d565"
+      "313a74343a6b65ba58313a76343a54583162313a79313a7265";
+
+  sp::byte b[sizeof(hex) * 2] = {0};
+  std::size_t l = sizeof(hex);
+  FromHex(b, hex, l);
+  sp::Buffer buffer(b);
+  buffer.length = l;
+
+  bencode::d::Decoder p(buffer);
+  krpc::ParseContext ctx(p);
+
+  test_response(ctx, [](bencode::d::Decoder &p) {
+    dht::NodeId sender;
+    if (!bencode::d::pair(p, "id", sender.id)) {
+      return false;
+    }
+    //
+    sp::list<dht::Node> outList;
+    sp::init(outList, 8);
+    if (!bencode::d::pair(p, "target", outList)) {
+      return false;
+    }
+    // assert_eq(in, outList);
+    return true;
+  });
 }
 
 TEST(krpcTest, test_get_peers) {
@@ -197,8 +269,7 @@ TEST(krpcTest, test_get_peers) {
 
     dht::Infohash infohash;
     ASSERT_TRUE(krpc::response::get_peers(buff, t, id, token,
-                                          (const dht::Node **)&in,
-                                          NODE_SIZE));
+                                          (const dht::Node **)&in, NODE_SIZE));
     sp::flip(buff);
 
     bencode::d::Decoder p(buff);

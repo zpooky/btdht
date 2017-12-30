@@ -43,7 +43,7 @@ ExternalIp::ExternalIp(const Ipv6 &ipv6, Port p) noexcept
 bool
 to_ipv4(const char *str, Ipv4 &result) noexcept {
   bool ret = inet_pton(AF_INET, str, &result) == 1;
-  result =ntohl(result);
+  result = ntohl(result);
   return ret;
 }
 
@@ -93,6 +93,13 @@ Buffer::Buffer(byte *s, std::size_t l) noexcept
     , capacity(l)
     , length(0)
     , pos(0) {
+}
+
+Buffer::Buffer(Buffer &in) noexcept
+    : raw(in.raw)
+    , capacity(in.capacity)
+    , length(in.length)
+    , pos(in.pos) {
 }
 
 byte &Buffer::operator[](std::size_t idx) noexcept {

@@ -230,8 +230,9 @@ main(int argc, char **argv) {
         dht.last_activity = dht.last_activity == 0 ? now : dht.last_activity;
         dht.now = now;
 
+        const sp::Buffer copy(in);
         if (!parse(dht, modules, from, in, out)) {
-          log::receive::parse::error(dht, in);
+          log::receive::parse::error(dht, copy);
           return false;
         }
         return true;

@@ -123,7 +123,7 @@ krpc(ParseContext &ctx, F f) {
       assert(before == p.buf.pos);
     }
 
-    if (!v && bencode::d::pair(p, "v", ctx.version)) {
+    if (!v && bencode::d::pair(p, "v", ctx.remote_version)) {
       v = true;
       goto start;
     } else {
@@ -138,14 +138,23 @@ krpc(ParseContext &ctx, F f) {
       goto start;
     }
 
-    if (std::strcmp("q", ctx.query) == 0) {
+    auto is_query = [&]() { //
+      return std::strcmp("q", ctx.msg_type) == 0;
+    };
+    auto is_reply = [&] { //
+      return std::strcmp("r", ctx.msg_type) == 0;
+    };
+    /*is query*/
+    if (is_query()) {
       if (!(t && y && q)) {
         return false;
       }
-    } else {
+    } else if (is_reply()) {
       if (!(t && y)) {
         return false;
       }
+    } else {
+      return false;
     }
 
     return f(ctx);
