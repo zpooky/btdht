@@ -127,12 +127,6 @@ Config::Config() noexcept
     , percentage_seek(90) {
 }
 
-bool
-is_valid(const NodeId &id) noexcept {
-  constexpr Key allzeros = {0};
-  return std::memcmp(id.id, allzeros, sizeof(allzeros)) != 0;
-}
-
 /*dht::Peer*/
 Peer::Peer(Ipv4 i, Port p, time_t n) noexcept
     : contact(i, p)

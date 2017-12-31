@@ -1,10 +1,10 @@
+#include "Log.h"
 #include "dht.h"
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <new>
-#include "Log.h"
 
 namespace dht {
 
@@ -534,6 +534,10 @@ Lstart:
     }
 
     return result;
+  } else {
+    assert(!dht.root);
+    dht.root = alloc<RoutingTable>(dht);
+    goto Lstart;
   }
 
   return nullptr;

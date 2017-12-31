@@ -306,6 +306,9 @@ struct NodeId {
   NodeId();
 };
 
+bool
+is_valid(const NodeId &) noexcept;
+
 // dht::Contact
 struct Contact {
   Ipv4 ip;

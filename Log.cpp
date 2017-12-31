@@ -37,7 +37,7 @@ print_hex(const sp::byte *arr, std::size_t length) {
   }
 
   if (i == length) {
-    printf("hex[%zu]:%s", i, hexed);
+    printf("%s", hexed);
   } else {
     printf("abbriged[%zu],hex[%zu]:%s", length, i, hexed);
   }
@@ -180,25 +180,25 @@ split(const dht::DHT &ctx, const dht::RoutingTable &,
   print_time(ctx);
   printf("routing table split node\n");
 }
+
 void
 insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
   print_time(ctx);
-  printf("routing table insert node:");
+  printf("routing table insert nodeId[");
   print_hex(d.id.id, sizeof(d.id.id));
-  printf("\n");
+  printf("]\n");
 }
-
 } // namespace routing
 
 namespace peer_db {
 void
 insert(const dht::DHT &ctx, const dht::Infohash &h,
-       const dht::Contact &c) noexcept {
+       const dht::Contact &) noexcept {
   print_time(ctx);
   printf("peer db insert infohash[");
   print_hex(h.id, sizeof(h.id));
   printf("]\n");
 }
-} // namespace peer_db
 
+} // namespace peer_db
 } // namespace log

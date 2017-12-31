@@ -162,6 +162,13 @@ NodeId::NodeId()
     : id{0} {
 }
 
+bool
+is_valid(const NodeId &id) noexcept {
+  constexpr Key allzeros = {0};
+  return std::memcmp(id.id, allzeros, sizeof(allzeros)) != 0;
+}
+
+
 /*Contact*/
 Contact::Contact(Ipv4 i, Port p) noexcept
     : ip(i)
@@ -231,7 +238,7 @@ Node::Node(const Node &node, time_t now) noexcept
 }
 
 Node::operator bool() const noexcept {
-  return contact.ip == 0;
+  return is_valid(id);
 }
 
 } // namespace dht

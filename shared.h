@@ -166,9 +166,6 @@ struct Infohash {
   }
 };
 
-bool
-is_valid(const NodeId &) noexcept;
-
 // dht::Token
 struct Token {
   sp::byte id[20];
