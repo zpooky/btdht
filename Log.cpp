@@ -26,7 +26,6 @@ print_hex(const sp::byte *arr, std::size_t length) {
   const std::size_t hex_cap = 4096;
   char hexed[hex_cap + 1] = {0};
 
-  // TODO chunk ouput in parts of 256
   std::size_t hex_length = 0;
   std::size_t i = 0;
   while (i < length && hex_length < hex_cap) {
@@ -37,7 +36,6 @@ print_hex(const sp::byte *arr, std::size_t length) {
     hex_length += buffLength;
   }
 
-  //
   if (i == length) {
     printf("hex[%zu]:%s", i, hexed);
   } else {
@@ -174,5 +172,33 @@ find_node(const dht::DHT &ctx, const dht::Contact &contact,
 }
 
 } // namespace transmit
+
+namespace routing {
+void
+split(const dht::DHT &ctx, const dht::RoutingTable &,
+      const dht::RoutingTable &) noexcept {
+  print_time(ctx);
+  printf("routing table split node\n");
+}
+void
+insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
+  print_time(ctx);
+  printf("routing table insert node:");
+  print_hex(d.id.id, sizeof(d.id.id));
+  printf("\n");
+}
+
+} // namespace routing
+
+namespace peer_db {
+void
+insert(const dht::DHT &ctx, const dht::Infohash &h,
+       const dht::Contact &c) noexcept {
+  print_time(ctx);
+  printf("peer db insert infohash[");
+  print_hex(h.id, sizeof(h.id));
+  printf("]\n");
+}
+} // namespace peer_db
 
 } // namespace log

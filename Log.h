@@ -69,6 +69,19 @@ void
 find_node(const dht::DHT &, const dht::Contact &, bool) noexcept;
 } // namespace transmit
 
+namespace routing {
+void
+split(const dht::DHT &, const dht::RoutingTable &,
+       const dht::RoutingTable &) noexcept;
+void
+insert(const dht::DHT &, const dht::Node &) noexcept;
+} // namespace routing
+
+namespace peer_db {
+void
+insert(const dht::DHT &, const dht::Infohash &, const dht::Contact &) noexcept;
+}
+
 } // namespace log
 
 #endif

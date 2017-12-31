@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <new>
+#include "Log.h"
 
 namespace dht {
 
@@ -179,10 +180,10 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
       assert(direction);
       bool eager = false;
       bool replaced /*OUT*/ = false;
-      dht::Node *nc =
-          do_insert(dht, direction->bucket, contact, eager, replaced);
+      auto *nc = do_insert(dht, direction->bucket, contact, eager, replaced);
       assert(!replaced);
       assert(nc);
+
       if (nc) {
         relink(nc);
       }
@@ -191,6 +192,8 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
 
   parent->~RoutingTable();
   new (parent) RoutingTable(higher, lower);
+
+  log::routing::split(dht, *higher, *lower);
   return true;
 }
 
@@ -518,6 +521,7 @@ Lstart:
     Node *result = do_insert(dht, bucket, contact, eager_merge, replaced);
 
     if (result) {
+      log::routing::insert(dht, *result);
       if (!replaced) {
         ++dht.total_nodes;
       }
@@ -739,6 +743,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
 
       return true;
     } else if (add_peer(*table, contact)) {
+      log::peer_db::insert(dht, infohash, contact);
 
       return true;
     }
