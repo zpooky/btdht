@@ -286,6 +286,7 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
     log::awake::contact_ping(dht, ap);
     next = std::min(ap, next);
   }
+
   if (dht.now >= dht.timeout_peer_next) {
     Timeout ap = awake_peer_db(dht);
     log::awake::peer_db(dht, ap);
@@ -448,6 +449,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht_response(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) { //
 
+      // TODO handle self insert
       dht::DHT &dht = ctx.dht;
       dht::Node node(contact, dht.now);
       dht::insert(dht, node);
@@ -473,6 +475,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
   dht::DHT &dht = ctx.dht;
   if (closure) {
     auto *bs = (dht::Contact *)closure;
+    // XXX only delete if there is any new nodes in the response
     sp::remove_first(dht.bootstrap_contacts,
                      [&bs](const auto &cmp) { //
                        return cmp == *bs;
@@ -494,10 +497,12 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       b_id = true;
       goto Lstart;
     }
-    if (!bencode::d::pair(p, "nodes", nodes)) {
+
+    if (!b_n && bencode::d::nodes(p, "nodes", nodes)) {
       b_n = true;
       goto Lstart;
     }
+
     if (!(b_id && b_n)) {
       return false;
     }
@@ -600,6 +605,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht::DHT &dht = ctx.dht;
   dht_request(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) { //
+      // TODO handle self insert
 
       dht::Node ins(contact, dht.now);
       dht::insert(dht, ins);
@@ -637,12 +643,12 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
     }
 
     /*closes K nodes*/
-    if (!b_n && bencode::d::pair(p, "nodes", nodes)) {
+    if (!b_n && bencode::d::nodes(p, "nodes", nodes)) {
       b_n = true;
       goto Lstart;
     }
 
-    if (!b_v && bencode::d::pair(p, "values", values)) {
+    if (!b_v && bencode::d::peers(p, "values", values)) {
       b_v = true;
       goto Lstart;
     }

@@ -186,7 +186,7 @@ TEST(krpcTest, test_find_node) {
       //
       sp::list<dht::Node> outList;
       sp::init(outList, 8);
-      if (!bencode::d::pair(p, "target", outList)) {
+      if (!bencode::d::nodes(p, "target", outList)) {
         return false;
       }
       assert_eq(in, outList);
@@ -227,7 +227,7 @@ TEST(krpcTest, test_find_node2) {
     //
     sp::list<dht::Node> outList;
     sp::init(outList, 8);
-    if (!bencode::d::pair(p, "target", outList)) {
+    if (!bencode::d::nodes(p, "target", outList)) {
       return false;
     }
     // assert_eq(in, outList);
@@ -290,7 +290,7 @@ TEST(krpcTest, test_get_peers) {
       /*closes K nodes*/
       sp::list<dht::Node> outNodes;
       sp::init(outNodes, 8);
-      if (!bencode::d::pair(p, "nodes", outNodes)) {
+      if (!bencode::d::nodes(p, "nodes", outNodes)) {
         return false;
       }
       assert_eq(in, outNodes);

@@ -102,6 +102,13 @@ Buffer::Buffer(Buffer &in) noexcept
     , pos(in.pos) {
 }
 
+Buffer::Buffer(Buffer &in, std::size_t strt, std::size_t end) noexcept
+    : raw(in.raw + strt)
+    , capacity(end - strt)
+    , length(end - strt)
+    , pos(0) {
+}
+
 byte &Buffer::operator[](std::size_t idx) noexcept {
   assert(idx < capacity);
   return raw[idx];

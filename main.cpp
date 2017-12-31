@@ -140,34 +140,32 @@ static bool
 parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
       sp::Buffer &in, sp::Buffer &out) noexcept {
 
-  auto f = //
-      [&dht, &modules, &peer, &out](krpc::ParseContext &pctx) {
-        dht::Module error;
-        error::setup(error);
+  auto f = [&dht, &modules, &peer, &out](krpc::ParseContext &pctx) {
+    dht::Module error;
+    error::setup(error);
 
-        dht::MessageContext ctx{dht, pctx, out, peer};
-        if (std::strcmp(pctx.msg_type, "q") == 0) {
-          /*query*/
-          if (!bencode::d::value(pctx.decoder, "a")) {
-            return false;
-          }
-
-          dht::Module &m = module_for(modules, pctx.query, error);
-          return m.request(ctx);
-        } else if (std::strcmp(pctx.msg_type, "r") == 0) {
-          assert(pctx.query == nullptr);
-          /*response*/
-          if (!bencode::d::value(pctx.decoder, "r")) {
-            return false;
-          }
-
-          dht::TxContext context;
-          if (dht::take_tx(dht.client, pctx.tx, context)) {
-            return context.handle(ctx);
-          }
-        }
+    dht::MessageContext ctx{dht, pctx, out, peer};
+    if (std::strcmp(pctx.msg_type, "q") == 0) {
+      /*query*/
+      if (!bencode::d::value(pctx.decoder, "a")) {
         return false;
-      };
+      }
+
+      dht::Module &m = module_for(modules, pctx.query, error);
+      return m.request(ctx);
+    } else if (std::strcmp(pctx.msg_type, "r") == 0) {
+      /*response*/
+      if (!bencode::d::value(pctx.decoder, "r")) {
+        return false;
+      }
+
+      dht::TxContext context;
+      if (dht::take_tx(dht.client, pctx.tx, context)) {
+        return context.handle(ctx);
+      }
+    }
+    return false;
+  };
 
   bencode::d::Decoder d(in);
   krpc::ParseContext pctx(d);

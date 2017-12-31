@@ -22,15 +22,9 @@ struct ParseContext {
   sp::byte remote_version[16];
   sp::byte ext_ip[16];
 
-  // TODO move to src
-  explicit ParseContext(bencode::d::Decoder &d) noexcept
-      : decoder(d)
-      , tx()
-      , msg_type{0}
-      , query{0}
-      , remote_version{0}
-      , ext_ip{0} {
-  }
+  explicit ParseContext(bencode::d::Decoder &) noexcept;
+
+  ParseContext(ParseContext &, bencode::d::Decoder &) noexcept;
 };
 
 } // namespace krpc

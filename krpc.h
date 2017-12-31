@@ -1,23 +1,24 @@
 #ifndef SP_MAINLINE_DHT_KRPC_H
 #define SP_MAINLINE_DHT_KRPC_H
 
+#include "bencode_offset.h"
 #include "shared.h"
 #include <cassert>
 #include <cstring>
 
 namespace bencode {
 namespace e {
-bool
-value(sp::Buffer &buffer, const dht::Contact &p) noexcept;
+// bool
+// value(sp::Buffer &buffer, const dht::Contact &p) noexcept;
+//
+// bool
+// value(sp::Buffer &buffer, const dht::Node &node) noexcept;
 
 bool
-value(sp::Buffer &buffer, const dht::Node &node) noexcept;
+pair_compact(sp::Buffer &, const char *, const dht::Contact *list) noexcept;
 
 bool
-pair(sp::Buffer &, const char *, const dht::Contact *list) noexcept;
-
-bool
-pair(sp::Buffer &, const char *, const sp::list<dht::Node> &list) noexcept;
+pair_compact(sp::Buffer &, const char *, const sp::list<dht::Node> &list) noexcept;
 
 } // namespace e
 } // namespace bencode
@@ -91,51 +92,69 @@ krpc(ParseContext &ctx, F f) {
     bool ip = false;
     bool v = false;
 
+    ssize_t mark = -1;
+    std::size_t mark_end = 0;
+
     char wkey[16] = {0};
     sp::byte wvalue[64] = {0};
   start:
-    const std::size_t before = p.buf.pos;
-    if (!t && bencode::d::pair(p, "t", ctx.tx.id)) {
-      t = true;
-      goto start;
-    } else {
-      assert(before == p.buf.pos);
-    }
-
-    if (!y && bencode::d::pair(p, "y", ctx.msg_type)) {
-      y = true;
-      goto start;
-    } else {
-      assert(before == p.buf.pos);
-    }
-
-    if (!q && bencode::d::pair(p, "q", ctx.query)) {
-      q = true;
-      goto start;
-    } else {
-      assert(before == p.buf.pos);
-    }
-
-    if (!ip && bencode::d::pair(p, "ip", ctx.ext_ip)) {
-      ip = true;
-      goto start;
-    } else {
-      assert(before == p.buf.pos);
-    }
-
-    if (!v && bencode::d::pair(p, "v", ctx.remote_version)) {
-      v = true;
-      goto start;
-    } else {
-      assert(before == p.buf.pos);
-    }
-
-    if (!(bencode::d::peek(p, "a") || bencode::d::peek(p, "r"))) {
-      // parse and ignore unknown attributes for future compatability
-      if (!bencode::d::pair_any(p, wkey, wvalue)) {
-        return false;
+    // TODO length compare for all raw indexing everywhere!!
+    if (p.buf.raw[p.buf.pos] != 'e') {
+      const std::size_t before = p.buf.pos;
+      if (!t && bencode::d::pair(p, "t", ctx.tx.id)) {
+        ctx.tx.length = std::strlen((char *)ctx.tx.id);
+        t = true;
+        goto start;
+      } else {
+        assert(before == p.buf.pos);
       }
-      goto start;
+
+      if (!y && bencode::d::pair(p, "y", ctx.msg_type)) {
+        y = true;
+        goto start;
+      } else {
+        assert(before == p.buf.pos);
+      }
+
+      if (!q && bencode::d::pair(p, "q", ctx.query)) {
+        q = true;
+        goto start;
+      } else {
+        assert(before == p.buf.pos);
+      }
+
+      if (!ip && bencode::d::pair(p, "ip", ctx.ext_ip)) {
+        ip = true;
+        goto start;
+      } else {
+        assert(before == p.buf.pos);
+      }
+
+      if (!v && bencode::d::pair(p, "v", ctx.remote_version)) {
+        v = true;
+        goto start;
+      } else {
+        assert(before == p.buf.pos);
+      }
+
+      // the application layer dict[request argument:a, reply: r]
+      if (bencode::d::peek(p, "a") || bencode::d::peek(p, "r")) {
+        mark = p.buf.pos;
+        assert(bencode::d::value(p, "a") || bencode::d::value(p, "r"));
+
+        if (!bencode::d::dict_wildcard(p)) {
+          return false;
+        }
+        mark_end = p.buf.pos;
+
+        goto start;
+      } else {
+        // parse and ignore unknown attributes for future compatability
+        if (!bencode::d::pair_any(p, wkey, wvalue)) {
+          return false;
+        }
+        goto start;
+      }
     }
 
     auto is_query = [&]() { //
@@ -144,7 +163,7 @@ krpc(ParseContext &ctx, F f) {
     auto is_reply = [&] { //
       return std::strcmp("r", ctx.msg_type) == 0;
     };
-    /*is query*/
+
     if (is_query()) {
       if (!(t && y && q)) {
         return false;
@@ -157,7 +176,14 @@ krpc(ParseContext &ctx, F f) {
       return false;
     }
 
-    return f(ctx);
+    if (mark < 0) {
+      return false;
+    }
+
+    sp::Buffer copy(p.buf, mark, mark_end);
+    bencode::d::Decoder dc(copy);
+    krpc::ParseContext abbriged(ctx, dc);
+    return f(abbriged);
   });
 }
 namespace response {

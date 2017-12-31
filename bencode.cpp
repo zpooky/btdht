@@ -91,7 +91,7 @@ encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
 bool
 value(sp::Buffer &buffer, const char *str) noexcept {
   return value(buffer, str, std::strlen(str));
-} // bencode::value()
+} // bencode::e::value()
 
 bool
 value(sp::Buffer &buffer, const char *str, std::size_t length) noexcept {
@@ -102,6 +102,31 @@ bool
 value(sp::Buffer &b, const sp::byte *str, std::size_t length) noexcept {
   return encode_raw(b, str, length);
 } // bencode::e::value()
+
+bool
+value(sp::Buffer &b, std::size_t length, void *closure,
+      bool (*f)(sp::Buffer &, void *)) noexcept {
+  const std::size_t pos = b.pos;
+  if (!encode_numeric(b, "%zu", length)) {
+    b.pos = pos;
+    return false;
+  }
+
+  if (sp::remaining_read(b) < length + 1) {
+    b.pos = pos;
+    return false;
+  }
+  b.raw[b.pos++] = ':';
+
+  const std::size_t before = b.pos;
+  if (!f(b, closure)) {
+    b.pos = pos;
+    return false;
+  }
+  assert(before + length == b.pos);
+
+  return true;
+}
 
 //-----------------------------
 bool
@@ -240,7 +265,7 @@ peek_string(const sp::Buffer &b, /*OUT*/ const T *&str,
   str = (T *)b.raw + b.pos + num_read;
 
   return true;
-} // bencode::d::parse_string()
+} // bencode::d::peek_string()
 
 template <typename T>
 static bool
@@ -311,6 +336,22 @@ parse_key_value(sp::Buffer &b, const char *key, T *val,
 } // bencode::d::parse_key_value()
 
 static bool
+parse_valuex(sp::Buffer &b, std::uint64_t &val) noexcept {
+  const std::size_t p = b.pos;
+  if (sp::remaining_read(b) == 0 || b.raw[b.pos++] != 'i') {
+    b.pos = p;
+    return false;
+  }
+
+  if (!read_numeric(b, val, 'e')) {
+    b.pos = p;
+    return false;
+  }
+
+  return true;
+}
+
+static bool
 parse_key_valuex(sp::Buffer &b, const char *key, std::uint64_t &val) noexcept {
   const std::size_t p = b.pos;
   if (!parse_key(b, key)) {
@@ -318,12 +359,7 @@ parse_key_valuex(sp::Buffer &b, const char *key, std::uint64_t &val) noexcept {
     return false;
   }
 
-  if (sp::remaining_read(b) == 0 || b.raw[b.pos++] != 'i') {
-    b.pos = p;
-    return false;
-  }
-
-  if (!read_numeric(b, val, 'e')) {
+  if (!parse_valuex(b, val)) {
     b.pos = p;
     return false;
   }
@@ -551,6 +587,33 @@ bool
 value(Decoder &d, const char *key) noexcept {
   return parse_key(d.buf, key);
 } // bencode::d::value()
+
+bool
+value_ref(Decoder &d, const char *&key, std::size_t &key_len) noexcept {
+  const std::size_t p = d.buf.pos;
+  if (!parse_string(d.buf, key, key_len)) {
+    d.buf.pos = p;
+    return false;
+  }
+
+  return true;
+}
+
+bool
+value_ref(Decoder &d, const sp::byte *&key, std::size_t &key_len) noexcept {
+  const std::size_t p = d.buf.pos;
+  if (!parse_string(d.buf, key, key_len)) {
+    d.buf.pos = p;
+    return false;
+  }
+
+  return true;
+}
+
+bool
+value(Decoder &d, std::uint64_t &val) noexcept {
+  return parse_valuex(d.buf, val);
+}
 
 bool
 peek(const Decoder &d, const char *key) noexcept {

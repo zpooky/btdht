@@ -292,6 +292,7 @@ mint_tx(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
 
   Tx *const tx = unlink_free(dht, dht.now);
   if (tx) {
+    //TODO if both suffix becomes all 0 retry
     {
       const int r = rand();
       static_assert(sizeof(tx->suffix) <= sizeof(r), "");

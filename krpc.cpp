@@ -9,91 +9,71 @@
 //=BEncode==================================================================
 namespace bencode {
 namespace e {
-// static bool
-// value(sp::Buffer &buffer, const dht::NodeId &id) noexcept {
-//   return value(buffer, id.id, sizeof(id.id));
-// } // bencode::e::value()
-
-static sp::byte *
-serialize(sp::byte *b, const dht::Contact &p) noexcept {
+static bool
+serialize(sp::Buffer &b, const dht::Contact &p) noexcept {
+  const std::size_t pos = b.pos;
   Ipv4 ip = htonl(p.ip);
-  std::memcpy(b, &ip, sizeof(ip));
-  b += sizeof(ip);
+  if (sp::remaining_read(b) < sizeof(ip)) {
+    b.pos = pos;
+    return false;
+  }
+  std::memcpy(b.raw + b.pos, &ip, sizeof(ip));
+  b.pos += sizeof(ip);
 
   Port port = htons(p.port);
-  std::memcpy(b, &port, sizeof(port));
-  b += sizeof(port);
-
-  return b;
-} // bencode::e::value()
-
-bool
-value(sp::Buffer &buffer, const dht::Contact &p) noexcept {
-  sp::byte scratch[sizeof(p.ip) + sizeof(p.port)] = {0};
-  static_assert(sizeof(scratch) == 4 + 2, "");
-
-  serialize(scratch, p);
-  return value(buffer, scratch, sizeof(scratch));
-} // bencode::e::value()
-
-bool
-value(sp::Buffer &buffer, const dht::Node &node) noexcept {
-  sp::byte scratch[sizeof(node.id.id) + sizeof(node.contact.ip) +
-                   sizeof(node.contact.port)] = {0};
-  static_assert(sizeof(scratch) == 26, "");
-  sp::byte *b = scratch;
-
-  std::memcpy(b, node.id.id, sizeof(node.id.id));
-  b += sizeof(node.id.id);
-
-  serialize(b, node.contact);
-  return value(buffer, scratch, sizeof(scratch));
-} // bencode::e::value()
-
-bool
-pair(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
-  if (!bencode::e::value(buf, key)) {
+  if (sp::remaining_read(b) < sizeof(port)) {
+    b.pos = pos;
     return false;
   }
+  std::memcpy(b.raw + b.pos, &port, sizeof(port));
+  b.pos += sizeof(port);
 
-  void *arg = (void *)list;
-  return bencode::e::list(buf, arg, [](auto &b, void *a) {
+  return true;
+} // bencode::e::serialize()
 
-    const dht::Peer *l = (const dht::Peer *)a;
-    assert(l);
-
-    return dht::for_all(l, [&b](const auto &ls) {
-
-      if (!bencode::e::value(b, ls.contact)) {
-        return false;
-      }
-      return true;
-    });
-  });
-} // bencode::e::pair()
-
-template <typename T>
 static bool
-internal_pair(sp::Buffer &buf, const char *key,
-              const sp::list<T> &list) noexcept {
-  if (!bencode::e::value(buf, key)) {
+serialize(sp::Buffer &b, const dht::Node &node) noexcept {
+  const std::size_t pos = b.pos;
+
+  if (sp::remaining_read(b) < sizeof(node.id.id)) {
+    b.pos = pos;
+    return false;
+  }
+  std::memcpy(b.raw + b.pos, node.id.id, sizeof(node.id.id));
+  b.pos += sizeof(node.id.id);
+
+  if (!serialize(b, node.contact)) {
+    b.pos = pos;
     return false;
   }
 
-  void *arg = (void *)&list;
-  return bencode::e::list(buf, arg, [](auto &b, void *a) {
+  return true;
+} // bencode::e::serialize()
 
-    const sp::list<T> *l = (const sp::list<T> *)a;
-    assert(l);
-    return for_all(*l, [&b](const auto &value) {
+static std::size_t
+size(const dht::Contact &p) noexcept {
+  return sizeof(p.ip) + sizeof(p.port);
+}
 
-      if (!bencode::e::value(b, value)) {
-        return false;
-      }
-      return true;
-    });
+static std::size_t
+size(const dht::Peer &p) noexcept {
+  return size(p.contact);
+}
+
+static std::size_t
+size(const dht::Node &p) noexcept {
+  return sizeof(p.id.id) + size(p.contact);
+}
+
+static std::size_t
+length(const dht::Peer *list) noexcept {
+  std::size_t result = 0;
+  dht::for_all(list, [&result](const dht::Peer &ls) {
+    result += size(ls);
+    return true;
   });
-} // bencode::e::internal_pair()
+  return result;
+}
 
 template <typename F>
 static bool
@@ -108,6 +88,77 @@ for_all(const dht::Node **list, std::size_t length, F f) noexcept {
   return true;
 }
 
+static std::size_t
+length(const dht::Node **list, std::size_t length) noexcept {
+  std::size_t result = 0;
+  for_all(list, length, [&result](const auto &value) { //
+    result += size(value);
+    return true;
+  });
+  return result;
+}
+
+template <typename T>
+static std::size_t
+length(const sp::list<T> &list) noexcept {
+  std::size_t result = 0;
+  sp::for_each(list, [&result](const T &ls) { //
+    result += size(ls);
+  });
+  return result;
+}
+
+bool
+pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  std::size_t len = length(list);
+  return bencode::e::value(buf, len, (void *)list,
+                           [](sp::Buffer &b, void *arg) {
+                             const dht::Peer *l = (dht::Peer *)arg;
+
+                             return dht::for_all(l, [&b](const auto &ls) {
+
+                               if (!serialize(b, ls.contact)) {
+                                 return false;
+                               }
+
+                               return true;
+                             });
+                           });
+} // bencode::e::pair_compact()
+
+template <typename T>
+static bool
+internal_pair(sp::Buffer &buf, const char *key,
+              const sp::list<T> &list) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  std::size_t len = length(list);
+  return bencode::e::value(buf, len, (void *)&list, [](sp::Buffer &b, void *a) {
+
+    const sp::list<T> *l = (sp::list<T> *)a;
+    assert(l);
+    return for_all(*l, [&b](const auto &value) {
+
+      if (!serialize(b, value)) {
+        return false;
+      }
+      return true;
+    });
+  });
+} // bencode::e::internal_pair()
+
+bool
+pair_compact(sp::Buffer &buf, const char *key,
+             const sp::list<dht::Node> &list) noexcept {
+  return internal_pair(buf, key, list);
+} // bencode::e::pair()
+
 static bool
 xxx(sp::Buffer &buf, const char *key, const dht::Node **list,
     std::size_t size) noexcept {
@@ -115,16 +166,16 @@ xxx(sp::Buffer &buf, const char *key, const dht::Node **list,
     return false;
   }
 
+  std::size_t len = length(list, size);
   std::tuple<const dht::Node **, std::size_t> arg(list, size);
-  return bencode::e::list(buf, &arg, [](auto &b, void *a) {
-    std::tuple<const dht::Node **, std::size_t> *targ =
-        (std::tuple<const dht::Node **, std::size_t> *)a;
+  return bencode::e::value(buf, len, &arg, [](auto &b, void *a) {
+    auto targ = (std::tuple<const dht::Node **, std::size_t> *)a;
 
     // const dht::Node **l = (dht::Node *)a;
     return for_all(std::get<0>(*targ), std::get<1>(*targ),
                    [&b](const auto &value) {
 
-                     if (!bencode::e::value(b, value)) {
+                     if (!serialize(b, value)) {
                        return false;
                      }
                      return true;
@@ -132,17 +183,11 @@ xxx(sp::Buffer &buf, const char *key, const dht::Node **list,
   });
 } // bencode::e::xxx()
 
-bool
-pair(sp::Buffer &buf, const char *key,
-     const sp::list<dht::Node> &list) noexcept {
-  return internal_pair(buf, key, list);
-} // bencode::e::pair()
-
 static bool
-pair(sp::Buffer &buf, const char *key, const dht::Node **list,
-     std::size_t size) noexcept {
+pair_compact(sp::Buffer &buf, const char *key, const dht::Node **list,
+             std::size_t size) noexcept {
   return xxx(buf, key, list, size);
-} // bencode::e::pair()
+} // bencode::e::pair_compact()
 
 } // namespace e
 } // namespace bencode
@@ -323,7 +368,7 @@ find_node(sp::Buffer &buf, const Transaction &t, //
       return false;
     }
 
-    return bencode::e::pair(b, "target", target, length);
+    return bencode::e::pair_compact(b, "target", target, length);
   });
 } // response::find_node()
 
@@ -341,7 +386,7 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
       return false;
     }
 
-    return bencode::e::pair(b, "nodes", nodes, length);
+    return bencode::e::pair_compact(b, "nodes", nodes, length);
   });
 } // response::get_peers()
 
@@ -360,7 +405,7 @@ get_peers(sp::Buffer &buf,
       return false;
     }
 
-    return bencode::e::pair(b, "values", values);
+    return bencode::e::pair_compact(b, "values", values);
   });
 } // response::get_peers()
 

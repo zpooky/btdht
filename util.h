@@ -73,6 +73,7 @@ struct Buffer {
 
   Buffer(byte *, std::size_t) noexcept;
   explicit Buffer(Buffer &) noexcept;
+  Buffer(Buffer &,std::size_t,std::size_t) noexcept;
 
   template <std::size_t SIZE>
   explicit Buffer(byte (&buffer)[SIZE]) noexcept
@@ -116,6 +117,8 @@ struct list {
   node<T> *root;
   std::size_t size;
   std::size_t capacity;
+
+  using value_type = T;
 
   list()
       : root(nullptr)

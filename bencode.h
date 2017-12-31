@@ -5,6 +5,7 @@
 
 namespace bencode {
 
+//===============================================
 namespace e {
 bool
 value(sp::Buffer &, std::uint32_t) noexcept;
@@ -15,6 +16,9 @@ bool
 value(sp::Buffer &, const char *) noexcept;
 bool
 value(sp::Buffer &, const char *, std::size_t) noexcept;
+bool
+value(sp::Buffer &, std::size_t, void *,
+      bool (*)(sp::Buffer &, void *)) noexcept;
 
 bool
 value(sp::Buffer &, const sp::byte *, std::size_t) noexcept;
@@ -79,17 +83,23 @@ is(sp::Buffer &buf, const char (&exact)[SIZE]) {
 template <typename F>
 bool
 dict(Decoder &p, F f) noexcept {
+  std::size_t pos = p.buf.pos;
   if (!internal::is(p.buf, "d", 1)) {
-    // TODO reset buffer
+    p.buf.pos = pos;
     return false;
   }
 
   if (!f(p)) {
-    // TODO reset buffer
+    p.buf.pos = pos;
     return false;
   }
 
-  return internal::is(p.buf, "e", 1);
+  if (!internal::is(p.buf, "e", 1)) {
+    p.buf.pos = pos;
+    return false;
+  }
+
+  return true;
 } // bencode::d::dict
 
 bool
@@ -119,14 +129,23 @@ pair(Decoder &, const char *, std::uint32_t &) noexcept;
 bool
 pair(Decoder &, const char *, std::uint16_t &) noexcept;
 
-bool
-pair(Decoder &, const char *, sp::list<dht::Node> &) noexcept;
+// bool
+// pair(Decoder &, const char *, sp::list<dht::Node> &) noexcept;
 
-bool
-pair(Decoder &, const char *, sp::list<dht::Contact> &) noexcept;
+// bool
+// pair(Decoder &, const char *, sp::list<dht::Contact> &) noexcept;
 
 bool
 value(Decoder &, const char *key) noexcept;
+
+bool
+value_ref(Decoder &, const char *&, std::size_t &) noexcept;
+
+bool
+value_ref(Decoder &, const sp::byte *&, std::size_t &) noexcept;
+
+bool
+value(Decoder &, std::uint64_t &) noexcept;
 
 bool
 peek(const Decoder &, const char *key) noexcept;
@@ -141,7 +160,6 @@ pair_any(Decoder &d, char (&key)[N], sp::byte (&value)[N2]) noexcept {
 }
 
 } // namespace d
-
 } // namespace bencode
 
 #endif
