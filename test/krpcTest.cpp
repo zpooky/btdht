@@ -1,41 +1,4 @@
 #include "util.h"
-template <typename SizeType>
-bool
-FromHex(sp::byte *theDest, const char *theSource, /*IN/OUT*/ SizeType &i) {
-  // TODO ('F'+1)-'0'
-  SizeType size = i;
-  i = 0;
-  const char *it = theSource;
-  std::uint8_t lookup['F' + 1];
-  lookup['0'] = 0x0;
-  lookup['1'] = 0x1;
-  lookup['2'] = 0x2;
-  lookup['3'] = 0x3;
-  lookup['4'] = 0x4;
-  lookup['5'] = 0x5;
-  lookup['6'] = 0x6;
-  lookup['7'] = 0x7;
-  lookup['8'] = 0x8;
-  lookup['9'] = 0x9;
-  lookup['A'] = 0xA;
-  lookup['B'] = 0xB;
-  lookup['C'] = 0xC;
-  lookup['D'] = 0xD;
-  lookup['E'] = 0xE;
-  lookup['F'] = 0xF;
-
-  while (*it) {
-    if (i > size) {
-      return false;
-    }
-
-    std::uint8_t f = lookup[static_cast<std::int32_t>(*it++)];
-    f = f << 4;
-    std::uint8_t s = lookup[static_cast<std::int32_t>(*it++)];
-    theDest[i++] = f | s;
-  }
-  return true;
-}
 
 template <typename F>
 static void

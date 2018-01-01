@@ -39,6 +39,12 @@ announce_peer(const dht::MessageContext &) noexcept;
 
 void
 error(const dht::MessageContext &) noexcept;
+
+void
+known_tx(const dht::MessageContext &) noexcept;
+
+void
+unknown_tx(const dht::MessageContext &) noexcept;
 } // namespace res
 
 namespace parse {
@@ -72,7 +78,7 @@ find_node(const dht::DHT &, const dht::Contact &, bool) noexcept;
 namespace routing {
 void
 split(const dht::DHT &, const dht::RoutingTable &,
-       const dht::RoutingTable &) noexcept;
+      const dht::RoutingTable &) noexcept;
 void
 insert(const dht::DHT &, const dht::Node &) noexcept;
 } // namespace routing

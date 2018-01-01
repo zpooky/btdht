@@ -66,22 +66,26 @@ value(sp::Buffer &buffer, std::int32_t in) noexcept {
 
 //-----------------------------
 template <typename T>
-bool
+static bool
 encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
   static_assert(
       std::is_same<T, char>::value || std::is_same<T, sp::byte>::value, "");
+
   const std::size_t before = buffer.pos;
   if (!encode_numeric(buffer, "%zu", length)) {
     buffer.pos = before;
     return false;
   }
+
   if ((buffer.pos + length + 1) > buffer.capacity) {
     buffer.pos = before;
     return false;
   }
 
+
   std::size_t &i = buffer.pos;
   buffer[i++] = ':';
+
   std::memcpy(buffer.raw + i, str, length);
   i += length;
 
@@ -311,7 +315,7 @@ parse_key(sp::Buffer &b, const char *cmp_key) noexcept {
 template <typename T>
 static bool
 parse_key_value(sp::Buffer &b, const char *key, T *val,
-                std::size_t len) noexcept {
+                /*IN&OUT*/ std::size_t &len) noexcept {
   const std::size_t p = b.pos;
   if (!parse_key(b, key)) {
     b.pos = p;
@@ -324,13 +328,14 @@ parse_key_value(sp::Buffer &b, const char *key, T *val,
     b.pos = p;
     return false;
   }
+
   if (val_len > len) {
     b.pos = p;
     return false;
   }
 
   std::memcpy(val, val_ref, val_len);
-  // TODO howd to indicate length of parsed val?
+  len = val_len;
 
   return true;
 } // bencode::d::parse_key_value()
@@ -387,12 +392,14 @@ is(sp::Buffer &buf, const char *exact, std::size_t length) noexcept {
 } // namespace internal
 
 bool
-pair(Decoder &d, const char *key, char *val, std::size_t len) noexcept {
+pair_x(Decoder &d, const char *key, char *val,
+     /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d.buf, key, val, len);
 } // bencode::d::pair()
 
 bool
-pair(Decoder &d, const char *key, sp::byte *val, std::size_t len) noexcept {
+pair_x(Decoder &d, const char *key, sp::byte *val,
+     /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d.buf, key, val, len);
 }
 

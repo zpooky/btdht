@@ -161,7 +161,10 @@ parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
 
       dht::TxContext context;
       if (dht::take_tx(dht.client, pctx.tx, context)) {
+        log::receive::res::known_tx(ctx);
         return context.handle(ctx);
+      } else {
+        log::receive::res::unknown_tx(ctx);
       }
     }
     return false;

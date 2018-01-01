@@ -18,7 +18,8 @@ bool
 pair_compact(sp::Buffer &, const char *, const dht::Contact *list) noexcept;
 
 bool
-pair_compact(sp::Buffer &, const char *, const sp::list<dht::Node> &list) noexcept;
+pair_compact(sp::Buffer &, const char *,
+             const sp::list<dht::Node> &list) noexcept;
 
 } // namespace e
 } // namespace bencode
@@ -101,8 +102,8 @@ krpc(ParseContext &ctx, F f) {
     // TODO length compare for all raw indexing everywhere!!
     if (p.buf.raw[p.buf.pos] != 'e') {
       const std::size_t before = p.buf.pos;
-      if (!t && bencode::d::pair(p, "t", ctx.tx.id)) {
-        ctx.tx.length = std::strlen((char *)ctx.tx.id);
+      krpc::Transaction &tx = ctx.tx;
+      if (!t && bencode::d::pair(p, "t", tx.id, tx.length)) {
         t = true;
         goto start;
       } else {

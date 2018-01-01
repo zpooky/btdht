@@ -57,8 +57,7 @@ bool
 pair(sp::Buffer &, const char *key, std::uint32_t value) noexcept;
 
 bool
-pair(sp::Buffer &, const char *key, const sp::byte *value,
-     std::size_t length) noexcept;
+pair(sp::Buffer &, const char *, const sp::byte *, std::size_t) noexcept;
 
 } // namespace e
 
@@ -103,22 +102,52 @@ dict(Decoder &p, F f) noexcept {
 } // bencode::d::dict
 
 bool
-pair(Decoder &, const char *, char *, std::size_t) noexcept;
+pair_x(Decoder &, const char *, char *, /*IN&OUT*/ std::size_t &) noexcept;
 
 template <std::size_t SIZE>
 bool
 pair(Decoder &p, const char *key, char (&value)[SIZE]) noexcept {
-  return pair(p, key, value, SIZE);
-}
+  std::size_t length = SIZE;
+  return pair_x(p, key, value, length);
+} // bencode::d::pair()
+
+template <std::size_t SIZE>
+bool
+pair(Decoder &p, const char *key, char (&value)[SIZE],
+     /*IN&OUT*/ std::size_t &length) noexcept {
+  const std::size_t l = length;
+  length = SIZE;
+
+  if (!pair_x(p, key, value, length)) {
+    length = l;
+    return false;
+  }
+  return true;
+} // bencode::d::pair()
 
 bool
-pair(Decoder &, const char *, sp::byte *, std::size_t) noexcept;
+pair_x(Decoder &, const char *, sp::byte *, /*IN&OUT*/ std::size_t &) noexcept;
 
 template <std::size_t SIZE>
 bool
 pair(Decoder &p, const char *key, sp::byte (&value)[SIZE]) noexcept {
-  return pair(p, key, value, SIZE);
-}
+  std::size_t length = SIZE;
+  return pair_x(p, key, value, length);
+} // bencode::d::pair()
+
+template <std::size_t SIZE>
+bool
+pair(Decoder &p, const char *key, sp::byte (&value)[SIZE],
+     /*IN&OUT*/ std::size_t &length) noexcept {
+  const std::size_t l = length;
+  length = SIZE;
+
+  if (!pair_x(p, key, value, length)) {
+    length = l;
+    return false;
+  }
+  return true;
+} // bencode::d::pair()
 
 bool
 pair(Decoder &, const char *, bool &) noexcept;

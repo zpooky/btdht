@@ -19,7 +19,10 @@ take_tx(Client &, const krpc::Transaction &,
  * handle the response.
  */
 bool
-mint_tx(DHT &, /*OUT*/ krpc::Transaction &, TxContext &ctx) noexcept;
+mint_tx(DHT &, /*OUT*/ krpc::Transaction &, TxContext &) noexcept;
+
+bool
+is_valid(DHT &, const krpc::Transaction &) noexcept;
 
 } // namespace dht
 

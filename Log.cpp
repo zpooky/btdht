@@ -108,6 +108,24 @@ error(const dht::MessageContext &ctx) noexcept {
   print_time(ctx);
   printf("unknow response query type %s\n", ctx.query);
 }
+
+void
+known_tx(const dht::MessageContext &ctx) noexcept {
+  print_time(ctx);
+  printf("known transaction[");
+  auto &tx = ctx.transaction;
+  print_hex(tx.id, tx.length);
+  printf("]\n");
+}
+
+void
+unknown_tx(const dht::MessageContext &ctx) noexcept {
+  print_time(ctx);
+  printf("unknow transaction[");
+  auto &tx = ctx.transaction;
+  print_hex(tx.id, tx.length);
+  printf("]\n");
+}
 } // namespace res
 
 namespace parse {

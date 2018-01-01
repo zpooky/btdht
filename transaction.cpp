@@ -202,7 +202,7 @@ static bool
 is_expired(const Tx &tx, time_t now) noexcept {
   if (is_sent(tx)) {
     Config config;
-    if ((tx.sent + config.transaction_timeout) < now) {
+    if ((tx.sent + config.transaction_timeout) > now) {
       return false;
     }
   }
@@ -265,7 +265,7 @@ take_tx(Client &client, const krpc::Transaction &needle,
     }
   }
 
-  return true;
+  return false;
 } // dht::take_tx()
 
 static Tx *
@@ -292,11 +292,16 @@ mint_tx(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
 
   Tx *const tx = unlink_free(dht, dht.now);
   if (tx) {
-    //TODO if both suffix becomes all 0 retry
     {
       const int r = rand();
       static_assert(sizeof(tx->suffix) <= sizeof(r), "");
       std::memcpy(tx->suffix, &r, sizeof(tx->suffix));
+
+      for (std::size_t i = 0; i < sizeof(tx->suffix); ++i) {
+        if (tx->suffix[i] == 0) {
+          tx->suffix[i]++;
+        }
+      }
     }
 
     std::memcpy(out.id, tx->prefix, sizeof(tx->prefix));
@@ -313,5 +318,17 @@ mint_tx(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
 
   return false;
 } // dht::min_transaction()
+
+bool
+is_valid(DHT &dht, const krpc::Transaction &needle) noexcept {
+  Client &client = dht.client;
+  Tx *const tx = search(client.tree, needle);
+  if (tx) {
+    if (!is_expired(*tx, dht.now)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 } // namespace dht
