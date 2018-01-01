@@ -41,7 +41,7 @@ TEST(transactionTest, test) {
   printf("nodes: %zu\n", IT);
   for (std::size_t i = 0; i < IT; ++i) {
     for (std::size_t k = 0; k < i; ++k) {
-      printf("k: %zu\n", k);
+      // printf("k: %zu\n", k);
       ASSERT_TRUE(dht::is_valid(dht, ts[k]));
     }
     dht::TxContext h;
@@ -64,8 +64,8 @@ TEST(transactionTest, test) {
       ASSERT_TRUE(dht::is_valid(dht, ts[k]));
     }
 
-    krpc::Transaction tx;
     dht::TxContext h;
-    ASSERT_TRUE(dht::take_tx(dht.client, tx, h));
+    // printf("i: %zu\n", i);
+    ASSERT_TRUE(dht::take_tx(dht.client, ts[i], h));
   }
 }

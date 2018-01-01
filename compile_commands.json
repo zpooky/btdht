@@ -14,95 +14,11 @@
             "-Wshadow",
             "-ggdb",
             "-o",
-            "build/dht.o",
-            "dht.cpp"
+            "build/udp.o",
+            "udp.cpp"
         ],
         "directory": "/home/spooky/development/repos/dht",
-        "file": "dht.cpp"
-    },
-    {
-        "arguments": [
-            "c++",
-            "-c",
-            "-Iexternal",
-            "-enable-frame-pointers",
-            "-std=c++17",
-            "-Wall",
-            "-Wextra",
-            "-Wpedantic",
-            "-Wpointer-arith",
-            "-Wconversion",
-            "-Wshadow",
-            "-ggdb",
-            "-o",
-            "build/client.o",
-            "client.cpp"
-        ],
-        "directory": "/home/spooky/development/repos/dht",
-        "file": "client.cpp"
-    },
-    {
-        "arguments": [
-            "c++",
-            "-c",
-            "-Iexternal",
-            "-enable-frame-pointers",
-            "-std=c++17",
-            "-Wall",
-            "-Wextra",
-            "-Wpedantic",
-            "-Wpointer-arith",
-            "-Wconversion",
-            "-Wshadow",
-            "-ggdb",
-            "-o",
-            "build/module.o",
-            "module.cpp"
-        ],
-        "directory": "/home/spooky/development/repos/dht",
-        "file": "module.cpp"
-    },
-    {
-        "arguments": [
-            "c++",
-            "-c",
-            "-Iexternal",
-            "-enable-frame-pointers",
-            "-std=c++17",
-            "-Wall",
-            "-Wextra",
-            "-Wpedantic",
-            "-Wpointer-arith",
-            "-Wconversion",
-            "-Wshadow",
-            "-ggdb",
-            "-o",
-            "build/Log.o",
-            "Log.cpp"
-        ],
-        "directory": "/home/spooky/development/repos/dht",
-        "file": "Log.cpp"
-    },
-    {
-        "arguments": [
-            "c++",
-            "-c",
-            "-Iexternal",
-            "-enable-frame-pointers",
-            "-std=c++17",
-            "-Wall",
-            "-Wextra",
-            "-Wpedantic",
-            "-Wpointer-arith",
-            "-Wconversion",
-            "-Wshadow",
-            "-ggdb",
-            "-o",
-            "build/krpc.o",
-            "krpc.cpp"
-        ],
-        "directory": "/home/spooky/development/repos/dht",
-        "file": "krpc.cpp"
+        "file": "udp.cpp"
     },
     {
         "arguments": [
@@ -140,11 +56,11 @@
             "-Wshadow",
             "-ggdb",
             "-o",
-            "build/bencode.o",
-            "bencode.cpp"
+            "build/shared.o",
+            "shared.cpp"
         ],
         "directory": "/home/spooky/development/repos/dht",
-        "file": "bencode.cpp"
+        "file": "shared.cpp"
     },
     {
         "arguments": [
@@ -161,11 +77,11 @@
             "-Wshadow",
             "-ggdb",
             "-o",
-            "build/Options.o",
-            "Options.cpp"
+            "build/module.o",
+            "module.cpp"
         ],
         "directory": "/home/spooky/development/repos/dht",
-        "file": "Options.cpp"
+        "file": "module.cpp"
     },
     {
         "arguments": [
@@ -203,6 +119,111 @@
             "-Wshadow",
             "-ggdb",
             "-o",
+            "build/krpc.o",
+            "krpc.cpp"
+        ],
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "krpc.cpp"
+    },
+    {
+        "arguments": [
+            "c++",
+            "-c",
+            "-Iexternal",
+            "-enable-frame-pointers",
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-Wpedantic",
+            "-Wpointer-arith",
+            "-Wconversion",
+            "-Wshadow",
+            "-ggdb",
+            "-o",
+            "build/dht.o",
+            "dht.cpp"
+        ],
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "dht.cpp"
+    },
+    {
+        "arguments": [
+            "c++",
+            "-c",
+            "-Iexternal",
+            "-enable-frame-pointers",
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-Wpedantic",
+            "-Wpointer-arith",
+            "-Wconversion",
+            "-Wshadow",
+            "-ggdb",
+            "-o",
+            "build/bencode_offset.o",
+            "bencode_offset.cpp"
+        ],
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "bencode_offset.cpp"
+    },
+    {
+        "arguments": [
+            "c++",
+            "-c",
+            "-Iexternal",
+            "-enable-frame-pointers",
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-Wpedantic",
+            "-Wpointer-arith",
+            "-Wconversion",
+            "-Wshadow",
+            "-ggdb",
+            "-o",
+            "build/Options.o",
+            "Options.cpp"
+        ],
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "Options.cpp"
+    },
+    {
+        "arguments": [
+            "c++",
+            "-c",
+            "-Iexternal",
+            "-enable-frame-pointers",
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-Wpedantic",
+            "-Wpointer-arith",
+            "-Wconversion",
+            "-Wshadow",
+            "-ggdb",
+            "-o",
+            "build/client.o",
+            "client.cpp"
+        ],
+        "directory": "/home/spooky/development/repos/dht",
+        "file": "client.cpp"
+    },
+    {
+        "arguments": [
+            "c++",
+            "-c",
+            "-Iexternal",
+            "-enable-frame-pointers",
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-Wpedantic",
+            "-Wpointer-arith",
+            "-Wconversion",
+            "-Wshadow",
+            "-ggdb",
+            "-o",
             "build/transaction.o",
             "transaction.cpp"
         ],
@@ -224,11 +245,11 @@
             "-Wshadow",
             "-ggdb",
             "-o",
-            "build/shared.o",
-            "shared.cpp"
+            "build/bencode.o",
+            "bencode.cpp"
         ],
         "directory": "/home/spooky/development/repos/dht",
-        "file": "shared.cpp"
+        "file": "bencode.cpp"
     },
     {
         "arguments": [
@@ -245,10 +266,10 @@
             "-Wshadow",
             "-ggdb",
             "-o",
-            "build/udp.o",
-            "udp.cpp"
+            "build/Log.o",
+            "Log.cpp"
         ],
         "directory": "/home/spooky/development/repos/dht",
-        "file": "udp.cpp"
+        "file": "Log.cpp"
     }
 ]

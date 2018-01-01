@@ -87,26 +87,35 @@ parent_relative(std::size_t idx) noexcept {
 
 static Tx *
 search(TxTree &tree, const krpc::Transaction &needle) noexcept {
-  std::size_t level(0);
-  std::size_t idx(0);
-
-Lstart:
-  const std::size_t abs_idx = translate(level, idx);
-
-  if (abs_idx < TxTree::capacity) {
-    Tx &current = tree[abs_idx];
-    int c = current.cmp(needle);
-    if (c == 0) {
-      return &current;
+  // TODO
+  Tx *result = nullptr;
+  in_order(tree, [&needle, &result](Tx &tx) {
+    if (tx == needle) {
+      result = &tx;
     }
+  });
+  return result;
 
-    level++;
-    Direction dir = c == -1 ? Direction::LEFT : Direction::RIGHT;
-    idx = lookup_relative(idx, dir);
-
-    goto Lstart;
-  }
-  return nullptr;
+  //   std::size_t level(0);
+  //   std::size_t idx(0);
+  //
+  // Lstart:
+  //   const std::size_t abs_idx = translate(level, idx);
+  //
+  //   if (abs_idx < TxTree::capacity) {
+  //     Tx &current = tree[abs_idx];
+  //     int c = current.cmp(needle);
+  //     if (c == 0) {
+  //       return &current;
+  //     }
+  //
+  //     level++;
+  //     Direction dir = c == -1 ? Direction::LEFT : Direction::RIGHT;
+  //     idx = lookup_relative(idx, dir);
+  //
+  //     goto Lstart;
+  //   }
+  //   return nullptr;
 }
 
 template <typename F>
