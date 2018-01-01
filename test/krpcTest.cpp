@@ -1,4 +1,5 @@
 #include "util.h"
+#include <bencode_offset.h>
 
 template <typename F>
 static void
@@ -163,6 +164,7 @@ TEST(krpcTest, test_find_node) {
 }
 
 TEST(krpcTest, test_find_node2) {
+
   const char hex[] =
       "64313a7264323a696432303a7ac5c288bd9bd57d84365f95c89d5c623d2f943d353a6e6f"
       "6465733230383a765ef7d818bbfdb6d29934e7ed0a05ddb4c6e08b5d2977b83ee876f372"
@@ -178,6 +180,11 @@ TEST(krpcTest, test_find_node2) {
   FromHex(b, hex, l);
   sp::Buffer buffer(b);
   buffer.length = l;
+  {
+    sp::Buffer copy(buffer);
+    bencode::d::Decoder p(copy);
+    ASSERT_TRUE(bencode::d::dict_wildcard(p));
+  }
 
   bencode::d::Decoder p(buffer);
   krpc::ParseContext ctx(p);

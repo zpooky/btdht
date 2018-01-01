@@ -3,6 +3,10 @@
 
 namespace bencode {
 namespace d {
+/*
+ * Consumed the buffer and validates that the underlieing content is valid
+ * bencode.
+ */
 bool
 dict_wildcard(bencode::d::Decoder &d) noexcept;
 
