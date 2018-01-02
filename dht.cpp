@@ -452,7 +452,7 @@ init(dht::DHT &dht) noexcept {
   if (!sp::init(dht.value_list, 64)) {
     return false;
   }
-  if (!sp::init(dht.bootstrap_contacts, 1)) {
+  if (!sp::init(dht.bootstrap_contacts, 8)) {
     return false;
   }
   if (!randomize(dht.ip, dht.id)) {

@@ -188,6 +188,14 @@ setup(dht::Modules &modules) noexcept {
   error::setup(modules.module[i++]);
 }
 
+template <typename T, std::size_t SIZE, typename F>
+static void
+for_each(T (&arr)[SIZE], F f) noexcept {
+  for (std::size_t i = 0; i < SIZE; ++i) {
+    f(arr[i]);
+  }
+}
+
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
 main(int argc, char **argv) {
@@ -203,23 +211,25 @@ main(int argc, char **argv) {
   if (!dht::init(dht)) {
     die("failed to init dht");
   }
-  /*boostrap*/ {
-    // dht::Contact bs_node(INADDR_ANY, local.port); // TODO
+  char str[256] = {0};
+  assert(to_string(local, str, sizeof(str)));
+  printf("bind(%s)\n", str);
+
+  /*boostrap*/
+  // dht::Contact bs_node(INADDR_ANY, local.port); // TODO
+  const char *ip[] = {"192.168.1.47", "127.0.0.1", "0.0.0.0", "213.65.130.80"};
+  dht.now = time(nullptr);
+  for_each(ip, [&dht](const char *ip) {
     Ipv4 bs_ip;
-    if (!to_ipv4("46.59.127.198", bs_ip)) {
+    if (!to_ipv4(ip, bs_ip)) {
       die("parse bootstrap ip failed");
     }
     dht::Contact bs_node(bs_ip, 13596); // TODO
 
-    char str[256] = {0};
-    assert(to_string(local, str, sizeof(str)));
-    printf("bind(%s)\n", str);
-
-    dht.now = time(nullptr);
     if (!bootstrap(dht, bs_node)) {
       die("failed to setup bootstrap");
     }
-  }
+  });
 
   fd poll = setup_epoll(udp);
 
