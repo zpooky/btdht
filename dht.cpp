@@ -134,7 +134,7 @@ find(Bucket &bucket, const NodeId &id) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];
     if (contact) {
-      if (std::memcmp(contact.id.id, id.id, sizeof(id.id)) == 0) {
+      if (contact.id == id) {
         return &contact;
       }
     }
@@ -632,7 +632,7 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
     // XXX tree?
   Lstart:
     if (current) {
-      if (std::memcmp(id.id, current->id.id, sizeof(id)) == 0) {
+      if (id == current->id) {
         return current;
       }
       current = current->next;

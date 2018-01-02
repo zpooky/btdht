@@ -161,17 +161,17 @@ struct Config {
 // dht::Infohash
 struct Infohash {
   Key id;
-  Infohash()
-      : id{0} {
-  }
+
+  Infohash();
+
+  bool
+  operator==(const Infohash &) const noexcept;
 };
 
 // dht::Token
 struct Token {
   sp::byte id[20];
-  Token()
-      : id{0} {
-  }
+  Token();
 };
 
 // dht::Peer

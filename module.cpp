@@ -318,7 +318,7 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
   DHT &dht = ctx.dht;
   /*request from self*/
-  if (std::memcmp(dht.id.id, sender.id, sizeof(sender.id)) == 0) {
+  if (dht.id == sender.id) {
     return nullptr;
   }
 

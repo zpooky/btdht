@@ -73,7 +73,7 @@ struct Buffer {
 
   Buffer(byte *, std::size_t) noexcept;
   explicit Buffer(Buffer &) noexcept;
-  Buffer(Buffer &,std::size_t,std::size_t) noexcept;
+  Buffer(Buffer &, std::size_t, std::size_t) noexcept;
 
   template <std::size_t SIZE>
   explicit Buffer(byte (&buffer)[SIZE]) noexcept
@@ -304,6 +304,12 @@ using Key = sp::byte[20];
 struct NodeId {
   Key id;
   NodeId();
+
+  bool
+  operator==(const NodeId &) const noexcept;
+
+  bool
+  operator==(const Key &) const noexcept;
 };
 
 bool

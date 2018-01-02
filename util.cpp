@@ -163,11 +163,20 @@ NodeId::NodeId()
 }
 
 bool
+NodeId::operator==(const Key &o) const noexcept {
+  return std::memcmp(id, o, sizeof(o)) == 0;
+}
+
+bool
+NodeId::operator==(const NodeId &o) const noexcept {
+  return this->operator==(o.id);
+}
+
+bool
 is_valid(const NodeId &id) noexcept {
   constexpr Key allzeros = {0};
   return std::memcmp(id.id, allzeros, sizeof(allzeros)) != 0;
 }
-
 
 /*Contact*/
 Contact::Contact(Ipv4 i, Port p) noexcept

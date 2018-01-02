@@ -127,6 +127,21 @@ Config::Config() noexcept
     , percentage_seek(90) {
 }
 
+// dht::Infohash
+Infohash::Infohash()
+    : id{0} {
+}
+
+bool
+Infohash::operator==(const Infohash &o) const noexcept {
+  return std::memcmp(id, o.id, sizeof(id)) == 0;
+}
+
+// dht::Token
+Token::Token()
+    : id{0} {
+}
+
 /*dht::Peer*/
 Peer::Peer(Ipv4 i, Port p, time_t n) noexcept
     : contact(i, p)
