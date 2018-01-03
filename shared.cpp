@@ -227,6 +227,11 @@ KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
   std::memcpy(id.id, pid.id, sizeof(id.id));
 }
 
+// dht::Log
+Log::Log()
+    : id{0} {
+}
+
 // dht::DHT
 DHT::DHT(fd &udp, const Contact &i)
     // self {{{

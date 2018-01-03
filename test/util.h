@@ -36,7 +36,7 @@ FromHex(sp::byte *theDest, const char *theSource, /*IN/OUT*/ SizeType &i) {
   SizeType size = i;
   i = 0;
   const char *it = theSource;
-  std::uint8_t lookup['F' + 1];
+  std::uint8_t lookup['f' + 1];
   lookup['0'] = 0x0;
   lookup['1'] = 0x1;
   lookup['2'] = 0x2;
@@ -47,21 +47,26 @@ FromHex(sp::byte *theDest, const char *theSource, /*IN/OUT*/ SizeType &i) {
   lookup['7'] = 0x7;
   lookup['8'] = 0x8;
   lookup['9'] = 0x9;
-  lookup['A'] = 0xA;
-  lookup['B'] = 0xB;
-  lookup['C'] = 0xC;
-  lookup['D'] = 0xD;
-  lookup['E'] = 0xE;
-  lookup['F'] = 0xF;
+  lookup['a'] = 0xA;
+  lookup['b'] = 0xB;
+  lookup['c'] = 0xC;
+  lookup['d'] = 0xD;
+  lookup['e'] = 0xE;
+  lookup['f'] = 0xF;
 
   while (*it) {
     if (i > size) {
       return false;
     }
 
-    std::uint8_t f = lookup[static_cast<std::int32_t>(*it++)];
+    char idx = *it++;
+    assert(idx >= '0' && idx <= 'f');
+    sp::byte f = lookup[idx];
     f = f << 4;
-    std::uint8_t s = lookup[static_cast<std::int32_t>(*it++)];
+
+    idx = *it++;
+    assert(idx >= '0' && idx <= 'f');
+    sp::byte s = lookup[idx];
     theDest[i++] = f | s;
   }
   return true;

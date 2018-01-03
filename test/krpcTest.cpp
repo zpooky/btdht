@@ -165,15 +165,23 @@ TEST(krpcTest, test_find_node) {
 
 TEST(krpcTest, test_find_node2) {
 
-  const char hex[] =
-      "64313a7264323a696432303a7ac5c288bd9bd57d84365f95c89d5c623d2f943d353a6e6f"
-      "6465733230383a765ef7d818bbfdb6d29934e7ed0a05ddb4c6e08b5d2977b83ee876f372"
-      "72fdbcb8aefa102a4b1ccf25f74430b76ed5884f1b300675c428ac893dfb16cc4a0914fb"
-      "e140b6e04adac350f5e6dd1ae9725225a36c4258fcc37ae12a791e20ed8081241d5fbdb9"
-      "bf33df7268a8acdbe4f95db7cb1dabe53e0c422e727acfbb413e466a8b73bc18d3005969"
-      "ab46f2fe16713690b21899f21b53957d1375f773e1c3940c4234ec10565980092e27aaaa"
-      "e719a24f1e29f32c5c73e1d09509b83704f298049d6ba4be0e789ac23d53ffb337404f65"
-      "313a74343a6b659fd7313a76343a54583162313a79313a7265";
+  const char hex[] = "64313a7264323a696432303afc102e53210136c224e103a40bb1f7a23"
+                     "d4e2b06353a6e6f6465733135363a74e20de602321a823b2627374ab1"
+                     "f7a209d31cb3c39ab5e17442748c1dd22f14188a0b991cc75db1f7a20"
+                     "4be16d4c39aaca99815748420173a980466225a2b0613b1f7a215ad06"
+                     "58c39ab302cb9174042cab34df0248286814977fb1f7a20a20162ac39"
+                     "aaca95800748e196c005d11b61b5d10f22cb1f7a20bc105bd3e4c64eb"
+                     "787874583d38340638cf06fb2b17bbb1f7a219041974c39aaca996016"
+                     "5313a74343a696c6723313a79313a7265";
+  // const char hex[] =
+  //     "64313a7264323a696432303a7ac5c288bd9bd57d84365f95c89d5c623d2f943d353a6e6f"
+  //     "6465733230383a765ef7d818bbfdb6d29934e7ed0a05ddb4c6e08b5d2977b83ee876f372"
+  //     "72fdbcb8aefa102a4b1ccf25f74430b76ed5884f1b300675c428ac893dfb16cc4a0914fb"
+  //     "e140b6e04adac350f5e6dd1ae9725225a36c4258fcc37ae12a791e20ed8081241d5fbdb9"
+  //     "bf33df7268a8acdbe4f95db7cb1dabe53e0c422e727acfbb413e466a8b73bc18d3005969"
+  //     "ab46f2fe16713690b21899f21b53957d1375f773e1c3940c4234ec10565980092e27aaaa"
+  //     "e719a24f1e29f32c5c73e1d09509b83704f298049d6ba4be0e789ac23d53ffb337404f65"
+  //     "313a74343a6b659fd7313a76343a54583162313a79313a7265";
 
   sp::byte b[sizeof(hex) * 2] = {0};
   std::size_t l = sizeof(hex);
@@ -197,7 +205,7 @@ TEST(krpcTest, test_find_node2) {
     //
     sp::list<dht::Node> outList;
     sp::init(outList, 8);
-    if (!bencode::d::nodes(p, "target", outList)) {
+    if (!bencode::d::nodes(p, "nodes", outList)) {
       return false;
     }
     // assert_eq(in, outList);

@@ -196,6 +196,7 @@ for_each(T (&arr)[SIZE], F f) noexcept {
   }
 }
 
+// transmission-daemon -er--dht
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
 main(int argc, char **argv) {

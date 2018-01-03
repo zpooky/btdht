@@ -260,7 +260,10 @@ struct KeyValue {
 };
 
 // dht::log
-struct Log {};
+struct Log {
+  sp::byte id[4];
+  Log();
+};
 
 // dht::DHT
 struct DHT {

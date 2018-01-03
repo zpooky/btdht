@@ -17,7 +17,7 @@ die(const char *s) {
 
 static void
 to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
-  // TODO ipv4 hardcoded
+  // TODO ipv4
   dest.sin_family = AF_INET;
   dest.sin_addr.s_addr = htonl(src.ipv4);
   dest.sin_port = htons(src.port);
@@ -25,7 +25,7 @@ to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
 
 static void
 to_peer(const ::sockaddr_in &src, Contact &dest) noexcept {
-  // TODO ipv4 hardcoded
+  // TODO ipv4
   dest.ipv4 = ntohl(src.sin_addr.s_addr);
   dest.port = ntohs(src.sin_port);
 }
