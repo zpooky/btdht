@@ -16,15 +16,17 @@ die(const char *s) {
 }
 
 static void
-to_sockaddr(const dht::Contact &src, ::sockaddr_in &dest) noexcept {
+to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
+  // TODO ipv4 hardcoded
   dest.sin_family = AF_INET;
-  dest.sin_addr.s_addr = htonl(src.ip);
+  dest.sin_addr.s_addr = htonl(src.ipv4);
   dest.sin_port = htons(src.port);
 }
 
 static void
-to_peer(const ::sockaddr_in &src, dht::Contact &dest) noexcept {
-  dest.ip = ntohl(src.sin_addr.s_addr);
+to_peer(const ::sockaddr_in &src, Contact &dest) noexcept {
+  // TODO ipv4 hardcoded
+  dest.ipv4 = ntohl(src.sin_addr.s_addr);
   dest.port = ntohs(src.sin_port);
 }
 
@@ -45,7 +47,7 @@ to_peer(const ::sockaddr_in &src, dht::Contact &dest) noexcept {
 //     die("recvfrom()");
 //   }
 // }
-ExternalIp
+Contact
 local(fd &listen) noexcept {
   sockaddr_in addr;
   std::memset(&addr, 0, sizeof(addr));
@@ -59,11 +61,11 @@ local(fd &listen) noexcept {
 
   if (saddr->sa_family == AF_INET6) {
     // TODO
-    return ExternalIp(0, 0);
+    return Contact(0, 0);
   } else {
     Ipv4 ip = ntohl(addr.sin_addr.s_addr);
 
-    return ExternalIp(ip, ntohs(addr.sin_port));
+    return Contact(ip, ntohs(addr.sin_port));
   }
 }
 
@@ -109,7 +111,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
 } // udp::receive()
 
 void
-receive(int fd, dht::Contact &other, sp::Buffer &buf) noexcept {
+receive(int fd, Contact &other, sp::Buffer &buf) noexcept {
   ::sockaddr_in o;
   receive(fd, o, buf);
   to_peer(o, other);
@@ -142,14 +144,14 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
 } // udp::send()
 
 bool
-send(int fd, const dht::Contact &dest, sp::Buffer &buf) noexcept {
+send(int fd, const Contact &dest, sp::Buffer &buf) noexcept {
   ::sockaddr_in d;
   to_sockaddr(dest, d);
   return send(fd, d, buf);
 } // udp::send()
 
 bool
-send(fd &fd, const dht::Contact &dest, sp::Buffer &buf) noexcept {
+send(fd &fd, const Contact &dest, sp::Buffer &buf) noexcept {
   return send(int(fd), dest, buf);
 } // udp::send()
 

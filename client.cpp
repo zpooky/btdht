@@ -9,8 +9,8 @@ namespace client {
 
 template <typename F>
 static bool
-send(dht::DHT &dht, const dht::Contact &remote, sp::Buffer &out,
-     dht::Module module, void *closure, F request) noexcept {
+send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
+     void *closure, F request) noexcept {
   sp::reset(out);
   dht::Client &client = dht.client;
 
@@ -49,7 +49,7 @@ ping(dht::DHT &dht, sp::Buffer &b, const dht::Node &node) noexcept {
 }
 
 bool
-find_node(dht::DHT &dht, sp::Buffer &b, const dht::Contact &dest,
+find_node(dht::DHT &dht, sp::Buffer &b, const Contact &dest,
           const dht::NodeId &search, void *closure) noexcept {
   dht::Module find_node;
   find_node::setup(find_node);

@@ -10,9 +10,10 @@
 namespace bencode {
 namespace e {
 static bool
-serialize(sp::Buffer &b, const dht::Contact &p) noexcept {
+serialize(sp::Buffer &b, const Contact &p) noexcept {
+  // TODO ipv4
   const std::size_t pos = b.pos;
-  Ipv4 ip = htonl(p.ip);
+  Ipv4 ip = htonl(p.ipv4);
   if (sp::remaining_read(b) < sizeof(ip)) {
     b.pos = pos;
     return false;
@@ -51,8 +52,9 @@ serialize(sp::Buffer &b, const dht::Node &node) noexcept {
 } // bencode::e::serialize()
 
 static std::size_t
-size(const dht::Contact &p) noexcept {
-  return sizeof(p.ip) + sizeof(p.port);
+size(const Contact &p) noexcept {
+  //TODO ipv4
+  return sizeof(p.ipv4) + sizeof(p.port);
 }
 
 static std::size_t

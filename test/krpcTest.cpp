@@ -128,7 +128,7 @@ TEST(krpcTest, test_find_node) {
     const dht::Node *in[nodes];
     for (std::size_t i = 0; i < nodes; ++i) {
       nodeId(node[i].id);
-      node[i].contact.ip = rand();
+      node[i].contact.ipv4 = rand();
       node[i].contact.port = rand();
       in[i] = &node[i];
     }
@@ -230,7 +230,7 @@ TEST(krpcTest, test_get_peers) {
     const dht::Node *in[NODE_SIZE];
     for (std::size_t i = 0; i < NODE_SIZE; ++i) {
       nodeId(node[i].id);
-      node[i].contact.ip = rand();
+      node[i].contact.ipv4 = rand();
       node[i].contact.port = rand();
       in[i] = &node[i];
     }

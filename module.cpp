@@ -462,7 +462,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 static void
 handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
   if (closure) {
-    auto *bs = (dht::Contact *)closure;
+    auto *bs = (Contact *)closure;
     delete bs;
   }
 
@@ -474,7 +474,7 @@ static bool
 on_response(dht::MessageContext &ctx, void *closure) noexcept {
   dht::DHT &dht = ctx.dht;
   if (closure) {
-    auto *bs = (dht::Contact *)closure;
+    auto *bs = (Contact *)closure;
     // XXX only delete if there is any new nodes in the response
     sp::remove_first(dht.bootstrap_contacts,
                      [&bs](const auto &cmp) { //
@@ -562,7 +562,8 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
   dht_request(ctx, id, [&](auto &) {
     dht::Token token;
     dht::DHT &dht = ctx.dht;
-    lookup::mint_token(dht, ctx.remote.ip, token);
+    // TODO ip
+    lookup::mint_token(dht, ctx.remote.ipv4, token);
 
     const krpc::Transaction &t = ctx.transaction;
     const dht::KeyValue *result = lookup::lookup(dht, search);
@@ -583,7 +584,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &, // XXX store token to used for announce
-                const sp::list<dht::Contact> &) noexcept {
+                const sp::list<Contact> &) noexcept {
   log::receive::res::get_peers(ctx);
   /*
    * infohash lookup query found result, sender returns requested data.
@@ -628,7 +629,7 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
     sp::list<dht::Node> &nodes = dht.contact_list;
     sp::clear(nodes);
 
-    sp::list<dht::Contact> &values = dht.value_list;
+    sp::list<Contact> &values = dht.value_list;
     sp::clear(values);
 
   Lstart:
@@ -716,8 +717,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht::DHT &dht = ctx.dht;
   if (lookup::valid(dht, token)) {
     dht_request(ctx, sender, [&](auto &) {
-      dht::Contact peer;
-      peer.ip = ctx.remote.ip;
+      Contact peer(ctx.remote);
       if (implied_port) {
         peer.port = ctx.remote.port;
       } else {

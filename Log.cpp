@@ -173,19 +173,18 @@ contact_scan(const dht::DHT &ctx) noexcept {
 
 namespace transmit {
 void
-ping(const dht::DHT &ctx, const dht::Contact &contact, bool result) noexcept {
+ping(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   print_time(ctx);
   char remote[30] = {0};
-  to_string(ExternalIp(contact.ip, contact.port), remote, sizeof(remote));
+  to_string(contact, remote, sizeof(remote));
   printf("transmit ping[%s],res[%s]\n", remote, result ? "true" : "false");
 }
 
 void
-find_node(const dht::DHT &ctx, const dht::Contact &contact,
-          bool result) noexcept {
+find_node(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   print_time(ctx);
   char remote[30] = {0};
-  to_string(ExternalIp(contact.ip, contact.port), remote, sizeof(remote));
+  to_string(contact, remote, sizeof(remote));
   printf("transmit find_node[%s],res[%s]\n", remote, result ? "true" : "false");
 }
 
@@ -210,8 +209,7 @@ insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
 
 namespace peer_db {
 void
-insert(const dht::DHT &ctx, const dht::Infohash &h,
-       const dht::Contact &) noexcept {
+insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
   print_time(ctx);
   printf("peer db insert infohash[");
   print_hex(h.id, sizeof(h.id));

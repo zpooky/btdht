@@ -15,7 +15,7 @@ namespace e {
 // value(sp::Buffer &buffer, const dht::Node &node) noexcept;
 
 bool
-pair_compact(sp::Buffer &, const char *, const dht::Contact *list) noexcept;
+pair_compact(sp::Buffer &, const char *, const Contact *list) noexcept;
 
 bool
 pair_compact(sp::Buffer &, const char *,

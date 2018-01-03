@@ -39,25 +39,33 @@ struct Ipv6 {
 };
 
 enum class IpType : uint8_t { IPV4, IPV6 };
-// ExternalIp
-struct ExternalIp {
+// Contact
+struct Contact {
   union {
-    Ipv4 v4;
-    Ipv6 v6;
+    Ipv4 ipv4;
+    Ipv6 ipv6;
   };
 
   Port port;
   IpType type;
 
-  ExternalIp(Ipv4, Port) noexcept;
-  ExternalIp(const Ipv6 &, Port) noexcept;
+  Contact(Ipv4, Port) noexcept;
+  Contact(const Ipv6 &, Port) noexcept;
+  // Contact(const Contact &) noexcept;
+  Contact() noexcept;
+
+  bool
+  operator==(const Contact &) const noexcept;
 };
+
+bool
+convert(const char *, Contact &) noexcept;
 
 bool
 to_ipv4(const char *, Ipv4 &) noexcept;
 
 bool
-to_string(const ExternalIp &, char *msg, std::size_t) noexcept;
+to_string(const Contact &, char *msg, std::size_t) noexcept;
 
 using Timeout = int;
 using Seconds = std::uint32_t;
@@ -315,18 +323,6 @@ struct NodeId {
 bool
 is_valid(const NodeId &) noexcept;
 
-// dht::Contact
-struct Contact {
-  Ipv4 ip;
-  Port port;
-
-  Contact(Ipv4, Port) noexcept;
-  Contact() noexcept;
-
-  bool
-  operator==(const Contact &) const noexcept;
-};
-
 /*valid BEP42 conforming NodeId*/
 // TODO
 enum class NodeIdValid : std::uint8_t { VALID, NOT_VALID, NOT_YET };
@@ -355,7 +351,6 @@ struct Node {
   // }}}
 
   Node() noexcept;
-  Node(const NodeId &, Ipv4, Port, time_t) noexcept;
   Node(const NodeId &, const Contact &, time_t) noexcept;
   Node(const Node &, time_t) noexcept;
 

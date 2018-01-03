@@ -26,7 +26,7 @@ randomize(sp::byte (&buffer)[SIZE]) noexcept {
 }
 
 static bool
-randomize(const ExternalIp &, NodeId &id) noexcept {
+randomize(const Contact &, NodeId &id) noexcept {
   // TODO
   return randomize(id.id);
 }
@@ -411,7 +411,7 @@ start:
 
 //============================================================
 bool
-is_blacklisted(DHT &, const dht::Contact &) noexcept {
+is_blacklisted(DHT &, const Contact &) noexcept {
   // XXX
   return false;
 }
@@ -700,7 +700,7 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
 
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash,
-       const dht::Contact &contact) noexcept {
+       const Contact &contact) noexcept {
 
   auto new_table = [&dht, infohash]() -> dht::KeyValue * {
     auto result = new dht::KeyValue(infohash, dht.lookup_table);
@@ -710,7 +710,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     return result;
   };
 
-  auto add_peer = [&dht](dht::KeyValue &s, const dht::Contact &c) {
+  auto add_peer = [&dht](dht::KeyValue &s, const Contact &c) {
     auto p = new dht::Peer(c, dht.now, s.peers);
     if (p) {
       s.peers = p;
@@ -719,7 +719,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     return false;
   };
 
-  auto find = [](dht::KeyValue &t, const dht::Contact &s) {
+  auto find = [](dht::KeyValue &t, const Contact &s) {
     dht::Peer *it = t.peers;
   Lstart:
     if (it) {

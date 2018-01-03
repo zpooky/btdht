@@ -26,18 +26,75 @@ fd::operator int() noexcept {
   return m_fd;
 }
 
-/*ExternalIp*/
-ExternalIp::ExternalIp(Ipv4 ipv4, Port p) noexcept
-    : v4(ipv4)
+/*Contact*/
+Contact::Contact(Ipv4 v4, Port p) noexcept
+    : ipv4(v4)
     , port(p)
     , type(IpType::IPV4) {
 }
 
-ExternalIp::ExternalIp(const Ipv6 &ipv6, Port p) noexcept
-    : v6()
+Contact::Contact(const Ipv6 &v6, Port p) noexcept
+    : ipv6()
     , port(p)
     , type(IpType::IPV6) {
-  std::memcpy(v6.raw, ipv6.raw, sizeof(v6));
+  std::memcpy(ipv6.raw, v6.raw, sizeof(ipv6));
+}
+
+Contact::Contact() noexcept
+    : Contact(0, 0) {
+}
+
+bool
+Contact::operator==(const Contact &c) const noexcept {
+  if (type == IpType::IPV4) {
+    return ipv4 == c.ipv4 && port == c.port;
+  }
+  return std::memcmp(ipv6.raw, c.ipv6.raw, sizeof(ipv6.raw)) == 0 &&
+         port == c.port;
+}
+
+static bool
+to_port(const char *str, Port &result) noexcept {
+  auto p = std::atoll(str);
+  if (p < 0) {
+    return false;
+  }
+  constexpr std::uint16_t max = ~std::uint16_t(0);
+  if (p > max) {
+    return false;
+  }
+
+  result = (Port)p;
+
+  return true;
+}
+
+bool
+convert(const char *str, Contact &result) noexcept {
+  const char *col = std::strchr(str, ':');
+  if (!col) {
+    return false;
+  }
+
+  char ipstr[(3 * 4) + 3 + 1] = {0};
+  std::size_t iplen = col - str;
+  if (iplen + 1 > sizeof(ipstr)) {
+    return false;
+  }
+
+  // TODO ipv4
+  result.type = IpType::IPV4;
+  std::memcpy(ipstr, str, iplen);
+  if (!to_ipv4(ipstr, result.ipv4)) {
+    return false;
+  }
+
+  const char *portstr = col + 1;
+  if (!to_port(portstr, result.port)) {
+    return false;
+  }
+
+  return true;
 }
 
 bool
@@ -48,7 +105,7 @@ to_ipv4(const char *str, Ipv4 &result) noexcept {
 }
 
 bool
-to_string(const ExternalIp &ip, char *str, std::size_t length) noexcept {
+to_string(const Contact &ip, char *str, std::size_t length) noexcept {
   if (ip.type == IpType::IPV6) {
     if (length < (INET6_ADDRSTRLEN + 1 + 5 + 1)) {
       return false;
@@ -72,7 +129,7 @@ to_string(const ExternalIp &ip, char *str, std::size_t length) noexcept {
     sockaddr_in addr;
     memset(&addr, 0, sizeof(sockaddr_in));
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(ip.v4);
+    addr.sin_addr.s_addr = htonl(ip.ipv4);
 
     if (inet_ntop(AF_INET, &addr.sin_addr, str, socklen_t(length)) == nullptr) {
       return false;
@@ -178,21 +235,6 @@ is_valid(const NodeId &id) noexcept {
   return std::memcmp(id.id, allzeros, sizeof(allzeros)) != 0;
 }
 
-/*Contact*/
-Contact::Contact(Ipv4 i, Port p) noexcept
-    : ip(i)
-    , port(p) {
-}
-
-Contact::Contact() noexcept
-    : Contact(0, 0) {
-}
-
-bool
-Contact::operator==(const Contact &c) const noexcept {
-  return ip == c.ip && port == c.port;
-}
-
 /*Node*/
 Node::Node() noexcept
     // timeout{{{
@@ -216,19 +258,19 @@ Node::Node() noexcept
 }
 
 /*Node*/
-Node::Node(const NodeId &nid, Ipv4 ip, Port port, time_t la) noexcept
+Node::Node(const NodeId &nid, const Contact &p, time_t act) noexcept
     // timeout{{{
     : timeout_next(nullptr)
     , timeout_priv(nullptr)
     //}}}
     //{{{
     , id(nid)
-    , contact(ip, port)
+    , contact(p)
     //}}}
     // activity {{{
-    , request_activity(la)
-    , response_activity(la) // TODO??
-    , ping_sent(la)         // TODO??
+    , request_activity(act)
+    , response_activity(act) // TODO??
+    , ping_sent(act)         // TODO??
     //}}}
     //{{{
     , ping_outstanding(0)
@@ -236,10 +278,6 @@ Node::Node(const NodeId &nid, Ipv4 ip, Port port, time_t la) noexcept
     , good(true)
 //}}}
 {
-}
-
-Node::Node(const NodeId &nid, const Contact &p, time_t act) noexcept
-    : Node(nid, p.ip, p.port, act) {
 }
 
 Node::Node(const Node &node, time_t now) noexcept

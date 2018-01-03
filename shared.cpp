@@ -219,7 +219,7 @@ RoutingTable::~RoutingTable() {
   }
 }
 
-/*dht::KeyValue*/
+// dht::KeyValue
 KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
     : next(nxt)
     , peers(nullptr)
@@ -227,8 +227,8 @@ KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
   std::memcpy(id.id, pid.id, sizeof(id.id));
 }
 
-/*dht::DHT*/
-DHT::DHT(fd &udp, const ExternalIp &i)
+// dht::DHT
+DHT::DHT(fd &udp, const Contact &i)
     // self {{{
     : id()
     , client(udp)

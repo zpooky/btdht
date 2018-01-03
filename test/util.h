@@ -100,8 +100,7 @@ assert_eq(const sp::list<T> &first, const sp::list<T> &second) {
 inline static void
 assert_eq2(const dht::Node &first, const dht::Node &second) {
   ASSERT_EQ(0, std::memcmp(first.id.id, second.id.id, sizeof(second.id.id)));
-  ASSERT_EQ(first.contact.ip, second.contact.ip);
-  ASSERT_EQ(first.contact.port, second.contact.port);
+  ASSERT_EQ(first.contact, second.contact);
 }
 
 template <std::size_t SIZE>

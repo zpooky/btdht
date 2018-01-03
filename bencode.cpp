@@ -82,7 +82,6 @@ encode_raw(sp::Buffer &buffer, const T *str, std::size_t length) noexcept {
     return false;
   }
 
-
   std::size_t &i = buffer.pos;
   buffer[i++] = ':';
 
@@ -393,13 +392,13 @@ is(sp::Buffer &buf, const char *exact, std::size_t length) noexcept {
 
 bool
 pair_x(Decoder &d, const char *key, char *val,
-     /*IN&OUT*/ std::size_t &len) noexcept {
+       /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d.buf, key, val, len);
 } // bencode::d::pair()
 
 bool
 pair_x(Decoder &d, const char *key, sp::byte *val,
-     /*IN&OUT*/ std::size_t &len) noexcept {
+       /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d.buf, key, val, len);
 }
 
@@ -497,10 +496,11 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
 } // bencode::d::list()
 
 static void
-value_to_peer(const char *str, dht::Contact &peer) noexcept {
-  std::memcpy(&peer.ip, str, sizeof(peer.ip));
-  str += sizeof(peer.ip);
-  peer.ip = ntohl(peer.ip);
+value_to_peer(const char *str, Contact &peer) noexcept {
+  // TODO ipv4
+  std::memcpy(&peer.ipv4, str, sizeof(peer.ipv4));
+  str += sizeof(peer.ipv4);
+  peer.ipv4 = ntohl(peer.ipv4);
 
   std::memcpy(&peer.port, str, sizeof(peer.port));
   peer.port = ntohs(peer.port);
@@ -508,7 +508,7 @@ value_to_peer(const char *str, dht::Contact &peer) noexcept {
 
 static bool
 value(Decoder &d, dht::Node &value) noexcept {
-  dht::Contact &contact = value.contact;
+  Contact &contact = value.contact;
   sp::Buffer &buf = d.buf;
 
   const std::size_t pos = buf.pos;
@@ -520,8 +520,9 @@ value(Decoder &d, dht::Node &value) noexcept {
     return false;
   }
 
+  // TODO ipv4
   constexpr std::size_t cmp =
-      (sizeof(value.id.id) + sizeof(contact.ip) + sizeof(contact.port));
+      (sizeof(value.id.id) + sizeof(contact.ipv4) + sizeof(contact.port));
   if (len != cmp) {
     buf.pos = pos;
     return false;
@@ -536,7 +537,7 @@ value(Decoder &d, dht::Node &value) noexcept {
 } // bencode::d::value()
 
 static bool
-value(Decoder &d, dht::Contact &peer) noexcept {
+value(Decoder &d, Contact &peer) noexcept {
   sp::Buffer &buf = d.buf;
   const std::size_t pos = buf.pos;
 
@@ -547,7 +548,8 @@ value(Decoder &d, dht::Contact &peer) noexcept {
     return false;
   }
 
-  if (len != (sizeof(peer.ip) + sizeof(peer.port))) {
+  // TODO ipv4
+  if (len != (sizeof(peer.ipv4) + sizeof(peer.port))) {
     buf.pos = pos;
     return false;
   }
@@ -586,7 +588,7 @@ pair(Decoder &d, const char *key, sp::list<dht::Node> &l) noexcept {
 } // bencode::d::pair()
 
 bool
-pair(Decoder &d, const char *key, sp::list<dht::Contact> &l) noexcept {
+pair(Decoder &d, const char *key, sp::list<Contact> &l) noexcept {
   return decode_list_pair(d, key, l);
 } // bencode::d:pair()
 

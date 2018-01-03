@@ -5,8 +5,8 @@
 
 namespace dht {
 struct Options {
-  ExternalIp *bind_ip;
-  sp::list<ExternalIp> bootstrap;
+  Contact *bind_ip;
+  sp::list<Contact> bootstrap;
 
   Options();
 };

@@ -14,7 +14,7 @@ bool
 nodes(bencode::d::Decoder &d, const char *, sp::list<dht::Node> &) noexcept;
 
 bool
-peers(bencode::d::Decoder &d, const char *, sp::list<dht::Contact> &) noexcept;
+peers(bencode::d::Decoder &d, const char *, sp::list<Contact> &) noexcept;
 
 } // namespace d
 } // namespace bencode

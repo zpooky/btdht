@@ -56,7 +56,7 @@ setup_epoll(fd &udp) noexcept {
 }
 
 static bool
-bootstrap(dht::DHT &dht, dht::Contact dest) noexcept {
+bootstrap(dht::DHT &dht, Contact dest) noexcept {
   return sp::push_back(dht.bootstrap_contacts, dest);
 }
 
@@ -95,7 +95,7 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
         sp::Buffer outBuffer(out);
 
         int cfd = current.data.fd;
-        dht::Contact from;
+        Contact from;
         udp::receive(cfd, from, inBuffer);
         flip(inBuffer);
 
@@ -137,8 +137,8 @@ module_for(dht::Modules &ms, const char *key, dht::Module &error) noexcept {
 }
 
 static bool
-parse(dht::DHT &dht, dht::Modules &modules, const dht::Contact &peer,
-      sp::Buffer &in, sp::Buffer &out) noexcept {
+parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
+      sp::Buffer &out) noexcept {
 
   auto f = [&dht, &modules, &peer, &out](krpc::ParseContext &pctx) {
     dht::Module error;
@@ -205,7 +205,7 @@ main(int argc, char **argv) {
   // }
   fd udp = udp::bind(INADDR_ANY, 42605);
   // fd udp = udp::bind(INADDR_ANY, 0);
-  ExternalIp local = udp::local(udp);
+  Contact local = udp::local(udp);
 
   dht::DHT dht(udp, local);
   if (!dht::init(dht)) {
@@ -216,17 +216,22 @@ main(int argc, char **argv) {
   printf("bind(%s)\n", str);
 
   /*boostrap*/
-  // dht::Contact bs_node(INADDR_ANY, local.port); // TODO
-  const char *ip[] = {"192.168.1.47", "127.0.0.1", "0.0.0.0", "213.65.130.80"};
+  // Contact bs_node(INADDR_ANY, local.port); // TODO
+  const char *bss[] = {
+      "192.168.1.47:13596",  "127.0.0.1:13596", "0.0.0.0:13596",
+      "213.65.130.80:13596", //
+      "192.168.1.47:51413",  "127.0.0.1:51413", "0.0.0.0:51413",
+      "213.65.130.80:51413", //
+  };
   dht.now = time(nullptr);
-  for_each(ip, [&dht](const char *ip) {
-    Ipv4 bs_ip;
-    if (!to_ipv4(ip, bs_ip)) {
+  for_each(bss, [&dht](const char *ip) {
+    Contact bs(0, 0);
+    if (!convert(ip, bs)) {
       die("parse bootstrap ip failed");
     }
-    dht::Contact bs_node(bs_ip, 13596); // TODO
 
-    if (!bootstrap(dht, bs_node)) {
+    Contact node(bs);
+    if (!bootstrap(dht, node)) {
       die("failed to setup bootstrap");
     }
   });
@@ -237,7 +242,7 @@ main(int argc, char **argv) {
   setup(modules);
 
   auto handle = //
-      [&](dht::Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
+      [&](Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
         dht.last_activity = dht.last_activity == 0 ? now : dht.last_activity;
         dht.now = now;
 

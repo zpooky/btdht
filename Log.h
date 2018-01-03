@@ -69,10 +69,10 @@ contact_scan(const dht::DHT &) noexcept;
 
 namespace transmit {
 void
-ping(const dht::DHT &, const dht::Contact &, bool) noexcept;
+ping(const dht::DHT &, const Contact &, bool) noexcept;
 
 void
-find_node(const dht::DHT &, const dht::Contact &, bool) noexcept;
+find_node(const dht::DHT &, const Contact &, bool) noexcept;
 } // namespace transmit
 
 namespace routing {
@@ -85,7 +85,7 @@ insert(const dht::DHT &, const dht::Node &) noexcept;
 
 namespace peer_db {
 void
-insert(const dht::DHT &, const dht::Infohash &, const dht::Contact &) noexcept;
+insert(const dht::DHT &, const dht::Infohash &, const Contact &) noexcept;
 }
 
 } // namespace log

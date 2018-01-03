@@ -81,18 +81,19 @@ Lretry:
 }
 
 static bool
-value_to_peer(sp::Buffer &buf, dht::Contact &peer) noexcept {
+value_to_peer(sp::Buffer &buf, Contact &peer) noexcept {
   const std::size_t pos = buf.pos;
 
-  constexpr std::size_t cmp(sizeof(peer.ip) + sizeof(peer.port));
+  // TODO ipv4
+  constexpr std::size_t cmp(sizeof(peer.ipv4) + sizeof(peer.port));
   if (sp::remaining_read(buf) < cmp) {
     buf.pos = pos;
     return false;
   }
 
-  std::memcpy(&peer.ip, buf.raw + buf.pos, sizeof(peer.ip));
-  buf.pos += sizeof(peer.ip);
-  peer.ip = ntohl(peer.ip);
+  std::memcpy(&peer.ipv4, buf.raw + buf.pos, sizeof(peer.ipv4));
+  buf.pos += sizeof(peer.ipv4);
+  peer.ipv4 = ntohl(peer.ipv4);
 
   std::memcpy(&peer.port, buf.raw + buf.pos, sizeof(peer.port));
   buf.pos += sizeof(peer.port);
@@ -103,7 +104,7 @@ value_to_peer(sp::Buffer &buf, dht::Contact &peer) noexcept {
 
 static bool
 value(sp::Buffer &buf, dht::Node &value) noexcept {
-  dht::Contact &contact = value.contact;
+  Contact &contact = value.contact;
   const std::size_t pos = buf.pos;
 
   constexpr std::size_t cmp(sizeof(value.id.id));
@@ -124,7 +125,7 @@ value(sp::Buffer &buf, dht::Node &value) noexcept {
 } // bencode::d::value()
 
 static bool
-value(sp::Buffer &buf, dht::Contact &value) noexcept {
+value(sp::Buffer &buf, Contact &value) noexcept {
   return value_to_peer(buf, value);
 }
 
@@ -169,8 +170,7 @@ nodes(bencode::d::Decoder &d, const char *key,
 }
 
 bool
-peers(bencode::d::Decoder &d, const char *key,
-      sp::list<dht::Contact> &l) noexcept {
+peers(bencode::d::Decoder &d, const char *key, sp::list<Contact> &l) noexcept {
   return compact_list(d, key, l);
 }
 

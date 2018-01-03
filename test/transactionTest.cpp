@@ -23,7 +23,7 @@ shuffle_tx(krpc::Transaction (&arr)[SIZE]) {
 
 TEST(transactionTest, test_valid_tree) {
   fd s(-1);
-  dht::DHT dht(s, ExternalIp(0, 0));
+  dht::DHT dht(s, Contact(0, 0));
   dht.now = time(nullptr);
   assert(dht::init(dht.client));
   // TODO
@@ -32,7 +32,7 @@ TEST(transactionTest, test_valid_tree) {
 TEST(transactionTest, test) {
   std::size_t test_it = 0;
   fd s(-1);
-  dht::DHT dht(s, ExternalIp(0, 0));
+  dht::DHT dht(s, Contact(0, 0));
   dht.now = time(nullptr);
   assert(dht::init(dht.client));
 

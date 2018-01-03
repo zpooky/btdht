@@ -134,7 +134,7 @@ TEST(BEncodeTest, list) {
   for (std::size_t i = 0; i < nodes; ++i) {
     dht::Node node;
     nodeId(node.id);
-    node.contact.ip = ~Ipv4(0);
+    node.contact.ipv4 = ~Ipv4(0);
     node.contact.port = ~Port(0);
 
     assert(sp::push_back(list, node));

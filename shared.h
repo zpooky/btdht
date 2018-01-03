@@ -269,7 +269,7 @@ struct DHT {
   NodeId id;
   Client client;
   Log log;
-  ExternalIp ip;
+  Contact ip;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;
@@ -285,7 +285,7 @@ struct DHT {
   //}}}
   // recycle contact list {{{
   sp::list<Node> contact_list;
-  sp::list<dht::Contact> value_list;
+  sp::list<Contact> value_list;
   // }}}
   // stuff {{{
   time_t last_activity;
@@ -299,7 +299,7 @@ struct DHT {
   std::size_t bootstrap_ongoing_searches;
   // }}}
 
-  explicit DHT(fd &, const ExternalIp &);
+  explicit DHT(fd &, const Contact &);
 };
 
 // dht::MessageContext

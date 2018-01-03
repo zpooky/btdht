@@ -23,7 +23,7 @@ bool
 init(dht::DHT &) noexcept;
 
 bool
-is_blacklisted(DHT &dht, const dht::Contact &) noexcept;
+is_blacklisted(DHT &dht, const Contact &) noexcept;
 
 /**/
 void
@@ -66,7 +66,7 @@ dht::KeyValue *
 lookup(dht::DHT &, const dht::Infohash &) noexcept;
 
 bool
-insert(dht::DHT &, const dht::Infohash &, const dht::Contact &) noexcept;
+insert(dht::DHT &, const dht::Infohash &, const Contact &) noexcept;
 
 bool
 valid(dht::DHT &, const dht::Token &) noexcept;
