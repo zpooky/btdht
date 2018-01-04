@@ -132,9 +132,12 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
   } while (sent < 0 && errno == EAGAIN);
 
   if (sent < 0) {
+
+    char dstr[128] = {0};
+    assert(inet_ntop(AF_INET6, &dest, dstr, socklen_t(sizeof(dstr))) != 0);
     printf("sent[%zd] = "
            "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),destaddr[%s])\n", //
-           sent, int(fd), raw_len, flag, "");
+           sent, int(fd), raw_len, flag, dstr);
     die("sendto()");
   }
 

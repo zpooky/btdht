@@ -165,6 +165,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
         return context.handle(ctx);
       } else {
         log::receive::res::unknown_tx(ctx);
+        assert(false);
       }
     }
     return false;
@@ -219,9 +220,9 @@ main(int argc, char **argv) {
   /*boostrap*/
   // Contact bs_node(INADDR_ANY, local.port); // TODO
   const char *bss[] = {
-      "192.168.1.47:13596",  "127.0.0.1:13596", "0.0.0.0:13596",
+      "192.168.1.47:13596",  "127.0.0.1:13596",
       "213.65.130.80:13596", //
-      "192.168.1.47:51413",  "127.0.0.1:51413", "0.0.0.0:51413",
+      "192.168.1.47:51413",  "127.0.0.1:51413",
       "213.65.130.80:51413", //
   };
   dht.now = time(nullptr);
@@ -230,6 +231,9 @@ main(int argc, char **argv) {
     if (!convert(ip, bs)) {
       die("parse bootstrap ip failed");
     }
+
+    assert(bs.ipv4 > 0);
+    assert(bs.port > 0);
 
     Contact node(bs);
     if (!bootstrap(dht, node)) {

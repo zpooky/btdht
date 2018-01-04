@@ -108,6 +108,7 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
     Node &contact = bucket.contacts[i];
     if (!contact) {
       contact = c;
+      timeout::append_all(dht, &contact);
 
       return &contact;
     }
@@ -116,8 +117,8 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
       if (!is_good(dht, contact)) {
-        reset(dht, contact);
         timeout::unlink(dht, &contact);
+        reset(dht, contact);
         contact = c;
         timeout::append_all(dht, &contact);
 
@@ -177,15 +178,17 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
         direction = lower;
       }
 
-      assert(direction);
-      bool eager = false;
-      bool replaced /*OUT*/ = false;
-      auto *nc = do_insert(dht, direction->bucket, contact, eager, replaced);
-      assert(!replaced);
-      assert(nc);
+      {
+        assert(direction);
+        bool eager = false;
+        bool replaced /*OUT*/ = false;
+        auto *nc = do_insert(dht, direction->bucket, contact, eager, replaced);
+        assert(!replaced);
+        assert(nc);
 
-      if (nc) {
-        relink(nc);
+        if (nc) {
+          relink(nc);
+        }
       }
     }
   } // for
@@ -446,7 +449,7 @@ is_good(const DHT &dht, const Node &contact) noexcept {
 
 bool
 init(dht::DHT &dht) noexcept {
-  if (!sp::init(dht.contact_list, 16)) {
+  if (!sp::init(dht.contact_list, 64)) {
     return false;
   }
   if (!sp::init(dht.value_list, 64)) {
@@ -500,6 +503,7 @@ bucket_for(DHT &dht, const NodeId &id) noexcept {
 
 Node *
 insert(DHT &dht, const Node &contact) noexcept {
+  // TODO endless loop
 Lstart:
   bool inTree = false;
   std::size_t idx = 0;
@@ -509,6 +513,7 @@ Lstart:
 
     Bucket &bucket = leaf->bucket;
     {
+      /*check if already present*/
       Node *const existing = find(bucket, contact.id);
       if (existing) {
         return existing;
@@ -527,9 +532,11 @@ Lstart:
       }
     } else {
       if (inTree) {
-        split(dht, leaf, idx);
-        // XXX make better
-        goto Lstart;
+        if (split(dht, leaf, idx)) {
+          // XXX make better
+          goto Lstart;
+        }
+        assert(false);
       }
     }
 
@@ -562,8 +569,11 @@ Lstart:
 template <typename T>
 void
 internal_unlink(T *&head, T *const contact) noexcept {
-  T *priv = contact->timeout_priv;
-  T *next = contact->timeout_next;
+  T *const priv = contact->timeout_priv;
+  T *const next = contact->timeout_next;
+
+  assert(priv);
+  assert(next);
 
   if (priv)
     priv->timeout_next = next;
@@ -573,6 +583,9 @@ internal_unlink(T *&head, T *const contact) noexcept {
 
   if (head == contact)
     head = next;
+
+  contact->timeout_next = nullptr;
+  contact->timeout_priv = nullptr;
 }
 
 void
@@ -604,6 +617,7 @@ internal_append_all(T *&head, T *const node) noexcept {
     T *const l = last(node);
 
     T *const priv = head->timeout_priv;
+    assert(priv);
     node->timeout_priv = priv;
     priv->timeout_next = node;
 

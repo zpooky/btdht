@@ -190,7 +190,7 @@ template <typename T>
 static void
 clear(sp::list<T> &l) {
   sp::node<T> *current = l.root;
-  std::size_t size = l.size;
+  std::size_t &size = l.size;
 Lstart:
   if (current) {
     if (size-- > 0) {

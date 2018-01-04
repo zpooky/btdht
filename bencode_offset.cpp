@@ -144,20 +144,31 @@ compact_list(bencode::d::Decoder &d, const char *key, sp::list<T> &l) noexcept {
     d.buf.pos = pos;
     return false;
   }
+
+  assert(l.size == 0);
+
   if (length > 0) {
     assert(val);
 
     sp::Buffer val_buf((sp::byte *)val, length);
     val_buf.length = length;
-  Lcontinue : {
-    typename sp::list<T>::value_type n;
-    if (value(val_buf, n)) {
-      if (!sp::push_back(l, n)) {
+  Lcontinue:
+    if (sp::remaining_read(val_buf) > 0) {
+      typename sp::list<T>::value_type n;
+      std::size_t pls = val_buf.pos;
+      if (!value(val_buf, n)) {
+        d.buf.pos = pos;
         return false;
       }
+      assert(val_buf.pos > pls);
+
+      if (!sp::push_back(l, n)) {
+        d.buf.pos = pos;
+        return false;
+      }
+
       goto Lcontinue;
     }
-  }
   }
 
   return true;

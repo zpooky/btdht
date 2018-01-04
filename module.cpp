@@ -124,6 +124,8 @@ update(dht::DHT &ctx, dht::Node *const contact, time_t now) noexcept {
   assert(now >= dht::activity(*contact));
 
   unlink(ctx, contact);
+  assert(!contact->timeout_next);
+  assert(!contact->timeout_priv);
   contact->ping_sent = now; // TODO change to activity
   append_all(ctx, contact);
 } // timeout::update()
@@ -498,12 +500,16 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       goto Lstart;
     }
 
-    if (!b_n && bencode::d::nodes(p, "nodes", nodes)) {
-      b_n = true;
-      goto Lstart;
+    // optional
+    if (!b_n) {
+      sp::clear(nodes);
+      if (bencode::d::nodes(p, "nodes", nodes)) {
+        b_n = true;
+        goto Lstart;
+      }
     }
 
-    if (!(b_id && b_n)) {
+    if (!(b_id)) {
       return false;
     }
 
@@ -644,14 +650,20 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
     }
 
     /*closes K nodes*/
-    if (!b_n && bencode::d::nodes(p, "nodes", nodes)) {
-      b_n = true;
-      goto Lstart;
+    if (!b_n) {
+      sp::clear(nodes);
+      if (bencode::d::nodes(p, "nodes", nodes)) {
+        b_n = true;
+        goto Lstart;
+      }
     }
 
-    if (!b_v && bencode::d::peers(p, "values", values)) {
-      b_v = true;
-      goto Lstart;
+    if (!b_v) {
+      sp::clear(values);
+      if (bencode::d::peers(p, "values", values)) {
+        b_v = true;
+        goto Lstart;
+      }
     }
 
     if (b_id && b_t && b_n) {
