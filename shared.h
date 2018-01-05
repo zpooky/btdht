@@ -226,9 +226,21 @@ bool
 for_all(Bucket &b, F f) {
   bool result = true;
   for (std::size_t i = 0; i < Bucket::K && result; ++i) {
-    result = f(b.contacts[i]);
+    if (b.contacts[i]) {
+      result = f(b.contacts[i]);
+    }
   }
   return result;
+}
+
+template <typename F>
+void
+for_each(Bucket &b, F f) {
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    if (b.contacts[i]) {
+      f(b.contacts[i]);
+    }
+  }
 }
 
 // dht::RoutingTable

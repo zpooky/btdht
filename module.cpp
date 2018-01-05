@@ -244,17 +244,17 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   // only have a frew nodes in routing table?
 
   // XXX if no good node is avaiable try bad/questionable nodes
-  auto &bs = dht.bootstrap_contacts;
-  for_each(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
-
-    bool res = client::find_node(dht, out, remote, id, new Contact(remote));
-    if (res) {
-      inc_ongoing();
-    }
-    return res;
-  });
-
   if (missing_contacts > 0) {
+    auto &bs = dht.bootstrap_contacts;
+    for_each(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
+
+      bool res = client::find_node(dht, out, remote, id, new Contact(remote));
+      if (res) {
+        inc_ongoing();
+      }
+      return res;
+    });
+
     dht::Bucket *const b = dht::bucket_for(dht, id);
     if (b) {
       const NodeId &sid = search_id(*b);
