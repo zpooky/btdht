@@ -168,7 +168,7 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
     }
   }
 
-  /*calculate next timeout*/
+  /*Calculate next timeout*/
   Config config;
   Node *const tHead = timeout::head(ctx);
   if (tHead) {
@@ -217,7 +217,8 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     dht.bootstrap_ongoing_searches++;
   };
 
-  // Lstart:
+  bool bs_sent = false;
+Lstart:
   NodeId id;
   dht::randomize(id);
 
@@ -244,7 +245,8 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   // only have a frew nodes in routing table?
 
   // XXX if no good node is avaiable try bad/questionable nodes
-  if (missing_contacts > 0) {
+
+  if (!bs_sent) {
     auto &bs = dht.bootstrap_contacts;
     for_each(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
 
@@ -254,6 +256,10 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
       }
       return res;
     });
+    bs_sent = true;
+  }
+
+  if (missing_contacts > 0) {
 
     dht::Bucket *const b = dht::bucket_for(dht, id);
     if (b) {
@@ -272,7 +278,7 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
       });
 
       if (ok) {
-        // goto Lstart;
+        goto Lstart;
       }
     }
   }
@@ -475,17 +481,19 @@ handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
 static bool
 on_response(dht::MessageContext &ctx, void *closure) noexcept {
   dht::DHT &dht = ctx.dht;
+
+  Contact cap_copy;
+  Contact *cap_ptr = nullptr;
   if (closure) {
     auto *bs = (Contact *)closure;
-    // XXX only delete if there is any new nodes in the response
-    sp::remove_first(dht.bootstrap_contacts,
-                     [&bs](const auto &cmp) { //
-                       return cmp == *bs;
-                     });
+
+    // make a copy of the capture so we can delete it
+    cap_copy = *bs;
+    cap_ptr = &cap_copy;
   }
   handle_response_timeout(ctx.dht, closure);
 
-  return bencode::d::dict(ctx.in, [&ctx, &dht](auto &p) { //
+  return bencode::d::dict(ctx.in, [&ctx, &dht, cap_ptr](auto &p) { //
     bool b_id = false;
     bool b_n = false;
 
@@ -511,6 +519,16 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
 
     if (!(b_id)) {
       return false;
+    }
+
+    if (nodes.size > 0) {
+      if (cap_ptr) {
+        // only remove bootstrap node if we have gotten some nodes from it
+        sp::remove_first(dht.bootstrap_contacts,
+                         [&cap_ptr](const auto &cmp) { //
+                           return cmp == *cap_ptr;
+                         });
+      }
     }
 
     handle_response(ctx, id, nodes);

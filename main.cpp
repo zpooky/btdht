@@ -76,11 +76,10 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
 
     int no_events = ::epoll_wait(int(fdpoll), events, max_events, timeout);
     if (no_events < 0) {
-      if (errno == EINTR) {
+      if (errno != EINTR) {
         // TODO handle specific interrupt
-        continue;
+        die("epoll_wait");
       }
-      die("epoll_wait");
     }
 
     // always increasing clock

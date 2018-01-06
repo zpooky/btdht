@@ -3,7 +3,7 @@
 #include <memory.h>
 
 namespace log {
-
+/*log*/
 static void
 print_time(time_t now) noexcept {
   char buff[20] = {};
@@ -44,8 +44,9 @@ print_hex(const sp::byte *arr, std::size_t length) {
 }
 
 namespace receive {
+/*log::receive*/
 namespace req {
-
+/*log::receive::req*/
 void
 ping(const dht::MessageContext &ctx) noexcept {
   print_time(ctx);
@@ -78,7 +79,7 @@ error(const dht::MessageContext &ctx) noexcept {
 } // namespace req
 
 namespace res {
-
+/*log::receive::res*/
 void
 ping(const dht::MessageContext &ctx) noexcept {
   print_time(ctx);
@@ -129,6 +130,7 @@ unknown_tx(const dht::MessageContext &ctx) noexcept {
 } // namespace res
 
 namespace parse {
+/*log::receive::parse*/
 void
 error(const dht::DHT &ctx, const sp::Buffer &buffer) noexcept {
   print_time(ctx);
@@ -141,6 +143,7 @@ error(const dht::DHT &ctx, const sp::Buffer &buffer) noexcept {
 } // namespace receive
 
 namespace awake {
+/*log::awake*/
 void
 timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
@@ -172,12 +175,13 @@ contact_scan(const dht::DHT &ctx) noexcept {
 } // namespace awake
 
 namespace transmit {
+/*log::transmit*/
 void
 ping(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
-  printf("transmit ping[%s],res[%s]\n", remote, result ? "true" : "false");
+  printf("transmit ping[%s],res[%s]\n", remote, result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m");
 }
 
 void
@@ -185,12 +189,29 @@ find_node(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
-  printf("transmit find_node[%s],res[%s]\n", remote, result ? "true" : "false");
+  printf("transmit find_node[%s],res[%s]\n", remote, result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m");
 }
+
+namespace error {
+/* log::transmit::error */
+void
+mint_transaction(const dht::DHT &ctx) noexcept {
+  print_time(ctx);
+  printf("\033[91mtransmit error mint_transaction\n\033[0m");
+}
+
+void
+udp(const dht::DHT &ctx) noexcept {
+  print_time(ctx);
+  printf("\033[91mtransmit error udp\n\033[0m");
+}
+
+} // namespace error
 
 } // namespace transmit
 
 namespace routing {
+/*log::routing*/
 void
 split(const dht::DHT &ctx, const dht::RoutingTable &,
       const dht::RoutingTable &) noexcept {
@@ -208,6 +229,7 @@ insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
 } // namespace routing
 
 namespace peer_db {
+/*log::peer_db*/
 void
 insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
   print_time(ctx);

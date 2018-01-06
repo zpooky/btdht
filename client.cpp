@@ -24,11 +24,15 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
       sp::flip(out);
       result = udp::send(client.udp, remote, out);
     }
+
     if (!result) {
+      log::transmit::error::udp(dht);
       // since we fail to send request, we clear the transaction
       dht::TxContext dummy;
       assert(take_tx(client, tx, dummy));
     }
+  } else {
+    log::transmit::error::mint_transaction(dht);
   }
 
   return result;
