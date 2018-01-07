@@ -2,11 +2,13 @@
 #include "udp.h"
 #include <stdio.h>
 
+#include "dht_interface.h"
+#include "private_interface.h"
+
 #include "Log.h"
 #include "Options.h"
 #include "bencode.h"
 #include "krpc.h"
-#include "module.h"
 #include "shared.h"
 #include <algorithm>
 #include <arpa/inet.h>
@@ -178,16 +180,6 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
   return true;
 }
 
-static void
-setup(dht::Modules &modules) noexcept {
-  std::size_t &i = modules.length;
-  ping::setup(modules.module[i++]);
-  find_node::setup(modules.module[i++]);
-  get_peers::setup(modules.module[i++]);
-  announce_peer::setup(modules.module[i++]);
-  error::setup(modules.module[i++]);
-}
-
 template <typename T, std::size_t SIZE, typename F>
 static void
 for_each(T (&arr)[SIZE], F f) noexcept {
@@ -241,7 +233,12 @@ main(int argc, char **argv) {
   fd poll = setup_epoll(udp);
 
   dht::Modules modules;
-  setup(modules);
+  if (!interface_dht::setup(modules)) {
+    die("interface_dht::setup(modules)");
+  }
+  if (!interface_priv::setup(modules)) {
+    die("interface_priv::setup(modules)");
+  }
 
   auto handle = //
       [&](Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {

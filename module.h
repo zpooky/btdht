@@ -1,7 +1,6 @@
-#ifndef SP_MAINLINE_DHT_MODUE_H
-#define SP_MAINLINE_DHT_MODUE_H
+#ifndef SP_MAINLINE_DHT_MODULE_H
+#define SP_MAINLINE_DHT_MODULE_H
 
-#include "dht.h"
 #include "shared.h"
 
 //===========================================================
@@ -9,7 +8,7 @@
 //===========================================================
 namespace dht {
 
-/*Module*/
+// dht::Module
 struct Module {
   const char *query;
 
@@ -20,54 +19,15 @@ struct Module {
   Module() noexcept;
 };
 
-/*Modules*/
+// dht::Modules
 struct Modules {
-  dht::Module module[24];
+  Module module[24];
   std::size_t length;
-  Timeout (*on_awake)(dht::DHT &, sp::Buffer &);
+  Timeout (*on_awake)(DHT &, sp::Buffer &);
 
   Modules() noexcept;
 };
 
 } // namespace dht
-
-//===========================================================
-// ping
-//===========================================================
-namespace ping {
-void
-setup(dht::Module &) noexcept;
-} // namespace ping
-
-//===========================================================
-// find_node
-//===========================================================
-namespace find_node {
-void
-setup(dht::Module &) noexcept;
-}
-
-//===========================================================
-// get_peers
-//===========================================================
-namespace get_peers {
-void
-setup(dht::Module &) noexcept;
-}
-
-//===========================================================
-// announce_peer
-//===========================================================
-namespace announce_peer {
-void
-setup(dht::Module &) noexcept;
-}
-//===========================================================
-// error
-//===========================================================
-namespace error {
-void
-setup(dht::Module &) noexcept;
-}
 
 #endif

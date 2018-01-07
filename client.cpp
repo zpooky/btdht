@@ -1,8 +1,9 @@
-#include "Log.h"
 #include "client.h"
+
+#include "Log.h"
 #include "dht.h"
 #include "krpc.h"
-#include "module.h"
+#include "dht_interface.h"
 #include "udp.h"
 
 namespace client {
