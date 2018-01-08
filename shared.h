@@ -262,6 +262,23 @@ struct RoutingTable {
   ~RoutingTable();
 };
 
+template <typename F>
+bool
+for_all(const RoutingTable *it, F f) noexcept {
+  bool result = true;
+  while (result && it) {
+    if (it->type == NodeType::LEAF) {
+
+      result = f(*it);
+      break;
+    } else {
+
+      // TODO next
+    }
+  }
+  return result;
+}
+
 // dht::KeyValue
 struct KeyValue {
   KeyValue *next;
@@ -311,7 +328,7 @@ struct DHT {
   // }}}
   // boostrap {{{
   sp::list<Contact> bootstrap_contacts;
-  std::size_t bootstrap_ongoing_searches;
+  std::uint32_t active_searches;
   // }}}
 
   explicit DHT(fd &, const Contact &);

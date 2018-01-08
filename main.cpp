@@ -126,17 +126,6 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
   } // for
 }
 
-static dht::Module &
-module_for(dht::Modules &ms, const char *key, dht::Module &error) noexcept {
-  for (std::size_t i = 0; i < ms.length; ++i) {
-    dht::Module &current = ms.module[i];
-    if (std::strcmp(current.query, key) == 0) {
-      return current;
-    }
-  }
-  return error;
-}
-
 static bool
 parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       sp::Buffer &out) noexcept {
@@ -233,11 +222,13 @@ main(int argc, char **argv) {
   fd poll = setup_epoll(udp);
 
   dht::Modules modules;
-  if (!interface_dht::setup(modules)) {
-    die("interface_dht::setup(modules)");
-  }
-  if (!interface_priv::setup(modules)) {
-    die("interface_priv::setup(modules)");
+  {
+    if (!interface_dht::setup(modules)) {
+      die("interface_dht::setup(modules)");
+    }
+    if (!interface_priv::setup(modules)) {
+      die("interface_priv::setup(modules)");
+    }
   }
 
   auto handle = //

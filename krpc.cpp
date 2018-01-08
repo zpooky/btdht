@@ -8,7 +8,10 @@
 
 //=BEncode==================================================================
 namespace bencode {
+/*bencode*/
 namespace e {
+/*bencode::e*/
+
 static bool
 serialize(sp::Buffer &b, const Contact &p) noexcept {
   // TODO ipv4
@@ -33,6 +36,20 @@ serialize(sp::Buffer &b, const Contact &p) noexcept {
 } // bencode::e::serialize()
 
 static bool
+value(sp::Buffer &b, const Contact &p) noexcept {
+  return serialize(b, p);
+}
+
+static bool
+pair(sp::Buffer &buf, const char *key, const Contact &p) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  return value(buf, p);
+}
+
+static bool
 serialize(sp::Buffer &b, const dht::Node &node) noexcept {
   const std::size_t pos = b.pos;
 
@@ -53,7 +70,7 @@ serialize(sp::Buffer &b, const dht::Node &node) noexcept {
 
 static std::size_t
 size(const Contact &p) noexcept {
-  //TODO ipv4
+  // TODO ipv4
   return sizeof(p.ipv4) + sizeof(p.port);
 }
 
@@ -134,12 +151,7 @@ pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
 
 template <typename T>
 static bool
-internal_pair(sp::Buffer &buf, const char *key,
-              const sp::list<T> &list) noexcept {
-  if (!bencode::e::value(buf, key)) {
-    return false;
-  }
-
+sp_list(sp::Buffer &buf, const sp::list<T> &list) noexcept {
   std::size_t len = length(list);
   return bencode::e::value(buf, len, (void *)&list, [](sp::Buffer &b, void *a) {
 
@@ -153,6 +165,17 @@ internal_pair(sp::Buffer &buf, const char *key,
       return true;
     });
   });
+}
+
+template <typename T>
+static bool
+internal_pair(sp::Buffer &buf, const char *key,
+              const sp::list<T> &list) noexcept {
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  return sp_list(buf, list);
 } // bencode::e::internal_pair()
 
 bool
@@ -191,11 +214,156 @@ pair_compact(sp::Buffer &buf, const char *key, const dht::Node **list,
   return xxx(buf, key, list, size);
 } // bencode::e::pair_compact()
 
+static bool
+value(sp::Buffer &buf, const dht::Node &node) noexcept {
+  return bencode::e::dict(buf, [&node](sp::Buffer &b) { //
+
+    if (!pair(b, "id", node.id.id, sizeof(node.id.id))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+static bool
+value(sp::Buffer &buf, const dht::Bucket &t) noexcept {
+  return list(buf, (void *)&t, [](sp::Buffer &b, void *arg) { //
+    auto *a = (dht::Bucket *)arg;
+
+    return for_all(*a, [&b](const dht::Node &node) { //
+      return value(b, node);
+    });
+  });
+}
+
+static bool
+value(sp::Buffer &buf, const dht::RoutingTable &t) noexcept {
+  // used by dump
+
+  return dict(buf, [&t](sp::Buffer &b) {
+    dht::Infohash id; // TODO
+    if (!pair(b, "id", id.id, sizeof(id.id))) {
+      return false;
+    }
+
+    if (value(b, "bucket")) {
+      return false;
+    }
+    assert(t.type == dht::NodeType::LEAF);
+    if (!value(b, t.bucket)) {
+      return false;
+    }
+
+    return true;
+  });
+} // bencode::e::value()
+
+static bool
+pair(sp::Buffer &buf, const char *key, const dht::RoutingTable *t) noexcept {
+  // used by dump
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  return bencode::e::list(buf, (void *)&t, [](sp::Buffer &b, void *arg) { //
+    const auto *a = (const dht::RoutingTable *)arg;
+
+    return dht::for_all(a, [&b](const dht::RoutingTable &p) { //
+      return value(b, p);
+    });
+  });
+} // bencode::e::pair()
+
+template <typename F>
+static bool
+for_all(const dht::KeyValue *it, F f) noexcept {
+  bool ret = true;
+  while (it && ret) {
+    ret = f(*it);
+  }
+  return ret;
+} // bencode::e::for_all()
+
+static bool
+value(sp::Buffer &buf, const dht::Peer &t) noexcept {
+  // used by dump
+
+  return bencode::e::dict(buf, [&t](sp::Buffer &b) { //
+    if (!value(b, "contact")) {
+      return false;
+    }
+    if (!value(b, t.contact)) {
+      return false;
+    }
+
+    if (!pair(b, "activity", t.activity)) {
+      return false;
+    }
+
+    return true;
+  });
+} // bencode::e::value()
+
+static bool
+value(sp::Buffer &buf, const dht::KeyValue &t) noexcept {
+  // used by dump
+  return bencode::e::dict(buf, [&t](sp::Buffer &b) { //
+    if (!bencode::e::pair(b, "id", t.id.id, sizeof(t.id.id))) {
+      return false;
+    }
+
+    if (!bencode::e::value(b, "list")) {
+      return false;
+    }
+
+    return bencode::e::list(b, (void *)&t, [](sp::Buffer &b2, void *arg) { //
+      const auto *a = (const dht::KeyValue *)arg;
+
+      return for_all(a->peers, [&b2](const dht::Peer &p) { //
+        return value(b2, p);
+      });
+    });
+  });
+} // bencode::e::value()
+
+static bool
+pair(sp::Buffer &buf, const char *key, const dht::KeyValue *t) noexcept {
+  // used by dump
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  return bencode::e::list(buf, (void *)t, [](sp::Buffer &b, void *arg) {
+    const auto *a = (const dht::KeyValue *)arg;
+    return for_all(a, [&b](const dht::KeyValue &it) { //
+      return value(b, it);
+    });
+  });
+} // bencode::e::pair()
+
+static bool
+value(sp::Buffer &buf, const sp::list<Contact> &t) noexcept {
+  // used by dump
+  return sp_list(buf, t);
+} // bencode::e::value()
+
+static bool
+pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept {
+  // used by dump
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  return value(buf, t);
+} // bencode::e::pair()
+
 } // namespace e
 } // namespace bencode
 
 //=KRPC==================================================================
 namespace krpc {
+/*krpc*/
 template <typename F>
 static bool
 message(sp::Buffer &buf, const Transaction &t, const char *mt,
@@ -275,6 +443,7 @@ err(sp::Buffer &buf, const Transaction &t, F f) noexcept {
 } // krpc::err()
 
 namespace request {
+/*krpc::request*/
 bool
 ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &send) noexcept {
   return req(buf, t, "ping", [&send](auto &b) { //
@@ -346,9 +515,16 @@ announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &id,
       });
 } // request::announce_peer()
 
+bool
+dump(sp::Buffer &) noexcept {
+  // TODO
+  return true;
+} // request::dump()
+
 } // namespace request
 
 namespace response {
+/*krpc::response*/
 bool
 ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
   return resp(buf, t, [&id](sp::Buffer &b) { //
@@ -449,6 +625,40 @@ error(sp::Buffer &buf, const Transaction &t, Error e,
     });
   });
 } // response::error()
+
+bool
+dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
+  return resp(buf, t, [&dht](auto &b) {
+    if (!bencode::e::pair(b, "id", dht.id.id, sizeof(dht.id.id))) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "ip", dht.ip)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "peer_db", dht.lookup_table)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "routing", dht.root)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "last_activity", dht.last_activity)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "total_nodes", dht.total_nodes)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "bad_nodes", dht.bad_nodes)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "boostrap", dht.bootstrap_contacts)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "active_searches", dht.active_searches)) {
+      return false;
+    }
+    return true;
+  });
+} // response::dump()
 
 } // namespace response
 

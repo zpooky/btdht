@@ -76,6 +76,12 @@ error(const dht::MessageContext &ctx) noexcept {
   print_time(ctx);
   printf("unknow request query type %s\n", ctx.query);
 }
+
+void
+dump(const dht::MessageContext &ctx) noexcept {
+  print_time(ctx);
+  printf("receive dump\n");
+}
 } // namespace req
 
 namespace res {
@@ -181,7 +187,8 @@ ping(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
-  printf("transmit ping[%s],res[%s]\n", remote, result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m");
+  printf("transmit ping[%s],res[%s]\n", remote,
+         result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m");
 }
 
 void
@@ -189,7 +196,8 @@ find_node(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
-  printf("transmit find_node[%s],res[%s]\n", remote, result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m");
+  printf("transmit find_node[%s],res[%s]\n", remote,
+         result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m");
 }
 
 namespace error {

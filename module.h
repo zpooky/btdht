@@ -28,6 +28,9 @@ struct Modules {
   Modules() noexcept;
 };
 
+Module &
+module_for(Modules &, const char *key, Module &error) noexcept;
+
 } // namespace dht
 
 #endif

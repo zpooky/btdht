@@ -35,6 +35,7 @@ enum class Error {
 };
 
 namespace request {
+/*krpc::request*/
 bool
 ping(sp::Buffer &, const Transaction &, //
      const dht::NodeId &sender) noexcept;
@@ -52,9 +53,13 @@ announce_peer(sp::Buffer &, const Transaction &, //
               const dht::NodeId &id, bool implied_port,
               const dht::Infohash &infohash, std::uint16_t port,
               const char *token) noexcept;
+
+bool
+dump(sp::Buffer &b) noexcept;
 } // namespace request
 
 namespace response {
+/*krpc::response*/
 bool
 ping(sp::Buffer &, const Transaction &, //
      const dht::NodeId &receiver) noexcept;
@@ -79,6 +84,10 @@ announce_peer(sp::Buffer &, const Transaction &, //
 
 bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
+
+bool
+dump(sp::Buffer &b, const Transaction &t, const dht::DHT &) noexcept;
+
 } // namespace response
 
 namespace d {

@@ -211,13 +211,13 @@ awake_peer_db(DHT &) noexcept {
 
 static void
 look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
-  std::size_t searches = dht.bootstrap_ongoing_searches * dht::Bucket::K;
+  std::size_t searches = dht.active_searches * dht::Bucket::K;
   missing_contacts -= std::min(missing_contacts, searches);
 
   auto inc_ongoing = [&dht, &missing_contacts]() {
     std::size_t K = dht::Bucket::K;
     missing_contacts -= std::min(missing_contacts, K);
-    dht.bootstrap_ongoing_searches++;
+    dht.active_searches++;
   };
 
   bool bs_sent = false;
@@ -477,8 +477,8 @@ handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
     delete bs;
   }
 
-  assert(dht.bootstrap_ongoing_searches > 0);
-  dht.bootstrap_ongoing_searches--;
+  assert(dht.active_searches > 0);
+  dht.active_searches--;
 }
 
 static bool
@@ -595,7 +595,6 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
     const krpc::Transaction &t = ctx.transaction;
     const dht::KeyValue *result = lookup::lookup(dht, search);
     if (result) {
-
       krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
     } else {
       constexpr std::size_t capacity = 8;

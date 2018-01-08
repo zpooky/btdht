@@ -13,6 +13,11 @@ bool
 value(sp::Buffer &, std::int32_t) noexcept;
 
 bool
+value(sp::Buffer &, std::uint64_t) noexcept;
+bool
+value(sp::Buffer &, std::int64_t) noexcept;
+
+bool
 value(sp::Buffer &, const char *) noexcept;
 bool
 value(sp::Buffer &, const char *, std::size_t) noexcept;
@@ -54,7 +59,25 @@ bool
 pair(sp::Buffer &, const char *key, const char *value) noexcept;
 
 bool
+pair(sp::Buffer &, const char *key, std::int16_t value) noexcept;
+
+bool
+pair(sp::Buffer &, const char *key, std::uint16_t value) noexcept;
+
+bool
+pair(sp::Buffer &, const char *key, std::int32_t value) noexcept;
+
+bool
 pair(sp::Buffer &, const char *key, std::uint32_t value) noexcept;
+
+bool
+pair(sp::Buffer &, const char *key, std::uint64_t value) noexcept;
+
+bool
+pair(sp::Buffer &, const char *key, std::int64_t value) noexcept;
+
+bool
+pair(sp::Buffer &, const char *key, bool value) noexcept;
 
 bool
 pair(sp::Buffer &, const char *, const sp::byte *, std::size_t) noexcept;

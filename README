@@ -26,9 +26,6 @@ the node timeout-queue.
 #Statistics
 ...
 
-#having self in our own routing table
-how to handle this?
-
 #bep42
 bep42 assume ip is not nat and create confiming nodeid from that if it sees that
 the ip is not correct regenerate nodeid from that external ip insert from old
@@ -47,3 +44,32 @@ calculate latency by having a list of active transaction{id,time_sent} latency =
 now - time_sent. To be used an deciding factor when inserting to a full not
 expandable bucket. Or deciding on which X best Contact Nodes when returning
 find_node/get_peers
+
+----------
+----------
+----------
+----------
+
+
+sp_search[infohash,want_no_result,timeout]->
+  new Bloomfilter
+  check own peer db
+  create on_wait search to timeout result
+
+sp_statistics
+  -req/res in out
+  -bytes sent/rec
+  -per types
+
+sp_blacklist[peer ip|node ip incoming&in routing table]
+
+sp_blacklist[infohash in peer db]
+
+-routing table calcluate size required
+alloc upfront static in DHT
+new DHT
+
+ip vote
+
+fix static tree
+

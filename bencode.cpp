@@ -55,6 +55,16 @@ encode_integer(sp::Buffer &buffer, const char *format, T in) noexcept {
 
 namespace e {
 bool
+value(sp::Buffer &buffer, std::uint16_t in) noexcept {
+  return encode_integer(buffer, "%hu", in);
+} // bencode::e::value()
+
+bool
+value(sp::Buffer &buffer, std::int16_t in) noexcept {
+  return encode_integer(buffer, "%h", in);
+} // bencode::e::value()
+
+bool
 value(sp::Buffer &buffer, std::uint32_t in) noexcept {
   return encode_integer(buffer, "%u", in);
 } // bencode::e::value()
@@ -64,6 +74,15 @@ value(sp::Buffer &buffer, std::int32_t in) noexcept {
   return encode_integer(buffer, "%d", in);
 } // bencode::e::value()
 
+bool
+value(sp::Buffer &buffer, std::uint64_t in) noexcept {
+  return encode_integer(buffer, "%llu", in);
+}
+
+bool
+value(sp::Buffer &buffer, std::int64_t in) noexcept {
+  return encode_integer(buffer, "%lld", in);
+}
 //-----------------------------
 template <typename T>
 static bool
@@ -179,9 +198,39 @@ pair(sp::Buffer &buffer, const char *key, const char *value) noexcept {
 } // bencode::e::pair()
 
 bool
+pair(sp::Buffer &buffer, const char *key, std::int16_t value) noexcept {
+  return generic_encodePair(buffer, key, value);
+} // bencode::e::pair()
+
+bool
+pair(sp::Buffer &buffer, const char *key, std::uint16_t value) noexcept {
+  return generic_encodePair(buffer, key, value);
+} // bencode::e::pair()
+
+bool
+pair(sp::Buffer &buffer, const char *key, std::int32_t value) noexcept {
+  return generic_encodePair(buffer, key, value);
+} // bencode::e::pair()
+
+bool
 pair(sp::Buffer &buffer, const char *key, std::uint32_t value) noexcept {
   return generic_encodePair(buffer, key, value);
 } // bencode::e::pair()
+
+bool
+pair(sp::Buffer &buffer, const char *key, std::uint64_t value) noexcept {
+  return generic_encodePair(buffer, key, value);
+}
+
+bool
+pair(sp::Buffer &buffer, const char *key, std::int64_t value) noexcept {
+  return generic_encodePair(buffer, key, value);
+}
+
+bool
+pair(sp::Buffer &buffer, const char *key, bool value) noexcept {
+  return generic_encodePair(buffer, key, value);
+}
 
 bool
 pair(sp::Buffer &b, const char *k, const sp::byte *v, std::size_t l) noexcept {

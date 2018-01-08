@@ -10,4 +10,12 @@ setup(dht::Modules &) noexcept;
 
 } // namespace interface_priv
 
+//===========================================================
+// dump
+//===========================================================
+namespace dump {
+void
+setup(dht::Module &) noexcept;
+} // namespace dump
+
 #endif

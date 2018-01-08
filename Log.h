@@ -25,6 +25,9 @@ announce_peer(const dht::MessageContext &) noexcept;
 
 void
 error(const dht::MessageContext &) noexcept;
+
+void
+dump(const dht::MessageContext &) noexcept;
 } // namespace req
 
 namespace res {
@@ -49,6 +52,7 @@ known_tx(const dht::MessageContext &) noexcept;
 
 void
 unknown_tx(const dht::MessageContext &) noexcept;
+
 } // namespace res
 
 namespace parse {

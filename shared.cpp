@@ -264,7 +264,7 @@ DHT::DHT(fd &udp, const Contact &i)
     , now(0)
     // boostrap {{{
     , bootstrap_contacts()
-    , bootstrap_ongoing_searches(0)
+    , active_searches(0)
 // }}}
 
 //}}}
