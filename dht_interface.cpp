@@ -98,23 +98,23 @@ Lstart:
   return result;
 } // timeout::take()
 
-static void
-Return(dht::DHT &ctx, dht::Node *ret) noexcept {
-  assert(ret->timeout_next == nullptr);
-  assert(ret->timeout_priv == nullptr);
-
-  dht::Node *const head = ctx.timeout_node;
-  if (head) {
-    dht::Node *next = head->timeout_next;
-    head->timeout_next = ret;
-    next->timeout_priv = ret;
-
-    ret->timeout_priv = head;
-    ret->timeout_next = next;
-  } else {
-    ctx.timeout_node = ret->timeout_priv = ret->timeout_next = ret;
-  }
-}
+// static void
+// Return(dht::DHT &ctx, dht::Node *ret) noexcept {
+//   assert(ret->timeout_next == nullptr);
+//   assert(ret->timeout_priv == nullptr);
+//
+//   dht::Node *const head = ctx.timeout_node;
+//   if (head) {
+//     dht::Node *next = head->timeout_next;
+//     head->timeout_next = ret;
+//     next->timeout_priv = ret;
+//
+//     ret->timeout_priv = head;
+//     ret->timeout_next = next;
+//   } else {
+//     ctx.timeout_node = ret->timeout_priv = ret->timeout_next = ret;
+//   }
+// }
 
 static dht::Node *
 head(dht::DHT &ctx) noexcept {
@@ -166,7 +166,8 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 
         goto Lstart;
       } else {
-        timeout::Return(ctx, node);
+        // TODO timeout::Return(ctx, node);
+        // move to dht.cpp
       }
     }
   }

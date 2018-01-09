@@ -503,7 +503,10 @@ bucket_for(DHT &dht, const NodeId &id) noexcept {
 
 Node *
 insert(DHT &dht, const Node &contact) noexcept {
-  // TODO endless loop
+  if (!is_valid(contact.id)) {
+    return nullptr;
+  }
+
 Lstart:
   bool inTree = false;
   std::size_t idx = 0;
@@ -523,10 +526,10 @@ Lstart:
     // necessarily need to evict a node that might be late responding to pings
     bool eager_merge = !inTree;
     bool /*OUT*/ replaced = false;
-    Node *result = do_insert(dht, bucket, contact, eager_merge, replaced);
+    Node *inserted = do_insert(dht, bucket, contact, eager_merge, replaced);
 
-    if (result) {
-      log::routing::insert(dht, *result);
+    if (inserted) {
+      log::routing::insert(dht, *inserted);
       if (!replaced) {
         ++dht.total_nodes;
       }
@@ -540,7 +543,7 @@ Lstart:
       }
     }
 
-    return result;
+    return inserted;
   } else {
     assert(!dht.root);
     dht.root = alloc<RoutingTable>(dht);
@@ -607,10 +610,11 @@ template <typename T>
 void
 internal_append_all(T *&head, T *const node) noexcept {
   if (!head) {
-    T *const l = last(node);
+    T *const lst = last(node);
 
-    l->timeout_next = node;
-    node->timeout_priv = l;
+    lst->timeout_next = node;
+    node->timeout_priv = lst;
+    node->timeout_next = node;
 
     head = node;
   } else {
