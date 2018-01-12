@@ -38,6 +38,8 @@ randomize(NodeId &id) noexcept {
 
 static bool
 bit(const Key &key, std::size_t idx) noexcept {
+  assert(idx < (sizeof(Key) * 8));
+
   std::size_t byte = idx / 8;
   std::uint8_t bit = idx % 8;
   std::uint8_t high_bit(1 << 7);
@@ -53,10 +55,13 @@ bit(const NodeId &key, std::size_t idx) noexcept {
 static RoutingTable *
 find_closest(DHT &dht, const NodeId &key, bool &inTree,
              std::size_t &idx) noexcept {
+  inTree = true;
   RoutingTable *root = dht.root;
   idx = 0;
-start:
+
+Lstart:
   if (root) {
+    printf("%zu-", idx);
     if (root->type == NodeType::NODE) {
       bool high = bit(key, idx);
       // inTree true if share same prefix
@@ -69,25 +74,28 @@ start:
       }
 
       ++idx;
-      goto start;
+      goto Lstart;
     }
+    assert(root->type == NodeType::LEAF);
   }
+  printf("\n");
   return root;
 }
 
 template <typename T>
 static void
 dealloc(DHT &, T *reclaim) {
-  reclaim->~T();
-  free(reclaim);
+  // reclaim->~T();
+  // free(reclaim);
+  delete reclaim;
 }
 
 template <typename T>
 static T *
 alloc(DHT &) {
   // raw alloc stash
-  void *result = malloc(sizeof(T));
-  return new (result) T;
+  // void *result = malloc(sizeof(T));
+  return new T;
 }
 
 static void
@@ -149,6 +157,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
   if (!higher) {
     return false;
   }
+
   auto lower = alloc<RoutingTable>(dht);
   if (!lower) {
     dealloc(dht, higher);
@@ -178,6 +187,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
         direction = lower;
       }
 
+      timeout::unlink(dht, &contact);
       {
         assert(direction);
         bool eager = false;
@@ -194,6 +204,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
   } // for
 
   parent->~RoutingTable();
+  std::memset(parent, 0, sizeof(RoutingTable));
   new (parent) RoutingTable(higher, lower);
 
   log::routing::split(dht, *higher, *lower);
@@ -346,8 +357,8 @@ TokenPair::operator bool() const noexcept {
 }
 
 static void
-find_closest_nodes(DHT &dht, const Key &search,
-                   Node *(&result)[Bucket::K]) noexcept {
+multiple_closest_nodes(DHT &dht, const Key &search,
+                       Node *(&result)[Bucket::K]) noexcept {
 
   Bucket *best[Bucket::K] = {nullptr};
   std::size_t bestIdx = 0;
@@ -469,14 +480,16 @@ init(dht::DHT &dht) noexcept {
 
 /*public*/
 void
-find_closest(DHT &dht, const NodeId &id, Node *(&result)[Bucket::K]) noexcept {
-  return find_closest_nodes(dht, id.id, result);
-} // dht::find_closest()
+multiple_closest(DHT &dht, const NodeId &id,
+                 Node *(&result)[Bucket::K]) noexcept {
+  return multiple_closest_nodes(dht, id.id, result);
+} // dht::multiple_closest()
 
 void
-find_closest(DHT &dht, const Infohash &id, Node *(&res)[Bucket::K]) noexcept {
-  return find_closest_nodes(dht, id.id, res);
-} // dht::find_closest()
+multiple_closest(DHT &dht, const Infohash &id,
+                 Node *(&res)[Bucket::K]) noexcept {
+  return multiple_closest_nodes(dht, id.id, res);
+} // dht::multiple_closest()
 
 Node *
 find_contact(DHT &dht, const NodeId &id) noexcept {
@@ -503,6 +516,23 @@ bucket_for(DHT &dht, const NodeId &id) noexcept {
 
 Node *
 insert(DHT &dht, const Node &contact) noexcept {
+  auto can_split = [&dht](const Bucket &bucket, std::size_t idx) {
+    std::size_t bits[2] = {0};
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      const Node &c = bucket.contacts[i];
+      if (c) {
+        std::size_t bit_idx = bit(c.id, idx) ? 0 : 1;
+        bits[bit_idx]++;
+      }
+    }
+
+    if (bits[0] > 0 && bits[1] > 0) {
+      return true;
+    }
+
+    return false;
+  };
+
   if (!is_valid(contact.id)) {
     return nullptr;
   }
@@ -513,6 +543,7 @@ Lstart:
 
   RoutingTable *const leaf = find_closest(dht, contact.id, inTree, idx);
   if (leaf) {
+    assert(leaf->type == NodeType::LEAF);
 
     Bucket &bucket = leaf->bucket;
     {
@@ -524,7 +555,7 @@ Lstart:
     }
     // when we are intree meaning we can add another bucket we do not
     // necessarily need to evict a node that might be late responding to pings
-    bool eager_merge = !inTree;
+    bool eager_merge = /*!inTree;*/ false;
     bool /*OUT*/ replaced = false;
     Node *inserted = do_insert(dht, bucket, contact, eager_merge, replaced);
 
@@ -534,7 +565,7 @@ Lstart:
         ++dht.total_nodes;
       }
     } else {
-      if (inTree) {
+      if (/*inTree ||*/ can_split(bucket, idx)) {
         if (split(dht, leaf, idx)) {
           // XXX make better
           goto Lstart;
@@ -633,7 +664,7 @@ internal_append_all(T *&head, T *const node) noexcept {
 
 void
 append_all(dht::DHT &ctx, dht::Node *node) noexcept {
-  return internal_append_all(ctx.timeout_node, node);
+  return internal_append_all(ctx.timeout_node, node); //<--
 } // timeout::append_all()
 
 static void

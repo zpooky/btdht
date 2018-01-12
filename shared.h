@@ -242,18 +242,24 @@ for_each(Bucket &b, F f) {
     }
   }
 }
+struct RoutingTable;
+
+struct RoutingTableNode {
+  RoutingTable *higher;
+  RoutingTable *lower;
+
+  RoutingTableNode(RoutingTable *, RoutingTable *) noexcept;
+  RoutingTableNode() noexcept;
+  ~RoutingTableNode() noexcept;
+};
 
 // dht::RoutingTable
 enum class NodeType { NODE, LEAF };
 struct RoutingTable {
-  union {
-    struct {
-      RoutingTable *higher;
-      RoutingTable *lower;
-      Key middle;
-    } node;
+  // union {
+    RoutingTableNode node;
     Bucket bucket;
-  };
+  // };
   NodeType type;
 
   RoutingTable(RoutingTable *h, RoutingTable *l);

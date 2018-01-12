@@ -27,10 +27,10 @@ is_blacklisted(DHT &dht, const Contact &) noexcept;
 
 /**/
 void
-find_closest(DHT &, const NodeId &, Node *(&)[Bucket::K]) noexcept;
+multiple_closest(DHT &, const NodeId &, Node *(&)[Bucket::K]) noexcept;
 
 void
-find_closest(DHT &, const Infohash &, Node *(&)[Bucket::K]) noexcept;
+multiple_closest(DHT &, const Infohash &, Node *(&)[Bucket::K]) noexcept;
 
 bool
 valid(DHT &, const krpc::Transaction &) noexcept;

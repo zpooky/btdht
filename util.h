@@ -326,6 +326,7 @@ is_valid(const NodeId &) noexcept;
 /*valid BEP42 conforming NodeId*/
 // TODO
 enum class NodeIdValid : std::uint8_t { VALID, NOT_VALID, NOT_YET };
+
 // dht::Node
 struct Node {
   // timeout {{{

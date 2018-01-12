@@ -196,6 +196,7 @@ krpc(ParseContext &ctx, F f) {
     return f(abbriged);
   });
 }
+
 namespace response {
 
 /*f: MessageContext -> NodeId -> bool*/

@@ -446,7 +446,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
 
     const krpc::Transaction &t = ctx.transaction;
     dht::Node *result[capacity] = {nullptr};
-    dht::find_closest(dht, search, result);
+    dht::multiple_closest(dht, search, result);
     const dht::Node **r = (const dht::Node **)&result;
 
     krpc::response::find_node(ctx.out, t, dht.id, r, capacity);
@@ -600,7 +600,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
     } else {
       constexpr std::size_t capacity = 8;
       dht::Node *closest[dht::Bucket::K] = {nullptr};
-      dht::find_closest(dht, search, closest);
+      dht::multiple_closest(dht, search, closest);
       const dht::Node **r = (const dht::Node **)&closest;
 
       krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
