@@ -242,27 +242,12 @@ for_each(Bucket &b, F f) {
     }
   }
 }
-struct RoutingTable;
-
-struct RoutingTableNode {
-  RoutingTable *higher;
-  RoutingTable *lower;
-
-  RoutingTableNode(RoutingTable *, RoutingTable *) noexcept;
-  RoutingTableNode() noexcept;
-  ~RoutingTableNode() noexcept;
-};
 
 // dht::RoutingTable
-enum class NodeType { NODE, LEAF };
 struct RoutingTable {
-  // union {
-    RoutingTableNode node;
-    Bucket bucket;
-  // };
-  NodeType type;
+  RoutingTable *in_tree;
+  Bucket bucket;
 
-  RoutingTable(RoutingTable *h, RoutingTable *l);
   RoutingTable();
 
   ~RoutingTable();
@@ -273,14 +258,8 @@ bool
 for_all(const RoutingTable *it, F f) noexcept {
   bool result = true;
   while (result && it) {
-    if (it->type == NodeType::LEAF) {
-
-      result = f(*it);
-      break;
-    } else {
-
-      // TODO next
-    }
+    result = f(*it);
+    it = it->in_tree;
   }
   return result;
 }

@@ -251,7 +251,6 @@ value(sp::Buffer &buf, const dht::RoutingTable &t) noexcept {
       return false;
     }
 
-    assert(t.type == dht::NodeType::LEAF);
     if (!value(b, t.bucket)) {
       return false;
     }

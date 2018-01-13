@@ -197,46 +197,16 @@ Bucket::Bucket()
 Bucket::~Bucket() {
 }
 
-RoutingTableNode::RoutingTableNode(RoutingTable *h, RoutingTable *l) noexcept
-    : higher{h}
-    , lower{l} {
-}
-
-RoutingTableNode::RoutingTableNode() noexcept
-    : higher(nullptr)
-    , lower(nullptr) {
-}
-
-RoutingTableNode::~RoutingTableNode() noexcept {
-  if (higher) {
-    delete higher;
-    higher = nullptr;
-  }
-
-  if (lower) {
-    delete lower;
-    lower = nullptr;
-  }
-}
-
 /*dht::RoutingTable*/
-RoutingTable::RoutingTable(RoutingTable *h, RoutingTable *l)
-    : node{h, l}
-    , type(NodeType::NODE) {
-}
-
 RoutingTable::RoutingTable()
-    : bucket()
-    , type(NodeType::LEAF) {
+    : in_tree()
+    , bucket() {
 }
 
 RoutingTable::~RoutingTable() {
-  // DHT dht;
-  if (type == NodeType::LEAF) {
-    bucket.~Bucket();
-  } else {
-    // dealloc(dht, lower);
-    // dealloc(dht, higher);
+  if (in_tree) {
+    delete in_tree;
+    in_tree = nullptr;
   }
 }
 

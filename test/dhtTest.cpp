@@ -17,7 +17,7 @@ random_insert(std::list<dht::NodeId> &added, dht::DHT &dht, std::size_t cap) {
       ASSERT_TRUE(res->timeout_next);
       ASSERT_TRUE(res->timeout_priv);
       added.push_back(n.id);
-      printf("i%zu\n", i);
+      // printf("i%zu\n", i);
     }
 
     const dht::Node *find_res = dht::find_contact(dht, n.id);
@@ -29,6 +29,24 @@ random_insert(std::list<dht::NodeId> &added, dht::DHT &dht, std::size_t cap) {
   }
 }
 
+static void
+assert_empty(const Node &contact) {
+  ASSERT_FALSE(bool(contact));
+  ASSERT_EQ(contact.timeout_next, nullptr);
+  ASSERT_EQ(contact.timeout_priv, nullptr);
+
+  ASSERT_FALSE(dht::is_valid(contact.id));
+  ASSERT_EQ(contact.contact.ipv4, 0);
+  ASSERT_EQ(contact.contact.port, 0);
+
+  ASSERT_EQ(contact.request_activity, 0);
+  ASSERT_EQ(contact.response_activity, 0);
+  ASSERT_EQ(contact.ping_sent, 0);
+
+  ASSERT_EQ(contact.ping_outstanding, 0);
+  ASSERT_EQ(contact.good, true);
+}
+
 #if 0
 static void
 ads(dht::DHT &dht, dht::RoutingTable *parent, std::size_t it) {
@@ -38,20 +56,7 @@ ads(dht::DHT &dht, dht::RoutingTable *parent, std::size_t it) {
   {
     for (std::size_t i = 0; i < dht::Bucket::K; ++i) {
       dht::Node &contact = parent->bucket.contacts[i];
-      ASSERT_FALSE(bool(contact));
-      ASSERT_EQ(contact.timeout_next, nullptr);
-      ASSERT_EQ(contact.timeout_priv, nullptr);
-
-      ASSERT_FALSE(dht::is_valid(contact.id));
-      ASSERT_EQ(contact.contact.ipv4, 0);
-      ASSERT_EQ(contact.contact.port, 0);
-
-      ASSERT_EQ(contact.request_activity, 0);
-      ASSERT_EQ(contact.response_activity, 0);
-      ASSERT_EQ(contact.ping_sent, 0);
-
-      ASSERT_EQ(contact.ping_outstanding, 0);
-      ASSERT_EQ(contact.good, true);
+      assert_empty(contact);
     }
   }
 
@@ -79,18 +84,94 @@ TEST(dhtTest, split) {
 
 #endif
 
+static bool
+bit(const Key &key, std::size_t idx) noexcept {
+  // TODO copy
+  std::size_t byte = idx / 8;
+  std::uint8_t bit = idx % 8;
+  std::uint8_t high_bit(1 << 7);
+  std::uint8_t bitMask = std::uint8_t(high_bit >> bit);
+  return key[byte] & bitMask;
+}
+
+static void
+assert_prefix(const NodeId &id, const NodeId &self, std::size_t idx) {
+  for (std::size_t i = 0; i < idx; ++i) {
+    bool id_bit = bit(id.id, i);
+    bool self_bit = bit(self.id, i);
+    ASSERT_EQ(id_bit, self_bit);
+  }
+}
+
+static void
+print_id(const NodeId &id, std::size_t color, const char *c) {
+  for (std::size_t i = 0; i < (sizeof(id.id) * 5); ++i) {
+    bool b = bit(id.id, i);
+    if (i <= color) {
+      printf(c);
+    }
+    printf("%d", b ? 1 : 0);
+    if (i <= color) {
+      printf("\033[0m");
+    }
+  }
+  printf("\n");
+}
+
+static Node *
+find(Bucket &bucket, const NodeId &search) {
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    Node &c = bucket.contacts[i];
+    if (bool(c)) {
+      if (c.id == search)
+        return &c;
+    }
+  }
+
+  return nullptr;
+}
+
+static void
+verify_routing(DHT &dht, std::size_t &nodes, std::size_t &contacts) {
+  const NodeId &id = dht.id;
+  std::size_t idx = 0;
+
+  RoutingTable *root = dht.root;
+
+Lstart:
+  if (root) {
+    ++nodes;
+    Bucket &bucket = root->bucket;
+    printf("%zu.  ", idx);
+    print_id(id, idx, "\033[91m");
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      Node &c = bucket.contacts[i];
+      if (bool(c)) {
+        printf("-");
+        print_id(c.id, idx, "\033[92m");
+        ++contacts;
+        assert_prefix(c.id, id, idx);
+      } else {
+        assert_empty(c);
+      }
+    }
+    if (root->in_tree == nullptr) {
+      // selfID should be in the last node routing table
+      Node *res = find(bucket, dht.id);
+      ASSERT_FALSE(res == nullptr);
+    }
+    root = root->in_tree;
+    ++idx;
+    goto Lstart;
+  }
+}
 
 static std::size_t
 count_nodes(const RoutingTable *r) {
   std::size_t result = 0;
   if (r) {
-    if (r->type == NodeType::LEAF) {
     ++result;
-    } else {
-      assert(r->type == NodeType::NODE);
-      result += count_nodes(r->node.lower);
-      result += count_nodes(r->node.higher);
-    }
+    result += count_nodes(r->in_tree);
   }
   return result;
 }
@@ -101,7 +182,6 @@ TEST(dhtTest, test) {
   dht::DHT dht(sock, c);
   dht::init(dht);
   std::list<dht::NodeId> added;
-  random_insert(added, dht, 8);
 
   {
     dht::Node self;
@@ -111,12 +191,21 @@ TEST(dhtTest, test) {
     added.push_back(res->id);
   }
 
-  random_insert(added, dht, 1024 * 1024 * 1);
+  random_insert(added, dht, 1024 * 1024 * 4);
 
-  printf("\nadded contacts: %zu\n", added.size());
   for (auto &current : added) {
     const dht::Node *res = dht::find_contact(dht, current);
     ASSERT_TRUE(res);
   }
-  printf("added routing nodes %zu\n", count_nodes(dht.root));
+  std::size_t cnt = count_nodes(dht.root);
+
+  std::size_t v_nodes = 0;
+  std::size_t v_contacts = 0;
+  verify_routing(dht, v_nodes, v_contacts);
+
+  printf("added routing nodes %zu\n", cnt);
+  printf("added contacts: %zu\n", added.size());
+
+  ASSERT_EQ(v_contacts, added.size());
+  ASSERT_EQ(v_nodes, cnt);
 }
