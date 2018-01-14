@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <new>
+#include <util/CircularBuffer.h>
 
 namespace dht {
 
@@ -109,6 +110,7 @@ reset(DHT &dht, Node &contact) noexcept {
     dht.bad_nodes--;
     contact.good = true;
   }
+  contact = Node();
 }
 
 static Node *
@@ -120,18 +122,24 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
     Node &contact = bucket.contacts[i];
     if (!contact) {
       contact = c;
-      timeout::append_all(dht, &contact);
+      assert(contact);
 
+      timeout::append_all(dht, &contact);
       return &contact;
     }
   }
+
   if (eager) {
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
       if (!is_good(dht, contact)) {
         timeout::unlink(dht, &contact);
         reset(dht, contact);
+        assert(!contact);
+
         contact = c;
+        assert(contact);
+
         timeout::append_all(dht, &contact);
 
         replaced = true;
@@ -139,11 +147,12 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
       }
     }
   }
+
   return nullptr;
 }
 
 static Node *
-find(Bucket &bucket, const NodeId &id) noexcept {
+find(Bucket &bucket, const Key &id) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];
     if (contact) {
@@ -153,6 +162,11 @@ find(Bucket &bucket, const NodeId &id) noexcept {
     }
   }
   return nullptr;
+}
+
+static Node *
+find(Bucket &bucket, const NodeId &id) noexcept {
+  return find(bucket, id.id);
 }
 
 static bool
@@ -170,8 +184,10 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
     return current_high == in_tree_high;
   };
 
+  Bucket &bucket = parent->bucket;
+  std::size_t moved = 0;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    Node &contact = parent->bucket.contacts[i];
+    Node &contact = bucket.contacts[i];
     if (contact) {
       if (should_move(contact)) {
         Node *const priv = contact.timeout_priv;
@@ -197,8 +213,11 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
         if (nc) {
           relink(nc);
           // reset
-          contact = Node();
         }
+        contact = Node();
+        assert(!contact);
+
+        ++moved;
       }
     }
   } // for
@@ -354,39 +373,42 @@ TokenPair::operator bool() const noexcept {
   return ip != Ipv4(0);
 }
 
+static bool
+bit_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
+  for (std::size_t i = 0; i < length; ++i) {
+    if (bit(id.id, i) != bit(cmp, i)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static void
 multiple_closest_nodes(DHT &dht, const Key &search,
                        Node *(&result)[Bucket::K]) noexcept {
 
-  Bucket *best[Bucket::K] = {nullptr};
-  std::size_t bestIdx = 0;
-  auto buffer_close = [&best, &bestIdx](RoutingTable *close) { //
-    if (close) {
-      best[bestIdx++ % Bucket::K] = &close->bucket;
-    }
+  Bucket *raw[Bucket::K];
+  sp::CircularBuffer best(raw);
+
+  auto is_in_tree = [&dht, &search](std::size_t idx) {
+    return bit_compare(dht.id, search, idx) == 0;
   };
 
   RoutingTable *root = dht.root;
   std::size_t idx = 0;
 Lstart:
   if (root) {
-    // TODO
-    // if (root->type == NodeType::NODE) {
-    //   if (bit(search, idx) == true) {
-    //     root = root->node.higher;
-    //     buffer_close(root->node.lower);
-    //   } else {
-    //     root = root->node.lower;
-    //     buffer_close(root->node.higher);
-    //   }
-    //
-    //   goto Lstart;
-    // } else {
-    //   buffer_close(root);
-    // }
+    sp::push_back(best, &root->bucket);
+    if (find(root->bucket, search)) {
+      printf("\n");
+    }
+    if (is_in_tree(idx)) {
+      root = root->in_tree;
+      ++idx;
+      goto Lstart;
+    }
   }
 
-  // auto enqueue_result = [&dht, &best, bestIdx, &result] {
   std::size_t resIdx = 0;
   auto merge = [&dht, &resIdx, &result](Bucket &b) -> bool { //
     for (std::size_t i = 0; i < Bucket::K; ++i) {
@@ -403,21 +425,24 @@ Lstart:
     return false;
   };
 
-  const std::size_t end_best = bestIdx;
+  {
+    Bucket *best_ordered[Bucket::K]{nullptr};
+    std::size_t best_idx = 0;
 
-  do {
-    bestIdx = (bestIdx - 1) % Bucket::K;
-    if (best[bestIdx]) {
-      // while (resIdx < Bucket::K) {
+    while (!is_empty(best)) {
+      sp::pop_back(best, best_ordered[best_idx++]);
+    }
 
-      if (merge(*best[bestIdx])) {
-        return;
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      if (best_ordered[i]) {
+        // while (resIdx < Bucket::K) {
+
+        if (merge(*best_ordered[i])) {
+          return;
+        }
       }
     }
-  } while (bestIdx != end_best);
-  // };
-  //
-  // enqueue_result();
+  }
 } // dht::find_closest_nodes()
 
 //============================================================
@@ -489,15 +514,15 @@ multiple_closest(DHT &dht, const Infohash &id,
 } // dht::multiple_closest()
 
 Node *
-find_contact(DHT &dht, const NodeId &id) noexcept {
+find_contact(DHT &dht, const NodeId &search) noexcept {
   bool inTree = false;
   std::size_t idx = 0;
 
-  RoutingTable *leaf = find_closest(dht, id, inTree, idx);
+  RoutingTable *leaf = find_closest(dht, search, inTree, idx);
   if (leaf) {
     // XXX how to ensure leaf is a bucket?
 
-    return find(leaf->bucket, id);
+    return find(leaf->bucket, search);
   }
   return nullptr;
 } // dht::find_contact()
@@ -560,7 +585,7 @@ Lstart:
         ++dht.total_nodes;
       }
     } else {
-      if (/*inTree ||*/ can_split(bucket, idx)) {
+      if (inTree || can_split(bucket, idx)) {
         if (split(dht, leaf, idx)) {
           // XXX make better
           goto Lstart;
@@ -573,7 +598,9 @@ Lstart:
   } else {
     assert(!dht.root);
     dht.root = alloc<RoutingTable>(dht);
-    goto Lstart;
+    if (dht.root) {
+      goto Lstart;
+    }
   }
 
   return nullptr;

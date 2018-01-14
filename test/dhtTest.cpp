@@ -118,6 +118,20 @@ print_id(const NodeId &id, std::size_t color, const char *c) {
   printf("\n");
 }
 
+template <std::size_t size>
+static Node *
+find(Node *(&buf)[size], const NodeId &search) {
+  for (std::size_t i = 0; i < size; ++i) {
+    if (buf[i]) {
+      if (buf[i]->id == search) {
+        return buf[i];
+      }
+    }
+  }
+
+  return nullptr;
+}
+
 static Node *
 find(Bucket &bucket, const NodeId &search) {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
@@ -182,30 +196,77 @@ TEST(dhtTest, test) {
   dht::DHT dht(sock, c);
   dht::init(dht);
   std::list<dht::NodeId> added;
-
   {
-    dht::Node self;
-    std::memcpy(self.id.id, dht.id.id, sizeof(dht.id.id));
-    auto *res = dht::insert(dht, self);
-    ASSERT_TRUE(res);
-    added.push_back(res->id);
-  }
+    {
+      dht::Node self;
+      std::memcpy(self.id.id, dht.id.id, sizeof(dht.id.id));
+      auto *res = dht::insert(dht, self);
+      ASSERT_TRUE(res);
+      added.push_back(res->id);
+    }
 
-  random_insert(added, dht, 1024 * 1024 * 4);
+    random_insert(added, dht, 1024 * 1024 * 4);
+
+    for (auto &current : added) {
+      const dht::Node *res = dht::find_contact(dht, current);
+      ASSERT_TRUE(res);
+    }
+
+    std::size_t v_nodes = 0;
+    std::size_t v_contacts = 0;
+    verify_routing(dht, v_nodes, v_contacts);
+
+    std::size_t cnt = count_nodes(dht.root);
+    printf("added routing nodes %zu\n", cnt);
+    printf("added contacts: %zu\n", added.size());
+
+    ASSERT_EQ(v_contacts, added.size());
+    ASSERT_EQ(v_nodes, cnt);
+  }
+  {
+    printf("==============\n");
+    std::size_t inserted = 0;
+    const std::size_t max(sizeof(dht.id.id) * 8);
+    for (std::size_t i = 20; i < max; ++i) {
+      Node test;
+      test.id = dht.id;
+      test.id.id[i] = !test.id.id[i];
+      Node *res = dht::insert(dht, test);
+      if (res) {
+        ++inserted;
+        // printf("insert(%zu)\n", inserted);
+        ASSERT_TRUE(res);
+        added.push_back(res->id);
+      }
+    }
+    printf("added routing nodes %zu\n", count_nodes(dht.root));
+    printf("added contacts: %zu\n", added.size());
+  }
+  //
 
   for (auto &current : added) {
-    const dht::Node *res = dht::find_contact(dht, current);
-    ASSERT_TRUE(res);
+    Node *buff[8];
+    dht::multiple_closest(dht, current, buff);
+
+    for (std::size_t i = 0; i < 8; ++i) {
+      ASSERT_TRUE(buff[i] != nullptr);
+    }
+
+    Node *search = find(buff, current);
+    if (search == nullptr) {
+      printf("not found: ");
+      print_id(current, 0, "");
+    } else {
+      printf("found: ");
+      print_id(current, 0, "");
+
+      ASSERT_TRUE(search != nullptr);
+      ASSERT_EQ(search->id, current);
+    }
+
+    {
+      const dht::Node *res = dht::find_contact(dht, current);
+      ASSERT_TRUE(res);
+    }
   }
-  std::size_t cnt = count_nodes(dht.root);
-
-  std::size_t v_nodes = 0;
-  std::size_t v_contacts = 0;
-  verify_routing(dht, v_nodes, v_contacts);
-
-  printf("added routing nodes %zu\n", cnt);
-  printf("added contacts: %zu\n", added.size());
-
-  ASSERT_EQ(v_contacts, added.size());
-  ASSERT_EQ(v_nodes, cnt);
 }

@@ -4,10 +4,10 @@ CXX = g++
 # using -std=gnu++14 because gtest uses functions only presisent in the GNU dialect of c++
 PROJECT_ROOT = ..
 GTEST_ROOT = $(PROJECT_ROOT)/external/googletest/googletest
-HEADER_DIRS = -I$(GTEST_ROOT)/include -I$(PROJECT_ROOT)
+HEADER_DIRS = -I$(GTEST_ROOT)/include -I$(PROJECT_ROOT) -I$(PROJECT_ROOT)/external/sputil/include
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb
 SUT_DIR = build_test
-LDLIBS = -L$(GTEST_ROOT)/make -lgtest_main -lpthread -L$(PROJECT_ROOT)/$(SUT_DIR) -lsut
+LDLIBS = -L$(GTEST_ROOT)/make -lgtest_main -lpthread -L$(PROJECT_ROOT)/$(SUT_DIR) -lsut -L$(PROJECT_ROOT)/external/sputil/build -lsputil
 BUILD = build
 
 # TODO `make all` get relinks to gtest because I copy gtest_main to lib... and change time stamp?

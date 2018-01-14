@@ -2,12 +2,12 @@
 #http://www.puxan.com/web/howto-write-generic-makefiles/
 # Declaration of variables
 CXX = g++
-HEADER_DIRS = -Iexternal
+HEADER_DIRS = -Iexternal -Iexternal/sputil/include
 # ovrrides makes it possible to externaly append extra flags
-override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb
+override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb
 LDFLAGS =
-LDLIBS =
+LDLIBS = -Lexternal/sputil/build -lsputil
 PREFIX = /usr/local
 BUILD = build
 
@@ -32,7 +32,7 @@ all: ${EXEC}
 
 # $(EXEC) {{{
 # depends on the targets for all the object files
-$(EXEC): $(OBJECTS)
+$(EXEC): $(OBJECTS) libraries
 	$(CXX) $(OBJECTS) -o $(EXEC) $(LDLIBS)
 # }}}
 
@@ -47,7 +47,7 @@ $(BUILD)/%.o: %.cpp
 	@mkdir -p $(BUILD)
 # -c means to create an intermediary object file, rather than an executable
 # -MMD means to create *object*.d depend file with its depending cpp & h files
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS_DEBUG) $(LDFLAGS) -MMD -c $< -o $@
 # }}}
 
 # clean {{{
@@ -94,40 +94,5 @@ bear: clean
 	bear make
 # }}}
 
-# gcc
-##linker flags
-# -static - On systems that support dynamic linking, this prevents linking with the shared libraries.
-
-# Make
-## Rule
-# target: dependencies
-
-##ref
-# -http://nullprogram.com/blog/2017/08/20/
-# -https://swcarpentry.github.io/make-novice/reference/
-
-## Special Macros
-#$@ - The target of the current rule.
-
-#$* - The target with the suffix cut off
-# example: $* of prog.c would be prog
-
-#$< - the name of the related file that caused the action
-# The name of the file that caused this target to get triggered and made. If we are
-# making prog.o, it is probably because prog.c has recently been modified, so $< is
-# prog.c.
-
-# $? - is the names of the changed dependents.
-
-# $^ - The dependencies of the current rule.
-
-## Externally override flags
-# make CC=clang CFLAGS='-O3 -march=native'
-
-## Read flags from env
-#export CC=clang
-#export CFLAGS=-O3
-#make -e all
-
-## Generate default make values explicitly
-#make -p
+libraries:
+	$(MAKE) -C external/sputil staticlib
