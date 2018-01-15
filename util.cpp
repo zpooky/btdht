@@ -221,13 +221,49 @@ NodeId::NodeId()
 
 bool
 NodeId::operator==(const Key &o) const noexcept {
-  return std::memcmp(id, o, sizeof(o)) == 0;
+  return std::memcmp(id, o, sizeof(id)) == 0;
 }
 
 bool
 NodeId::operator==(const NodeId &o) const noexcept {
   return this->operator==(o.id);
 }
+
+bool NodeId::operator<(const NodeId&o) const noexcept {
+  return std::memcmp(id, o.id, sizeof(id)) == -1;
+}
+
+void
+print_id(const NodeId &id, std::size_t color, const char *c) {
+  for (std::size_t i = 0; i < (sizeof(id.id) * 5); ++i) {
+    bool b = bit(id.id, i);
+    if (i <= color) {
+      printf(c);
+    }
+    printf("%d", b ? 1 : 0);
+    if (i <= color) {
+      printf("\033[0m");
+    }
+  }
+  printf("\n");
+}
+
+bool
+bit(const Key &key, std::size_t idx) noexcept {
+  assert(idx < NodeId::bits);
+
+  std::size_t byte = idx / 8;
+  std::uint8_t bit = idx % 8;
+  std::uint8_t high_bit(1 << 7);
+  std::uint8_t bitMask = std::uint8_t(high_bit >> bit);
+  return key[byte] & bitMask;
+}
+
+bool
+bit(const NodeId &key, std::size_t idx) noexcept {
+  return bit(key.id, idx);
+}
+
 
 bool
 is_valid(const NodeId &id) noexcept {

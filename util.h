@@ -313,17 +313,29 @@ struct NodeId {
   Key id;
   NodeId();
 
-  static constexpr std::size_t bits = sizeof(Key)*8;
+  static constexpr std::size_t bits = sizeof(Key) * 8;
 
   bool
   operator==(const NodeId &) const noexcept;
 
   bool
   operator==(const Key &) const noexcept;
+
+  bool
+  operator<(const NodeId &o) const noexcept;
 };
 
 bool
 is_valid(const NodeId &) noexcept;
+
+bool
+bit(const Key &key, std::size_t idx) noexcept;
+
+bool
+bit(const NodeId &key, std::size_t idx) noexcept;
+
+void
+print_id(const NodeId &, std::size_t color = 0, const char *c = "");
 
 /*valid BEP42 conforming NodeId*/
 // TODO

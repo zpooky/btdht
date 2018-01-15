@@ -37,26 +37,6 @@ randomize(NodeId &id) noexcept {
   randomize(id.id);
 }
 
-static bool
-bit(const Key &key, std::size_t idx) noexcept {
-  static constexpr std::size_t limit(sizeof(Key) * 8);
-  // if (idx >= limit) {
-  // printf("bit(idx[%zu]), limit[%zu]\n", idx, limit);
-  assert(idx < limit);
-  // }
-
-  std::size_t byte = idx / 8;
-  std::uint8_t bit = idx % 8;
-  std::uint8_t high_bit(1 << 7);
-  std::uint8_t bitMask = std::uint8_t(high_bit >> bit);
-  return key[byte] & bitMask;
-}
-
-static bool
-bit(const NodeId &key, std::size_t idx) noexcept {
-  return bit(key.id, idx);
-}
-
 static RoutingTable *
 find_closest(DHT &dht, const NodeId &search, bool &in_tree,
              std::size_t &idx) noexcept {
@@ -221,6 +201,9 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
       }
     }
   } // for
+  if (moved == Bucket::K) {
+    // printf("moved all from [%p] to[%p]\n", parent, in_tree);
+  }
 
   parent->in_tree = in_tree;
 
