@@ -313,6 +313,8 @@ struct NodeId {
   Key id;
   NodeId();
 
+  static constexpr std::size_t bits = sizeof(Key)*8;
+
   bool
   operator==(const NodeId &) const noexcept;
 

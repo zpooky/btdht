@@ -190,6 +190,17 @@ count_nodes(const RoutingTable *r) {
   return result;
 }
 
+static std::size_t
+equal(const NodeId &id, const Key &cmp) noexcept {
+  std::size_t i = 0;
+  for (; i < NodeId::bits; ++i) {
+    if (bit(id.id, i) != bit(cmp, i)) {
+      return i;
+    }
+  }
+  return i;
+}
+
 TEST(dhtTest, test) {
   fd sock(-1);
   Contact c(0, 0);
@@ -223,28 +234,35 @@ TEST(dhtTest, test) {
     ASSERT_EQ(v_contacts, added.size());
     ASSERT_EQ(v_nodes, cnt);
   }
-  {
-    printf("==============\n");
-    std::size_t inserted = 0;
-    const std::size_t max(sizeof(dht.id.id) * 8);
-    for (std::size_t i = 20; i < max; ++i) {
-      Node test;
-      test.id = dht.id;
-      test.id.id[i] = !test.id.id[i];
-      Node *res = dht::insert(dht, test);
-      if (res) {
-        ++inserted;
-        // printf("insert(%zu)\n", inserted);
-        ASSERT_TRUE(res);
-        added.push_back(res->id);
-      }
-    }
-    printf("added routing nodes %zu\n", count_nodes(dht.root));
-    printf("added contacts: %zu\n", added.size());
-  }
-  //
+  // {
+  //   printf("==============\n");
+  //   std::size_t inserted = 0;
+  //   const std::size_t max(sizeof(dht.id.id) * 8);
+  //   for (std::size_t i = 20; i < max; ++i) {
+  //     Node test;
+  //     test.id = dht.id;
+  //     test.id.id[i] = !test.id.id[i];
+  //     Node *res = dht::insert(dht, test);
+  //     if (res) {
+  //       ++inserted;
+  //       // printf("insert(%zu)\n", inserted);
+  //       ASSERT_TRUE(res);
+  //       added.push_back(res->id);
+  //     }
+  //   }
+  //   printf("added routing nodes %zu\n", count_nodes(dht.root));
+  //   printf("added contacts: %zu\n", added.size());
+  // }
 
+  // printf("==============\n");
+  // printf("dht: ");
+  // print_id(dht.id, 18, "");
   for (auto &current : added) {
+
+    // printf("lok: ");
+    // print_id(current, 18, "\033[92m");
+    // printf("shared prefix: %zu\n", equal(dht.id, current.id));
+
     Node *buff[8];
     dht::multiple_closest(dht, current, buff);
 
@@ -257,8 +275,8 @@ TEST(dhtTest, test) {
       printf("not found: ");
       print_id(current, 0, "");
     } else {
-      printf("found: ");
-      print_id(current, 0, "");
+      // printf("found: ");
+      // print_id(current, 0, "");
 
       ASSERT_TRUE(search != nullptr);
       ASSERT_EQ(search->id, current);

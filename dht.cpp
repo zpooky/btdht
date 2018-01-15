@@ -383,6 +383,17 @@ bit_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
   return true;
 }
 
+static std::size_t
+shared_prefix(const NodeId &id, const Key &cmp) noexcept {
+  std::size_t i = 0;
+  for (; i < NodeId::bits; ++i) {
+    if (bit(id.id, i) != bit(cmp, i)) {
+      return i;
+    }
+  }
+  return i;
+}
+
 static void
 multiple_closest_nodes(DHT &dht, const Key &search,
                        Node *(&result)[Bucket::K]) noexcept {
@@ -399,12 +410,11 @@ multiple_closest_nodes(DHT &dht, const Key &search,
 Lstart:
   if (root) {
     sp::push_back(best, &root->bucket);
-    if (find(root->bucket, search)) {
-      printf("\n");
-    }
-    if (is_in_tree(idx)) {
+    // if (find(root->bucket, search)) {
+    //   printf("found at idx[%zu]\n", idx);
+    // }
+    if (idx++ < shared_prefix(dht.id, search)) {
       root = root->in_tree;
-      ++idx;
       goto Lstart;
     }
   }
