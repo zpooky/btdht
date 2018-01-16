@@ -464,6 +464,17 @@ pair(Decoder &d, const char *key, bool &v) noexcept {
 } // bencode::d::pair()
 
 bool
+pair(Decoder &d, const char *key, std::uint64_t &v) noexcept {
+  const std::size_t p = d.buf.pos;
+  if (!parse_key_valuex(d.buf, key, v)) {
+    d.buf.pos = p;
+    return false;
+  }
+
+  return true;
+}
+
+bool
 pair(Decoder &d, const char *key, std::uint32_t &v) noexcept {
   const std::size_t p = d.buf.pos;
   std::uint64_t t = 0;

@@ -459,6 +459,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::res::find_node(ctx);
 
   dht_response(ctx, sender, [&](auto &) {
+    printf("contacts:%zu\n", contacts.size);
     for_each(contacts, [&](const auto &contact) { //
 
       // TODO handle self insert
@@ -500,11 +501,14 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
   return bencode::d::dict(ctx.in, [&ctx, &dht, cap_ptr](auto &p) { //
     bool b_id = false;
     bool b_n = false;
+    bool b_p = false;
 
     dht::NodeId id;
 
     sp::list<dht::Node> &nodes = dht.contact_list;
     sp::clear(nodes);
+
+    std::uint64_t p_param = 0;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
@@ -519,6 +523,12 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
         b_n = true;
         goto Lstart;
       }
+    }
+
+    // optional
+    if (!b_p && bencode::d::pair(p, "p", p_param)) {
+      b_p = true;
+      goto Lstart;
     }
 
     if (!(b_id)) {

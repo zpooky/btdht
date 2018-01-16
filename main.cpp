@@ -185,6 +185,8 @@ main(int argc, char **argv) {
   // if (!dht::parse(argc, argv, options)) {
   //   die("TODO");
   // }
+  srand(time(nullptr));
+
   fd udp = udp::bind(INADDR_ANY, 42605);
   // fd udp = udp::bind(INADDR_ANY, 0);
   Contact local = udp::local(udp);
@@ -193,6 +195,9 @@ main(int argc, char **argv) {
   if (!dht::init(dht)) {
     die("failed to init dht");
   }
+  printf("node id: ");
+  dht::print_hex(dht.id);
+
   char str[256] = {0};
   assert(to_string(local, str, sizeof(str)));
   printf("bind(%s)\n", str);
@@ -200,8 +205,8 @@ main(int argc, char **argv) {
   /*boostrap*/
   // Contact bs_node(INADDR_ANY, local.port); // TODO
   const char *bss[] = {
-      "192.168.1.47:13596", "127.0.0.1:13596", "213.65.130.80:13596", //
-      "192.168.1.47:51413", "127.0.0.1:51413", "213.65.130.80:51413", //
+      "192.168.1.47:13596", "127.0.0.1:13596", "213.65.130.80:13596",
+      "192.168.1.47:51413", "127.0.0.1:51413", "213.65.130.80:51413",
   };
   dht.now = time(nullptr);
   for_each(bss, [&dht](const char *ip) {

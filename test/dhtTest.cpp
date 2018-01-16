@@ -192,30 +192,33 @@ assert_present(DHT &dht, const NodeId &current) {
   // printf("lok: ");
   // print_id(current, 18, "\033[92m");
   // printf("shared prefix: %zu\n", equal(dht.id, current.id));
+  {
+    Node *buff[8];
+    dht::multiple_closest(dht, current, buff);
 
-  Node *buff[8];
-  dht::multiple_closest(dht, current, buff);
+    for (std::size_t i = 0; i < 8; ++i) {
+      ASSERT_TRUE(buff[i] != nullptr);
+    }
 
-  for (std::size_t i = 0; i < 8; ++i) {
-    ASSERT_TRUE(buff[i] != nullptr);
-  }
-
-  Node *search = find(buff, current);
-  ASSERT_TRUE(search != nullptr);
-  if (search == nullptr) {
-    printf("not found: ");
-    print_id(current, 0, "");
-  } else {
-    // printf("found: ");
-    // print_id(current, 0, "");
-
+    Node *search = find(buff, current);
     ASSERT_TRUE(search != nullptr);
     ASSERT_EQ(search->id, current);
   }
 
   {
-    const dht::Node *res = dht::find_contact(dht, current);
+    dht::Node *res = dht::find_contact(dht, current);
     ASSERT_TRUE(res);
+    ASSERT_EQ(res->id, current);
+    ASSERT_TRUE(res->timeout_next);
+    ASSERT_TRUE(res->timeout_priv);
+
+    timeout::unlink(dht, res);
+    ASSERT_FALSE(res->timeout_next);
+    ASSERT_FALSE(res->timeout_priv);
+
+    timeout::append_all(dht, res);
+    ASSERT_TRUE(res->timeout_next);
+    ASSERT_TRUE(res->timeout_priv);
   }
 }
 
@@ -268,6 +271,30 @@ TEST(dhtTest, test) {
   }
 
   self_should_be_last(dht);
+}
+
+TEST(dhtTest, test_link) {
+  fd sock(-1);
+  Contact c(0, 0);
+  dht::DHT dht(sock, c);
+  dht::init(dht);
+
+  std::list<dht::NodeId> added;
+  random_insert(added, dht, 1024);
+
+  for (auto &current : added) {
+    const dht::Node *res = dht::find_contact(dht, current);
+    ASSERT_TRUE(res);
+  }
+
+  assert_count(dht, added);
+
+  // printf("==============\n");
+  // printf("dht: ");
+  // print_id(dht.id, 18, "");
+  for (auto &current : added) {
+    assert_present(dht, current);
+  }
 }
 
 // TEST(dhtTest, test2) {

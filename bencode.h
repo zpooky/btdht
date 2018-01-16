@@ -176,6 +176,9 @@ bool
 pair(Decoder &, const char *, bool &) noexcept;
 
 bool
+pair(Decoder &, const char *, std::uint64_t &) noexcept;
+
+bool
 pair(Decoder &, const char *, std::uint32_t &) noexcept;
 
 bool

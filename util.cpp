@@ -229,13 +229,14 @@ NodeId::operator==(const NodeId &o) const noexcept {
   return this->operator==(o.id);
 }
 
-bool NodeId::operator<(const NodeId&o) const noexcept {
+bool
+NodeId::operator<(const NodeId &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) == -1;
 }
 
 void
-print_id(const NodeId &id, std::size_t color, const char *c) {
-  for (std::size_t i = 0; i < (sizeof(id.id) * 5); ++i) {
+print_id(const NodeId &id, std::size_t color, const char *c) noexcept {
+  for (std::size_t i = 0; i < NodeId::bits; ++i) {
     bool b = bit(id.id, i);
     if (i <= color) {
       printf(c);
@@ -245,6 +246,12 @@ print_id(const NodeId &id, std::size_t color, const char *c) {
       printf("\033[0m");
     }
   }
+  printf("\n");
+}
+
+void
+print_hex(const NodeId &) noexcept {
+  // TODO
   printf("\n");
 }
 
@@ -263,7 +270,6 @@ bool
 bit(const NodeId &key, std::size_t idx) noexcept {
   return bit(key.id, idx);
 }
-
 
 bool
 is_valid(const NodeId &id) noexcept {

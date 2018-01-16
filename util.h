@@ -335,7 +335,10 @@ bool
 bit(const NodeId &key, std::size_t idx) noexcept;
 
 void
-print_id(const NodeId &, std::size_t color = 0, const char *c = "");
+print_id(const NodeId &, std::size_t color = 0, const char *c = "") noexcept;
+
+void
+print_hex(const NodeId &) noexcept;
 
 /*valid BEP42 conforming NodeId*/
 // TODO
