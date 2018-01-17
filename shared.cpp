@@ -243,8 +243,8 @@ DHT::DHT(fd &udp, const Contact &i)
     , timeout_node(nullptr)
     //}}}
     // recycle contact list {{{
-    , contact_list()
-    , value_list()
+    , recycle_contact_list()
+    , recycle_value_list()
     // }}}
     // {{{
     /*timestamp of received request&response*/

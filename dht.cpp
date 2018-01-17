@@ -104,7 +104,7 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
       contact = c;
       assert(contact);
 
-      timeout::append_all(dht, &contact);
+      // timeout::append_all(dht, &contact);
       return &contact;
     }
   }
@@ -120,7 +120,7 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
         contact = c;
         assert(contact);
 
-        timeout::append_all(dht, &contact);
+        // timeout::append_all(dht, &contact);
 
         replaced = true;
         return &contact;
@@ -183,8 +183,10 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
         };
 
         timeout::unlink(dht, &contact);
+        assert(!contact.timeout_next);
+        assert(!contact.timeout_priv);
 
-        bool eager = false;
+        const bool eager = false;
         bool replaced /*OUT*/ = false;
         auto *nc = do_insert(dht, in_tree->bucket, contact, eager, replaced);
         assert(!replaced);
@@ -380,22 +382,14 @@ shared_prefix(const NodeId &id, const Key &cmp) noexcept {
 static void
 multiple_closest_nodes(DHT &dht, const Key &search,
                        Node *(&result)[Bucket::K]) noexcept {
-
   Bucket *raw[Bucket::K];
   sp::CircularBuffer best(raw);
-
-  auto is_in_tree = [&dht, &search](std::size_t idx) {
-    return bit_compare(dht.id, search, idx) == 0;
-  };
 
   RoutingTable *root = dht.root;
   std::size_t idx = 0;
 Lstart:
   if (root) {
     sp::push_back(best, &root->bucket);
-    // if (find(root->bucket, search)) {
-    //   printf("found at idx[%zu]\n", idx);
-    // }
     if (idx++ < shared_prefix(dht.id, search)) {
       root = root->in_tree;
       goto Lstart;
@@ -475,10 +469,10 @@ is_good(const DHT &dht, const Node &contact) noexcept {
 
 bool
 init(dht::DHT &dht) noexcept {
-  if (!sp::init(dht.contact_list, 64)) {
+  if (!sp::init(dht.recycle_contact_list, 64)) {
     return false;
   }
-  if (!sp::init(dht.value_list, 64)) {
+  if (!sp::init(dht.recycle_value_list, 64)) {
     return false;
   }
   if (!sp::init(dht.bootstrap_contacts, 8)) {
@@ -573,6 +567,10 @@ Lstart:
     Node *inserted = do_insert(dht, bucket, contact, eager_merge, replaced);
 
     if (inserted) {
+      timeout::append_all(dht, inserted);
+      assert(inserted->timeout_next);
+      assert(inserted->timeout_priv);
+
       log::routing::insert(dht, *inserted);
       if (!replaced) {
         ++dht.total_nodes;
@@ -618,11 +616,18 @@ Lstart:
 template <typename T>
 void
 internal_unlink(T *&head, T *const contact) noexcept {
-  T *const priv = contact->timeout_priv;
-  T *const next = contact->timeout_next;
+  T *priv = contact->timeout_priv;
+  T *next = contact->timeout_next;
 
   assert(priv);
   assert(next);
+
+  if (priv == contact || next == contact) {
+    assert(priv == contact);
+    assert(next == contact);
+    priv = nullptr;
+    next = nullptr;
+  }
 
   if (priv)
     priv->timeout_next = next;

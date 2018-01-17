@@ -505,7 +505,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
 
     dht::NodeId id;
 
-    sp::list<dht::Node> &nodes = dht.contact_list;
+    sp::list<dht::Node> &nodes = dht.recycle_contact_list;
     sp::clear(nodes);
 
     std::uint64_t p_param = 0;
@@ -663,10 +663,10 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
     dht::Token token;
 
     dht::DHT &dht = ctx.dht;
-    sp::list<dht::Node> &nodes = dht.contact_list;
+    sp::list<dht::Node> &nodes = dht.recycle_contact_list;
     sp::clear(nodes);
 
-    sp::list<Contact> &values = dht.value_list;
+    sp::list<Contact> &values = dht.recycle_value_list;
     sp::clear(values);
 
   Lstart:

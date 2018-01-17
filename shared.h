@@ -301,8 +301,8 @@ struct DHT {
   Node *timeout_node;
   //}}}
   // recycle contact list {{{
-  sp::list<Node> contact_list;
-  sp::list<Contact> value_list;
+  sp::list<Node> recycle_contact_list;
+  sp::list<Contact> recycle_value_list;
   // }}}
   // stuff {{{
   time_t last_activity;

@@ -250,7 +250,10 @@ print_id(const NodeId &id, std::size_t color, const char *c) noexcept {
 }
 
 void
-print_hex(const NodeId &) noexcept {
+print_hex(const NodeId &id) noexcept {
+  for (std::size_t i = 0; i < sizeof(id.id); ++i) {
+    printf("%hhX", id.id[i]);
+  }
   // TODO
   printf("\n");
 }
