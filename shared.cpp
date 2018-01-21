@@ -53,6 +53,7 @@ TxContext::TxContext(TxHandle h, TxCancelHandle ch, void *c) noexcept
     , int_cancel(ch)
     , closure(c) {
 }
+
 TxContext::TxContext() noexcept
     : TxContext(nullptr, nullptr, nullptr) {
 }
@@ -89,26 +90,33 @@ Tx::operator==(const krpc::Transaction &tx) const noexcept {
   return false;
 }
 
-int
-Tx::cmp(const krpc::Transaction &tx) const noexcept {
-  return std::memcmp(prefix, tx.id, sizeof(prefix));
+Tx::operator bool() const noexcept {
+  sp::byte zero[2] = {0};
+  return !(std::memcmp(prefix, zero, sizeof(zero)) == 0);
 }
 
-/*dht::TxTree*/
-TxTree::TxTree() noexcept
-    : storagex{} {
+bool
+operator>(const Tx &self, const krpc::Transaction &o) noexcept {
+  return std::memcmp(self.prefix, o.id, sizeof(self.prefix)) > 0;
 }
 
-Tx &TxTree::operator[](std::size_t idx) noexcept {
-  assert(idx < capacity);
-  return storagex[idx];
+bool
+operator>(const krpc::Transaction &self, const Tx &o) noexcept {
+  return std::memcmp(self.id, o.prefix, sizeof(o.prefix)) > 0;
+}
+
+bool
+operator>(const Tx &self, const Tx &tx) noexcept {
+  return std::memcmp(self.prefix, tx.prefix, sizeof(self.prefix)) > 0;
 }
 
 /*dht::Client*/
 Client::Client(fd &fd) noexcept
     : udp(fd)
-    , tree()
-    , timeout_head(nullptr) {
+    , timeout_head(nullptr)
+    , buffer{}
+    , tree{buffer}
+    , active(0) {
 }
 
 } // namespace dht

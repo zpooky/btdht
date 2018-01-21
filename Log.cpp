@@ -205,7 +205,8 @@ namespace error {
 void
 mint_transaction(const dht::DHT &ctx) noexcept {
   print_time(ctx);
-  printf("\033[91mtransmit error mint_transaction\n\033[0m");
+  printf("\033[91mtransmit error mint_transaction\033[0m, acitve tx: %zu\n",
+         ctx.client.active);
 }
 
 void

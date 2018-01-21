@@ -1,6 +1,6 @@
+#include "bencode_print.h"
 #include "util.h"
 #include <bencode_offset.h>
-#include "bencode_print.h"
 
 template <typename F>
 static void
@@ -397,16 +397,9 @@ TEST(krpcTest, test_anounce_peer) {
 }
 
 TEST(krpcTest, print) {
-  const char hex[] =
-      "64323a6970363ad5418250a66d313a7264323a696432303a1efd0badf6c6da6e2a489050"
-      "924d71518f99a5ef353a6e6f6465733230383adb7357b51757d25dbad9474f2fd5853bbb"
-      "86aeb2b2223602c470daa282a2baf4ee7a1b5a6755f6c18639ccfaef15580c87482820d9"
-      "5ccb4725cacde17d8f5ae89bd9cbe6f32147c74c6e97039a5dd88c9717e44096416be155"
-      "651ea5acb08cb1c39856b858678b9adf5e1fbbe9ebb3a6db3c870c3e99245e0d1c06f16d"
-      "9a7cf8edfbde18fc5c1bd536184e4be60ca9d4b98c828440bfb2362a036f76dd5a0a3cd3"
-      "86f63732bd9da6fd503ef2ca15abfa5ec66caf9dc8dc333c782f067a5f61ff2bc4118ed6"
-      "f42a8c49bd56d96ac5e9d4313a706934323630356565313a74343a6a7281e8313a76343a"
-      "4c540100313a79313a7265";
+  const char hex[] = "64313a656c693230336531383a496e76616c696420606964272076616"
+                     "c756565313a74343a6569d4a3313a76343a6c740d60313a79313a656"
+                     "5";
   sp::byte b[sizeof(hex) * 2] = {0};
   std::size_t l = sizeof(hex);
   FromHex(b, hex, l);
@@ -417,5 +410,4 @@ TEST(krpcTest, print) {
     bencode::d::Decoder p(copy);
     bencode_print(p);
   }
-
 }

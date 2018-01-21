@@ -12,15 +12,15 @@ print_tabs(std::size_t tabs) noexcept {
 }
 
 static bool
-is_asciix(char c) noexcept {
+is_printable(char c) noexcept {
   return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
-         (c >= 'A' && c <= 'Z');
+         (c >= 'A' && c <= 'Z') || c == '\'' || c == '`' || c == ' ';
 }
 
 static bool
-is_only_ascii(const char *val, std::size_t len) noexcept {
+is_only_printable(const char *val, std::size_t len) noexcept {
   for (std::size_t i = 0; i < len; ++i) {
-    if (!is_asciix(val[i])) {
+    if (!is_printable(val[i])) {
       return false;
     }
   }
@@ -29,7 +29,7 @@ is_only_ascii(const char *val, std::size_t len) noexcept {
 
 static void
 print_len(const char *val, std::size_t len) noexcept {
-  if (is_only_ascii(val, len)) {
+  if (is_only_printable(val, len)) {
     for (std::size_t i = 0; i < len; ++i) {
       printf("%c", val[i]);
     }

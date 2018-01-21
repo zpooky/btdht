@@ -5,10 +5,6 @@
 
 namespace dht {
 
-template <typename F>
-static void
-in_order(TxTree &, F) noexcept;
-
 static void
 add_front(Client &, Tx *) noexcept;
 
@@ -25,7 +21,7 @@ bool
 init(Client &client) noexcept {
   sp::byte a = 'a';
   sp::byte b = 'a';
-  in_order(client.tree, [&client, &a, &b](Tx &tx) {
+  bst::in_order_for_each(client.tree, [&client, &a, &b](Tx &tx) {
     assert(tx.prefix[0] == '\0');
     assert(tx.prefix[1] == '\0');
 
@@ -41,146 +37,9 @@ init(Client &client) noexcept {
   return true;
 }
 
-static std::size_t
-level(std::size_t l) noexcept {
-  if (l == 0) {
-    return 0;
-  }
-  return std::size_t(std::size_t(1) << l) - std::size_t(1);
-}
-
-static std::size_t
-translate(std::size_t l, std::size_t idx) noexcept {
-  std::size_t start = level(l);
-  return std::size_t(idx + start);
-}
-
-enum class Direction : std::uint8_t { LEFT, RIGHT };
-
-static std::size_t
-lookup_relative(std::size_t old_idx, Direction dir) noexcept {
-
-  constexpr std::size_t children = 2;
-  std::size_t idx = old_idx * children;
-  if (dir == Direction::RIGHT) {
-    idx = idx + 1;
-  }
-
-  return idx;
-}
-
-static std::size_t
-parent_relative(std::size_t idx) noexcept {
-  std::size_t i(idx / 2);
-
-  if (lookup_relative(i, Direction::RIGHT) == idx) {
-    return i;
-  }
-
-  if (lookup_relative(i, Direction::LEFT) == idx) {
-    return i;
-  }
-
-  assert(false);
-  return 0;
-}
-
 static Tx *
-search(TxTree &tree, const krpc::Transaction &needle) noexcept {
-  // TODO
-  Tx *result = nullptr;
-  in_order(tree, [&needle, &result](Tx &tx) {
-    if (tx == needle) {
-      result = &tx;
-    }
-  });
-  return result;
-
-  //   std::size_t level(0);
-  //   std::size_t idx(0);
-  //
-  // Lstart:
-  //   const std::size_t abs_idx = translate(level, idx);
-  //
-  //   if (abs_idx < TxTree::capacity) {
-  //     Tx &current = tree[abs_idx];
-  //     int c = current.cmp(needle);
-  //     if (c == 0) {
-  //       return &current;
-  //     }
-  //
-  //     level++;
-  //     Direction dir = c == -1 ? Direction::LEFT : Direction::RIGHT;
-  //     idx = lookup_relative(idx, dir);
-  //
-  //     goto Lstart;
-  //   }
-  //   return nullptr;
-}
-
-template <typename F>
-static void
-in_order(TxTree &tree, F f) noexcept {
-  enum class Traversal : uint8_t { UP, DOWN };
-  // printf("tree:%zu\n", TxTree::capacity);
-
-  Direction d[TxTree::levels + 1]{Direction::LEFT};
-  Traversal t = Traversal::UP;
-
-  auto set_direction = [&d](std::size_t lvl, Direction dir) {
-    if (lvl <= TxTree::levels) {
-      d[lvl] = dir;
-    }
-  };
-
-  std::size_t level = 0;
-  std::size_t idx(0);
-Lstart:
-  if (level <= TxTree::levels) {
-    if (t == Traversal::UP) {
-      if (d[level] == Direction::LEFT) {
-        level++;
-        set_direction(level, Direction::LEFT);
-        idx = lookup_relative(idx, Direction::LEFT);
-      } else {
-        level++;
-        set_direction(level, Direction::LEFT);
-        idx = lookup_relative(idx, Direction::RIGHT);
-      }
-      goto Lstart;
-    } else /*t == DOWN*/ {
-      if (d[level] == Direction::LEFT) {
-        // We returned to this level after traversed left, now traverse right
-
-        // Indicate that we have consumed right when returning to this level[0]
-        d[level] = Direction::RIGHT;
-
-        const std::size_t abs_idx = translate(level, idx);
-        f(tree[abs_idx]);
-
-        t = Traversal::UP;
-        ++level;
-        set_direction(level, Direction::LEFT);
-        idx = lookup_relative(idx, Direction::RIGHT);
-
-        goto Lstart;
-      } else {
-        if (level > 0) {
-          idx = parent_relative(idx);
-          level--;
-          goto Lstart;
-        }
-      }
-    }
-  } else {
-    assert(t == Traversal::UP);
-    // level and index now point to an out of bound node
-    idx = parent_relative(idx);
-    level--;
-
-    t = Traversal::DOWN;
-    goto Lstart;
-  }
+search(bst::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
+  return (Tx *)bst::find(tree, needle);
 }
 
 static Tx *
@@ -268,6 +127,7 @@ take_tx(Client &client, const krpc::Transaction &needle,
         out = tx->context;
         reset(*tx);
         move_front(client, tx);
+        --client.active;
 
         return true;
       }
@@ -285,6 +145,9 @@ unlink_free(DHT &dht, time_t now) noexcept {
   if (head) {
 
     if (is_expired(*head, now)) {
+      if (is_sent(*head)) {
+        --client.active;
+      }
       head->context.cancel(dht);
       reset(*head);
 
@@ -294,6 +157,20 @@ unlink_free(DHT &dht, time_t now) noexcept {
 
   return nullptr;
 }
+static void
+make(Tx &tx) noexcept {
+  const int r = rand();
+  static_assert(sizeof(tx.suffix) <= sizeof(r), "");
+
+  std::memcpy(tx.suffix, &r, sizeof(tx.suffix));
+
+  for (std::size_t i = 0; i < sizeof(tx.suffix); ++i) {
+    // Do not use 0 in tx
+    if (tx.suffix[i] == 0) {
+      tx.suffix[i]++;
+    }
+  }
+}
 
 bool
 mint_tx(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
@@ -301,17 +178,8 @@ mint_tx(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
 
   Tx *const tx = unlink_free(dht, dht.now);
   if (tx) {
-    {
-      const int r = rand();
-      static_assert(sizeof(tx->suffix) <= sizeof(r), "");
-      std::memcpy(tx->suffix, &r, sizeof(tx->suffix));
-
-      for (std::size_t i = 0; i < sizeof(tx->suffix); ++i) {
-        if (tx->suffix[i] == 0) {
-          tx->suffix[i]++;
-        }
-      }
-    }
+    ++client.active;
+    make(*tx);
 
     std::memcpy(out.id, tx->prefix, sizeof(tx->prefix));
     out.length = sizeof(tx->prefix);
@@ -337,6 +205,7 @@ is_valid(DHT &dht, const krpc::Transaction &needle) noexcept {
       return true;
     }
   }
+
   return false;
 }
 

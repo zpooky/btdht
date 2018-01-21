@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include "bencode.h"
+#include <tree/StaticTree.h>
 
 //---------------------------
 namespace krpc {
@@ -74,46 +75,28 @@ struct Tx {
   bool
   operator==(const krpc::Transaction &) const noexcept;
 
-  int
-  cmp(const krpc::Transaction &) const noexcept;
+  explicit operator bool() const noexcept;
 };
 
-template <std::size_t level>
-struct static_breadth {
-  static constexpr std::size_t value = std::size_t(std::size_t(1) << level);
-};
+bool
+operator>(const Tx &, const krpc::Transaction &) noexcept;
 
-template <>
-struct static_breadth<0> {
-  static constexpr std::size_t value = 1;
-};
+bool
+operator>(const krpc::Transaction &, const Tx &) noexcept;
 
-template <std::size_t level>
-struct static_size {
-  static constexpr std::size_t value =
-      static_breadth<level>::value + static_size<level - 1>::value;
-};
-template <>
-struct static_size<0> {
-  static constexpr std::size_t value = 1;
-};
-
-// dht::TxTree
-struct TxTree {
-  static constexpr std::size_t levels = 7;
-  static constexpr std::size_t capacity = static_size<levels>::value;
-  Tx storagex[capacity];
-
-  TxTree() noexcept;
-
-  Tx &operator[](std::size_t) noexcept;
-};
+bool
+operator>(const Tx &, const Tx &) noexcept;
 
 // dht::Client
 struct Client {
+  static constexpr std::size_t tree_capcity = 128;
   fd &udp;
-  TxTree tree;
   Tx *timeout_head;
+
+  Tx buffer[tree_capcity];
+  bst::StaticTree<Tx> tree;
+
+  std::size_t active;
 
   explicit Client(fd &) noexcept;
 };
