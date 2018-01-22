@@ -180,12 +180,12 @@ for_each(T (&arr)[SIZE], F f) noexcept {
 // transmission-daemon -er--dht
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
-main(int argc, char **argv) {
+main(int, char **) {
   dht::Options options;
   // if (!dht::parse(argc, argv, options)) {
   //   die("TODO");
   // }
-  srand(time(nullptr));
+  std::srand((unsigned int)time(nullptr));
 
   fd udp = udp::bind(INADDR_ANY, 42605);
   // fd udp = udp::bind(INADDR_ANY, 0);

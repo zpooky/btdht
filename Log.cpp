@@ -1,6 +1,6 @@
 #include "Log.h"
 #include "cstdio"
-#include <memory>
+#include <cstring>
 
 namespace log {
 /*log*/
@@ -31,7 +31,7 @@ print_hex(const sp::byte *arr, std::size_t length) {
   while (i < length && hex_length < hex_cap) {
     char buff[128];
     std::size_t buffLength = sprintf(buff, "%02x", arr[i++]);
-    memcpy(hexed + hex_length, buff, buffLength);
+    std::memcpy(hexed + hex_length, buff, buffLength);
 
     hex_length += buffLength;
   }

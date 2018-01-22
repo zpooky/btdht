@@ -358,15 +358,15 @@ TokenPair::operator bool() const noexcept {
   return ip != Ipv4(0);
 }
 
-static bool
-bit_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
-  for (std::size_t i = 0; i < length; ++i) {
-    if (bit(id.id, i) != bit(cmp, i)) {
-      return false;
-    }
-  }
-  return true;
-}
+// static bool
+// bit_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
+//   for (std::size_t i = 0; i < length; ++i) {
+//     if (bit(id.id, i) != bit(cmp, i)) {
+//       return false;
+//     }
+//   }
+//   return true;
+// }
 
 static std::size_t
 shared_prefix(const NodeId &id, const Key &cmp) noexcept {

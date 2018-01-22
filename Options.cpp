@@ -10,7 +10,7 @@ Options::Options()
 }
 
 bool
-parse(int argc, char **argv, Options &result) noexcept {
+parse(int argc, char **argv, Options &) noexcept {
   int verbose_flag;
   static const option long_options[] = //
       {
