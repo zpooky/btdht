@@ -6,16 +6,16 @@
 #include <unistd.h> //close
 
 /*fd*/
-fd::fd(int p_fd)
+fd::fd(int p_fd) noexcept
     : m_fd(p_fd) {
 }
 
-fd::fd(fd &&o)
+fd::fd(fd &&o) noexcept
     : m_fd(o.m_fd) {
   o.m_fd = -1;
 }
 
-fd::~fd() {
+fd::~fd() noexcept {
   if (m_fd > 0) {
     ::close(m_fd);
     m_fd = -1;
@@ -205,7 +205,7 @@ remaining_write(const Buffer &b) noexcept {
 } // namespace sp
 namespace krpc {
 /*krpc::Transaction*/
-Transaction::Transaction()
+Transaction::Transaction() noexcept
     : id()
     , length(0) {
 }

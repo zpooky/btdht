@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include "bencode.h"
+#include <list/FixedList.h>
 #include <tree/StaticTree.h>
 
 //---------------------------

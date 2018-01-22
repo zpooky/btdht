@@ -17,16 +17,17 @@ private:
   int m_fd;
 
 public:
-  explicit fd(int p_fd);
+  explicit fd(int p_fd) noexcept;
 
   fd(const fd &) = delete;
-  fd(fd &&o);
+  fd(fd &&o) noexcept;
+
   fd &
   operator=(const fd &) = delete;
   fd &
   operator=(const fd &&) = delete;
 
-  ~fd();
+  ~fd() noexcept;
 
   explicit operator int() noexcept;
 };
@@ -299,7 +300,7 @@ struct Transaction {
   sp::byte id[16];
   std::size_t length;
 
-  Transaction();
+  Transaction() noexcept;
 };
 } // namespace krpc
 
