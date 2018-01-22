@@ -23,7 +23,7 @@ struct Module {
 struct Modules {
   Module module[24];
   std::size_t length;
-  Timeout (*on_awake)(DHT &, sp::Buffer &);
+  Timeout (*on_awake)(DHT &, sp::Buffer &) noexcept;
 
   Modules() noexcept;
 };

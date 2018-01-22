@@ -135,7 +135,7 @@ Config::Config() noexcept
 }
 
 // dht::Infohash
-Infohash::Infohash()
+Infohash::Infohash() noexcept
     : id{0} {
 }
 
@@ -145,7 +145,7 @@ Infohash::operator==(const Infohash &o) const noexcept {
 }
 
 // dht::Token
-Token::Token()
+Token::Token() noexcept
     : id{0} {
 }
 
@@ -196,21 +196,21 @@ activity(const Peer &peer) noexcept {
 }
 
 /*dht::Bucket*/
-Bucket::Bucket()
+Bucket::Bucket() noexcept
     : contacts()
     , bootstrap_generation(0) {
 }
 
-Bucket::~Bucket() {
+Bucket::~Bucket() noexcept {
 }
 
 /*dht::RoutingTable*/
-RoutingTable::RoutingTable()
+RoutingTable::RoutingTable() noexcept
     : in_tree()
     , bucket() {
 }
 
-RoutingTable::~RoutingTable() {
+RoutingTable::~RoutingTable() noexcept {
   if (in_tree) {
     delete in_tree;
     in_tree = nullptr;
@@ -218,7 +218,7 @@ RoutingTable::~RoutingTable() {
 }
 
 // dht::KeyValue
-KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
+KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt) noexcept
     : next(nxt)
     , peers(nullptr)
     , id() {
@@ -226,12 +226,12 @@ KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt)
 }
 
 // dht::Log
-Log::Log()
+Log::Log() noexcept
     : id{0} {
 }
 
 // dht::DHT
-DHT::DHT(fd &udp, const Contact &i)
+DHT::DHT(fd &udp, const Contact &i) noexcept
     // self {{{
     : id()
     , client(udp)

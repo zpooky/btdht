@@ -61,12 +61,12 @@ FromHex(sp::byte *theDest, const char *theSource, /*IN/OUT*/ SizeType &i) {
 
     char idx = *it++;
     assert(idx >= '0' && idx <= 'f');
-    sp::byte f = lookup[idx];
+    sp::byte f = lookup[int(idx)];
     f = f << 4;
 
     idx = *it++;
     assert(idx >= '0' && idx <= 'f');
-    sp::byte s = lookup[idx];
+    sp::byte s = lookup[int(idx)];
     theDest[i++] = f | s;
   }
   return true;
@@ -127,13 +127,13 @@ nodeId(dht::NodeId &id) {
   memcpy(id.id, raw_id, strlen(raw_id));
 }
 
-static void
+static inline void
 transaction(krpc::Transaction &t) {
   memcpy(t.id, "aa", 3);
   t.length = 2;
 }
 
-static void
+static inline void
 print(const char *prefix, const sp::byte *b, std::size_t len) noexcept {
   printf("%s", prefix);
   for (std::size_t i = 0; i < len; ++i) {
@@ -147,7 +147,7 @@ print(const char *prefix, const sp::byte *b, std::size_t len) noexcept {
   printf("\n");
 }
 
-static void
+static inline void
 print(const char *prefix, const sp::Buffer &buffer) noexcept {
   print(prefix, buffer.raw, buffer.length);
 }

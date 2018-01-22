@@ -19,7 +19,7 @@ test_unique(krpc::Transaction (&arr)[SIZE]) {
 
 template <std::size_t SIZE>
 static void
-shuffle_tx(krpc::Transaction (&arr)[SIZE]) {
+shuffle_tx(krpc::Transaction (&)[SIZE]) {
   // TODO
 }
 

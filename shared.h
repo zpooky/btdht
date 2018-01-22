@@ -146,7 +146,7 @@ struct Config {
 struct Infohash {
   Key id;
 
-  Infohash();
+  Infohash() noexcept;
 
   bool
   operator==(const Infohash &) const noexcept;
@@ -155,7 +155,7 @@ struct Infohash {
 // dht::Token
 struct Token {
   sp::byte id[20];
-  Token();
+  Token() noexcept;
 };
 
 // dht::Peer
@@ -201,13 +201,13 @@ struct Bucket {
   Node contacts[K];
   std::uint8_t bootstrap_generation;
 
-  Bucket();
-  ~Bucket();
+  Bucket() noexcept;
+  ~Bucket() noexcept;
 };
 
 template <typename F>
 bool
-for_all(Bucket &b, F f) {
+for_all(Bucket &b, F f) noexcept {
   bool result = true;
   for (std::size_t i = 0; i < Bucket::K && result; ++i) {
     if (b.contacts[i]) {
@@ -219,7 +219,7 @@ for_all(Bucket &b, F f) {
 
 template <typename F>
 void
-for_each(Bucket &b, F f) {
+for_each(Bucket &b, F f) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     if (b.contacts[i]) {
       f(b.contacts[i]);
@@ -232,9 +232,9 @@ struct RoutingTable {
   RoutingTable *in_tree;
   Bucket bucket;
 
-  RoutingTable();
+  RoutingTable() noexcept;
 
-  ~RoutingTable();
+  ~RoutingTable() noexcept;
 };
 
 template <typename F>
@@ -254,13 +254,13 @@ struct KeyValue {
   Peer *peers;
   Infohash id;
   //
-  KeyValue(const Infohash &, KeyValue *);
+  KeyValue(const Infohash &, KeyValue *) noexcept;
 };
 
 // dht::log
 struct Log {
   sp::byte id[4];
-  Log();
+  Log() noexcept;
 };
 
 // dht::DHT
@@ -300,7 +300,7 @@ struct DHT {
   std::uint32_t active_searches;
   // }}}
 
-  explicit DHT(fd &, const Contact &);
+  explicit DHT(fd &, const Contact &) noexcept;
 };
 
 // dht::MessageContext

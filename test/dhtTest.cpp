@@ -58,14 +58,14 @@ assert_empty(const Node &contact) {
   ASSERT_EQ(contact.timeout_priv, nullptr);
 
   ASSERT_FALSE(dht::is_valid(contact.id));
-  ASSERT_EQ(contact.contact.ipv4, 0);
-  ASSERT_EQ(contact.contact.port, 0);
+  ASSERT_EQ(contact.contact.ipv4, Ipv4(0));
+  ASSERT_EQ(contact.contact.port, Port(0));
 
-  ASSERT_EQ(contact.request_activity, 0);
-  ASSERT_EQ(contact.response_activity, 0);
-  ASSERT_EQ(contact.ping_sent, 0);
+  ASSERT_EQ(contact.request_activity, time_t(0));
+  ASSERT_EQ(contact.response_activity, time_t(0));
+  ASSERT_EQ(contact.ping_sent, time_t(0));
 
-  ASSERT_EQ(contact.ping_outstanding, 0);
+  ASSERT_EQ(contact.ping_outstanding, std::uint8_t(0));
   ASSERT_EQ(contact.good, true);
 }
 
@@ -198,16 +198,16 @@ count_nodes(const RoutingTable *r) {
   return result;
 }
 
-static std::size_t
-equal(const NodeId &id, const Key &cmp) noexcept {
-  std::size_t i = 0;
-  for (; i < NodeId::bits; ++i) {
-    if (bit(id.id, i) != bit(cmp, i)) {
-      return i;
-    }
-  }
-  return i;
-}
+// static std::size_t
+// equal(const NodeId &id, const Key &cmp) noexcept {
+//   std::size_t i = 0;
+//   for (; i < NodeId::bits; ++i) {
+//     if (bit(id.id, i) != bit(cmp, i)) {
+//       return i;
+//     }
+//   }
+//   return i;
+// }
 
 static void
 assert_present(DHT &dht, const NodeId &current) {
