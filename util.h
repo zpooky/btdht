@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <time.h>
+#include <ctime>
 
 namespace sp {
 /*sp::byte*/

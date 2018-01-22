@@ -5,8 +5,8 @@
 #include <cstdint>
 
 #include "util.h"
-#include <stdio.h> //debug
-#include <stdlib.h>
+#include <cstdio> //debug
+#include <cstdlib>
 
 #include "bencode.h"
 #include <tree/StaticTree.h>

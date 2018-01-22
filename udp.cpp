@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <exception>
-#include <stdio.h>
+#include <cstdio>
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
 

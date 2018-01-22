@@ -1,6 +1,6 @@
 #include "Log.h"
-#include "stdio.h"
-#include <memory.h>
+#include "cstdio"
+#include <memory>
 
 namespace log {
 /*log*/

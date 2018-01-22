@@ -1,6 +1,6 @@
 #include "dht.h"
 #include "udp.h"
-#include <stdio.h>
+#include <cstdio>
 
 #include "dht_interface.h"
 #include "private_interface.h"

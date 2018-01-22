@@ -238,10 +238,16 @@ Lstart:
         b.bootstrap_generation = 0;
         goto Lretry;
       }
+
       b.bootstrap_generation++;
       return id;
   };
-  // TODO self should not be in boottstrap list
+  // TODO bootstrap should be last. Tag bucket with bootstrap generation only
+  // use bootstrap if we get the smae bucket and we havent sent any to botstrap
+  // this generation.
+  // XXX shuffle bootstrap list just before sending
+
+  // XXX self should not be in boottstrap list
   // XXX how to handle the same bucket will be reselected to send find_nodes
   // multiple times in a row
 
@@ -250,25 +256,11 @@ Lstart:
 
   // XXX if no good node is avaiable try bad/questionable nodes
 
-  if (!bs_sent) {
-    auto &bs = dht.bootstrap_contacts;
-    for_each(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
-
-      bool res = client::find_node(dht, out, remote, id, new Contact(remote));
-      if (res) {
-        inc_ongoing();
-      }
-      return res;
-    });
-    bs_sent = true;
-  }
-
   if (missing_contacts > 0) {
-
     dht::Bucket *const b = dht::bucket_for(dht, id);
     if (b) {
       const NodeId &sid = search_id(*b);
-      bool ok = for_all(*b, [&dht, &out, inc_ongoing, sid](Node &remote) {
+      for_all(*b, [&dht, &out, inc_ongoing, sid](Node &remote) {
         if (dht::is_good(dht, remote)) {
 
           Contact &c = remote.contact;
@@ -280,10 +272,23 @@ Lstart:
         }
         return true;
       });
+    }
+  }
 
-      if (ok) {
-        goto Lstart;
+  if (!bs_sent) {
+    auto &bs = dht.bootstrap_contacts;
+    bool ok = for_all(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
+
+      bool res = client::find_node(dht, out, remote, id, new Contact(remote));
+      if (res) {
+        inc_ongoing();
       }
+      return res;
+    });
+    bs_sent = true;
+
+    if (ok) {
+      goto Lstart;
     }
   }
 }
