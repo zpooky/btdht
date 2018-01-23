@@ -528,7 +528,7 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
   }
 
   sp::node<T> *node = list.root;
-  list.size = 0;
+  list.length = 0;
 
   while (sp::remaining_read(b) > 0 && b[b.pos] != 'e') {
     if (!node) {
@@ -539,7 +539,7 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
       return false;
     }
     node = node->next;
-    ++list.size;
+    ++list.length;
   }
 
   if (sp::remaining_read(b) == 0) {

@@ -464,7 +464,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::res::find_node(ctx);
 
   dht_response(ctx, sender, [&](auto &) {
-    printf("contacts:%zu\n", contacts.size);
+    printf("contacts:%zu\n", contacts.length);
     for_each(contacts, [&](const auto &contact) { //
 
       // TODO handle self insert
@@ -540,7 +540,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       return false;
     }
 
-    if (nodes.size > 0) {
+    if (nodes.length > 0) {
       if (cap_ptr) {
         // only remove bootstrap node if we have gotten some nodes from it
         sp::remove_first(dht.bootstrap_contacts,

@@ -145,7 +145,7 @@ compact_list(bencode::d::Decoder &d, const char *key, sp::list<T> &l) noexcept {
     return false;
   }
 
-  assert(l.size == 0);
+  assert(l.length == 0);
 
   if (length > 0) {
     assert(val);
