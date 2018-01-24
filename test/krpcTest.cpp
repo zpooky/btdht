@@ -396,10 +396,16 @@ TEST(krpcTest, test_anounce_peer) {
   }
 }
 
-TEST(krpcTest, print) {
+TEST(krpcTest, print_debug) {
+  // const char hex[] =
+  //     "64313a656c693230336531383a496e76616c696420606964272076616"
+  //     "c756565313a74343a6569d4a3313a76343a6c740d60313a79313a6565";
+  //
   const char hex[] = "64313a656c693230336531383a496e76616c696420606964272076616"
-                     "c756565313a74343a6569d4a3313a76343a6c740d60313a79313a656"
+                     "c756565313a74343a6571541d313a76343a6c740d60313a79313a656"
                      "5";
+
+  // TODO fix
   sp::byte b[sizeof(hex) * 2] = {0};
   std::size_t l = sizeof(hex);
   FromHex(b, hex, l);
@@ -410,4 +416,90 @@ TEST(krpcTest, print) {
     bencode::d::Decoder p(copy);
     bencode_print(p);
   }
+}
+
+TEST(krpcTest, debug) {
+  const char hex[] =
+      "64313a7264323a696432303a17323a78dac46ada7f7b6d886fb28da0cd4ae253323a6970"
+      "343ad5418250353a6e6f6465733230383a3ed1e36fd2a5a2fee56b99825c41a6ebb4c0d1"
+      "da464f699cf82b3ab799e9ebb3a6db3c870c3e99245e0d1c06b7f125bd31a8a0d933eb26"
+      "f5bb58a36d01235d763e593c46189645d5d9e260bb1ae92917114b0768f8e04cce67ee57"
+      "4f418c32dd7be3b55fe1f3742c281d88d6ae529049f1f1bbe9ebb3a6db3c870ce1ae076c"
+      "c33ae6212f63095b51765f749c287a1076cc560fb608a8576e4dc21ae1212f71e9ebb3a6"
+      "db3c870c3e99245e0d1c06b7f15bc43709317d21185aca77c818b200653841da665f6b1e"
+      "751d92ddf1c3bbc8d565313a74343a657545b3313a76343a5554a5b1313a79313a7265";
+
+  auto f = [](krpc::ParseContext &pctx) {
+    if (std::strcmp(pctx.msg_type, "q") == 0) {
+      return false;
+    } else if (std::strcmp(pctx.msg_type, "r") == 0) {
+      /*response*/
+      if (!bencode::d::value(pctx.decoder, "r")) {
+        return false;
+      }
+
+      printf("asd\n");
+      return bencode::d::dict(pctx.decoder, [](auto &p) { //
+        bool b_id = false;
+        bool b_n = false;
+        bool b_p = false;
+        bool b_ip = false;
+
+        dht::NodeId id;
+
+        sp::list<dht::Node> nodes;
+        init(nodes, 18);
+        sp::clear(nodes);
+
+        std::uint64_t p_param = 0;
+
+        sp::byte ip[20];
+        std::memset(ip, 0, sizeof(ip));
+
+      Lstart:
+        if (!b_id && bencode::d::pair(p, "id", id.id)) {
+          b_id = true;
+          goto Lstart;
+        }
+
+        // optional
+        if (!b_n) {
+          sp::clear(nodes);
+          if (bencode::d::nodes(p, "nodes", nodes)) {
+            b_n = true;
+            goto Lstart;
+          }
+        }
+
+        // optional
+        if (!b_p && bencode::d::pair(p, "p", p_param)) {
+          b_p = true;
+          goto Lstart;
+        }
+
+        if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+          b_ip = true;
+          goto Lstart;
+        }
+
+        if (!(b_id)) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
+    return false;
+  };
+
+  sp::byte b[sizeof(hex) * 2] = {0};
+  std::size_t l = sizeof(hex);
+  FromHex(b, hex, l);
+  sp::Buffer in(b);
+  in.length = l;
+
+  bencode::d::Decoder d(in);
+  krpc::ParseContext pctx(d);
+  ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }

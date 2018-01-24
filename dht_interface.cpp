@@ -256,11 +256,14 @@ Lstart:
 
   // XXX if no good node is avaiable try bad/questionable nodes
 
+  bool ok = false;
   if (missing_contacts > 0) {
     dht::Bucket *const b = dht::bucket_for(dht, id);
+    printf("#routing table nodes\n");
     if (b) {
       const NodeId &sid = search_id(*b);
-      for_all(*b, [&dht, &out, inc_ongoing, sid](Node &remote) {
+
+      ok = for_all(*b, [&dht, &out, inc_ongoing, sid](Node &remote) {
         if (dht::is_good(dht, remote)) {
 
           Contact &c = remote.contact;
@@ -268,28 +271,33 @@ Lstart:
           if (res) {
             inc_ongoing();
           }
+
           return res;
         }
+
         return true;
       });
     }
+
+    if (!bs_sent) {
+      printf("#bootstrap nodes\n");
+      auto &bs = dht.bootstrap_contacts;
+      for_all(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
+
+        auto *closure = new (std::nothrow) Contact(remote);
+        bool res = client::find_node(dht, out, remote, id, closure);
+        if (res) {
+          inc_ongoing();
+        }
+
+        return res;
+      });
+      bs_sent = true;
+    }
   }
 
-  if (!bs_sent) {
-    auto &bs = dht.bootstrap_contacts;
-    bool ok = for_all(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
-
-      bool res = client::find_node(dht, out, remote, id, new Contact(remote));
-      if (res) {
-        inc_ongoing();
-      }
-      return res;
-    });
-    bs_sent = true;
-
-    if (ok) {
-      goto Lstart;
-    }
+  if (ok) {
+    goto Lstart;
   }
 }
 
@@ -300,22 +308,22 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
 
   if (dht.now >= dht.timeout_next) {
     Timeout ap = awake_ping(dht, out);
-    log::awake::contact_ping(dht, ap);
     next = std::min(ap, next);
   }
+  log::awake::contact_ping(dht, 0);
 
   if (dht.now >= dht.timeout_peer_next) {
     Timeout ap = awake_peer_db(dht);
-    log::awake::peer_db(dht, ap);
     next = std::min(ap, next);
   }
+  log::awake::peer_db(dht, 0);
 
   {
     auto percentage = [](std::uint32_t t, std::uint32_t c) {
       return c / (t / 100);
     };
     std::uint32_t good = dht.total_nodes - dht.bad_nodes;
-    std::uint32_t total = std::max(std::uint32_t(365), good); // TODO
+    std::uint32_t total = std::max(std::uint32_t(dht::max_routing_nodes(dht)), good); // TODO
     std::uint32_t look_for = total - good;
     if (percentage(total, good) < config.percentage_seek) {
       look_for_nodes(dht, out, look_for);
@@ -464,6 +472,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::res::find_node(ctx);
 
   dht_response(ctx, sender, [&](auto &) {
+    std::size_t len = 0;
     printf("contacts:%zu\n", contacts.length);
     for_each(contacts, [&](const auto &contact) { //
 
@@ -471,8 +480,10 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       dht::DHT &dht = ctx.dht;
       dht::Node node(contact, dht.now);
       dht::insert(dht, node);
-    });
 
+      ++len;
+    });
+    assert(len == contacts.length);
   });
 
 } // find_node::handle_response()
@@ -507,6 +518,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     bool b_id = false;
     bool b_n = false;
     bool b_p = false;
+    bool b_ip = false;
 
     dht::NodeId id;
 
@@ -514,6 +526,9 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     sp::clear(nodes);
 
     std::uint64_t p_param = 0;
+
+    sp::byte ip[20];
+    std::memset(ip, 0, sizeof(ip));
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
@@ -533,6 +548,12 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     // optional
     if (!b_p && bencode::d::pair(p, "p", p_param)) {
       b_p = true;
+      goto Lstart;
+    }
+
+    // TODO ip vote
+    if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+      b_ip = true;
       goto Lstart;
     }
 
@@ -663,9 +684,12 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
     bool b_t = false;
     bool b_n = false;
     bool b_v = false;
+    bool b_ip = false;
 
     dht::NodeId id;
     dht::Token token;
+    sp::byte ip[20];
+    std::memset(ip, 0, sizeof(ip));
 
     dht::DHT &dht = ctx.dht;
     sp::list<dht::Node> &nodes = dht.recycle_contact_list;
@@ -682,6 +706,12 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
 
     if (!b_t && bencode::d::pair(p, "token", token.id)) {
       b_t = true;
+      goto Lstart;
+    }
+
+    // TODO ip vote
+    if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+      b_ip = true;
       goto Lstart;
     }
 

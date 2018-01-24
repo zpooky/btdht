@@ -36,11 +36,11 @@ TEST(transactionTest, test_valid) {
   fd s(-1);
   dht::DHT dht(s, Contact(0, 0));
   dht.now = time(nullptr);
-  assert(dht::init(dht.client));
+  ASSERT_TRUE(dht::init(dht.client));
 
 Lrestart:
   if (test_it++ < 100) {
-    constexpr std::size_t IT = Client::tree_capcity;
+    constexpr std::size_t IT = Client::tree_capacity;
     krpc::Transaction ts[IT] = {};
 
     // printf("nodes: %zu\n", IT);

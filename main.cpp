@@ -155,7 +155,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
         return context.handle(ctx);
       } else {
         log::receive::res::unknown_tx(ctx);
-        assert(false);
+        // assert(false);
       }
     }
     return false;
@@ -205,8 +205,11 @@ main(int, char **) {
   /*boostrap*/
   // Contact bs_node(INADDR_ANY, local.port); // TODO
   const char *bss[] = {
-      "192.168.1.47:13596", "127.0.0.1:13596", "213.65.130.80:13596",
-      "192.168.1.47:51413", "127.0.0.1:51413", "213.65.130.80:51413",
+      // "192.168.1.47:13596",
+      // "127.0.0.1:13596",
+      // "213.65.130.80:13596",
+      "192.168.1.47:51413",
+      // "127.0.0.1:51413", "213.65.130.80:51413",
   };
   dht.now = time(nullptr);
   for_each(bss, [&dht](const char *ip) {
@@ -236,18 +239,18 @@ main(int, char **) {
     }
   }
 
-  auto handle = //
-      [&](Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
-        dht.last_activity = dht.last_activity == 0 ? now : dht.last_activity;
-        dht.now = now;
+  auto handle = [&](Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
+    dht.last_activity = dht.last_activity == 0 ? now : dht.last_activity;
+    dht.now = now;
 
-        const sp::Buffer copy(in);
-        if (!parse(dht, modules, from, in, out)) {
-          log::receive::parse::error(dht, copy);
-          return false;
-        }
-        return true;
-      };
+    const sp::Buffer copy(in);
+    if (!parse(dht, modules, from, in, out)) {
+      log::receive::parse::error(dht, copy);
+      return false;
+    }
+
+    return true;
+  };
 
   auto awake = [&modules, &dht](sp::Buffer &out, time_t now) {
     auto result = modules.on_awake(dht, out);

@@ -592,10 +592,16 @@ Lstart:
     if (dht.root) {
       goto Lstart;
     }
+    printf("- failed alloc\n");
   }
 
   return nullptr;
 } // dht::insert()
+
+std::uint32_t
+max_routing_nodes(DHT &) noexcept {
+  return std::uint32_t(Bucket::K) * std::uint32_t(sizeof(Key) * 8);
+}
 
 } // namespace dht
 

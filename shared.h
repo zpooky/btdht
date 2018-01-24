@@ -90,11 +90,11 @@ operator>(const Tx &, const Tx &) noexcept;
 
 // dht::Client
 struct Client {
-  static constexpr std::size_t tree_capcity = 128;
+  static constexpr std::size_t tree_capacity = 128;
   fd &udp;
   Tx *timeout_head;
 
-  Tx buffer[tree_capcity];
+  Tx buffer[tree_capacity];
   bst::StaticTree<Tx> tree;
 
   std::size_t active;

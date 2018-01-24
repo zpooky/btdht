@@ -17,6 +17,30 @@ reset(Tx &tx) noexcept {
   tx.suffix[1] = '\0';
 }
 
+static std::size_t
+count(Client &client) noexcept {
+  Tx *const head = client.timeout_head;
+  Tx *it = head;
+  std::size_t result = 0;
+Lit:
+  if (it) {
+    ++result;
+
+    assert(it == it->timeout_next->timeout_priv);
+    it = it->timeout_next;
+    if (it != head) {
+      goto Lit;
+    }
+  }
+  return result;
+}
+
+static std::size_t
+count(DHT &dht) noexcept {
+  Client &client = dht.client;
+  return count(client);
+}
+
 bool
 init(Client &client) noexcept {
   sp::byte a = 'a';
@@ -34,6 +58,7 @@ init(Client &client) noexcept {
     // printf("prefix: %c%c\n", tx.prefix[0], tx.prefix[1]);
     add_front(client, &tx);
   });
+  assert(count(client) == Client::tree_capacity);
   return true;
 }
 
@@ -49,8 +74,8 @@ unlink(Client &client, Tx *t) noexcept {
     client.timeout_head = next;
   }
 
-  auto *next = client.timeout_head;
-  auto *priv = next->timeout_priv;
+  auto *next = t->timeout_next;
+  auto *priv = t->timeout_priv;
 
   next->timeout_priv = priv;
   priv->timeout_next = next;
@@ -142,6 +167,9 @@ unlink_free(DHT &dht, time_t now) noexcept {
   Client &client = dht.client;
   Tx *const head = client.timeout_head;
 
+  // auto cnt = count(dht);
+  // printf("cnt %zu\n", cnt);
+  assert(count(dht) == Client::tree_capacity);
   if (head) {
 
     if (is_expired(*head, now)) {

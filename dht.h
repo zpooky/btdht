@@ -44,6 +44,9 @@ bucket_for(DHT &, const NodeId &) noexcept;
 Node *
 insert(DHT &, const Node &) noexcept;
 
+std::uint32_t
+max_routing_nodes(DHT &) noexcept;
+
 } // namespace dht
 
 namespace timeout {
