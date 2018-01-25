@@ -3,6 +3,7 @@
 #include <dht.h>
 #include <list>
 #include <set>
+#include "timeout.h"
 
 using namespace dht;
 

@@ -137,7 +137,7 @@ struct Config {
    * nodes if there are < percentage active nodes than /percentage_seek/ we
    * start a search for more nodes.
    */
-  std::uint8_t percentage_seek;
+  std::size_t percentage_seek;
 
   Config() noexcept;
 };

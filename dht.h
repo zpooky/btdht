@@ -49,34 +49,6 @@ max_routing_nodes(DHT &) noexcept;
 
 } // namespace dht
 
-namespace timeout {
-void
-unlink(dht::Node *&head, dht::Node *) noexcept;
 
-void
-unlink(dht::DHT &ctx, dht::Node *contact) noexcept;
-
-void
-unlink(dht::Peer *&head, dht::Peer *) noexcept;
-
-void
-append_all(dht::DHT &, dht::Node *) noexcept;
-} // namespace timeout
-
-namespace lookup {
-/**/
-dht::KeyValue *
-lookup(dht::DHT &, const dht::Infohash &) noexcept;
-
-bool
-insert(dht::DHT &, const dht::Infohash &, const Contact &) noexcept;
-
-bool
-valid(dht::DHT &, const dht::Token &) noexcept;
-
-void
-mint_token(dht::DHT &, Ipv4, dht::Token &) noexcept;
-
-} // namespace lookup
 
 #endif

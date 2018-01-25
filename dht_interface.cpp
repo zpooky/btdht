@@ -3,8 +3,10 @@
 #include "Log.h"
 #include "bencode.h"
 #include "client.h"
+#include "db.h"
 #include "dht.h"
 #include "krpc.h"
+#include "timeout.h"
 #include "transaction.h"
 
 #include <algorithm>
@@ -319,12 +321,18 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
   log::awake::peer_db(dht, 0);
 
   {
-    auto percentage = [](std::uint32_t t, std::uint32_t c) {
-      return c / (t / 100);
+    auto percentage = [](std::uint32_t t, std::uint32_t c) -> std::size_t {
+      return std::size_t(c) / std::size_t(t / std::size_t(100));
     };
+
     std::uint32_t good = dht.total_nodes - dht.bad_nodes;
-    std::uint32_t total = std::max(std::uint32_t(dht::max_routing_nodes(dht)), good); // TODO
+    std::uint32_t total =
+        std::max(std::uint32_t(dht::max_routing_nodes(dht)), good); // TODO
     std::uint32_t look_for = total - good;
+    printf("good[%ul], total[%ul], look_for[%ul], config.percentage_seek[%zu], "
+           "percentage[%zu]\n",
+           good, total, look_for, config.percentage_seek,
+           percentage(total, good));
     if (percentage(total, good) < config.percentage_seek) {
       look_for_nodes(dht, out, look_for);
       log::awake::contact_scan(dht);
@@ -623,14 +631,14 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search) noexcept {
   log::receive::req::get_peers(ctx);
 
-  dht_request(ctx, id, [&](auto &) {
+  dht_request(ctx, id, [&](auto &from) {
     dht::Token token;
     dht::DHT &dht = ctx.dht;
     // TODO ip
-    lookup::mint_token(dht, ctx.remote.ipv4, token);
+    db::mint_token(dht, from, ctx.remote, token);
 
     const krpc::Transaction &t = ctx.transaction;
-    const dht::KeyValue *result = lookup::lookup(dht, search);
+    const dht::KeyValue *result = db::lookup(dht, search);
     if (result) {
       krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
     } else {
@@ -793,7 +801,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::req::announce_peer(ctx);
 
   dht::DHT &dht = ctx.dht;
-  if (lookup::valid(dht, token)) {
+  if (db::valid(dht, token)) {
     dht_request(ctx, sender, [&](auto &) {
       Contact peer(ctx.remote);
       if (implied_port) {
@@ -802,7 +810,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
         peer.port = port;
       }
 
-      lookup::insert(dht, infohash, peer);
+      db::insert(dht, infohash, peer);
     });
   }
   krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);
