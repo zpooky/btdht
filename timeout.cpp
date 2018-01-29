@@ -99,4 +99,29 @@ append_all(dht::DHT &ctx, dht::Peer *peer) noexcept {
   return internal_append_all(ctx.timeout_peer, peer);
 } // timeout::append_all()
 
+void
+Return(dht::DHT &dht, dht::Node *ret) noexcept {
+  assert(ret);
+  assert(ret->timeout_next == nullptr);
+  assert(ret->timeout_priv == nullptr);
+
+  dht::Node *const head = dht.timeout_node;
+  if (head) {
+    dht::Node *next = head->timeout_next;
+    assert(next);
+    dht::Node *priv = head->timeout_priv;
+    assert(priv);
+
+    priv->timeout_next = ret;
+    next->timeout_priv = ret;
+
+    ret->timeout_priv = priv;
+    ret->timeout_next = next;
+
+    dht.timeout_node = ret;
+  } else {
+    dht.timeout_node = ret->timeout_priv = ret->timeout_next = ret;
+  }
+}
+
 } // namespace timeout

@@ -18,6 +18,9 @@ append_all(dht::DHT &, dht::Node *) noexcept;
 
 void
 append_all(dht::DHT &, dht::Peer *) noexcept;
+
+void
+Return(dht::DHT &, dht::Node *) noexcept;
 } // namespace timeout
 
 #endif

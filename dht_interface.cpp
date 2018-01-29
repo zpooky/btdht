@@ -101,24 +101,6 @@ Lstart:
   return result;
 } // timeout::take()
 
-// static void
-// Return(dht::DHT &ctx, dht::Node *ret) noexcept {
-//   assert(ret->timeout_next == nullptr);
-//   assert(ret->timeout_priv == nullptr);
-//
-//   dht::Node *const head = ctx.timeout_node;
-//   if (head) {
-//     dht::Node *next = head->timeout_next;
-//     head->timeout_next = ret;
-//     next->timeout_priv = ret;
-//
-//     ret->timeout_priv = head;
-//     ret->timeout_next = next;
-//   } else {
-//     ctx.timeout_node = ret->timeout_priv = ret->timeout_next = ret;
-//   }
-// }
-
 static dht::Node *
 head(dht::DHT &ctx) noexcept {
   return ctx.timeout_node;
@@ -132,7 +114,7 @@ update(dht::DHT &ctx, dht::Node *const contact, time_t now) noexcept {
   unlink(ctx, contact);
   assert(!contact->timeout_next);
   assert(!contact->timeout_priv);
-  contact->ping_sent = now; // TODO change to activity
+  contact->ping_sent = now; // TODO change ping_sent to activity
   append_all(ctx, contact);
 } // timeout::update()
 
@@ -169,9 +151,7 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 
         goto Lstart;
       } else {
-        assert(false);
-        // TODO timeout::Return(ctx, node);
-        // move to dht.cpp
+        timeout::Return(ctx, node);
       }
     }
   }
@@ -272,22 +252,30 @@ Lstart:
       sp::Array<Node *> l(raw);
       copy(*b, l);
       shuffle(dht.random, l);
+      // printf("#routing table nodes: %zu\n", l.length);
 
+      std::size_t sent_count = 0;
       const NodeId &sid = search_id(*b);
-      ok = for_all(l, [&dht, &out, inc_ongoing, sid](Node *remote) {
-        if (dht::is_good(dht, *remote)) {
+      ok =
+          for_all(l, [&dht, &out, inc_ongoing, sid, &sent_count](Node *remote) {
+            if (dht::is_good(dht, *remote)) {
 
-          Contact &c = remote->contact;
-          bool res = client::find_node(dht, out, c, sid, nullptr);
-          if (res) {
-            inc_ongoing();
-          }
+              Contact &c = remote->contact;
+              bool res = client::find_node(dht, out, c, sid, nullptr);
+              if (res) {
+                ++sent_count;
+                inc_ongoing();
+              }
 
-          return res;
-        }
+              return res;
+            }
 
-        return true;
-      });
+            return true;
+          });
+
+      if (sent_count == 0) {
+        ok = false;
+      }
     }
 
     if (!bs_sent) {
@@ -492,7 +480,6 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 
   dht_response(ctx, sender, [&](auto &) {
     std::size_t len = 0;
-    printf("contacts:%zu\n", contacts.length);
     for_each(contacts, [&](const auto &contact) { //
 
       // TODO handle self insert
