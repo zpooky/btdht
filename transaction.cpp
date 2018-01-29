@@ -31,6 +31,8 @@ Lit:
     if (it != head) {
       goto Lit;
     }
+  } else {
+    assert(false);
   }
   return result;
 }
@@ -39,6 +41,31 @@ static std::size_t
 count(DHT &dht) noexcept {
   Client &client = dht.client;
   return count(client);
+}
+
+static bool
+ordered(DHT &dht) noexcept {
+  Client &client = dht.client;
+  Tx *const head = client.timeout_head;
+  Tx *it = head;
+
+  time_t t = it ? it->sent : 0;
+Lit:
+  if (it) {
+    if (!(it->sent >= t)) {
+      return false;
+    }
+    t = it->sent;
+
+    it = it->timeout_next;
+    if (it != head) {
+      goto Lit;
+    }
+  } else {
+    assert(false);
+  }
+
+  return true;
 }
 
 bool
@@ -170,6 +197,7 @@ unlink_free(DHT &dht, time_t now) noexcept {
   // auto cnt = count(dht);
   // printf("cnt %zu\n", cnt);
   assert(count(dht) == Client::tree_capacity);
+  assert(ordered(dht));
   if (head) {
 
     if (is_expired(*head, now)) {
@@ -181,6 +209,8 @@ unlink_free(DHT &dht, time_t now) noexcept {
 
       return unlink(client, head);
     }
+  } else {
+    assert(false);
   }
 
   return nullptr;

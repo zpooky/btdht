@@ -2,8 +2,8 @@
 
 #include "Log.h"
 #include "dht.h"
-#include "krpc.h"
 #include "dht_interface.h"
+#include "krpc.h"
 #include "udp.h"
 
 namespace client {
@@ -40,7 +40,7 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
 }
 
 bool
-ping(dht::DHT &dht, sp::Buffer &b, const dht::Node &node) noexcept {
+ping(dht::DHT &dht, sp::Buffer &buf, const dht::Node &node) noexcept {
   dht::Module ping;
   ping::setup(ping);
 
@@ -48,13 +48,13 @@ ping(dht::DHT &dht, sp::Buffer &b, const dht::Node &node) noexcept {
     return krpc::request::ping(out, t, dht.id);
   };
 
-  bool result = send(dht, node.contact, b, ping, nullptr, serialize);
-  log::transmit::ping(dht, node.contact, result);
+  bool result = send(dht, node.contact, buf, ping, nullptr, serialize);
+  log::transmit::ping(dht, node.contact, result); // TODO log tx
   return result;
 }
 
 bool
-find_node(dht::DHT &dht, sp::Buffer &b, const Contact &dest,
+find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
           const dht::NodeId &search, void *closure) noexcept {
   dht::Module find_node;
   find_node::setup(find_node);
@@ -63,8 +63,8 @@ find_node(dht::DHT &dht, sp::Buffer &b, const Contact &dest,
     return krpc::request::find_node(o, t, dht.id, search);
   };
 
-  bool result = send(dht, dest, b, find_node, closure, serialize);
-  log::transmit::find_node(dht, dest, result);
+  bool result = send(dht, dest, buf, find_node, closure, serialize);
+  log::transmit::find_node(dht, dest, result); // TODO log tx
   return result;
 }
 

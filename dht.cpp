@@ -1,14 +1,35 @@
 #include "Log.h"
 #include "dht.h"
+#include "timeout.h"
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <new>
 #include <util/CircularBuffer.h>
-#include "timeout.h"
 
 namespace dht {
+
+static bool
+is_cycle(DHT &dht) noexcept {
+  Peer *const head = dht.timeout_peer;
+  if (head) {
+    Peer *it = head;
+  Lit:
+    if (head) {
+      Peer *next = it->timeout_next;
+      assert(it == next->timeout_priv);
+
+      it = next;
+      if (it != head) {
+        goto Lit;
+      }
+    } else {
+      assert(head);
+    }
+  }
+  return true;
+}
 
 template <std::size_t SIZE>
 static bool
@@ -183,6 +204,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
             next->timeout_priv = c;
         };
 
+        assert(is_cycle(dht));
         timeout::unlink(dht, &contact);
         assert(!contact.timeout_next);
         assert(!contact.timeout_priv);
@@ -568,7 +590,9 @@ Lstart:
     Node *inserted = do_insert(dht, bucket, contact, eager_merge, replaced);
 
     if (inserted) {
+      // printf("- insert\n");
       timeout::append_all(dht, inserted);
+      assert(is_cycle(dht));
       assert(inserted->timeout_next);
       assert(inserted->timeout_priv);
 
@@ -605,4 +629,3 @@ max_routing_nodes(DHT &) noexcept {
 }
 
 } // namespace dht
-

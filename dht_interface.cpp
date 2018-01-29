@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <collection/Array.h>
 #include <cstring>
 #include <utility>
 
@@ -168,6 +169,7 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 
         goto Lstart;
       } else {
+        assert(false);
         // TODO timeout::Return(ctx, node);
         // move to dht.cpp
       }
@@ -245,11 +247,10 @@ Lstart:
       return id;
   };
   // TODO bootstrap should be last. Tag bucket with bootstrap generation only
-  // use bootstrap if we get the smae bucket and we havent sent any to botstrap
-  // this generation.
-  // XXX shuffle bootstrap list just before sending
+  // use bootstrap if we get the same bucket and we haven't sent any to
+  // bootstrap this generation.
 
-  // XXX self should not be in boottstrap list
+  // XXX self should not be in bootstrap list
   // XXX how to handle the same bucket will be reselected to send find_nodes
   // multiple times in a row
 
@@ -257,18 +258,26 @@ Lstart:
   // only have a frew nodes in routing table?
 
   // XXX if no good node is avaiable try bad/questionable nodes
+  auto copy = [](Bucket &in, sp::Array<Node *> &outp) {
+    for_each(in, [&outp](Node &remote) { //
+      insert(outp, &remote);
+    });
+  };
 
   bool ok = false;
   if (missing_contacts > 0) {
     dht::Bucket *const b = dht::bucket_for(dht, id);
-    printf("#routing table nodes\n");
     if (b) {
+      Node *raw[Bucket::K] = {nullptr};
+      sp::Array<Node *> l(raw);
+      copy(*b, l);
+      shuffle(dht.random, l);
+
       const NodeId &sid = search_id(*b);
+      ok = for_all(l, [&dht, &out, inc_ongoing, sid](Node *remote) {
+        if (dht::is_good(dht, *remote)) {
 
-      ok = for_all(*b, [&dht, &out, inc_ongoing, sid](Node &remote) {
-        if (dht::is_good(dht, remote)) {
-
-          Contact &c = remote.contact;
+          Contact &c = remote->contact;
           bool res = client::find_node(dht, out, c, sid, nullptr);
           if (res) {
             inc_ongoing();
@@ -284,6 +293,8 @@ Lstart:
     if (!bs_sent) {
       printf("#bootstrap nodes\n");
       auto &bs = dht.bootstrap_contacts;
+      // TODO prune non good bootstrap nodes
+      // XXX shuffle bootstrap list just before sending
       for_all(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
 
         auto *closure = new (std::nothrow) Contact(remote);
@@ -329,8 +340,8 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
     std::uint32_t total =
         std::max(std::uint32_t(dht::max_routing_nodes(dht)), good); // TODO
     std::uint32_t look_for = total - good;
-    printf("good[%ul], total[%ul], look_for[%ul], config.percentage_seek[%zu], "
-           "percentage[%zu]\n",
+    printf("good[%u], total[%u], look_for[%u], config.percentage_seek[%zu], "
+           "current percentage[%zu]\n",
            good, total, look_for, config.percentage_seek,
            percentage(total, good));
     if (percentage(total, good) < config.percentage_seek) {

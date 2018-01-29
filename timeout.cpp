@@ -1,46 +1,49 @@
 #include "timeout.h"
 
 namespace timeout {
-template <typename T>
-static T *
-last(T *node) noexcept {
-Lstart:
-  if (node) {
-    if (node->timeout_next) {
-      node = node->timeout_next;
-      goto Lstart;
-    }
-  }
-  return node;
-} // timeout::last()
+// template <typename T>
+// static T *
+// last(T *node) noexcept {
+// Lstart:
+//   if (node) {
+//     if (node->timeout_next) {
+//       node = node->timeout_next;
+//       goto Lstart;
+//     }
+//   }
+//   return node;
+// } // timeout::last()
 
 template <typename T>
 void
-internal_unlink(T *&head, T *const contact) noexcept {
-  T *priv = contact->timeout_priv;
-  T *next = contact->timeout_next;
+internal_unlink(T *&head, T *const node) noexcept {
+  T *priv = node->timeout_priv;
+  T *next = node->timeout_next;
 
   assert(priv);
   assert(next);
 
-  if (priv == contact || next == contact) {
-    assert(priv == contact);
-    assert(next == contact);
+  if (priv == node || next == node) {
+    assert(priv == node);
+    assert(next == node);
     priv = nullptr;
     next = nullptr;
   }
 
-  if (priv)
+  if (priv) {
     priv->timeout_next = next;
+  }
 
-  if (next)
+  if (next) {
     next->timeout_priv = priv;
+  }
 
-  if (head == contact)
+  if (head == node) {
     head = next;
+  }
 
-  contact->timeout_next = nullptr;
-  contact->timeout_priv = nullptr;
+  node->timeout_next = nullptr;
+  node->timeout_priv = nullptr;
 }
 
 void
@@ -61,25 +64,28 @@ unlink(dht::Peer *&head, dht::Peer *peer) noexcept {
 template <typename T>
 void
 internal_append_all(T *&head, T *const node) noexcept {
-  if (!head) {
-    T *const lst = last(node);
+  assert(node->timeout_next == nullptr);
+  assert(node->timeout_priv == nullptr);
 
-    lst->timeout_next = node;
-    node->timeout_priv = lst;
+  if (!head) {
+    // T *const lst = last(node);
+
+    // lst->timeout_next = node;
+    node->timeout_priv = node;
     node->timeout_next = node;
 
     head = node;
   } else {
-    T *const l = last(node);
+    // T *const l = last(node);
 
     T *const priv = head->timeout_priv;
     assert(priv);
-    node->timeout_priv = priv;
-    priv->timeout_next = node;
 
-    T *const next = head;
-    l->timeout_next = next;
-    next->timeout_priv = l;
+    priv->timeout_next = node;
+    head->timeout_priv = node;
+
+    node->timeout_priv = priv;
+    node->timeout_next = head;
   }
 }
 

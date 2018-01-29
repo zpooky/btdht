@@ -131,7 +131,7 @@ Config::Config() noexcept
     , transaction_timeout(1 * 30)
     //
     , bootstrap_generation_max(16)
-    , percentage_seek(50) {
+    , percentage_seek(10) {
 }
 
 // dht::Infohash

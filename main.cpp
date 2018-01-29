@@ -150,9 +150,12 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       }
 
       dht::TxContext context;
+      std::size_t cnt = dht.client.active;
       if (dht::take_tx(dht.client, pctx.tx, context)) {
+        assert((cnt - 1) == dht.client.active);
         log::receive::res::known_tx(ctx);
-        return context.handle(ctx);
+        bool res = context.handle(ctx);
+        return res;
       } else {
         log::receive::res::unknown_tx(ctx);
         // assert(false);
@@ -253,6 +256,7 @@ main(int, char **) {
   };
 
   auto awake = [&modules, &dht](sp::Buffer &out, time_t now) {
+    dht.now = now;
     auto result = modules.on_awake(dht, out);
     log::awake::timeout(dht, result);
     dht.last_activity = now;

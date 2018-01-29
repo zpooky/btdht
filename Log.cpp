@@ -187,8 +187,9 @@ ping(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
-  printf("transmit ping[%s],res[%s]\n", remote,
-         result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m");
+
+  const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
+  printf("transmit ping[%s],res[%s]\n", remote, status);
 }
 
 void
@@ -196,8 +197,12 @@ find_node(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
-  printf("transmit find_node[%s],res[%s]\n", remote,
-         result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m");
+
+  // auto &tx = ctx.transaction;
+  // print_hex(tx.id, tx.length);
+
+  const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
+  printf("transmit find_node[%s],res[%s]\n", remote, status);
 }
 
 namespace error {

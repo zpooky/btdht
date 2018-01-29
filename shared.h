@@ -12,6 +12,8 @@
 #include <list/FixedList.h>
 #include <tree/StaticTree.h>
 
+#include <prng/xorshift.h>
+
 //---------------------------
 namespace krpc {
 // krpc::ParseContext
@@ -271,6 +273,7 @@ struct DHT {
   Client client;
   Log log;
   Contact ip;
+  sp::Xorshift32 random;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;
