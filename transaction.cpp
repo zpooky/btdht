@@ -91,7 +91,16 @@ init(Client &client) noexcept {
 
 static Tx *
 search(bst::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
-  return (Tx *)bst::find(tree, needle);
+  Tx *const result = (Tx *)bst::find(tree, needle);
+  if (!result) {
+    //assert
+    bst::in_order_for_each(tree, [&needle](auto &current) {
+      if (current == needle) {
+        assert(false);
+      }
+    });
+  }
+  return result;
 }
 
 static Tx *

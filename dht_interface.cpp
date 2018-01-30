@@ -324,14 +324,14 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
       return std::size_t(c) / std::size_t(t / std::size_t(100));
     };
 
-    std::uint32_t good = dht.total_nodes - dht.bad_nodes;
-    std::uint32_t total =
+    const std::uint32_t good = dht.total_nodes - dht.bad_nodes;
+    const std::uint32_t total =
         std::max(std::uint32_t(dht::max_routing_nodes(dht)), good); // TODO
-    std::uint32_t look_for = total - good;
-    printf("good[%u], total[%u], look_for[%u], config.percentage_seek[%zu], "
-           "current percentage[%zu]\n",
-           good, total, look_for, config.percentage_seek,
-           percentage(total, good));
+    const std::uint32_t look_for = total - good;
+    printf("good[%u], total[%u], bad_nodes[%u], look_for[%u], config.percentage_seek[%zu], "
+           "current percentage[%zu], max[%u]\n",
+           good, dht.total_nodes, dht.bad_nodes, look_for, config.percentage_seek,
+           percentage(total, good), dht::max_routing_nodes(dht));
     if (percentage(total, good) < config.percentage_seek) {
       look_for_nodes(dht, out, look_for);
       log::awake::contact_scan(dht);
@@ -462,7 +462,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
 
   dht_request(ctx, sender, [&](auto &) {
     dht::DHT &dht = ctx.dht;
-    constexpr std::size_t capacity = dht::Bucket::K;
+    constexpr std::size_t capacity = 8;
 
     const krpc::Transaction &t = ctx.transaction;
     dht::Node *result[capacity] = {nullptr};
@@ -641,7 +641,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
       krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
     } else {
       constexpr std::size_t capacity = 8;
-      dht::Node *closest[dht::Bucket::K] = {nullptr};
+      dht::Node *closest[8] = {nullptr};
       dht::multiple_closest(dht, search, closest);
       const dht::Node **r = (const dht::Node **)&closest;
 

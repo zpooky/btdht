@@ -27,10 +27,22 @@ is_blacklisted(DHT &dht, const Contact &) noexcept;
 
 /**/
 void
-multiple_closest(DHT &, const NodeId &, Node *(&)[Bucket::K]) noexcept;
+multiple_closest(DHT &, const NodeId &, Node **result, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+void
+multiple_closest(DHT &dht, const NodeId &id, Node *(&result)[SIZE]) noexcept {
+  return multiple_closest(dht, id, result, SIZE);
+}
 
 void
-multiple_closest(DHT &, const Infohash &, Node *(&)[Bucket::K]) noexcept;
+multiple_closest(DHT &, const Infohash &, Node **, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+void
+multiple_closest(DHT &dht, const Infohash &id, Node *(&result)[SIZE]) noexcept {
+  return multiple_closest(dht, id, result, SIZE);
+}
 
 bool
 valid(DHT &, const krpc::Transaction &) noexcept;
@@ -48,7 +60,5 @@ std::uint32_t
 max_routing_nodes(DHT &) noexcept;
 
 } // namespace dht
-
-
 
 #endif

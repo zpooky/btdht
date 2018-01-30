@@ -199,7 +199,7 @@ activity(const Peer &) noexcept;
 
 /*dht::Bucket*/
 struct Bucket {
-  static constexpr std::size_t K = 8;
+  static constexpr std::size_t K = 16;
   Node contacts[K];
   std::uint8_t bootstrap_generation;
 

@@ -403,8 +403,8 @@ shared_prefix(const NodeId &id, const Key &cmp) noexcept {
 }
 
 static void
-multiple_closest_nodes(DHT &dht, const Key &search,
-                       Node *(&result)[Bucket::K]) noexcept {
+multiple_closest_nodes(DHT &dht, const Key &search, Node **result,
+                       std::size_t res_length) noexcept {
   Bucket *raw[Bucket::K];
   sp::CircularBuffer best(raw);
 
@@ -420,8 +420,8 @@ Lstart:
   }
 
   std::size_t resIdx = 0;
-  auto merge = [&dht, &resIdx, &result](Bucket &b) -> bool { //
-    for (std::size_t i = 0; i < Bucket::K; ++i) {
+  auto merge = [&dht, &resIdx, &result, res_length](Bucket &b) -> bool { //
+    for (std::size_t i = 0; i < res_length; ++i) {
       Node &contact = b.contacts[i];
       if (contact) {
         if (is_good(dht, contact)) {
@@ -512,15 +512,15 @@ init(dht::DHT &dht) noexcept {
 
 /*public*/
 void
-multiple_closest(DHT &dht, const NodeId &id,
-                 Node *(&result)[Bucket::K]) noexcept {
-  return multiple_closest_nodes(dht, id.id, result);
+multiple_closest(DHT &dht, const NodeId &id, Node **result,
+                 std::size_t length) noexcept {
+  return multiple_closest_nodes(dht, id.id, result, length);
 } // dht::multiple_closest()
 
 void
-multiple_closest(DHT &dht, const Infohash &id,
-                 Node *(&res)[Bucket::K]) noexcept {
-  return multiple_closest_nodes(dht, id.id, res);
+multiple_closest(DHT &dht, const Infohash &id, Node **result,
+                 std::size_t length) noexcept {
+  return multiple_closest_nodes(dht, id.id, result, length);
 } // dht::multiple_closest()
 
 Node *
