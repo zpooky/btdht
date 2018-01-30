@@ -5,7 +5,7 @@
 
 namespace dht {
 struct Options {
-  Contact *bind_ip;
+  Port port;
   sp::list<Contact> bootstrap;
 
   Options();

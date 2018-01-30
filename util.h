@@ -41,6 +41,18 @@ struct Ipv6 {
 };
 
 enum class IpType : uint8_t { IPV4, IPV6 };
+
+struct Ip {
+ union {
+    Ipv4 ipv4;
+    Ipv6 ipv6;
+  };
+  IpType type;
+
+  explicit Ip(Ipv4);
+  explicit Ip(const Ipv6&);
+};
+
 // Contact
 struct Contact {
   union {
@@ -68,6 +80,9 @@ to_ipv4(const char *, Ipv4 &) noexcept;
 
 bool
 to_string(const Contact &, char *msg, std::size_t) noexcept;
+
+bool
+convert(const char *, Port &) noexcept;
 
 using Timeout = int;
 using Seconds = std::uint32_t;

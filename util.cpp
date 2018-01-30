@@ -25,6 +25,17 @@ fd::~fd() noexcept {
 fd::operator int() noexcept {
   return m_fd;
 }
+/*Ip*/
+Ip::Ip(Ipv4 v4)
+    : ipv4(v4)
+    , type(IpType::IPV4) {
+}
+
+Ip::Ip(const Ipv6 &v6)
+    : ipv6()
+    , type(IpType::IPV6) {
+  std::memcpy(ipv6.raw, v6.raw, sizeof(ipv6));
+}
 
 /*Contact*/
 Contact::Contact(Ipv4 v4, Port p) noexcept
@@ -53,22 +64,6 @@ Contact::operator==(const Contact &c) const noexcept {
          port == c.port;
 }
 
-static bool
-to_port(const char *str, Port &result) noexcept {
-  auto p = std::atoll(str);
-  if (p < 0) {
-    return false;
-  }
-  constexpr std::uint16_t max = ~std::uint16_t(0);
-  if (p > max) {
-    return false;
-  }
-
-  result = (Port)p;
-
-  return true;
-}
-
 bool
 convert(const char *str, Contact &result) noexcept {
   const char *col = std::strchr(str, ':');
@@ -90,7 +85,7 @@ convert(const char *str, Contact &result) noexcept {
   }
 
   const char *portstr = col + 1;
-  if (!to_port(portstr, result.port)) {
+  if (!convert(portstr, result.port)) {
     return false;
   }
 
@@ -139,6 +134,22 @@ to_string(const Contact &ip, char *str, std::size_t length) noexcept {
     sprintf(pstr, "%d", ip.port);
     std::strcat(str, pstr);
   }
+  return true;
+}
+
+bool
+convert(const char *str, Port &result) noexcept {
+  auto p = std::atoll(str);
+  if (p < 0) {
+    return false;
+  }
+  constexpr std::uint16_t max = ~std::uint16_t(0);
+  if (p > max) {
+    return false;
+  }
+
+  result = (Port)p;
+
   return true;
 }
 
