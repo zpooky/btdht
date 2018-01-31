@@ -107,16 +107,14 @@ Return(dht::DHT &dht, dht::Node *ret) noexcept {
 
   dht::Node *const head = dht.timeout_node;
   if (head) {
-    dht::Node *next = head->timeout_next;
-    assert(next);
     dht::Node *priv = head->timeout_priv;
     assert(priv);
 
     priv->timeout_next = ret;
-    next->timeout_priv = ret;
+    head->timeout_priv = ret;
 
     ret->timeout_priv = priv;
-    ret->timeout_next = next;
+    ret->timeout_next = head;
 
     dht.timeout_node = ret;
   } else {
