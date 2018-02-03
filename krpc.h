@@ -46,13 +46,13 @@ find_node(sp::Buffer &, const Transaction &, //
 
 bool
 get_peers(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &id, const dht::Infohash &infohash) noexcept;
+          const dht::NodeId &self, const dht::Infohash &search) noexcept;
 
 bool
 announce_peer(sp::Buffer &, const Transaction &, //
-              const dht::NodeId &id, bool implied_port,
-              const dht::Infohash &infohash, std::uint16_t port,
-              const char *token) noexcept;
+              const dht::NodeId &self, bool implied_port,
+              const dht::Infohash &search, std::uint16_t port,
+              const dht::Token &) noexcept;
 
 bool
 dump(sp::Buffer &b) noexcept;

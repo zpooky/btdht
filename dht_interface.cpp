@@ -328,10 +328,12 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
     const std::uint32_t total =
         std::max(std::uint32_t(dht::max_routing_nodes(dht)), good); // TODO
     const std::uint32_t look_for = total - good;
-    printf("good[%u], total[%u], bad_nodes[%u], look_for[%u], config.percentage_seek[%zu], "
+    printf("good[%u], total[%u], bad_nodes[%u], look_for[%u], "
+           "config.percentage_seek[%zu], "
            "current percentage[%zu], max[%u]\n",
-           good, dht.total_nodes, dht.bad_nodes, look_for, config.percentage_seek,
-           percentage(total, good), dht::max_routing_nodes(dht));
+           good, dht.total_nodes, dht.bad_nodes, look_for,
+           config.percentage_seek, percentage(total, good),
+           dht::max_routing_nodes(dht));
     if (percentage(total, good) < config.percentage_seek) {
       look_for_nodes(dht, out, look_for);
       log::awake::contact_scan(dht);
@@ -710,7 +712,7 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
       goto Lstart;
     }
 
-    if (!b_t && bencode::d::pair(p, "token", token.id)) {
+    if (!b_t && bencode::d::pair(p, "token", token)) {
       b_t = true;
       goto Lstart;
     }
@@ -799,8 +801,8 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::req::announce_peer(ctx);
 
   dht::DHT &dht = ctx.dht;
-  if (db::valid(dht, token)) {
-    dht_request(ctx, sender, [&](auto &) {
+  dht_request(ctx, sender, [&](auto &from) {
+    if (db::valid(dht, from, token)) {
       Contact peer(ctx.remote);
       if (implied_port) {
         peer.port = ctx.remote.port;
@@ -809,9 +811,11 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
       }
 
       db::insert(dht, infohash, peer);
-    });
-  }
-  krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);
+      krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);
+    } else {
+      // TODO error
+    }
+  });
 }
 
 static void
@@ -869,7 +873,7 @@ on_request(dht::MessageContext &ctx) noexcept {
       b_p = true;
       goto Lstart;
     }
-    if (!b_t && bencode::d::pair(p, "token", token.id)) {
+    if (!b_t && bencode::d::pair(p, "token", token)) {
       b_t = true;
       goto Lstart;
     }

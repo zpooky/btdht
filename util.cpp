@@ -10,6 +10,10 @@ fd::fd(int p_fd) noexcept
     : m_fd(p_fd) {
 }
 
+fd::operator bool() const noexcept {
+  return m_fd > 0;
+}
+
 fd::fd(fd &&o) noexcept
     : m_fd(o.m_fd) {
   o.m_fd = -1;
@@ -152,6 +156,29 @@ convert(const char *str, Port &result) noexcept {
 
   return true;
 }
+
+namespace dht {
+// dht::Token
+Token::Token() noexcept
+    : id{0}
+    , length(0) {
+}
+
+bool
+Token::operator==(const Token &o) const noexcept {
+  if (length == o.length) {
+    return std::memcmp(id, o.id, length) == 0;
+  }
+  return false;
+}
+
+bool
+is_valid(const Token &o) noexcept {
+  Token zero;
+  return std::memcmp(zero.id, o.id, o.length) != 0;
+}
+
+} // namespace dht
 
 //---------------------------
 namespace sp {
@@ -322,6 +349,7 @@ Node::Node(const NodeId &nid, const Contact &p, time_t act) noexcept
     //{{{
     , id(nid)
     , contact(p)
+    , his_token()
     //}}}
     // activity {{{
     , request_activity(act)

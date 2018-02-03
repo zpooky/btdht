@@ -12,7 +12,7 @@ PREFIX = /usr/local
 BUILD = build
 
 # File names
-EXEC = main
+EXEC = dht
 LIB = lib$(EXEC)
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(patsubst %.cpp, $(BUILD)/%.o, $(SOURCES))
@@ -32,7 +32,7 @@ all: ${EXEC}
 
 # $(EXEC) {{{
 # depends on the targets for all the object files
-$(EXEC): $(OBJECTS) libraries
+$(EXEC): $(OBJECTS) dependencies
 	$(CXX) $(OBJECTS) -o $(EXEC) $(LDLIBS)
 # }}}
 
@@ -94,5 +94,5 @@ bear: clean
 	bear make
 # }}}
 
-libraries:
+dependencies:
 	$(MAKE) -C external/sputil staticlib

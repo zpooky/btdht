@@ -75,7 +75,7 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
   }
 
   return nullptr;
-} // lookup::lookup()
+} // db::lookup()
 
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash,
@@ -136,19 +136,26 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
   }
 
   return false;
-} // lookup::insert()
+} // db::insert()
 
 void
-mint_token(dht::DHT &,dht::Node&, Contact&, dht::Token &) noexcept {
-  // dht::randomize(t.id);
-  assert(false);
-  // TODO
-} // lookup::mint_token()
+mint_token(dht::DHT &dht, dht::Node &id, Contact &, dht::Token &t) noexcept {
+Lretry:
+  sp::random_fill(dht.random, id.his_token.id);
+  id.his_token.length = 5;
+  if (!is_valid(id.his_token)) {
+    goto Lretry;
+  }
+
+  t = id.his_token;
+} // db::mint_token()
 
 bool
-valid(dht::DHT &, const dht::Token &) noexcept {
-  // TODO
-  return true;
-} // lookup::valid()
+valid(dht::DHT &, dht::Node &node, const dht::Token &token) noexcept {
+  if (is_valid(token)) {
+    return node.his_token == token;
+  }
+  return false;
+} // db::valid()
 
-} // namespace lookup
+} // namespace db

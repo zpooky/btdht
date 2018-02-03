@@ -250,7 +250,10 @@ TEST(krpcTest, test_get_peers) {
   }
   /*response Nodes*/
   {
-    dht::Token token; // TODO
+    dht::Token token;
+    token.length = 8;
+    std::memcpy(token.id, "thetoken", token.length);
+    printf("token length: %zu\n", token.length);
 
     constexpr std::size_t NODE_SIZE = 8;
     dht::Node node[NODE_SIZE];
@@ -270,6 +273,8 @@ TEST(krpcTest, test_get_peers) {
     sp::flip(buff);
 
     bencode::d::Decoder p(buff);
+    // bencode_print(p);
+    // printf("asd\n\n\n\n\n");
     krpc::ParseContext ctx(p);
     test_response(ctx, [&id, &in, &token](auto &p) { //
       dht::NodeId sender;
@@ -279,10 +284,12 @@ TEST(krpcTest, test_get_peers) {
       assert_eq(sender.id, id.id);
 
       dht::Token oToken;
-      if (!bencode::d::pair(p, "token", oToken.id)) {
+      if (!bencode::d::pair(p, "token", oToken.id, oToken.length)) {
+        printf("failed to parse token\n");
         return false;
       }
-      assert_eq(oToken.id, token.id);
+      printf("out token length: %zu\n", oToken.length);
+      assert_eq(oToken, token);
 
       /*closes K nodes*/
       sp::list<dht::Node> outNodes;
@@ -323,7 +330,9 @@ TEST(krpcTest, test_anounce_peer) {
   {
     dht::Infohash infohash;
     Port port = 64123;
-    const char token[] = "token";
+    dht::Token token;
+    token.length = 5;
+    std::memcpy(token.id, "token", token.length);
 
     bool implied_port = true;
     sp::Buffer buff{b};
@@ -359,7 +368,7 @@ TEST(krpcTest, test_anounce_peer) {
       }
       assert_eq(out_port, port);
       //
-      char out_token[64] = {0};
+      dht::Token out_token;
       if (!bencode::d::pair(p, "token", out_token)) {
         return false;
       }
@@ -405,7 +414,8 @@ TEST(krpcTest, print_debug) {
   // "64313a656c693230336531383a496e76616c696420606964272076616"
   //                    "c756565313a74343a6571541d313a76343a6c740d60313a79313a656"
   //                    "5";
-  // const char hex[] = "64313a656c693230336531383a496e76616c696420606964272076616"
+  // const char hex[] =
+  // "64313a656c693230336531383a496e76616c696420606964272076616"
   //                    "c756565313a74343a6378d4b3313a76343a6c740d60313a79313a656"
   //                    "5";
 

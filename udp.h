@@ -11,6 +11,9 @@ local(fd &) noexcept;
 fd
 bind(Ipv4 ip, Port port) noexcept;
 
+fd
+bind(Port port) noexcept;
+
 void
 receive(int fd, Contact &, sp::Buffer &) noexcept;
 

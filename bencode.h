@@ -81,7 +81,6 @@ pair(sp::Buffer &, const char *key, bool value) noexcept;
 
 bool
 pair(sp::Buffer &, const char *, const sp::byte *, std::size_t) noexcept;
-
 } // namespace e
 
 //===============================================
@@ -183,6 +182,9 @@ pair(Decoder &, const char *, std::uint32_t &) noexcept;
 
 bool
 pair(Decoder &, const char *, std::uint16_t &) noexcept;
+
+bool
+pair(Decoder &p, const char *key, dht::Token &token) noexcept;
 
 // bool
 // pair(Decoder &, const char *, sp::list<dht::Node> &) noexcept;

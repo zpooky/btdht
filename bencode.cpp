@@ -362,8 +362,7 @@ parse_key(sp::Buffer &b, const char *cmp_key) noexcept {
 
 template <typename T>
 static bool
-parse_key_value(sp::Buffer &b, const char *key, T *val,
-                /*IN&OUT*/ std::size_t &len) noexcept {
+parse_key_value(sp::Buffer &b, const char *key, T *val, /*IN&OUT*/ std::size_t &len) noexcept {
   const std::size_t p = b.pos;
   if (!parse_key(b, key)) {
     b.pos = p;
@@ -440,14 +439,12 @@ is(sp::Buffer &buf, const char *exact, std::size_t length) noexcept {
 } // namespace internal
 
 bool
-pair_x(Decoder &d, const char *key, char *val,
-       /*IN&OUT*/ std::size_t &len) noexcept {
+pair_x(Decoder &d, const char *key, char *val, /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d.buf, key, val, len);
 } // bencode::d::pair()
 
 bool
-pair_x(Decoder &d, const char *key, sp::byte *val,
-       /*IN&OUT*/ std::size_t &len) noexcept {
+pair_x(Decoder &d, const char *key, sp::byte *val, /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d.buf, key, val, len);
 }
 
@@ -509,6 +506,17 @@ pair(Decoder &d, const char *key, std::uint16_t &v) noexcept {
 
   v = std::uint16_t(t);
 
+  return true;
+} // bencode::d::pair()
+
+bool
+pair(Decoder &p, const char *key, dht::Token &token) noexcept {
+  const std::size_t l = token.length;
+  token.length = 20;
+  if (!pair_x(p, key, token.id, token.length)) {
+    token.length = l;
+    return false;
+  }
   return true;
 } // bencode::d::pair()
 

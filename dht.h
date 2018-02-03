@@ -14,6 +14,9 @@ void
 randomize(NodeId &) noexcept;
 
 bool
+randomize(const Contact &, NodeId &) noexcept;
+
+bool
 should_mark_bad(DHT &, Node &) noexcept;
 
 bool

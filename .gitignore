@@ -42,3 +42,4 @@ main
 .gdb_breakpoints
 test/thetest
 Session.vim
+dht

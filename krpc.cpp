@@ -485,13 +485,13 @@ get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
 } // request::get_peers()
 
 bool
-announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &id,
+announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &self,
               bool implied_port, const dht::Infohash &infohash,
-              std::uint16_t port, const char *token) noexcept {
+              std::uint16_t port, const dht::Token &token) noexcept {
   return req(
       buffer, t, "announce_peer",
-      [&id, &implied_port, &infohash, &port, &token](sp::Buffer &buf) { //
-        if (!bencode::e::pair(buf, "id", id.id, sizeof(id.id))) {
+      [&self, &implied_port, &infohash, &port, &token](sp::Buffer &buf) { //
+        if (!bencode::e::pair(buf, "id", self.id, sizeof(self.id))) {
           return false;
         }
 
@@ -508,7 +508,7 @@ announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &id,
           return false;
         }
 
-        if (!bencode::e::pair(buf, "token", token)) {
+        if (!bencode::e::pair(buf, "token", token.id, token.length)) {
           return false;
         }
         return true;
@@ -560,7 +560,7 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
       return false;
     }
 
-    if (!bencode::e::pair(b, "token", token.id, sizeof(token.id))) {
+    if (!bencode::e::pair(b, "token", token.id, token.length)) {
       return false;
     }
 
@@ -579,7 +579,7 @@ get_peers(sp::Buffer &buf,
       return false;
     }
 
-    if (!bencode::e::pair(b, "token", token.id, sizeof(token.id))) {
+    if (!bencode::e::pair(b, "token", token.id, token.length)) {
       return false;
     }
 

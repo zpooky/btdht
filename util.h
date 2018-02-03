@@ -18,7 +18,9 @@ private:
   int m_fd;
 
 public:
-  explicit fd(int p_fd) noexcept;
+  explicit fd(int) noexcept;
+
+  explicit operator bool() const noexcept;
 
   fd(const fd &) = delete;
   fd(fd &&o) noexcept;
@@ -43,14 +45,14 @@ struct Ipv6 {
 enum class IpType : uint8_t { IPV4, IPV6 };
 
 struct Ip {
- union {
+  union {
     Ipv4 ipv4;
     Ipv6 ipv6;
   };
   IpType type;
 
   explicit Ip(Ipv4);
-  explicit Ip(const Ipv6&);
+  explicit Ip(const Ipv6 &);
 };
 
 // Contact
@@ -86,6 +88,23 @@ convert(const char *, Port &) noexcept;
 
 using Timeout = int;
 using Seconds = std::uint32_t;
+
+namespace dht {
+// dht::Token
+struct Token {
+  sp::byte id[20];
+  std::size_t length;
+
+  Token() noexcept;
+
+  bool
+  operator==(const Token &) const noexcept;
+};
+
+bool
+is_valid(const Token &) noexcept;
+
+} // namespace dht
 
 //---------------------------
 namespace sp {
@@ -195,6 +214,7 @@ struct Node {
   //{{{
   NodeId id;
   Contact contact;
+  Token his_token;
   // }}}
 
   // activity {{{

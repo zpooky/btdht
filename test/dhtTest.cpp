@@ -1,9 +1,9 @@
+#include "timeout.h"
 #include "util.h"
 #include "gtest/gtest.h"
 #include <dht.h>
 #include <list>
 #include <set>
-#include "timeout.h"
 
 using namespace dht;
 
@@ -120,7 +120,8 @@ template <std::size_t size>
 static Node *
 find(Node *(&buf)[size], const NodeId &search) {
   for (std::size_t i = 0; i < size; ++i) {
-    if (buf[i]) {
+    // printf("find: %p\n", buf[i]);
+    if (buf[i] != nullptr) {
       if (buf[i]->id == search) {
         return buf[i];
       }
@@ -210,40 +211,38 @@ count_nodes(const RoutingTable *r) {
 //   return i;
 // }
 
-static void
-assert_present(DHT &dht, const NodeId &current) {
-  // printf("lok: ");
-  // print_id(current, 18, "\033[92m");
-  // printf("shared prefix: %zu\n", equal(dht.id, current.id));
-  {
-    Node *buff[8];
-    dht::multiple_closest(dht, current, buff);
-
-    for (std::size_t i = 0; i < 8; ++i) {
-      ASSERT_TRUE(buff[i] != nullptr);
-    }
-
-    Node *search = find(buff, current);
-    ASSERT_TRUE(search != nullptr);
-    ASSERT_EQ(search->id, current);
-  }
-
-  {
-    dht::Node *res = dht::find_contact(dht, current);
-    ASSERT_TRUE(res);
-    ASSERT_EQ(res->id, current);
-    ASSERT_TRUE(res->timeout_next);
-    ASSERT_TRUE(res->timeout_priv);
-
-    timeout::unlink(dht, res);
-    ASSERT_FALSE(res->timeout_next);
-    ASSERT_FALSE(res->timeout_priv);
-
-    timeout::append_all(dht, res);
-    ASSERT_TRUE(res->timeout_next);
-    ASSERT_TRUE(res->timeout_priv);
-  }
-}
+// assert_present(DHT &dht, const NodeId &current) {
+#define assert_present(dht, current)                                           \
+  do {                                                                         \
+    Node *buff[Bucket::K] = {nullptr};                                         \
+    {                                                                          \
+      dht::multiple_closest(dht, current, buff);                               \
+                                                                               \
+      for (std::size_t i = 0; i < 8; ++i) {                                    \
+        ASSERT_TRUE(buff[i] != nullptr);                                       \
+      }                                                                        \
+                                                                               \
+      Node *search = find(buff, current);                                      \
+      ASSERT_TRUE(search != nullptr);                                          \
+      ASSERT_EQ(search->id, current);                                          \
+    }                                                                          \
+                                                                               \
+    {                                                                          \
+      dht::Node *res = dht::find_contact(dht, current);                        \
+      ASSERT_TRUE(res);                                                        \
+      ASSERT_EQ(res->id, current);                                             \
+      ASSERT_TRUE(res->timeout_next);                                          \
+      ASSERT_TRUE(res->timeout_priv);                                          \
+                                                                               \
+      timeout::unlink(dht, res);                                               \
+      ASSERT_FALSE(res->timeout_next);                                         \
+      ASSERT_FALSE(res->timeout_priv);                                         \
+                                                                               \
+      timeout::append_all(dht, res);                                           \
+      ASSERT_TRUE(res->timeout_next);                                          \
+      ASSERT_TRUE(res->timeout_priv);                                          \
+    }                                                                          \
+  } while (0)
 
 static void
 insert_self(DHT &dht, std::list<dht::NodeId> &added) {

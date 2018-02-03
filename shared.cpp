@@ -144,11 +144,6 @@ Infohash::operator==(const Infohash &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) == 0;
 }
 
-// dht::Token
-Token::Token() noexcept
-    : id{0} {
-}
-
 /*dht::Peer*/
 Peer::Peer(Ipv4 i, Port p, time_t n) noexcept
     : contact(i, p)
@@ -235,7 +230,9 @@ DHT::DHT(fd &udp, const Contact &i) noexcept
     // self {{{
     : id()
     , client(udp)
+    , log()
     , ip(i)
+    , random(/*TODO seed*/ 1)
     //}}}
     // peer-lookup db {{{
     , lookup_table(nullptr)

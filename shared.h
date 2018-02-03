@@ -154,12 +154,6 @@ struct Infohash {
   operator==(const Infohash &) const noexcept;
 };
 
-// dht::Token
-struct Token {
-  sp::byte id[20];
-  Token() noexcept;
-};
-
 // dht::Peer
 struct Peer {
   Contact contact;
@@ -205,6 +199,14 @@ struct Bucket {
 
   Bucket() noexcept;
   ~Bucket() noexcept;
+
+  Bucket(const Bucket &) = delete;
+  Bucket(const Bucket &&) = delete;
+
+  Bucket &
+  operator=(const Bucket &) = delete;
+  Bucket &
+  operator=(const Bucket &&) = delete;
 };
 
 template <typename F>
@@ -304,6 +306,14 @@ struct DHT {
   // }}}
 
   explicit DHT(fd &, const Contact &) noexcept;
+
+  DHT(const DHT &) = delete;
+  DHT(const DHT &&) = delete;
+
+  DHT &
+  operator=(const DHT &) = delete;
+  DHT &
+  operator=(const DHT &&) = delete;
 };
 
 // dht::MessageContext

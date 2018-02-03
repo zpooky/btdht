@@ -48,7 +48,7 @@ randomize(sp::byte (&buffer)[SIZE]) noexcept {
   return true;
 }
 
-static bool
+bool
 randomize(const Contact &, NodeId &id) noexcept {
   // TODO
   return randomize(id.id);
@@ -405,7 +405,11 @@ shared_prefix(const NodeId &id, const Key &cmp) noexcept {
 static void
 multiple_closest_nodes(DHT &dht, const Key &search, Node **result,
                        std::size_t res_length) noexcept {
-  Bucket *raw[Bucket::K];
+  for (std::size_t i = 0; i < res_length; ++i) {
+    assert(result[i] == nullptr);
+  }
+
+  Bucket *raw[Bucket::K] = {nullptr};
   sp::CircularBuffer best(raw);
 
   RoutingTable *root = dht.root;
@@ -420,13 +424,13 @@ Lstart:
   }
 
   std::size_t resIdx = 0;
-  auto merge = [&dht, &resIdx, &result, res_length](Bucket &b) -> bool { //
+  auto merge = [&dht, &resIdx, &result, res_length](Bucket *b) -> bool { //
     for (std::size_t i = 0; i < res_length; ++i) {
-      Node &contact = b.contacts[i];
+      Node &contact = b->contacts[i];
       if (contact) {
         if (is_good(dht, contact)) {
           result[resIdx++] = &contact;
-          if (resIdx == Bucket::K) {
+          if (resIdx == res_length) {
             return true;
           }
         }
@@ -437,6 +441,10 @@ Lstart:
 
   {
     Bucket *best_ordered[Bucket::K]{nullptr};
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      // printf("-%p\n", best_ordered[i]);
+      assert(best_ordered[i] == nullptr);
+    }
     std::size_t best_idx = 0;
 
     while (!is_empty(best)) {
@@ -445,9 +453,8 @@ Lstart:
 
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       if (best_ordered[i]) {
-        // while (resIdx < Bucket::K) {
 
-        if (merge(*best_ordered[i])) {
+        if (merge(best_ordered[i])) {
           return;
         }
       }

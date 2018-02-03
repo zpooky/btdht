@@ -1,9 +1,9 @@
 #include "udp.h"
 #include <arpa/inet.h>
 #include <cassert>
+#include <cstdio>
 #include <cstring>
 #include <exception>
-#include <cstdio>
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
 
@@ -88,6 +88,11 @@ bind(Ipv4 ip, Port port) noexcept {
     die("bind");
   }
   return fd{udp};
+}
+
+fd
+bind(Port port) noexcept {
+  return bind(INADDR_ANY, port);
 }
 
 static void
