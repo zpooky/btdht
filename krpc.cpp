@@ -477,7 +477,7 @@ get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
       return false;
     }
 
-    if (!bencode::e::pair(b, "info_hash", sizeof(infohash.id))) {
+    if (!bencode::e::pair(b, "info_hash", infohash.id, sizeof(infohash.id))) {
       return false;
     }
     return true;
@@ -487,7 +487,7 @@ get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
 bool
 announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &self,
               bool implied_port, const dht::Infohash &infohash,
-              std::uint16_t port, const dht::Token &token) noexcept {
+              Port port, const dht::Token &token) noexcept {
   return req(
       buffer, t, "announce_peer",
       [&self, &implied_port, &infohash, &port, &token](sp::Buffer &buf) { //

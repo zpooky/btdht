@@ -97,7 +97,7 @@ struct Client {
   Tx *timeout_head;
 
   Tx buffer[tree_capacity];
-  bst::StaticTree<Tx> tree;
+  binary::StaticTree<Tx> tree;
 
   std::size_t active;
 
@@ -275,7 +275,7 @@ struct DHT {
   Client client;
   Log log;
   Contact ip;
-  sp::Xorshift32 random;
+  prng::Xorshift32 random;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;

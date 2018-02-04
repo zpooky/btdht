@@ -1,3 +1,4 @@
+#include "bencode_print.h"
 #include "udp.h"
 #include <arpa/inet.h>
 #include <cassert>
@@ -70,8 +71,13 @@ local(fd &listen) noexcept {
 }
 
 fd
-bind(Ipv4 ip, Port port) noexcept {
-  int udp = ::socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
+bind(Ipv4 ip, Port port, Mode mode) noexcept {
+  int type = SOCK_DGRAM;
+  if (mode == Mode::NONBLOCKING) {
+    type |= SOCK_NONBLOCK;
+  }
+
+  int udp = ::socket(AF_INET, type, IPPROTO_UDP);
   if (udp < 0) {
     die("socket()");
   }
@@ -91,8 +97,8 @@ bind(Ipv4 ip, Port port) noexcept {
 }
 
 fd
-bind(Port port) noexcept {
-  return bind(INADDR_ANY, port);
+bind(Port port, Mode m) noexcept {
+  return bind(INADDR_ANY, port, m);
 }
 
 static void
@@ -109,7 +115,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
     len = ::recvfrom(fd, raw, raw_len, flag, /*OUT*/ o, &slen);
   } while (len < 0 && errno == EAGAIN);
 
-  if (len < 0) {
+  if (len <= 0) {
     die("recvfrom()");
   }
   buf.pos += len;
@@ -122,22 +128,36 @@ receive(int fd, Contact &other, sp::Buffer &buf) noexcept {
   to_peer(o, other);
 } // udp::receive()
 
+void
+receive(fd &udp, /*OUT*/ Contact &c, /*OUT*/ sp::Buffer &b) noexcept {
+  return receive(int(udp), c, b);
+}
+
 static bool
 send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
   assert(buf.length > 0);
   int flag = 0;
-  sockaddr *destaddr = (sockaddr *)&dest;
-
-  sp::byte *const raw = offset(buf);
-  const std::size_t raw_len = remaining_read(buf);
+  ::sockaddr *destaddr = (::sockaddr *)&dest;
 
   ssize_t sent = 0;
   do {
+    sp::byte *const raw = offset(buf);
+    const std::size_t raw_len = remaining_read(buf);
+    assert(raw_len > 0);
+    // {
+    //   bencode::d::Decoder d(buf);
+    //   sp::bencode_print(d);
+    // }
+
     sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
-  } while (sent < 0 && errno == EAGAIN);
+    if (sent > 0) {
+      buf.pos += sent;
+    }
+
+  } while ((sent < 0 && errno == EAGAIN) && remaining_read(buf) > 0);
 
   if (sent < 0) {
-
+    const std::size_t raw_len = remaining_read(buf);
     char dstr[128] = {0};
     assert(inet_ntop(AF_INET6, &dest, dstr, socklen_t(sizeof(dstr))) != 0);
     printf("sent[%zd] = "
@@ -145,8 +165,6 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
            sent, int(fd), raw_len, flag, dstr);
     die("sendto()");
   }
-
-  buf.pos += sent;
 
   return true;
 } // udp::send()

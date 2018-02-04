@@ -8,20 +8,23 @@ namespace udp { //
 Contact
 local(fd &) noexcept;
 
-fd
-bind(Ipv4 ip, Port port) noexcept;
+enum class Mode { BLOCKING, NONBLOCKING };
 
-fd
-bind(Port port) noexcept;
+fd bind(Ipv4, Port, Mode) noexcept;
+
+fd bind(Port, Mode) noexcept;
 
 void
-receive(int fd, Contact &, sp::Buffer &) noexcept;
+receive(int fd, /*OUT*/ Contact &, /*OUT*/ sp::Buffer &) noexcept;
+
+void
+receive(fd &, /*OUT*/ Contact &, /*OUT*/ sp::Buffer &) noexcept;
 
 bool
-send(int fd, const Contact &, sp::Buffer &) noexcept;
+send(int fd, const Contact &, /*OUT*/ sp::Buffer &) noexcept;
 
 bool
-send(fd &, const Contact &, sp::Buffer &) noexcept;
+send(fd &, const Contact &, /*OUT*/ sp::Buffer &) noexcept;
 
 } // namespace udp
 

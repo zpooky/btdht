@@ -43,3 +43,5 @@ main
 test/thetest
 Session.vim
 dht
+perf.data
+perf.data.old

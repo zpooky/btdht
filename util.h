@@ -83,6 +83,12 @@ to_ipv4(const char *, Ipv4 &) noexcept;
 bool
 to_string(const Contact &, char *msg, std::size_t) noexcept;
 
+template <std::size_t SIZE>
+bool
+to_string(const Contact &c, char (&msg)[SIZE]) noexcept {
+  return to_string(c, msg, SIZE);
+}
+
 bool
 convert(const char *, Port &) noexcept;
 

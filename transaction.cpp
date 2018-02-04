@@ -72,7 +72,7 @@ bool
 init(Client &client) noexcept {
   sp::byte a = 'a';
   sp::byte b = 'a';
-  bst::in_order_for_each(client.tree, [&client, &a, &b](Tx &tx) {
+  in_order_for_each(client.tree, [&client, &a, &b](Tx &tx) {
     assert(tx.prefix[0] == '\0');
     assert(tx.prefix[1] == '\0');
 
@@ -90,11 +90,11 @@ init(Client &client) noexcept {
 }
 
 static Tx *
-search(bst::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
-  Tx *const result = (Tx *)bst::find(tree, needle);
+search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
+  Tx *const result = (Tx *)find(tree, needle);
   if (!result) {
     // assert
-    bst::in_order_for_each(tree, [&needle](auto &current) {
+    in_order_for_each(tree, [&needle](auto &current) {
       if (current == needle) {
         assert(false);
       }

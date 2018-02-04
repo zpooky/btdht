@@ -186,12 +186,12 @@ int
 main(int argc, char **argv) {
   dht::Options options;
   if (!dht::parse(argc, argv, options)) {
-  //   die("TODO");
+    //   die("TODO");
     return 0;
   }
   std::srand((unsigned int)time(nullptr));
 
-  fd udp = udp::bind(INADDR_ANY, options.port);
+  fd udp = udp::bind(options.port, udp::Mode::NONBLOCKING);
   // fd udp = udp::bind(INADDR_ANY, 0);
   Contact local = udp::local(udp);
 

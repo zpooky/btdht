@@ -13,6 +13,7 @@
 #include <cassert>
 #include <collection/Array.h>
 #include <cstring>
+#include <prng/util.h>
 #include <utility>
 
 namespace dht {
@@ -768,6 +769,7 @@ on_request(dht::MessageContext &ctx) noexcept {
       b_id = true;
       goto start;
     }
+
     if (!b_ih && bencode::d::pair(p, "info_hash", infohash.id)) {
       b_ih = true;
       goto start;
@@ -813,7 +815,9 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
       db::insert(dht, infohash, peer);
       krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);
     } else {
-      // TODO error
+      const char *msg = "Announce_peer with wrong token";
+      krpc::response::error(ctx.out, ctx.transaction,
+                            krpc::Error::protocol_error, msg);
     }
   });
 }

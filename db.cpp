@@ -2,6 +2,7 @@
 
 #include "Log.h"
 #include "timeout.h"
+#include <prng/util.h>
 
 namespace db {
 
@@ -141,7 +142,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
 void
 mint_token(dht::DHT &dht, dht::Node &id, Contact &, dht::Token &t) noexcept {
 Lretry:
-  sp::random_fill(dht.random, id.his_token.id);
+  prng::fill(dht.random, id.his_token.id);
   id.his_token.length = 5;
   if (!is_valid(id.his_token)) {
     goto Lretry;

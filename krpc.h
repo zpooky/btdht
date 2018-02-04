@@ -51,7 +51,7 @@ get_peers(sp::Buffer &, const Transaction &, //
 bool
 announce_peer(sp::Buffer &, const Transaction &, //
               const dht::NodeId &self, bool implied_port,
-              const dht::Infohash &search, std::uint16_t port,
+              const dht::Infohash &search, Port port,
               const dht::Token &) noexcept;
 
 bool

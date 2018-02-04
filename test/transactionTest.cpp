@@ -96,8 +96,8 @@ TEST(transactionTest, asd) {
     }
   };
   Tx buffer[1024];
-  bst::StaticTree<Tx> tree(buffer);
-  bst::in_order_for_each(tree, [&asd](Tx &tx) {
+  binary::StaticTree<Tx> tree(buffer);
+  in_order_for_each(tree, [&asd](Tx &tx) {
     asd(tx);
     // printf("prefix: %c%c\n", tx.prefix[0], tx.prefix[1]);
   });
