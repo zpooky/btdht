@@ -3,7 +3,11 @@
 #include <cassert>
 #include <cstring>
 
-namespace dht {
+namespace tx {
+
+using dht::Client;
+using dht::DHT;
+using dht::Config;
 
 static void
 add_front(Client &, Tx *) noexcept;
@@ -176,8 +180,8 @@ move_front(Client &client, Tx *tx) noexcept {
 }
 
 bool
-take_tx(Client &client, const krpc::Transaction &needle,
-        /*OUT*/ TxContext &out) noexcept {
+take(Client &client, const krpc::Transaction &needle,
+     /*OUT*/ TxContext &out) noexcept {
   constexpr std::size_t c = sizeof(Tx::prefix) + sizeof(Tx::suffix);
   if (needle.length == c) {
 
@@ -196,7 +200,7 @@ take_tx(Client &client, const krpc::Transaction &needle,
   }
 
   return false;
-} // dht::take_tx()
+} // dht::take()
 
 static Tx *
 unlink_free(DHT &dht, time_t now) noexcept {
@@ -240,7 +244,7 @@ make(Tx &tx) noexcept {
 }
 
 bool
-mint_tx(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
+mint(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
   Client &client = dht.client;
 
   Tx *const tx = unlink_free(dht, dht.now);
@@ -276,4 +280,4 @@ is_valid(DHT &dht, const krpc::Transaction &needle) noexcept {
   return false;
 }
 
-} // namespace dht
+} // namespace tx

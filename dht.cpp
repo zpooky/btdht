@@ -511,7 +511,7 @@ init(dht::DHT &dht) noexcept {
   if (!randomize(dht.ip, dht.id)) {
     return false;
   }
-  if (!init(dht.client)) {
+  if (!tx::init(dht.client)) {
     return false;
   }
   return true;

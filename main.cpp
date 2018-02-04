@@ -149,9 +149,9 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
         return false;
       }
 
-      dht::TxContext context;
+      tx::TxContext context;
       std::size_t cnt = dht.client.active;
-      if (dht::take_tx(dht.client, pctx.tx, context)) {
+      if (tx::take(dht.client, pctx.tx, context)) {
         assert((cnt - 1) == dht.client.active);
         log::receive::res::known_tx(ctx);
         bool res = context.handle(ctx);

@@ -27,7 +27,7 @@ TEST(transactionTest, test_valid_tree) {
   fd s(-1);
   dht::DHT dht(s, Contact(0, 0));
   dht.now = time(nullptr);
-  assert(dht::init(dht.client));
+  assert(tx::init(dht.client));
   // TODO
 }
 
@@ -36,7 +36,7 @@ TEST(transactionTest, test_valid) {
   fd s(-1);
   dht::DHT dht(s, Contact(0, 0));
   dht.now = time(nullptr);
-  ASSERT_TRUE(dht::init(dht.client));
+  ASSERT_TRUE(tx::init(dht.client));
 
 Lrestart:
   if (test_it++ < 100) {
@@ -47,41 +47,42 @@ Lrestart:
     for (std::size_t i = 0; i < IT; ++i) {
       for (std::size_t k = 0; k < i; ++k) {
         // printf("k: %zu\n", k);
-        ASSERT_TRUE(dht::is_valid(dht, ts[k]));
+        ASSERT_TRUE(tx::is_valid(dht, ts[k]));
       }
-      dht::TxContext h;
-      ASSERT_TRUE(dht::mint_tx(dht, ts[i], h));
+      tx::TxContext h;
+      ASSERT_TRUE(tx::mint(dht, ts[i], h));
       // printf("Mint_Tx: %c%c\n", ts[i].id[0], ts[i].id[1]);
-      ASSERT_TRUE(dht::is_valid(dht, ts[i]));
+      ASSERT_TRUE(tx::is_valid(dht, ts[i]));
     } // for
 
     {
       krpc::Transaction tx;
-      dht::TxContext h;
-      ASSERT_FALSE(dht::mint_tx(dht, tx, h));
+      tx::TxContext h;
+      ASSERT_FALSE(tx::mint(dht, tx, h));
     }
     test_unique(ts);
 
     shuffle_tx(ts);
     for (std::size_t i = 0; i < IT; ++i) {
       for (std::size_t k = 0; k < i; ++k) {
-        ASSERT_FALSE(dht::is_valid(dht, ts[k]));
+        ASSERT_FALSE(tx::is_valid(dht, ts[k]));
       }
       for (std::size_t k = i; k < IT; ++k) {
-        ASSERT_TRUE(dht::is_valid(dht, ts[k]));
+        ASSERT_TRUE(tx::is_valid(dht, ts[k]));
       }
 
-      dht::TxContext h;
+      tx::TxContext h;
       // printf("i: %zu\n", i);
-      ASSERT_TRUE(dht::is_valid(dht, ts[i]));
-      ASSERT_TRUE(dht::take_tx(dht.client, ts[i], h));
-      ASSERT_FALSE(dht::is_valid(dht, ts[i]));
+      ASSERT_TRUE(tx::is_valid(dht, ts[i]));
+      ASSERT_TRUE(tx::take(dht.client, ts[i], h));
+      ASSERT_FALSE(tx::is_valid(dht, ts[i]));
     }
     goto Lrestart;
   }
 }
 
 TEST(transactionTest, asd) {
+  using tx::Tx;
   sp::byte a = 'a';
   sp::byte b = 'a';
   auto asd = [&a, &b](Tx &tx) {

@@ -38,10 +38,12 @@ namespace dht {
 
 struct MessageContext;
 struct DHT;
+} // namespace dht
 
-using TxCancelHandle = void (*)(DHT &, void *) noexcept;
-using TxHandle = bool (*)(MessageContext &, void *) noexcept;
+namespace tx {
 
+using TxCancelHandle = void (*)(dht::DHT &, void *) noexcept;
+using TxHandle = bool (*)(dht::MessageContext &, void *) noexcept;
 // dht::TxContext
 struct TxContext {
   TxHandle int_handle;
@@ -52,10 +54,10 @@ struct TxContext {
   TxContext() noexcept;
 
   bool
-  handle(MessageContext &) noexcept;
+  handle(dht::MessageContext &) noexcept;
 
   void
-  cancel(DHT &) noexcept;
+  cancel(dht::DHT &) noexcept;
 };
 
 void
@@ -90,14 +92,17 @@ operator>(const krpc::Transaction &, const Tx &) noexcept;
 bool
 operator>(const Tx &, const Tx &) noexcept;
 
+} // namespace tx
+
+namespace dht {
 // dht::Client
 struct Client {
   static constexpr std::size_t tree_capacity = 128;
   fd &udp;
-  Tx *timeout_head;
+  tx::Tx *timeout_head;
 
-  Tx buffer[tree_capacity];
-  binary::StaticTree<Tx> tree;
+  tx::Tx buffer[tree_capacity];
+  binary::StaticTree<tx::Tx> tree;
 
   std::size_t active;
 

@@ -3,14 +3,14 @@
 
 #include "shared.h"
 
-namespace dht {
+namespace tx {
 
 bool
-init(Client &) noexcept;
+init(dht::Client &) noexcept;
 
 bool
-take_tx(Client &, const krpc::Transaction &,
-        /*OUT*/ TxContext &) noexcept;
+take(dht::Client &, const krpc::Transaction &,
+     /*OUT*/ TxContext &) noexcept;
 
 /*
  * keep tracks of active outgoing transactions and what module should handle the
@@ -19,11 +19,11 @@ take_tx(Client &, const krpc::Transaction &,
  * handle the response.
  */
 bool
-mint_tx(DHT &, /*OUT*/ krpc::Transaction &, TxContext &) noexcept;
+mint(dht::DHT &, /*OUT*/ krpc::Transaction &, TxContext &) noexcept;
 
 bool
-is_valid(DHT &, const krpc::Transaction &) noexcept;
+is_valid(dht::DHT &, const krpc::Transaction &) noexcept;
 
-} // namespace dht
+} // namespace tx
 
 #endif

@@ -32,17 +32,17 @@ ParseContext::ParseContext(ParseContext &ctx, bencode::d::Decoder &d) noexcept
 } // namespace krpc
 
 //---------------------------
-namespace dht {
+namespace tx {
 
 void
-TxContext::cancel(DHT &dht) noexcept {
+TxContext::cancel(dht::DHT &dht) noexcept {
   if (int_cancel) {
     int_cancel(dht, closure);
   }
 }
 
 bool
-TxContext::handle(MessageContext &ctx) noexcept {
+TxContext::handle(dht::MessageContext &ctx) noexcept {
   assert(int_handle);
   return int_handle(ctx, closure);
 }
@@ -108,7 +108,9 @@ bool
 operator>(const Tx &self, const Tx &tx) noexcept {
   return std::memcmp(self.prefix, tx.prefix, sizeof(self.prefix)) > 0;
 }
+} // namespace tx
 
+namespace dht {
 /*dht::Client*/
 Client::Client(fd &fd) noexcept
     : udp(fd)

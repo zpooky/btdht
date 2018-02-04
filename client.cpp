@@ -17,8 +17,8 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
 
   bool result = false;
   krpc::Transaction tx;
-  dht::TxContext ctx{module.response, module.response_timeout, closure};
-  if (mint_tx(dht, tx, ctx)) {
+  tx::TxContext ctx{module.response, module.response_timeout, closure};
+  if (tx::mint(dht, tx, ctx)) {
 
     result = request(out, tx);
     if (result) {
@@ -29,8 +29,8 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
     if (!result) {
       log::transmit::error::udp(dht);
       // since we fail to send request, we clear the transaction
-      dht::TxContext dummy;
-      assert(take_tx(client, tx, dummy));
+      tx::TxContext dummy;
+      assert(tx::take(client, tx, dummy));
     }
   } else {
     log::transmit::error::mint_transaction(dht);
