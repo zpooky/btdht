@@ -1,0 +1,10 @@
+-x
+c++
+-Iexternal
+-Wall
+-Wconversion
+-Wextra
+-Wpedantic
+-Wpointer-arith
+-Wshadow
+-std=c++14
