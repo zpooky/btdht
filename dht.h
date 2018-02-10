@@ -11,10 +11,13 @@
 namespace dht {
 
 void
-randomize(NodeId &) noexcept;
+randomize(DHT &, NodeId &) noexcept;
 
 bool
-randomize(const Contact &, NodeId &) noexcept;
+is_strict(const Ip &, const NodeId &) noexcept;
+
+// bool
+// randomize(const Contact &, NodeId &) noexcept;
 
 bool
 should_mark_bad(DHT &, Node &) noexcept;

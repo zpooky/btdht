@@ -29,6 +29,7 @@ fd::~fd() noexcept {
 fd::operator int() noexcept {
   return m_fd;
 }
+
 /*Ip*/
 Ip::Ip(Ipv4 v4)
     : ipv4(v4)
@@ -38,21 +39,59 @@ Ip::Ip(Ipv4 v4)
 Ip::Ip(const Ipv6 &v6)
     : ipv6()
     , type(IpType::IPV6) {
+
   std::memcpy(ipv6.raw, v6.raw, sizeof(ipv6));
+}
+
+bool
+Ip::operator==(const Ip &ip) const noexcept {
+  if (ip.type != type) {
+    return false;
+  }
+
+  if (ip.type == IpType::IPV4) {
+    return ipv4 == ip.ipv4;
+  }
+  return std::memcmp(ipv6.raw, ip.ipv6.raw, sizeof(ipv6.raw)) == 0;
+}
+
+bool
+Ip::operator<(const Ip &o) const noexcept {
+  if (type == o.type) {
+    if (type == IpType::IPV6) {
+      return std::memcmp(ipv6.raw, o.ipv6.raw, sizeof(ipv6)) < 0;
+    } else {
+      return ipv4 < o.ipv4;
+    }
+  } else if (type == IpType::IPV4) {
+    return true;
+  }
+  return false;
+}
+
+bool
+Ip::operator>(const Ip &o) const noexcept {
+  if (type == o.type) {
+    if (type == IpType::IPV6) {
+      return std::memcmp(ipv6.raw, o.ipv6.raw, sizeof(ipv6)) > 0;
+    } else {
+      return ipv4 > o.ipv4;
+    }
+  } else if (type == IpType::IPV4) {
+    return false;
+  }
+  return true;
 }
 
 /*Contact*/
 Contact::Contact(Ipv4 v4, Port p) noexcept
-    : ipv4(v4)
-    , port(p)
-    , type(IpType::IPV4) {
+    : ip(v4)
+    , port(p) {
 }
 
 Contact::Contact(const Ipv6 &v6, Port p) noexcept
-    : ipv6()
-    , port(p)
-    , type(IpType::IPV6) {
-  std::memcpy(ipv6.raw, v6.raw, sizeof(ipv6));
+    : ip(v6)
+    , port(p) {
 }
 
 Contact::Contact() noexcept
@@ -61,11 +100,17 @@ Contact::Contact() noexcept
 
 bool
 Contact::operator==(const Contact &c) const noexcept {
-  if (type == IpType::IPV4) {
-    return ipv4 == c.ipv4 && port == c.port;
-  }
-  return std::memcmp(ipv6.raw, c.ipv6.raw, sizeof(ipv6.raw)) == 0 &&
-         port == c.port;
+  return ip == c.ip && port == c.port;
+}
+
+bool
+Contact::operator<(const Contact &o) const noexcept {
+  return ip < o.ip;
+}
+
+bool
+Contact::operator>(const Contact &o) const noexcept {
+  return ip > o.ip;
 }
 
 bool
@@ -82,9 +127,9 @@ convert(const char *str, Contact &result) noexcept {
   }
 
   // TODO ipv4
-  result.type = IpType::IPV4;
+  result.ip.type = IpType::IPV4;
   std::memcpy(ipstr, str, iplen);
-  if (!to_ipv4(ipstr, result.ipv4)) {
+  if (!to_ipv4(ipstr, result.ip.ipv4)) {
     return false;
   }
 
@@ -104,8 +149,8 @@ to_ipv4(const char *str, Ipv4 &result) noexcept {
 }
 
 bool
-to_string(const Contact &ip, char *str, std::size_t length) noexcept {
-  if (ip.type == IpType::IPV6) {
+to_string(const Contact &c, char *str, std::size_t length) noexcept {
+  if (c.ip.type == IpType::IPV6) {
     if (length < (INET6_ADDRSTRLEN + 1 + 5 + 1)) {
       return false;
     }
@@ -113,7 +158,7 @@ to_string(const Contact &ip, char *str, std::size_t length) noexcept {
     sockaddr_in6 addr;
     memset(&addr, 0, sizeof(sockaddr_in6));
     addr.sin6_family = AF_INET6;
-    addr.sin6_port = htons(ip.port);
+    addr.sin6_port = htons(c.port);
     // TODO copy over ip
 
     if (inet_ntop(AF_INET6, &addr.sin6_addr, str, socklen_t(length)) ==
@@ -128,14 +173,14 @@ to_string(const Contact &ip, char *str, std::size_t length) noexcept {
     sockaddr_in addr;
     memset(&addr, 0, sizeof(sockaddr_in));
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(ip.ipv4);
+    addr.sin_addr.s_addr = htonl(c.ip.ipv4);
 
     if (inet_ntop(AF_INET, &addr.sin_addr, str, socklen_t(length)) == nullptr) {
       return false;
     }
     std::strcat(str, ":");
     char pstr[6] = {0};
-    sprintf(pstr, "%d", ip.port);
+    sprintf(pstr, "%d", c.port);
     std::strcat(str, pstr);
   }
   return true;

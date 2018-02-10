@@ -209,7 +209,7 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   bool bs_sent = false;
 Lstart:
   NodeId id;
-  dht::randomize(id);
+  dht::randomize(dht, id);
 
   auto search_id = [&dht, &id](dht::Bucket &b) -> NodeId & {
     Lretry:
@@ -383,13 +383,33 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
 } // namespace dht
 
+static void
+handle_ip_election(dht::MessageContext &ctx,
+                   const dht::NodeId &sender) noexcept {
+  if (bool(ctx.ip_vote)) {
+    if (is_strict(ctx.remote.ip, sender)) {
+      const Contact &v = ctx.ip_vote.get();
+      auto &dht = ctx.dht;
+      vote(dht.election, ctx.remote, v);
+    } else {
+      // assert(false);
+    }
+  }
+}
+
 template <typename F>
 static dht::Node *
 dht_request(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
   dht::Node *contact = dht_activity(ctx, sender);
+
+  handle_ip_election(ctx, sender);
   if (contact) {
     contact->request_activity = ctx.dht.now;
     f(*contact);
+  } else {
+    dht::Node n;
+    n.id = sender;
+    f(n);
   }
 
   return contact;
@@ -400,9 +420,16 @@ static dht::Node *
 dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
              F f) noexcept {
   dht::Node *contact = dht_activity(ctx, sender);
+
+  handle_ip_election(ctx, sender);
   if (contact) {
+
     contact->response_activity = ctx.dht.now;
     f(*contact);
+  } else {
+    dht::Node n;
+    n.id = sender;
+    f(n);
   }
 
   return contact;
@@ -416,7 +443,7 @@ static bool
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   log::receive::req::ping(ctx);
 
-  dht_response(ctx, sender, [&ctx](auto &) { //
+  dht_request(ctx, sender, [&ctx](auto &) {
     dht::DHT &dht = ctx.dht;
     krpc::response::ping(ctx.out, ctx.transaction, dht.id);
   });
@@ -438,11 +465,13 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
+  // printf("response ping\n");
   return krpc::d::response::ping(ctx, handle_response);
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
+  // printf("request ping\n");
   return krpc::d::request::ping(ctx, handle_request);
 }
 
@@ -536,9 +565,6 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
 
     std::uint64_t p_param = 0;
 
-    sp::byte ip[20];
-    std::memset(ip, 0, sizeof(ip));
-
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
       b_id = true;
@@ -560,10 +586,14 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       goto Lstart;
     }
 
-    // TODO ip vote
-    if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-      b_ip = true;
-      goto Lstart;
+    {
+      Contact ip;
+      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+        ctx.ip_vote = ip;
+        assert(bool(ctx.ip_vote));
+        b_ip = true;
+        goto Lstart;
+      }
     }
 
     if (!(b_id)) {
@@ -697,8 +727,6 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
 
     dht::NodeId id;
     dht::Token token;
-    sp::byte ip[20];
-    std::memset(ip, 0, sizeof(ip));
 
     dht::DHT &dht = ctx.dht;
     sp::list<dht::Node> &nodes = dht.recycle_contact_list;
@@ -718,10 +746,14 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
       goto Lstart;
     }
 
-    // TODO ip vote
-    if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-      b_ip = true;
-      goto Lstart;
+    {
+      Contact ip;
+      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+        ctx.ip_vote = ip;
+        assert(bool(ctx.ip_vote));
+        b_ip = true;
+        goto Lstart;
+      }
     }
 
     /*closes K nodes*/

@@ -85,15 +85,16 @@ value_to_peer(sp::Buffer &buf, Contact &peer) noexcept {
   const std::size_t pos = buf.pos;
 
   // TODO ipv4
-  constexpr std::size_t cmp(sizeof(peer.ipv4) + sizeof(peer.port));
+  constexpr std::size_t cmp(sizeof(peer.ip.ipv4) + sizeof(peer.port));
   if (sp::remaining_read(buf) < cmp) {
     buf.pos = pos;
     return false;
   }
 
-  std::memcpy(&peer.ipv4, buf.raw + buf.pos, sizeof(peer.ipv4));
-  buf.pos += sizeof(peer.ipv4);
-  peer.ipv4 = ntohl(peer.ipv4);
+  // TODO ivp4
+  std::memcpy(&peer.ip.ipv4, buf.raw + buf.pos, sizeof(peer.ip.ipv4));
+  buf.pos += sizeof(peer.ip.ipv4);
+  peer.ip.ipv4 = ntohl(peer.ip.ipv4);
 
   std::memcpy(&peer.port, buf.raw + buf.pos, sizeof(peer.port));
   buf.pos += sizeof(peer.port);

@@ -184,7 +184,10 @@ bool
 pair(Decoder &, const char *, std::uint16_t &) noexcept;
 
 bool
-pair(Decoder &p, const char *key, dht::Token &token) noexcept;
+pair(Decoder &p, const char *key, dht::Token &) noexcept;
+
+bool
+pair(Decoder &p, const char *key, Contact &) noexcept;
 
 // bool
 // pair(Decoder &, const char *, sp::list<dht::Node> &) noexcept;

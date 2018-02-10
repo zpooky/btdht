@@ -23,7 +23,7 @@ template <typename T>
 static Node *
 random_insert(T &added, dht::DHT &dht) {
   dht::Node n;
-  dht::randomize(n.id);
+  dht::randomize(dht, n.id);
 
   dht::Node *res = dht::insert(dht, n);
   // ASSERT_TRUE(res);
@@ -59,7 +59,7 @@ assert_empty(const Node &contact) {
   ASSERT_EQ(contact.timeout_priv, nullptr);
 
   ASSERT_FALSE(dht::is_valid(contact.id));
-  ASSERT_EQ(contact.contact.ipv4, Ipv4(0));
+  ASSERT_EQ(contact.contact.ip.ipv4, Ipv4(0));
   ASSERT_EQ(contact.contact.port, Port(0));
 
   ASSERT_EQ(contact.request_activity, time_t(0));

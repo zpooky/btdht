@@ -13,7 +13,7 @@ ParseContext::ParseContext(bencode::d::Decoder &d) noexcept
     , msg_type{0}
     , query{0}
     , remote_version{0}
-    , ext_ip{0} {
+    , ip_vote{} {
 }
 
 ParseContext::ParseContext(ParseContext &ctx, bencode::d::Decoder &d) noexcept
@@ -22,12 +22,11 @@ ParseContext::ParseContext(ParseContext &ctx, bencode::d::Decoder &d) noexcept
     , msg_type{0}
     , query{0}
     , remote_version{0}
-    , ext_ip{0} {
+    , ip_vote{} {
 
   std::memcpy(msg_type, ctx.msg_type, sizeof(msg_type));
   std::memcpy(query, ctx.query, sizeof(query));
   std::memcpy(remote_version, ctx.remote_version, sizeof(remote_version));
-  std::memcpy(ext_ip, ctx.ext_ip, sizeof(ext_ip));
 }
 } // namespace krpc
 
@@ -235,6 +234,7 @@ DHT::DHT(fd &udp, const Contact &i) noexcept
     , log()
     , ip(i)
     , random(/*TODO seed*/ 1)
+    , election()
     //}}}
     // peer-lookup db {{{
     , lookup_table(nullptr)
@@ -276,7 +276,9 @@ MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
     , in{ctx.decoder}
     , out{p_out}
     , transaction{ctx.tx}
-    , remote{p_remote} {
+    , remote{p_remote}
+    , ip_vote(ctx.ip_vote) {
+  assert(bool(ip_vote) == bool(ctx.ip_vote));
 }
 
 } // namespace dht

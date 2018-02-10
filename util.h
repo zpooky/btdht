@@ -53,17 +53,21 @@ struct Ip {
 
   explicit Ip(Ipv4);
   explicit Ip(const Ipv6 &);
+
+  bool
+  operator==(const Ip &) const noexcept;
+
+  bool
+  operator<(const Ip &) const noexcept;
+
+  bool
+  operator>(const Ip &) const noexcept;
 };
 
 // Contact
 struct Contact {
-  union {
-    Ipv4 ipv4;
-    Ipv6 ipv6;
-  };
-
+  Ip ip;
   Port port;
-  IpType type;
 
   Contact(Ipv4, Port) noexcept;
   Contact(const Ipv6 &, Port) noexcept;
@@ -72,6 +76,12 @@ struct Contact {
 
   bool
   operator==(const Contact &) const noexcept;
+
+  bool
+  operator<(const Contact &) const noexcept;
+
+  bool
+  operator>(const Contact &) const noexcept;
 };
 
 bool

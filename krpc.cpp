@@ -1,4 +1,3 @@
-#include "bencode.h"
 #include "krpc.h"
 #include <arpa/inet.h>
 #include <cassert>
@@ -16,7 +15,7 @@ static bool
 serialize(sp::Buffer &b, const Contact &p) noexcept {
   // TODO ipv4
   const std::size_t pos = b.pos;
-  Ipv4 ip = htonl(p.ipv4);
+  Ipv4 ip = htonl(p.ip.ipv4);
   if (sp::remaining_read(b) < sizeof(ip)) {
     b.pos = pos;
     return false;
@@ -71,7 +70,7 @@ serialize(sp::Buffer &b, const dht::Node &node) noexcept {
 static std::size_t
 size(const Contact &p) noexcept {
   // TODO ipv4
-  return sizeof(p.ipv4) + sizeof(p.port);
+  return sizeof(p.ip.ipv4) + sizeof(p.port);
 }
 
 static std::size_t

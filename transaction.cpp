@@ -6,8 +6,8 @@
 namespace tx {
 
 using dht::Client;
-using dht::DHT;
 using dht::Config;
+using dht::DHT;
 
 static void
 add_front(Client &, Tx *) noexcept;
@@ -22,7 +22,7 @@ reset(Tx &tx) noexcept {
 }
 
 static std::size_t
-count(Client &client) noexcept {
+debug_count(Client &client) noexcept {
   Tx *const head = client.timeout_head;
   Tx *it = head;
   std::size_t result = 0;
@@ -42,9 +42,9 @@ Lit:
 }
 
 static std::size_t
-count(DHT &dht) noexcept {
+debug_count(DHT &dht) noexcept {
   Client &client = dht.client;
-  return count(client);
+  return debug_count(client);
 }
 
 static bool
@@ -89,7 +89,7 @@ init(Client &client) noexcept {
     // printf("prefix: %c%c\n", tx.prefix[0], tx.prefix[1]);
     add_front(client, &tx);
   });
-  assert(count(client) == Client::tree_capacity);
+  assert(debug_count(client) == Client::tree_capacity);
   return true;
 }
 
@@ -207,9 +207,9 @@ unlink_free(DHT &dht, time_t now) noexcept {
   Client &client = dht.client;
   Tx *const head = client.timeout_head;
 
-  // auto cnt = count(dht);
+  // auto cnt = debug_count(dht);
   // printf("cnt %zu\n", cnt);
-  assert(count(dht) == Client::tree_capacity);
+  assert(debug_count(dht) == Client::tree_capacity);
   assert(ordered(dht));
   if (head) {
 

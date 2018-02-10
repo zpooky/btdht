@@ -7,12 +7,14 @@
 #include "util.h"
 #include <cstdio> //debug
 #include <cstdlib>
+#include "ip_election.h"
 
 #include "bencode.h"
 #include <list/FixedList.h>
 #include <tree/StaticTree.h>
 
 #include <prng/xorshift.h>
+#include <util/maybe.h>
 
 //---------------------------
 namespace krpc {
@@ -24,7 +26,8 @@ struct ParseContext {
   char msg_type[16];
   char query[16];
   sp::byte remote_version[16];
-  sp::byte ext_ip[16];
+
+  sp::maybe<Contact> ip_vote;
 
   explicit ParseContext(bencode::d::Decoder &) noexcept;
 
@@ -198,7 +201,7 @@ activity(const Peer &) noexcept;
 
 /*dht::Bucket*/
 struct Bucket {
-  static constexpr std::size_t K = 16;
+  static constexpr std::size_t K = 32;
   Node contacts[K];
   std::uint8_t bootstrap_generation;
 
@@ -281,6 +284,7 @@ struct DHT {
   Log log;
   Contact ip;
   prng::Xorshift32 random;
+  sp::ip_election election;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;
@@ -332,6 +336,8 @@ struct MessageContext {
 
   const krpc::Transaction &transaction;
   Contact remote;
+  sp::maybe<Contact> ip_vote;
+
   MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &,
                  Contact) noexcept;
 };

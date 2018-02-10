@@ -1,6 +1,7 @@
 #ifndef SP_MAINLINE_DHT_KRPC_H
 #define SP_MAINLINE_DHT_KRPC_H
 
+#include "bencode.h"
 #include "bencode_offset.h"
 #include "shared.h"
 #include <cassert>
@@ -99,7 +100,7 @@ krpc(ParseContext &ctx, F f) {
     bool t = false;
     bool y = false;
     bool q = false;
-    bool ip = false;
+    bool ip_handled = false;
     bool v = false;
 
     ssize_t mark = -1;
@@ -133,11 +134,16 @@ krpc(ParseContext &ctx, F f) {
         assert(before == p.buf.pos);
       }
 
-      if (!ip && bencode::d::pair(p, "ip", ctx.ext_ip)) {
-        ip = true;
-        goto start;
-      } else {
-        assert(before == p.buf.pos);
+      {
+        Contact ip;
+        if (!ip_handled && bencode::d::pair(p, "ip", ip)) {
+          ctx.ip_vote = ip;
+          assert(bool(ctx.ip_vote));
+          ip_handled = true;
+          goto start;
+        } else {
+          assert(before == p.buf.pos);
+        }
       }
 
       if (!v && bencode::d::pair(p, "v", ctx.remote_version)) {
@@ -173,8 +179,15 @@ krpc(ParseContext &ctx, F f) {
     auto is_reply = [&] { //
       return std::strcmp("r", ctx.msg_type) == 0;
     };
+    auto is_error = [&] { //
+      return std::strcmp("e", ctx.msg_type) == 0;
+    };
 
-    if (is_query()) {
+    if (is_error()) {
+      if (!(t)) {
+        return false;
+      }
+    } else if (is_query()) {
       if (!(t && y && q)) {
         return false;
       }

@@ -362,7 +362,8 @@ parse_key(sp::Buffer &b, const char *cmp_key) noexcept {
 
 template <typename T>
 static bool
-parse_key_value(sp::Buffer &b, const char *key, T *val, /*IN&OUT*/ std::size_t &len) noexcept {
+parse_key_value(sp::Buffer &b, const char *key, T *val,
+                /*IN&OUT*/ std::size_t &len) noexcept {
   const std::size_t p = b.pos;
   if (!parse_key(b, key)) {
     b.pos = p;
@@ -439,12 +440,14 @@ is(sp::Buffer &buf, const char *exact, std::size_t length) noexcept {
 } // namespace internal
 
 bool
-pair_x(Decoder &d, const char *key, char *val, /*IN&OUT*/ std::size_t &len) noexcept {
+pair_x(Decoder &d, const char *key, char *val,
+       /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d.buf, key, val, len);
 } // bencode::d::pair()
 
 bool
-pair_x(Decoder &d, const char *key, sp::byte *val, /*IN&OUT*/ std::size_t &len) noexcept {
+pair_x(Decoder &d, const char *key, sp::byte *val,
+       /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d.buf, key, val, len);
 }
 
@@ -520,6 +523,48 @@ pair(Decoder &p, const char *key, dht::Token &token) noexcept {
   return true;
 } // bencode::d::pair()
 
+bool
+pair(Decoder &d, const char *key, Contact &result) noexcept {
+  const std::size_t p = d.buf.pos;
+
+  sp::byte val[32] = {0};
+  std::size_t length = sizeof(val);
+
+  if (!pair_x(d, key, val, length)) {
+    d.buf.pos = p;
+    return false;
+  }
+  sp::Buffer b(val, length);
+
+  if (b.capacity == sizeof(Ipv4)) {
+    Ipv4 ip = 0;
+
+    std::memcpy(&ip, b.raw + b.pos, sizeof(ip));
+    b.pos += sizeof(ip);
+    ip = ntohl(ip);
+
+    result = Contact(ip, Port(0));
+  } else if (b.capacity == (sizeof(Ipv4) + sizeof(Port))) {
+    Ipv4 ip = 0;
+    Port port = 0;
+
+    std::memcpy(&ip, b.raw + b.pos, sizeof(ip));
+    b.pos += sizeof(ip);
+    ip = ntohl(ip);
+
+    std::memcpy(&port, b.raw + b.pos, sizeof(port));
+    b.pos += sizeof(port);
+    port = ntohs(port);
+
+    result = Contact(ip, port);
+  } else {
+    printf("%s: %zu\n", val, length);
+    // TODO ipv6
+    assert(false);
+  }
+  return true;
+} // bencode::d::pair()
+
 template <typename T, typename F>
 static bool
 list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
@@ -566,9 +611,9 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
 static void
 value_to_peer(const char *str, Contact &peer) noexcept {
   // TODO ipv4
-  std::memcpy(&peer.ipv4, str, sizeof(peer.ipv4));
-  str += sizeof(peer.ipv4);
-  peer.ipv4 = ntohl(peer.ipv4);
+  std::memcpy(&peer.ip.ipv4, str, sizeof(peer.ip.ipv4));
+  str += sizeof(peer.ip.ipv4);
+  peer.ip.ipv4 = ntohl(peer.ip.ipv4);
 
   std::memcpy(&peer.port, str, sizeof(peer.port));
   peer.port = ntohs(peer.port);
@@ -590,7 +635,7 @@ value(Decoder &d, dht::Node &value) noexcept {
 
   // TODO ipv4
   constexpr std::size_t cmp =
-      (sizeof(value.id.id) + sizeof(contact.ipv4) + sizeof(contact.port));
+      (sizeof(value.id.id) + sizeof(contact.ip.ipv4) + sizeof(contact.port));
   if (len != cmp) {
     buf.pos = pos;
     return false;
@@ -617,7 +662,7 @@ value(Decoder &d, Contact &peer) noexcept {
   }
 
   // TODO ipv4
-  if (len != (sizeof(peer.ipv4) + sizeof(peer.port))) {
+  if (len != (sizeof(peer.ip.ipv4) + sizeof(peer.port))) {
     buf.pos = pos;
     return false;
   }

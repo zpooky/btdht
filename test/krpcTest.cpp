@@ -129,7 +129,8 @@ TEST(krpcTest, test_find_node) {
     const dht::Node *in[nodes];
     for (std::size_t i = 0; i < nodes; ++i) {
       nodeId(node[i].id);
-      node[i].contact.ipv4 = rand();
+      node[i].contact.ip.ipv4 = rand();
+      node[i].contact.ip.type = IpType::IPV4;
       node[i].contact.port = rand();
       in[i] = &node[i];
     }
@@ -260,7 +261,8 @@ TEST(krpcTest, test_get_peers) {
     const dht::Node *in[NODE_SIZE];
     for (std::size_t i = 0; i < NODE_SIZE; ++i) {
       nodeId(node[i].id);
-      node[i].contact.ipv4 = rand();
+      node[i].contact.ip.ipv4 = rand();
+      node[i].contact.ip.type = IpType::IPV4;
       node[i].contact.port = rand();
       in[i] = &node[i];
     }
@@ -419,9 +421,25 @@ TEST(krpcTest, print_debug) {
   //                    "c756565313a74343a6378d4b3313a76343a6c740d60313a79313a656"
   //                    "5";
 
+  // const char hex[] =
+  // "64313a656c693230336531383a496e76616c696420606964272076616"
+  //                    "c756565313a74343a616132a8313a76343a6c740d60313a79313a656"
+  //                    "5";
+
   const char hex[] = "64313a656c693230336531383a496e76616c696420606964272076616"
-                     "c756565313a74343a616132a8313a76343a6c740d60313a79313a656"
+                     "c756565313a74343a6366b21a313a76343a6c740d60313a79313a656"
                      "5";
+  // const char hex[] =
+  //     "64313a7264323a696432303afed70958ef674974863d4235d8cd54665a3b6f63353a6e6f"
+  //     "6465733230383af408fd978759a72ef9ed3d2de3e3f9310417d833c39aac1fd75bf47dd3"
+  //     "065f89d92e51b29f599bb24a975e32ae548d8759c52fe4f46f4249f1f1bbe9ebb3a6db3c"
+  //     "870c3e99245e52251349ec54d4f7817789864e572875a67923585385ce75a8eb916bb8a9"
+  //     "c0c491f120b30f615cb0687f7d42a281a596426e5944d9639049801ae9f1f88949f1f1bb"
+  //     "e9ebb3a6db3c870c3e99245e52b61f9786936df1e618debd0b4cdbbbd5c717d025aec523"
+  //     "1988863ed2c867c8d5f1e07fbcf3b5b84a4f8f6189b7c994db6e08b18167fcca10cae135"
+  //     "3a746f6b656e32303ae7c48e3a44f27e575a2a4aba99fda95c0a861b7765313a74343a61"
+  //     "61d4a2313a79313a7265";
+
   // const char hex[] =
   //     "64313a7264323a696432303a84e7bd6c3ed7cfcb9a965827eac0ce27055e6a30353a6e6f"
   //     "6465733230383a832a5b377f5107fea401c110d668d5ebc12239806dfc4b691197830caf"

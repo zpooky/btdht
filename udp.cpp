@@ -20,14 +20,14 @@ static void
 to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
   // TODO ipv4
   dest.sin_family = AF_INET;
-  dest.sin_addr.s_addr = htonl(src.ipv4);
+  dest.sin_addr.s_addr = htonl(src.ip.ipv4);
   dest.sin_port = htons(src.port);
 }
 
 static void
 to_peer(const ::sockaddr_in &src, Contact &dest) noexcept {
   // TODO ipv4
-  dest.ipv4 = ntohl(src.sin_addr.s_addr);
+  dest.ip.ipv4 = ntohl(src.sin_addr.s_addr);
   dest.port = ntohs(src.sin_port);
 }
 
@@ -144,10 +144,10 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
     sp::byte *const raw = offset(buf);
     const std::size_t raw_len = remaining_read(buf);
     assert(raw_len > 0);
-    // {
-    //   bencode::d::Decoder d(buf);
-    //   sp::bencode_print(d);
-    // }
+    {
+      bencode::d::Decoder d(buf);
+      sp::bencode_print(d);
+    }
 
     sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
     if (sent > 0) {

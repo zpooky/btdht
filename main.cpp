@@ -222,7 +222,7 @@ main(int argc, char **argv) {
       die("parse bootstrap ip failed");
     }
 
-    assert(bs.ipv4 > 0);
+    assert(bs.ip.ipv4 > 0);
     assert(bs.port > 0);
 
     Contact node(bs);
@@ -257,6 +257,7 @@ main(int argc, char **argv) {
   };
 
   auto awake = [&modules, &dht](sp::Buffer &out, time_t now) {
+    print_result(dht.election);
     dht.now = now;
     auto result = modules.on_awake(dht, out);
     log::awake::timeout(dht, result);
