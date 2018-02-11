@@ -344,6 +344,61 @@ pair(sp::Buffer &buf, const char *key, const dht::KeyValue *t) noexcept {
 } // bencode::e::pair()
 
 static bool
+pair(sp::Buffer &buf, const char *key, const dht::StatTrafic &t) noexcept {
+  // used by statistics
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+  return dict(buf, [&t](sp::Buffer &b) {
+    if (!bencode::e::pair(b, "ping", t.ping)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "find_node", t.find_node)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "get_peers", t.get_peers)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "announce_peer", t.announce_peer)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "error", t.error)) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+static bool
+pair(sp::Buffer &buf, const char *key, const dht::StatDirection &d) noexcept {
+  // used by statistics
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  return dict(buf, [&d](sp::Buffer &b) {
+    if (!bencode::e::pair(b, "request", d.request)) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "response_timeout", d.response_timeout)) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "response", d.response)) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "parse_error", d.parse_error)) {
+      return false;
+    }
+    // TODO
+    return true;
+  });
+}
+
+static bool
 value(sp::Buffer &buf, const sp::list<Contact> &t) noexcept {
   // used by dump
   return sp_list(buf, t);
@@ -662,6 +717,26 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
     return true;
   });
 } // response::dump()
+
+bool
+statistics(sp::Buffer &buf, const Transaction &t,
+           const dht::Stat &stat) noexcept {
+  return resp(buf, t, [&stat](auto &b) { //
+    if (!bencode::e::pair(b, "sent", stat.sent)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "received", stat.received)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "known_tx", stat.known_tx)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "unknown_tx", stat.unknown_tx)) {
+      return false;
+    }
+    return true;
+  });
+}
 
 } // namespace response
 

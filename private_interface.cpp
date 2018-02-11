@@ -45,8 +45,8 @@ namespace statistics {
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  // TODO
-  return true;
+  dht::DHT &dht = ctx.dht;
+  return krpc::response::statistics(ctx.out, ctx.transaction, dht.statistics);
 }
 
 void

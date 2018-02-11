@@ -90,6 +90,9 @@ error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
 bool
 dump(sp::Buffer &b, const Transaction &t, const dht::DHT &) noexcept;
 
+bool
+statistics(sp::Buffer &b, const Transaction &t, const dht::Stat &) noexcept;
+
 } // namespace response
 
 namespace d {

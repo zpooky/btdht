@@ -408,8 +408,48 @@ TEST(krpcTest, test_anounce_peer) {
 }
 
 TEST(krpcTest, print_error_debug) {
+  // const char *hex =
+  // "64313a656c693230336531383a496e76616c696420606964272076616c"
+  //                   "756565313a74343a647269b8313a76343a6c740d60313a79313a6565";
+
+  /*
+   * request:
+   * send: 95.211.138.82:6881
+   * d
+   *  1:t
+   *  4:hex[65756DE7](eum_)
+   *  1:y
+   *  1:q
+   *  1:v
+   *  4:sp19
+   *  1:q
+   *  9:find_node
+   *  1:a
+   *  d
+   *   2:id
+   *   20:hex[B8EE2EAF70A2485C32789B965CE62753B11CE](_____p_H_2x_____u___)
+   *   6:target
+   *   20:hex[0924BD7EB114A4D089D88739E6419E6DFFDDF](__K___J_____s_d_____)
+   *  e
+   * e
+   */
+  /*response:
+   * d
+   *  1:e
+   *  l
+   *   i203e
+   *   18:Invalid `id' value
+   *  e
+   *  1:t
+   *  4:hex[65756DE7](eum_)
+   *  1:v
+   *  4:hex[6C74D40](lt__)
+   *  1:y
+   *  1:e
+   * e
+   */
   const char *hex = "64313a656c693230336531383a496e76616c696420606964272076616c"
-                    "756565313a74343a647269b8313a76343a6c740d60313a79313a6565";
+                    "756565313a74343a65756de7313a76343a6c740d40313a79313a6565";
 
   sp::byte b[4096] = {0};
   std::size_t l = std::strlen(hex);

@@ -290,6 +290,7 @@ struct StatDirection {
   // TODO should only be used in /sent/
   StatTrafic response_timeout;
   StatTrafic response;
+  //TODO use StatTrafic for this
   std::size_t parse_error;
 
   StatDirection() noexcept;
