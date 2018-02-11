@@ -9,15 +9,8 @@
 // - Node implements Mainline DHT protocol
 
 namespace dht {
-
-void
-randomize(DHT &, NodeId &) noexcept;
-
 bool
 is_strict(const Ip &, const NodeId &) noexcept;
-
-// bool
-// randomize(const Contact &, NodeId &) noexcept;
 
 bool
 should_mark_bad(DHT &, Node &) noexcept;

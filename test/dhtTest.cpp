@@ -3,6 +3,7 @@
 #include "gtest/gtest.h"
 #include <dht.h>
 #include <list>
+#include <prng/util.h>
 #include <set>
 
 using namespace dht;
@@ -23,7 +24,7 @@ template <typename T>
 static Node *
 random_insert(T &added, dht::DHT &dht) {
   dht::Node n;
-  dht::randomize(dht, n.id);
+  fill(dht.random, n.id.id);
 
   dht::Node *res = dht::insert(dht, n);
   // ASSERT_TRUE(res);
@@ -271,7 +272,8 @@ assert_count(DHT &dht, T &added) {
 TEST(dhtTest, test) {
   fd sock(-1);
   Contact c(0, 0);
-  dht::DHT dht(sock, c);
+  prng::Xorshift32 r(1);
+  dht::DHT dht(sock, c, r);
   dht::init(dht);
 
   std::list<dht::NodeId> added;
@@ -323,7 +325,8 @@ contains(const std::list<dht::NodeId> &n, const NodeId &search) {
 TEST(dhtTest, test_link) {
   fd sock(-1);
   Contact c(0, 0);
-  dht::DHT dht(sock, c);
+  prng::Xorshift32 r(1);
+  dht::DHT dht(sock, c, r);
   dht::init(dht);
 
   // TODO set<>
@@ -368,7 +371,8 @@ is_unique(std::list<NodeId> &l) {
 TEST(dhtTest, test_append) {
   fd sock(-1);
   Contact c(0, 0);
-  dht::DHT dht(sock, c);
+  prng::Xorshift32 r(1);
+  dht::DHT dht(sock, c, r);
   dht::init(dht);
 
   std::list<dht::NodeId> added;
@@ -441,6 +445,30 @@ TEST(dhtTest, test_append) {
         ASSERT_TRUE(is_unique(unique));
       }
     }
+  }
+}
+
+TEST(dhtTest, test_node_id_strict) {
+  fd sock(-1);
+  prng::Xorshift32 r(1);
+  for (std::size_t i = 0; i < 10000; ++i) {
+    Ip ip(i);
+    Contact c(ip, 0);
+    dht::DHT dht(sock, c, r);
+    init(dht);
+    ASSERT_TRUE(is_strict(ip, dht.id));
+  }
+}
+
+TEST(dhtTest, test_node_id_not_strict) {
+  fd sock(-1);
+  prng::Xorshift32 r(1);
+  dht::NodeId id;
+  for (std::size_t i = 0; i < 500000; ++i) {
+    Ip ip(i);
+    Contact c(ip, 0);
+    fill(r, id.id);
+    ASSERT_FALSE(is_strict(ip, id));
   }
 }
 

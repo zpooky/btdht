@@ -195,7 +195,8 @@ main(int argc, char **argv) {
   // fd udp = udp::bind(INADDR_ANY, 0);
   Contact local = udp::local(udp);
 
-  dht::DHT dht(udp, local);
+  prng::Xorshift32 r(1);
+  dht::DHT dht(udp, local, r);
   if (!dht::init(dht)) {
     die("failed to init dht");
   }

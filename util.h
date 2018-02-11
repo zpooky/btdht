@@ -71,6 +71,7 @@ struct Contact {
 
   Contact(Ipv4, Port) noexcept;
   Contact(const Ipv6 &, Port) noexcept;
+  Contact(const Ip &, Port) noexcept;
   // Contact(const Contact &) noexcept;
   Contact() noexcept;
 

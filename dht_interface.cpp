@@ -209,7 +209,7 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   bool bs_sent = false;
 Lstart:
   NodeId id;
-  dht::randomize(dht, id);
+  fill(dht.random, id.id);
 
   auto search_id = [&dht, &id](dht::Bucket &b) -> NodeId & {
     Lretry:
@@ -387,13 +387,13 @@ static void
 handle_ip_election(dht::MessageContext &ctx,
                    const dht::NodeId &sender) noexcept {
   if (bool(ctx.ip_vote)) {
-    if (is_strict(ctx.remote.ip, sender)) {
-      const Contact &v = ctx.ip_vote.get();
-      auto &dht = ctx.dht;
-      vote(dht.election, ctx.remote, v);
-    } else {
-      // assert(false);
-    }
+    // if (is_strict(ctx.remote.ip, sender)) {
+    const Contact &v = ctx.ip_vote.get();
+    auto &dht = ctx.dht;
+    vote(dht.election, ctx.remote, v);
+    // } else {
+    //   // assert(false);
+    // }
   }
 }
 
@@ -557,8 +557,10 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     bool b_n = false;
     bool b_p = false;
     bool b_ip = false;
+    bool b_t = false;
 
     dht::NodeId id;
+    dht::Token token; // TODO
 
     sp::list<dht::Node> &nodes = dht.recycle_contact_list;
     sp::clear(nodes);
@@ -578,6 +580,11 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
         b_n = true;
         goto Lstart;
       }
+    }
+
+    if (!b_t && bencode::d::pair(p, "token", token)) {
+      b_t = true;
+      goto Lstart;
     }
 
     // optional

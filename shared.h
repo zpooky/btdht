@@ -4,10 +4,10 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "ip_election.h"
 #include "util.h"
 #include <cstdio> //debug
 #include <cstdlib>
-#include "ip_election.h"
 
 #include "bencode.h"
 #include <list/FixedList.h>
@@ -283,7 +283,7 @@ struct DHT {
   Client client;
   Log log;
   Contact ip;
-  prng::Xorshift32 random;
+  prng::Xorshift32 &random;
   sp::ip_election election;
   //}}}
   // peer-lookup db {{{
@@ -314,7 +314,7 @@ struct DHT {
   std::uint32_t active_searches;
   // }}}
 
-  explicit DHT(fd &, const Contact &) noexcept;
+  explicit DHT(fd &, const Contact &, prng::Xorshift32 &) noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;

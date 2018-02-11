@@ -3,6 +3,7 @@
 
 #include "bencode.h"
 #include "bencode_offset.h"
+#include "bencode_print.h"
 #include "shared.h"
 #include <cassert>
 #include <cstring>
@@ -106,8 +107,8 @@ krpc(ParseContext &ctx, F f) {
     ssize_t mark = -1;
     std::size_t mark_end = 0;
 
-    char wkey[16] = {0};
-    sp::byte wvalue[64] = {0};
+    char wkey[128] = {0};
+    sp::byte wvalue[128] = {0};
   start:
     // TODO length compare for all raw indexing everywhere!!
     if (p.buf.raw[p.buf.pos] != 'e') {

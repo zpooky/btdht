@@ -6,7 +6,8 @@ namespace sp {
 ip_election::ip_election() noexcept
     : table()
     , hs()
-    , voted(hs) {
+    , voted(hs)
+    , votes(0) {
 
   auto djb = [](const Ip &ip) -> std::size_t {
     if (ip.type == IpType::IPV6) {
@@ -30,7 +31,8 @@ ip_election::ip_election() noexcept
 
 bool
 vote(ip_election &ctx, const Contact &by, const Contact &vote_for) noexcept {
-  // if (!test(ctx.voted, by.ip)) {
+  ++ctx.votes;
+  if (!test(ctx.voted, by.ip)) {
     insert(ctx.voted, by.ip);
 
     auto *present = find(ctx.table, [&](auto &c) { //
@@ -47,7 +49,7 @@ vote(ip_election &ctx, const Contact &by, const Contact &vote_for) noexcept {
 
       return true;
     }
-  // }
+  }
 
   return false;
 }
@@ -87,7 +89,7 @@ winner(const ip_election &ctx, std::size_t min) noexcept {
 
 void
 print_result(const ip_election &election) noexcept {
-  printf("# election\n");
+  printf("# election(invocations %zu)\n", election.votes);
   for_each(election.table, [](const auto &e) {
     std::size_t votes = std::get<1>(e);
     printf("- %zu\n", votes);

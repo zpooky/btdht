@@ -14,6 +14,7 @@ struct ip_election {
   StaticArray<entry, 16> table;
   StaticArray<Hasher<Ip>, 2> hs;
   BloomFilter<Ip, 256> voted;
+  std::size_t votes;
 
   ip_election() noexcept;
 };

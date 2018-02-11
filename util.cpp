@@ -94,6 +94,11 @@ Contact::Contact(const Ipv6 &v6, Port p) noexcept
     , port(p) {
 }
 
+Contact::Contact(const Ip& i, Port p) noexcept
+    : ip(i)
+    , port(p) {
+}
+
 Contact::Contact() noexcept
     : Contact(0, 0) {
 }

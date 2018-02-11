@@ -14,6 +14,7 @@ namespace e {
 static bool
 serialize(sp::Buffer &b, const Contact &p) noexcept {
   // TODO ipv4
+  assert(p.ip.type == IpType::IPV4);
   const std::size_t pos = b.pos;
   Ipv4 ip = htonl(p.ip.ipv4);
   if (sp::remaining_read(b) < sizeof(ip)) {
@@ -70,6 +71,7 @@ serialize(sp::Buffer &b, const dht::Node &node) noexcept {
 static std::size_t
 size(const Contact &p) noexcept {
   // TODO ipv4
+  assert(p.ip.type == IpType::IPV4);
   return sizeof(p.ip.ipv4) + sizeof(p.port);
 }
 
@@ -485,8 +487,8 @@ get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
 
 bool
 announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &self,
-              bool implied_port, const dht::Infohash &infohash,
-              Port port, const dht::Token &token) noexcept {
+              bool implied_port, const dht::Infohash &infohash, Port port,
+              const dht::Token &token) noexcept {
   return req(
       buffer, t, "announce_peer",
       [&self, &implied_port, &infohash, &port, &token](sp::Buffer &buf) { //

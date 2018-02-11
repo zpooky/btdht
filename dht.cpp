@@ -118,10 +118,10 @@ randomize(DHT &dht, const Ip &addr, NodeId &id) noexcept {
   return true;
 }
 
-void
-randomize(DHT &dht, NodeId &id) noexcept {
-  randomize(dht, dht.ip.ip, id);
-}
+// void
+// randomize(DHT &dht, NodeId &id) noexcept {
+//   randomize(dht, dht.ip.ip, id);
+// }
 
 static RoutingTable *
 find_closest(DHT &dht, const NodeId &search, bool &in_tree,

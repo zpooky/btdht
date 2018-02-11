@@ -227,13 +227,13 @@ Log::Log() noexcept
 }
 
 // dht::DHT
-DHT::DHT(fd &udp, const Contact &i) noexcept
+DHT::DHT(fd &udp, const Contact &i, prng::Xorshift32 &r) noexcept
     // self {{{
     : id()
     , client(udp)
     , log()
     , ip(i)
-    , random(/*TODO seed*/ 1)
+    , random(r)
     , election()
     //}}}
     // peer-lookup db {{{

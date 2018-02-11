@@ -611,6 +611,7 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
 static void
 value_to_peer(const char *str, Contact &peer) noexcept {
   // TODO ipv4
+  assert(peer.ip.type == IpType::IPV4);
   std::memcpy(&peer.ip.ipv4, str, sizeof(peer.ip.ipv4));
   str += sizeof(peer.ip.ipv4);
   peer.ip.ipv4 = ntohl(peer.ip.ipv4);
