@@ -18,4 +18,12 @@ void
 setup(dht::Module &) noexcept;
 } // namespace dump
 
+//===========================================================
+// statistics
+//===========================================================
+namespace statistics {
+void
+setup(dht::Module &) noexcept;
+} // namespace dump
+
 #endif

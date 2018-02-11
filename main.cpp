@@ -16,16 +16,9 @@
 #include <errno.h>
 #include <exception>
 #include <sys/epoll.h> //epoll
+#include <memory>
 
-/*
- * #Assumptions
- * - monothonic clock
- *
- * #Decisions based on stuff
- * -TODO nodeid+ip+port what denotes a duplicate contact?
- */
-
-// TODO getopt: listen(port,ip) hex nodeid, repeating bootstrap nodes
+// TODO getopt: repeating bootstrap nodes
 
 static void
 die(const char *s) {
@@ -196,12 +189,12 @@ main(int argc, char **argv) {
   Contact local = udp::local(udp);
 
   prng::Xorshift32 r(1);
-  dht::DHT dht(udp, local, r);
-  if (!dht::init(dht)) {
+  auto dht = std::make_unique<dht::DHT>(udp, local, r);
+  if (!dht::init(*dht)) {
     die("failed to init dht");
   }
   printf("node id: ");
-  dht::print_hex(dht.id);
+  dht::print_hex(dht->id);
 
   char str[256] = {0};
   assert(to_string(local, str, sizeof(str)));
@@ -216,7 +209,7 @@ main(int argc, char **argv) {
       "192.168.1.47:51413",
       // "127.0.0.1:51413", "213.65.130.80:51413",
   };
-  dht.now = time(nullptr);
+  dht->now = time(nullptr);
   for_each(bss, [&dht](const char *ip) {
     Contact bs(0, 0);
     if (!convert(ip, bs)) {
@@ -227,7 +220,7 @@ main(int argc, char **argv) {
     assert(bs.port > 0);
 
     Contact node(bs);
-    if (!bootstrap(dht, node)) {
+    if (!bootstrap(*dht, node)) {
       die("failed to setup bootstrap");
     }
   });
@@ -245,12 +238,12 @@ main(int argc, char **argv) {
   }
 
   auto handle = [&](Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
-    dht.last_activity = dht.last_activity == 0 ? now : dht.last_activity;
-    dht.now = now;
+    dht->last_activity = dht->last_activity == 0 ? now : dht->last_activity;
+    dht->now = now;
 
     const sp::Buffer copy(in);
-    if (!parse(dht, modules, from, in, out)) {
-      log::receive::parse::error(dht, copy);
+    if (!parse(*dht, modules, from, in, out)) {
+      log::receive::parse::error(*dht, copy);
       return false;
     }
 
@@ -258,11 +251,11 @@ main(int argc, char **argv) {
   };
 
   auto awake = [&modules, &dht](sp::Buffer &out, time_t now) {
-    print_result(dht.election);
-    dht.now = now;
-    auto result = modules.on_awake(dht, out);
-    log::awake::timeout(dht, result);
-    dht.last_activity = now;
+    print_result(dht->election);
+    dht->now = now;
+    auto result = modules.on_awake(*dht, out);
+    log::awake::timeout(*dht, result);
+    dht->last_activity = now;
     return result;
   };
 

@@ -239,6 +239,7 @@ Lstart:
   // only have a frew nodes in routing table?
 
   // XXX if no good node is avaiable try bad/questionable nodes
+  // TODO look_for_nodes should be called always each 15min
   auto copy = [](Bucket &in, sp::Array<Node *> &outp) {
     for_each(in, [&outp](Node &remote) { //
       insert(outp, &remote);

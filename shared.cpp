@@ -226,6 +226,25 @@ Log::Log() noexcept
     : id{0} {
 }
 
+StatTrafic::StatTrafic() noexcept
+    : ping(0)
+    , find_node(0)
+    , get_peers(0)
+    , announce_peer(0)
+    , error(0) {
+}
+
+StatDirection::StatDirection() noexcept
+    : request()
+    , response() {
+}
+Stat::Stat() noexcept
+    : sent()
+    , received()
+    , known_tx()
+    , unknown_tx() {
+}
+
 // dht::DHT
 DHT::DHT(fd &udp, const Contact &i, prng::Xorshift32 &r) noexcept
     // self {{{
@@ -235,6 +254,7 @@ DHT::DHT(fd &udp, const Contact &i, prng::Xorshift32 &r) noexcept
     , ip(i)
     , random(r)
     , election()
+    , statistics()
     //}}}
     // peer-lookup db {{{
     , lookup_table(nullptr)

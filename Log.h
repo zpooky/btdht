@@ -12,46 +12,46 @@ namespace receive {
 namespace req {
 /*log::receive::req*/
 void
-ping(const dht::MessageContext &) noexcept;
+ping(dht::MessageContext &) noexcept;
 
 void
-find_node(const dht::MessageContext &) noexcept;
+find_node(dht::MessageContext &) noexcept;
 
 void
-get_peers(const dht::MessageContext &) noexcept;
+get_peers(dht::MessageContext &) noexcept;
 
 void
-announce_peer(const dht::MessageContext &) noexcept;
+announce_peer(dht::MessageContext &) noexcept;
 
 void
-error(const dht::MessageContext &) noexcept;
+error(dht::MessageContext &) noexcept;
 
 void
-dump(const dht::MessageContext &) noexcept;
+dump(dht::MessageContext &) noexcept;
 } // namespace req
 
 namespace res {
 /* log::receive::res */
 void
-ping(const dht::MessageContext &) noexcept;
+ping(dht::MessageContext &) noexcept;
 
 void
-find_node(const dht::MessageContext &) noexcept;
+find_node(dht::MessageContext &) noexcept;
 
 void
-get_peers(const dht::MessageContext &) noexcept;
+get_peers(dht::MessageContext &) noexcept;
 
 void
-announce_peer(const dht::MessageContext &) noexcept;
+announce_peer(dht::MessageContext &) noexcept;
 
 void
-error(const dht::MessageContext &) noexcept;
+error(dht::MessageContext &) noexcept;
 
 void
-known_tx(const dht::MessageContext &) noexcept;
+known_tx(dht::MessageContext &) noexcept;
 
 void
-unknown_tx(const dht::MessageContext &) noexcept;
+unknown_tx(dht::MessageContext &) noexcept;
 
 } // namespace res
 
@@ -81,10 +81,10 @@ contact_scan(const dht::DHT &) noexcept;
 namespace transmit {
 /* log::transmit */
 void
-ping(const dht::DHT &, const Contact &, bool) noexcept;
+ping(dht::DHT &, const Contact &, bool) noexcept;
 
 void
-find_node(const dht::DHT &, const Contact &, bool) noexcept;
+find_node(dht::DHT &, const Contact &, bool) noexcept;
 
 namespace error {
 /* log::transmit::error */

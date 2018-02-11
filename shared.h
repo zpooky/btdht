@@ -275,6 +275,31 @@ struct Log {
   Log() noexcept;
 };
 
+struct StatTrafic {
+  std::size_t ping;
+  std::size_t find_node;
+  std::size_t get_peers;
+  std::size_t announce_peer;
+  std::size_t error;
+  StatTrafic() noexcept;
+};
+
+struct StatDirection {
+  StatTrafic request;
+  StatTrafic response;
+  StatDirection() noexcept;
+};
+
+struct Stat {
+  StatDirection sent;
+  StatDirection received;
+
+  std::size_t known_tx;
+  std::size_t unknown_tx;
+
+  Stat() noexcept;
+};
+
 // dht::DHT
 struct DHT {
   static const std::size_t token_table = 64;
@@ -285,6 +310,7 @@ struct DHT {
   Contact ip;
   prng::Xorshift32 &random;
   sp::ip_election election;
+  Stat statistics;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;

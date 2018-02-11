@@ -48,37 +48,52 @@ namespace receive {
 namespace req {
 /*log::receive::req*/
 void
-ping(const dht::MessageContext &ctx) noexcept {
+ping(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.request.ping;
+
   print_time(ctx);
   printf("receive request ping\n");
 }
 
 void
-find_node(const dht::MessageContext &ctx) noexcept {
+find_node(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.request.find_node;
+
   print_time(ctx);
   printf("receive request find_node\n");
 }
 
 void
-get_peers(const dht::MessageContext &ctx) noexcept {
+get_peers(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.request.get_peers;
+
   print_time(ctx);
   printf("receive request get_peers\n");
 }
 
 void
-announce_peer(const dht::MessageContext &ctx) noexcept {
+announce_peer(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.request.announce_peer;
+
   print_time(ctx);
   printf("receive request announce_peer\n");
 }
 
 void
-error(const dht::MessageContext &ctx) noexcept {
+error(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.request.error;
+
   print_time(ctx);
   printf("unknow request query type %s\n", ctx.query);
 }
 
 void
-dump(const dht::MessageContext &ctx) noexcept {
+dump(dht::MessageContext &ctx) noexcept {
   print_time(ctx);
   printf("receive dump\n");
 }
@@ -87,37 +102,55 @@ dump(const dht::MessageContext &ctx) noexcept {
 namespace res {
 /*log::receive::res*/
 void
-ping(const dht::MessageContext &ctx) noexcept {
+ping(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.response.ping;
+
   print_time(ctx);
   printf("receive response ping\n");
 }
 
 void
-find_node(const dht::MessageContext &ctx) noexcept {
+find_node(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.response.find_node;
+
   print_time(ctx);
   printf("receive response find_node\n");
 }
 
 void
-get_peers(const dht::MessageContext &ctx) noexcept {
+get_peers(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.response.get_peers;
+
   print_time(ctx);
   printf("receive response get_peers\n");
 }
 
 void
-announce_peer(const dht::MessageContext &ctx) noexcept {
+announce_peer(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.response.announce_peer;
+
   print_time(ctx);
   printf("receive response announce_peer\n");
 }
 
 void
-error(const dht::MessageContext &ctx) noexcept {
+error(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.received.response.error;
+
   print_time(ctx);
   printf("unknow response query type %s\n", ctx.query);
 }
 
 void
-known_tx(const dht::MessageContext &ctx) noexcept {
+known_tx(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.known_tx;
+
   print_time(ctx);
   printf("known transaction[");
   auto &tx = ctx.transaction;
@@ -126,7 +159,10 @@ known_tx(const dht::MessageContext &ctx) noexcept {
 }
 
 void
-unknown_tx(const dht::MessageContext &ctx) noexcept {
+unknown_tx(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
+  ++s.unknown_tx;
+
   print_time(ctx);
   printf("unknow transaction[");
   auto &tx = ctx.transaction;
@@ -183,7 +219,10 @@ contact_scan(const dht::DHT &ctx) noexcept {
 namespace transmit {
 /*log::transmit*/
 void
-ping(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
+ping(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.sent.request.ping;
+
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
@@ -193,7 +232,10 @@ ping(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
 }
 
 void
-find_node(const dht::DHT &ctx, const Contact &contact, bool result) noexcept {
+find_node(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.sent.request.find_node;
+
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));

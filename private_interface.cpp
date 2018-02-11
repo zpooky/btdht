@@ -1,6 +1,6 @@
 #include "Log.h"
-#include "private_interface.h"
 #include "krpc.h"
+#include "private_interface.h"
 
 namespace interface_priv {
 
@@ -8,6 +8,7 @@ bool
 setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
   dump::setup(modules.module[i++]);
+  statistics::setup(modules.module[i++]);
 
   return true;
 }
@@ -36,3 +37,23 @@ setup(dht::Module &module) noexcept {
 }
 
 } // namespace dump
+
+//===========================================================
+// statistics
+//===========================================================
+namespace statistics {
+
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  // TODO
+  return true;
+}
+
+void
+setup(dht::Module &module) noexcept {
+  module.query = "sp_statistics";
+  module.request = on_request;
+  module.response = nullptr;
+}
+
+} // namespace statistics
