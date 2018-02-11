@@ -13,8 +13,8 @@
 #include <cassert>
 #include <collection/Array.h>
 #include <cstring>
-#include <prng/util.h>
 #include <utility>
+#include <prng/util.h>
 
 namespace dht {
 static Timeout
@@ -209,7 +209,7 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   bool bs_sent = false;
 Lstart:
   NodeId id;
-  fill(dht.random, id.id);
+  randomize(dht, id);
 
   auto search_id = [&dht, &id](dht::Bucket &b) -> NodeId & {
     Lretry:
@@ -227,6 +227,7 @@ Lstart:
       b.bootstrap_generation++;
       return id;
   };
+  // TODO verify bad_nodes
   // TODO bootstrap should be last. Tag bucket with bootstrap generation only
   // use bootstrap if we get the same bucket and we haven't sent any to
   // bootstrap this generation.

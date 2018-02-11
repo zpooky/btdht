@@ -41,7 +41,15 @@ print_len(const char *val, std::size_t len) noexcept {
     for (std::size_t i = 0; i < len; ++i) {
       printf("%hhX", val[i]);
     }
-    printf("]");
+    printf("](");
+    for (std::size_t i = 0; i < len; ++i) {
+      if (is_printable(val[i])) {
+        printf("%c", val[i]);
+      } else {
+        printf("_");
+      }
+    }
+    printf(")");
   }
 }
 

@@ -7,6 +7,7 @@
 #include <cstring>
 #include <hash/crc.h>
 #include <new>
+#include <prng/util.h>
 #include <util/CircularBuffer.h>
 
 namespace dht {
@@ -115,7 +116,17 @@ randomize(DHT &dht, const Ip &addr, NodeId &id) noexcept {
   }
   id.id[19] = sp::byte(seed);
 
+  assert(id.id[0] <= sp::byte(9));
+
   return true;
+}
+
+void
+randomize(DHT &dht, NodeId &id) noexcept {
+  fill(dht.random, id.id);
+  auto pre = uniform_dist(dht.random, std::uint32_t(0), std::uint32_t(9));
+  assert(pre <= 9);
+  id.id[0] = sp::byte(pre);
 }
 
 // void

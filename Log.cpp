@@ -174,7 +174,10 @@ unknown_tx(dht::MessageContext &ctx) noexcept {
 namespace parse {
 /*log::receive::parse*/
 void
-error(const dht::DHT &ctx, const sp::Buffer &buffer) noexcept {
+error(dht::DHT &ctx, const sp::Buffer &buffer) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.received.parse_error;
+
   print_time(ctx);
   printf("parse error|");
   print_hex(buffer.raw + buffer.pos, buffer.length);

@@ -451,6 +451,7 @@ ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &send) noexcept {
     if (!bencode::e::pair(b, "id", send.id, sizeof(send.id))) {
       return false;
     }
+
     return true;
   });
 } // request::ping()
@@ -533,6 +534,7 @@ ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
+
     return true;
   });
 } // response::ping()

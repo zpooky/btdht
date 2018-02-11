@@ -58,7 +58,7 @@ unknown_tx(dht::MessageContext &) noexcept;
 namespace parse {
 /* log::receive::parse */
 void
-error(const dht::DHT &, const sp::Buffer &) noexcept;
+error(dht::DHT &, const sp::Buffer &) noexcept;
 
 } // namespace parse
 } // namespace receive

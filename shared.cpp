@@ -237,8 +237,10 @@ StatTrafic::StatTrafic() noexcept
 StatDirection::StatDirection() noexcept
     : request()
     , response_timeout()
-    , response() {
+    , response()
+    , parse_error(0) {
 }
+
 Stat::Stat() noexcept
     : sent()
     , received()
@@ -256,6 +258,7 @@ DHT::DHT(fd &udp, const Contact &i, prng::Xorshift32 &r) noexcept
     , random(r)
     , election()
     , statistics()
+    , ip_cnt(0)
     //}}}
     // peer-lookup db {{{
     , lookup_table(nullptr)
