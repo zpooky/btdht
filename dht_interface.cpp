@@ -476,11 +476,18 @@ on_request(dht::MessageContext &ctx) noexcept {
   return krpc::d::request::ping(ctx, handle_request);
 }
 
+static void
+timeout(dht::DHT &dht, void *arg) noexcept {
+  log::transmit::error::ping_response_timeout(dht);
+  assert(!arg);
+}
+
 void
 setup(dht::Module &module) noexcept {
   module.query = "ping";
   module.request = on_request;
   module.response = on_response;
+  module.response_timeout = timeout;
 }
 } // namespace ping
 
@@ -533,6 +540,7 @@ handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
     auto *bs = (Contact *)closure;
     delete bs;
   }
+  log::transmit::error::find_node_response_timeout(dht);
 
   assert(dht.active_searches > 0);
   dht.active_searches--;

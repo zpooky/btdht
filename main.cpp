@@ -15,8 +15,8 @@
 #include <cstring>
 #include <errno.h>
 #include <exception>
-#include <sys/epoll.h> //epoll
 #include <memory>
+#include <sys/epoll.h> //epoll
 
 // TODO getopt: repeating bootstrap nodes
 
@@ -186,19 +186,28 @@ main(int argc, char **argv) {
 
   fd udp = udp::bind(options.port, udp::Mode::NONBLOCKING);
   // fd udp = udp::bind(INADDR_ANY, 0);
-  Contact local = udp::local(udp);
 
   prng::Xorshift32 r(1);
-  auto dht = std::make_unique<dht::DHT>(udp, local, r);
+  Contact ext;
+  {
+    if (!convert("213.65.130.80:0", ext)) {
+      die("TODO");
+    }
+  }
+
+  auto dht = std::make_unique<dht::DHT>(udp, ext, r);
   if (!dht::init(*dht)) {
     die("failed to init dht");
   }
   printf("node id: ");
   dht::print_hex(dht->id);
 
-  char str[256] = {0};
-  assert(to_string(local, str, sizeof(str)));
-  printf("bind(%s)\n", str);
+  {
+    Contact local = udp::local(udp);
+    char str[256] = {0};
+    assert(to_string(local, str, sizeof(str)));
+    printf("bind(%s)\n", str);
+  }
 
   /*boostrap*/
   // Contact bs_node(INADDR_ANY, local.port); // TODO

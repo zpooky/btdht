@@ -262,6 +262,24 @@ udp(const dht::DHT &ctx) noexcept {
   printf("\033[91mtransmit error udp\n\033[0m");
 }
 
+void
+ping_response_timeout(dht::DHT &ctx) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.sent.response_timeout.ping;
+
+  print_time(ctx);
+  printf("\033[91mping response timeout\n\033[0m");
+}
+
+void
+find_node_response_timeout(dht::DHT &ctx) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.sent.response_timeout.find_node;
+
+  print_time(ctx);
+  printf("\033[91mfind_node response timeout\n\033[0m");
+}
+
 } // namespace error
 
 } // namespace transmit

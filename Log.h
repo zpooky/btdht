@@ -94,6 +94,12 @@ mint_transaction(const dht::DHT &) noexcept;
 void
 udp(const dht::DHT &) noexcept;
 
+void
+ping_response_timeout(dht::DHT &) noexcept;
+
+void
+find_node_response_timeout(dht::DHT &) noexcept;
+
 } // namespace error
 } // namespace transmit
 

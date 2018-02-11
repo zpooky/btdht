@@ -236,6 +236,7 @@ StatTrafic::StatTrafic() noexcept
 
 StatDirection::StatDirection() noexcept
     : request()
+    , response_timeout()
     , response() {
 }
 Stat::Stat() noexcept

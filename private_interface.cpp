@@ -8,7 +8,7 @@ bool
 setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
   dump::setup(modules.module[i++]);
-  statistics::setup(modules.module[]);
+  statistics::setup(modules.module[i++]);
 
   return true;
 }
@@ -76,4 +76,4 @@ setup(dht::Module &module) noexcept {
   module.response = nullptr;
 }
 
-} // namespace dump
+} // namespace search

@@ -281,12 +281,16 @@ struct StatTrafic {
   std::size_t get_peers;
   std::size_t announce_peer;
   std::size_t error;
+
   StatTrafic() noexcept;
 };
 
 struct StatDirection {
   StatTrafic request;
+  // TODO should only be used in /sent/
+  StatTrafic response_timeout;
   StatTrafic response;
+
   StatDirection() noexcept;
 };
 

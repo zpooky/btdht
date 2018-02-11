@@ -91,8 +91,11 @@ void
 print_result(const ip_election &election) noexcept {
   printf("# election(invocations %zu)\n", election.votes);
   for_each(election.table, [](const auto &e) {
+    Contact c = std::get<0>(e);
     std::size_t votes = std::get<1>(e);
-    printf("- %zu\n", votes);
+    char str[64] = {0};
+    assert(to_string(c, str));
+    printf("%s - %zu\n", str, votes);
   });
 }
 
