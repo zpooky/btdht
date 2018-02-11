@@ -26,4 +26,12 @@ void
 setup(dht::Module &) noexcept;
 } // namespace dump
 
+//===========================================================
+// search
+//===========================================================
+namespace search {
+void
+setup(dht::Module &) noexcept;
+} // namespace dump
+
 #endif

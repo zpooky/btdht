@@ -8,7 +8,7 @@ bool
 setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
   dump::setup(modules.module[i++]);
-  statistics::setup(modules.module[i++]);
+  statistics::setup(modules.module[]);
 
   return true;
 }
@@ -57,3 +57,23 @@ setup(dht::Module &module) noexcept {
 }
 
 } // namespace statistics
+
+//===========================================================
+// search
+//===========================================================
+namespace search {
+
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  // TODO
+  return true;
+}
+
+void
+setup(dht::Module &module) noexcept {
+  module.query = "sp_search";
+  module.request = on_request;
+  module.response = nullptr;
+}
+
+} // namespace dump
