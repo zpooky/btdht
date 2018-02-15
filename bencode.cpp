@@ -580,19 +580,18 @@ list(Decoder &d, sp::list<T> &list, void *arg, F f) noexcept {
     return false;
   }
 
-  sp::node<T> *node = list.root;
-  list.length = 0;
+  // sp::node<T> *node = list.root;
+  // list.length = 0;
 
   while (sp::remaining_read(b) > 0 && b[b.pos] != 'e') {
-    if (!node) {
+    T *current = insert(list, T());
+    if (!current) {
       return false;
     }
 
-    if (!f(d, node->value, arg)) {
+    if (!f(d, *current, arg)) {
       return false;
     }
-    node = node->next;
-    ++list.length;
   }
 
   if (sp::remaining_read(b) == 0) {

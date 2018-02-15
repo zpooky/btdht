@@ -60,8 +60,9 @@ static void
 loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
   time_t previous = 0;
 
-  sp::byte in[2048];
-  sp::byte out[2048];
+  constexpr std::size_t size = 1024 * 1024;
+  auto in = new sp::byte[size];
+  auto out = new sp::byte[size];
 
   Timeout timeout = 0;
   for (;;) {
@@ -85,8 +86,8 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
       ::epoll_event &current = events[i];
       if (current.events & EPOLLIN) {
 
-        sp::Buffer inBuffer(in);
-        sp::Buffer outBuffer(out);
+        sp::Buffer inBuffer(in, size);
+        sp::Buffer outBuffer(out, size);
 
         int cfd = current.data.fd;
         Contact from;
@@ -112,7 +113,7 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
         printf("EPOLLOUT\n");
       }
     }
-    sp::Buffer outBuffer(out);
+    sp::Buffer outBuffer(out, size);
     timeout = on_awake(outBuffer, now);
 
     previous = now;
@@ -187,7 +188,7 @@ main(int argc, char **argv) {
   fd udp = udp::bind(options.port, udp::Mode::NONBLOCKING);
   // fd udp = udp::bind(INADDR_ANY, 0);
 
-  prng::Xorshift32 r(1);
+  prng::Xorshift32 r(14);
   Contact ext;
   {
     if (!convert("213.65.130.80:0", ext)) {

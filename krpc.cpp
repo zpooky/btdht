@@ -16,16 +16,18 @@ serialize(sp::Buffer &b, const Contact &p) noexcept {
   // TODO ipv4
   assert(p.ip.type == IpType::IPV4);
   const std::size_t pos = b.pos;
+
   Ipv4 ip = htonl(p.ip.ipv4);
-  if (sp::remaining_read(b) < sizeof(ip)) {
+  if (sp::remaining_write(b) < sizeof(ip)) {
     b.pos = pos;
     return false;
   }
+
   std::memcpy(b.raw + b.pos, &ip, sizeof(ip));
   b.pos += sizeof(ip);
 
   Port port = htons(p.port);
-  if (sp::remaining_read(b) < sizeof(port)) {
+  if (sp::remaining_write(b) < sizeof(port)) {
     b.pos = pos;
     return false;
   }
@@ -46,7 +48,7 @@ pair(sp::Buffer &buf, const char *key, const Contact &p) noexcept {
     return false;
   }
 
-  return value(buf, p);
+  return bencode::e::value(buf, p);
 }
 
 static bool
@@ -86,7 +88,7 @@ size(const dht::Node &p) noexcept {
 }
 
 static std::size_t
-length(const dht::Peer *list) noexcept {
+size(const dht::Peer *list) noexcept {
   std::size_t result = 0;
   dht::for_all(list, [&result](const dht::Peer &ls) {
     result += size(ls);
@@ -109,7 +111,7 @@ for_all(const dht::Node **list, std::size_t length, F f) noexcept {
 }
 
 static std::size_t
-length(const dht::Node **list, std::size_t length) noexcept {
+size(const dht::Node **list, std::size_t length) noexcept {
   std::size_t result = 0;
   for_all(list, length, [&result](const auto &value) { //
     result += size(value);
@@ -120,7 +122,7 @@ length(const dht::Node **list, std::size_t length) noexcept {
 
 template <typename T>
 static std::size_t
-length(const sp::list<T> &list) noexcept {
+size(const sp::list<T> &list) noexcept {
   std::size_t result = 0;
   sp::for_each(list, [&result](const T &ls) { //
     result += size(ls);
@@ -134,7 +136,7 @@ pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
     return false;
   }
 
-  std::size_t len = length(list);
+  std::size_t len = size(list);
   return bencode::e::value(buf, len, (void *)list,
                            [](sp::Buffer &b, void *arg) {
                              const dht::Peer *l = (dht::Peer *)arg;
@@ -153,7 +155,7 @@ pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
 template <typename T>
 static bool
 sp_list(sp::Buffer &buf, const sp::list<T> &list) noexcept {
-  std::size_t len = length(list);
+  std::size_t len = size(list);
   return bencode::e::value(buf, len, (void *)&list, [](sp::Buffer &b, void *a) {
 
     const sp::list<T> *l = (sp::list<T> *)a;
@@ -187,13 +189,13 @@ pair_compact(sp::Buffer &buf, const char *key,
 
 static bool
 xxx(sp::Buffer &buf, const char *key, const dht::Node **list,
-    std::size_t size) noexcept {
+    std::size_t sz) noexcept {
   if (!bencode::e::value(buf, key)) {
     return false;
   }
 
-  std::size_t len = length(list, size);
-  std::tuple<const dht::Node **, std::size_t> arg(list, size);
+  std::size_t len = size(list, sz);
+  std::tuple<const dht::Node **, std::size_t> arg(list, sz);
   return bencode::e::value(buf, len, &arg, [](auto &b, void *a) {
     auto targ = (std::tuple<const dht::Node **, std::size_t> *)a;
 
@@ -427,32 +429,39 @@ message(sp::Buffer &buf, const Transaction &t, const char *mt,
   return bencode::e::dict(
       buf, //
       [&t, &mt, query, &f](sp::Buffer &b) {
-        // transaction: t
-        if (!bencode::e::pair(b, "t", t.id, t.length)) {
+
+        if (!f(b)) {
           return false;
         }
-        // message_type[reply: r, query: q]
-        if (!bencode::e::pair(b, "y", mt)) {
-          return false;
-        }
-        sp::byte version[4] = {0};
-        {
-          version[0] = 's';
-          version[1] = 'p';
-          version[2] = '1';
-          version[3] = '9';
-        }
-        if (!bencode::e::pair(b, "v", version, sizeof(version))) {
-          return false;
-        }
+
         if (query) {
           if (!bencode::e::pair(b, "q", query)) {
             return false;
           }
         }
-        if (!f(b)) {
+
+        // transaction: t
+        assert(t.length > 0);
+        if (!bencode::e::pair(b, "t", t.id, t.length)) {
           return false;
         }
+
+        sp::byte version[4] = {0};
+        {
+          version[0] = 's';
+          version[1] = 'p';
+          version[2] = 0;
+          version[3] = 1;
+        }
+        if (!bencode::e::pair(b, "v", version, sizeof(version))) {
+          return false;
+        }
+
+        // message_type[reply: r, query: q]
+        if (!bencode::e::pair(b, "y", mt)) {
+          return false;
+        }
+
         return true;
       });
 } // krpc::message()
@@ -573,10 +582,20 @@ announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &self,
 } // request::announce_peer()
 
 bool
-dump(sp::Buffer &) noexcept {
-  // TODO
-  return true;
+dump(sp::Buffer &b, const Transaction &t) noexcept {
+  return req(b, t, "sp_dump", [](sp::Buffer &buf) { //
+
+    return true;
+  });
 } // request::dump()
+
+bool
+statistics(sp::Buffer &b, const Transaction &t) noexcept {
+  return req(b, t, "sp_statistics", [](sp::Buffer &buf) { //
+
+    return true;
+  });
+}
 
 } // namespace request
 

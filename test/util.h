@@ -98,7 +98,7 @@ assert_eq(const T &first, const T &second) {
 template <typename T>
 inline static void
 assert_eq(const sp::list<T> &first, const sp::list<T> &second) {
-  ASSERT_EQ(first.length, second.length);
+  ASSERT_EQ(length(first), length(second));
   // TODO
 }
 
@@ -111,7 +111,7 @@ assert_eq2(const dht::Node &first, const dht::Node &second) {
 template <std::size_t SIZE>
 inline static void
 assert_eq(const dht::Node *(&first)[SIZE], const sp::list<dht::Node> &second) {
-  ASSERT_EQ(SIZE, second.length);
+  ASSERT_EQ(SIZE, length(second));
   for (std::size_t i = 0; i < SIZE; ++i) {
     ASSERT_TRUE(first[i]);
     const dht::Node *s = sp::get(second, i);

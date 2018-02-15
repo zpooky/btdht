@@ -13,7 +13,7 @@ bool
 is_strict(const Ip &, const NodeId &) noexcept;
 
 void
-randomize(DHT &, NodeId &) noexcept;
+randomize(prng::Xorshift32 &, NodeId &) noexcept;
 
 bool
 should_mark_bad(DHT &, Node &) noexcept;

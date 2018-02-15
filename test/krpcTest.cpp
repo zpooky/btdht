@@ -407,6 +407,65 @@ TEST(krpcTest, test_anounce_peer) {
   }
 }
 
+TEST(krpcTest, print_error_debug2) {
+
+  /*
+   * send: 213.109.234.61:31641
+   * d
+   *  1:t
+   *  4:hex[6169B1FA](ai__)
+   *  1:y
+   *  1:q
+   *  1:v
+   *  4:sp19
+   *  1:q
+   *  4:ping
+   *  1:a
+   *  d
+   *   2:id
+   *   20:hex[B8EE2EAF70A2485C32789B965CE62753B11CE](_____p_H_2x_____u___)
+   *  e
+   * e
+   */
+
+  /*
+   * response:
+   * d
+   *  2:ip
+   *  6:hex[D54182502710](_A_P'_)
+   *  1:r
+   *  d
+   *   2:id
+   *   20:hex[DCFDF873EA8C7FE156FB96C5455A43672FA420](_________o_l_EZCg__ )
+   *   1:p
+   *   i10000e
+   *  e
+   *  1:t
+   *  4:hex[6169B1FA](ai__)
+   *  1:v
+   *  4:hex[4C5410](LT__)
+   *  1:y
+   *  1:r
+   * e
+   */
+  const char *hex =
+      "64323a6970363ad54182502710313a7264323a696432303adcfdf8073ea8"
+      "c7fe156fb96c05455a43672fa420313a706931303030306565313a74343a"
+      "6169b1fa313a76343a4c540100313a79313a7265";
+  sp::byte b[4096] = {0};
+  std::size_t l = std::strlen(hex);
+  FromHex(b, hex, l);
+  sp::Buffer buffer(b);
+  buffer.length = l;
+  {
+    {
+      sp::Buffer copy(buffer);
+      bencode::d::Decoder p(copy);
+      sp::bencode_print(p);
+    }
+  }
+}
+
 TEST(krpcTest, print_error_debug) {
   // const char *hex =
   // "64313a656c693230336531383a496e76616c696420606964272076616c"

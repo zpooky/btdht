@@ -104,7 +104,7 @@ is_strict(const Ip &addr, const NodeId &id) noexcept {
 // See http://www.rasterbar.com/products/libtorrent/dht_sec.html
 static bool
 randomize(DHT &dht, const Ip &addr, NodeId &id) noexcept {
-// Lstart:
+  // Lstart:
   std::uint32_t seed = random(dht.random) & 0xff;
   std::uint32_t hash = node_id_prefix(addr, seed);
   id.id[0] = sp::byte((hash >> 24) & 0xff);
@@ -126,11 +126,13 @@ randomize(DHT &dht, const Ip &addr, NodeId &id) noexcept {
 }
 
 void
-randomize(DHT &dht, NodeId &id) noexcept {
-  fill(dht.random, id.id);
-  auto pre = uniform_dist(dht.random, std::uint32_t(0), std::uint32_t(9));
-  assert(pre <= 9);
-  id.id[0] = sp::byte(pre);
+randomize(prng::Xorshift32 &r, NodeId &id) noexcept {
+  fill(r, id.id);
+  for (std::size_t i = 0; i < 3; ++i) {
+    auto pre = uniform_dist(r, std::uint32_t(0), std::uint32_t(9));
+    assert(pre <= 9);
+    id.id[i] = sp::byte(pre);
+  }
 }
 
 // void

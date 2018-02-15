@@ -166,7 +166,7 @@ template <typename T>
 using list = FixedList<T>;
 
 template <typename T>
-using node = impl::FixedList::FixedNode<T>;
+using node = impl::LinkedList::Node<T>;
 } // namespace sp
 
 //---------------------------

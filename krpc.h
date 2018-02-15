@@ -57,7 +57,10 @@ announce_peer(sp::Buffer &, const Transaction &, //
               const dht::Token &) noexcept;
 
 bool
-dump(sp::Buffer &b) noexcept;
+dump(sp::Buffer &b, const Transaction &) noexcept;
+
+bool
+statistics(sp::Buffer &b, const Transaction &t) noexcept;
 } // namespace request
 
 namespace response {

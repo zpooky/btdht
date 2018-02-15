@@ -317,6 +317,7 @@ struct DHT {
   prng::Xorshift32 &random;
   sp::ip_election election;
   Stat statistics;
+  std::size_t ip_cnt;
   //}}}
   // peer-lookup db {{{
   KeyValue *lookup_table;

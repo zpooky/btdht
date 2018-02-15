@@ -13,8 +13,8 @@
 #include <cassert>
 #include <collection/Array.h>
 #include <cstring>
-#include <utility>
 #include <prng/util.h>
+#include <utility>
 
 namespace dht {
 static Timeout
@@ -209,7 +209,7 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   bool bs_sent = false;
 Lstart:
   NodeId id;
-  randomize(dht, id);
+  randomize(dht.random, id);
 
   auto search_id = [&dht, &id](dht::Bucket &b) -> NodeId & {
     Lretry:
@@ -520,7 +520,6 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::res::find_node(ctx);
 
   dht_response(ctx, sender, [&](auto &) {
-    std::size_t len = 0;
     for_each(contacts, [&](const auto &contact) { //
 
       // TODO handle self insert
@@ -528,9 +527,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       dht::Node node(contact, dht.now);
       dht::insert(dht, node);
 
-      ++len;
     });
-    assert(len == contacts.length);
   });
 
 } // find_node::handle_response()
@@ -617,13 +614,13 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       return false;
     }
 
-    if (nodes.length > 0) {
+    if (!is_empty(nodes)) {
       if (cap_ptr) {
         // only remove bootstrap node if we have gotten some nodes from it
-        sp::remove_first(dht.bootstrap_contacts,
-                         [&cap_ptr](const auto &cmp) { //
-                           return cmp == *cap_ptr;
-                         });
+        remove_first(dht.bootstrap_contacts, [&cap_ptr](const auto &cmp) {
+          /**/
+          return cmp == *cap_ptr;
+        });
       }
     }
 

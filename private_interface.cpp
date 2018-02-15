@@ -25,7 +25,9 @@ on_request(dht::MessageContext &ctx) noexcept {
   log::receive::req::dump(ctx);
 
   dht::DHT &dht = ctx.dht;
-  krpc::response::dump(ctx.out, ctx.transaction, dht);
+  bool r = krpc::response::dump(ctx.out, ctx.transaction, dht);
+  assert(r);
+
   return true;
 }
 
