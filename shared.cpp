@@ -7,7 +7,7 @@
 //---------------------------
 namespace krpc {
 // krpc::ParseContext
-ParseContext::ParseContext(bencode::d::Decoder &d) noexcept
+ParseContext::ParseContext(sp::Buffer &d) noexcept
     : decoder(d)
     , tx()
     , msg_type{0}
@@ -16,7 +16,7 @@ ParseContext::ParseContext(bencode::d::Decoder &d) noexcept
     , ip_vote{} {
 }
 
-ParseContext::ParseContext(ParseContext &ctx, bencode::d::Decoder &d) noexcept
+ParseContext::ParseContext(ParseContext &ctx, sp::Buffer &d) noexcept
     : decoder(d)
     , tx(ctx.tx)
     , msg_type{0}

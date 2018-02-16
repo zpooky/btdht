@@ -5,7 +5,7 @@
 
 namespace sp {
 void
-bencode_print(bencode::d::Decoder &) noexcept;
+bencode_print(sp::Buffer &) noexcept;
 
 bool
 find_entry(Buffer &, const char *key, /*OUT*/ byte *val,

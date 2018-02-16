@@ -146,10 +146,9 @@ TEST(BEncodeTest, list) {
     sp::flip(b);
     // print("list    ", b.raw + b.pos, b.length);
 
-    bencode::d::Decoder p(b);
     sp::list<dht::Node> outList;
     sp::init(outList, 16);
-    ASSERT_TRUE(bencode::d::nodes(p, "target", outList));
+    ASSERT_TRUE(bencode::d::nodes(b, "target", outList));
     assert_eq(list, outList);
   }
 }

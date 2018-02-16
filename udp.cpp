@@ -141,13 +141,10 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
 
   ssize_t sent = 0;
   do {
+    // sp::bencode_print(buf);
     sp::byte *const raw = offset(buf);
     const std::size_t raw_len = remaining_read(buf);
     assert(raw_len > 0);
-    {
-      bencode::d::Decoder d(buf);
-      sp::bencode_print(d);
-    }
 
     sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
     if (sent > 0) {

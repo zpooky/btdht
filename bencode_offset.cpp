@@ -12,23 +12,23 @@ namespace d {
 // d<contents>e
 
 static bool
-int_wildcard(bencode::d::Decoder &d) noexcept {
+int_wildcard(sp::Buffer &d) noexcept {
   std::uint64_t val = 0;
   return bencode::d::value(d, val);
 }
 
 static bool
-string_wildcard(bencode::d::Decoder &d) noexcept {
+string_wildcard(sp::Buffer &d) noexcept {
   const char *val = nullptr;
   std::size_t len = 0;
   return bencode::d::value_ref(d, val, len);
 }
 
 static bool
-list_wildcard(bencode::d::Decoder &d) noexcept {
-  const std::size_t pos = d.buf.pos;
-  if (d.buf.raw[d.buf.pos++] != 'l') {
-    d.buf.pos = pos;
+list_wildcard(sp::Buffer &d) noexcept {
+  const std::size_t pos = d.pos;
+  if (d.raw[d.pos++] != 'l') {
+    d.pos = pos;
     return false;
   }
 Lretry:
@@ -44,8 +44,8 @@ Lretry:
   if (dict_wildcard(d)) {
     goto Lretry;
   }
-  if (d.buf.raw[d.buf.pos++] != 'e') {
-    d.buf.pos = pos;
+  if (d.raw[d.pos++] != 'e') {
+    d.pos = pos;
     return false;
   }
 
@@ -53,10 +53,10 @@ Lretry:
 }
 
 bool
-dict_wildcard(bencode::d::Decoder &d) noexcept {
-  const std::size_t pos = d.buf.pos;
-  if (d.buf.raw[d.buf.pos++] != 'd') {
-    d.buf.pos = pos;
+dict_wildcard(sp::Buffer &d) noexcept {
+  const std::size_t pos = d.pos;
+  if (d.raw[d.pos++] != 'd') {
+    d.pos = pos;
     return false;
   }
 Lretry:
@@ -72,8 +72,8 @@ Lretry:
   if (dict_wildcard(d)) {
     goto Lretry;
   }
-  if (d.buf.raw[d.buf.pos++] != 'e') {
-    d.buf.pos = pos;
+  if (d.raw[d.pos++] != 'e') {
+    d.pos = pos;
     return false;
   }
 
@@ -132,17 +132,17 @@ value(sp::Buffer &buf, Contact &value) noexcept {
 
 template <typename T>
 static bool
-compact_list(bencode::d::Decoder &d, const char *key, sp::list<T> &l) noexcept {
-  const std::size_t pos = d.buf.pos;
+compact_list(sp::Buffer &d, const char *key, sp::list<T> &l) noexcept {
+  const std::size_t pos = d.pos;
   if (!bencode::d::value(d, key)) {
-    d.buf.pos = pos;
+    d.pos = pos;
     return false;
   }
 
   const sp::byte *val = nullptr;
   std::size_t length = 0;
   if (!bencode::d::value_ref(d, val, length)) {
-    d.buf.pos = pos;
+    d.pos = pos;
     return false;
   }
 
@@ -158,13 +158,13 @@ compact_list(bencode::d::Decoder &d, const char *key, sp::list<T> &l) noexcept {
       typename sp::list<T>::value_type n;
       std::size_t pls = val_buf.pos;
       if (!value(val_buf, n)) {
-        d.buf.pos = pos;
+        d.pos = pos;
         return false;
       }
       assert(val_buf.pos > pls);
 
       if (!sp::push_back(l, n)) {
-        d.buf.pos = pos;
+        d.pos = pos;
         return false;
       }
 
@@ -176,13 +176,13 @@ compact_list(bencode::d::Decoder &d, const char *key, sp::list<T> &l) noexcept {
 }
 
 bool
-nodes(bencode::d::Decoder &d, const char *key,
+nodes(sp::Buffer &d, const char *key,
       sp::list<dht::Node> &l) noexcept {
   return compact_list(d, key, l);
 }
 
 bool
-peers(bencode::d::Decoder &d, const char *key, sp::list<Contact> &l) noexcept {
+peers(sp::Buffer &d, const char *key, sp::list<Contact> &l) noexcept {
   return compact_list(d, key, l);
 }
 

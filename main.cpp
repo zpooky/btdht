@@ -158,8 +158,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
     return false;
   };
 
-  bencode::d::Decoder d(in);
-  krpc::ParseContext pctx(d);
+  krpc::ParseContext pctx(in);
   if (!krpc::d::krpc(pctx, f)) {
     return false;
   }

@@ -20,7 +20,7 @@
 namespace krpc {
 // krpc::ParseContext
 struct ParseContext {
-  bencode::d::Decoder &decoder;
+  sp::Buffer &decoder;
   Transaction tx;
 
   char msg_type[16];
@@ -29,9 +29,9 @@ struct ParseContext {
 
   sp::maybe<Contact> ip_vote;
 
-  explicit ParseContext(bencode::d::Decoder &) noexcept;
+  explicit ParseContext(sp::Buffer &) noexcept;
 
-  ParseContext(ParseContext &, bencode::d::Decoder &) noexcept;
+  ParseContext(ParseContext &, sp::Buffer &) noexcept;
 };
 
 } // namespace krpc
@@ -387,7 +387,7 @@ struct MessageContext {
 
   DHT &dht;
 
-  bencode::d::Decoder &in;
+  sp::Buffer &in;
   sp::Buffer &out;
 
   const krpc::Transaction &transaction;

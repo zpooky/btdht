@@ -85,10 +85,6 @@ pair(sp::Buffer &, const char *, const sp::byte *, std::size_t) noexcept;
 
 //===============================================
 namespace d {
-struct Decoder {
-  sp::Buffer &buf;
-  explicit Decoder(sp::Buffer &);
-};
 
 namespace internal {
 bool
@@ -103,20 +99,20 @@ is(sp::Buffer &buf, const char (&exact)[SIZE]) {
 
 template <typename F>
 bool
-dict(Decoder &p, F f) noexcept {
-  std::size_t pos = p.buf.pos;
-  if (!internal::is(p.buf, "d", 1)) {
-    p.buf.pos = pos;
+dict(sp::Buffer &d, F f) noexcept {
+  std::size_t pos = d.pos;
+  if (!internal::is(d, "d", 1)) {
+    d.pos = pos;
     return false;
   }
 
-  if (!f(p)) {
-    p.buf.pos = pos;
+  if (!f(d)) {
+    d.pos = pos;
     return false;
   }
 
-  if (!internal::is(p.buf, "e", 1)) {
-    p.buf.pos = pos;
+  if (!internal::is(d, "e", 1)) {
+    d.pos = pos;
     return false;
   }
 
@@ -124,18 +120,18 @@ dict(Decoder &p, F f) noexcept {
 } // bencode::d::dict
 
 bool
-pair_x(Decoder &, const char *, char *, /*IN&OUT*/ std::size_t &) noexcept;
+pair_x(sp::Buffer &, const char *, char *, /*IN&OUT*/ std::size_t &) noexcept;
 
 template <std::size_t SIZE>
 bool
-pair(Decoder &p, const char *key, char (&value)[SIZE]) noexcept {
+pair(sp::Buffer &p, const char *key, char (&value)[SIZE]) noexcept {
   std::size_t length = SIZE;
   return pair_x(p, key, value, length);
 } // bencode::d::pair()
 
 template <std::size_t SIZE>
 bool
-pair(Decoder &p, const char *key, char (&value)[SIZE],
+pair(sp::Buffer &p, const char *key, char (&value)[SIZE],
      /*IN&OUT*/ std::size_t &length) noexcept {
   const std::size_t l = length;
   length = SIZE;
@@ -148,18 +144,18 @@ pair(Decoder &p, const char *key, char (&value)[SIZE],
 } // bencode::d::pair()
 
 bool
-pair_x(Decoder &, const char *, sp::byte *, /*IN&OUT*/ std::size_t &) noexcept;
+pair_x(sp::Buffer &, const char *, sp::byte *, /*IN&OUT*/ std::size_t &) noexcept;
 
 template <std::size_t SIZE>
 bool
-pair(Decoder &p, const char *key, sp::byte (&value)[SIZE]) noexcept {
+pair(sp::Buffer &p, const char *key, sp::byte (&value)[SIZE]) noexcept {
   std::size_t length = SIZE;
   return pair_x(p, key, value, length);
 } // bencode::d::pair()
 
 template <std::size_t SIZE>
 bool
-pair(Decoder &p, const char *key, sp::byte (&value)[SIZE],
+pair(sp::Buffer &p, const char *key, sp::byte (&value)[SIZE],
      /*IN&OUT*/ std::size_t &length) noexcept {
   const std::size_t l = length;
   length = SIZE;
@@ -172,50 +168,50 @@ pair(Decoder &p, const char *key, sp::byte (&value)[SIZE],
 } // bencode::d::pair()
 
 bool
-pair(Decoder &, const char *, bool &) noexcept;
+pair(sp::Buffer &, const char *, bool &) noexcept;
 
 bool
-pair(Decoder &, const char *, std::uint64_t &) noexcept;
+pair(sp::Buffer &, const char *, std::uint64_t &) noexcept;
 
 bool
-pair(Decoder &, const char *, std::uint32_t &) noexcept;
+pair(sp::Buffer &, const char *, std::uint32_t &) noexcept;
 
 bool
-pair(Decoder &, const char *, std::uint16_t &) noexcept;
+pair(sp::Buffer &, const char *, std::uint16_t &) noexcept;
 
 bool
-pair(Decoder &p, const char *key, dht::Token &) noexcept;
+pair(sp::Buffer &p, const char *key, dht::Token &) noexcept;
 
 bool
-pair(Decoder &p, const char *key, Contact &) noexcept;
+pair(sp::Buffer &p, const char *key, Contact &) noexcept;
 
 // bool
-// pair(Decoder &, const char *, sp::list<dht::Node> &) noexcept;
+// pair(sp::Buffer &, const char *, sp::list<dht::Node> &) noexcept;
 
 // bool
-// pair(Decoder &, const char *, sp::list<dht::Contact> &) noexcept;
+// pair(sp::Buffer &, const char *, sp::list<dht::Contact> &) noexcept;
 
 bool
-value(Decoder &, const char *key) noexcept;
+value(sp::Buffer &, const char *key) noexcept;
 
 bool
-value_ref(Decoder &, const char *&, std::size_t &) noexcept;
+value_ref(sp::Buffer &, const char *&, std::size_t &) noexcept;
 
 bool
-value_ref(Decoder &, const sp::byte *&, std::size_t &) noexcept;
+value_ref(sp::Buffer &, const sp::byte *&, std::size_t &) noexcept;
 
 bool
-value(Decoder &, std::uint64_t &) noexcept;
+value(sp::Buffer &, std::uint64_t &) noexcept;
 
 bool
-peek(const Decoder &, const char *key) noexcept;
+peek(const sp::Buffer &, const char *key) noexcept;
 
 bool
-pair_any(Decoder &, char *, std::size_t, sp::byte *, std::size_t) noexcept;
+pair_any(sp::Buffer &, char *, std::size_t, sp::byte *, std::size_t) noexcept;
 
 template <std::size_t N, std::size_t N2>
 bool
-pair_any(Decoder &d, char (&key)[N], sp::byte (&value)[N2]) noexcept {
+pair_any(sp::Buffer &d, char (&key)[N], sp::byte (&value)[N2]) noexcept {
   return pair_any(d, key, N, value, N2);
 }
 

@@ -117,28 +117,28 @@ krpc(ParseContext &ctx, F f) {
     sp::byte wvalue[128] = {0};
   start:
     // TODO length compare for all raw indexing everywhere!!
-    if (p.buf.raw[p.buf.pos] != 'e') {
-      const std::size_t before = p.buf.pos;
+    if (p.raw[p.pos] != 'e') {
+      const std::size_t before = p.pos;
       krpc::Transaction &tx = ctx.tx;
       if (!t && bencode::d::pair(p, "t", tx.id, tx.length)) {
         t = true;
         goto start;
       } else {
-        assert(before == p.buf.pos);
+        assert(before == p.pos);
       }
 
       if (!y && bencode::d::pair(p, "y", ctx.msg_type)) {
         y = true;
         goto start;
       } else {
-        assert(before == p.buf.pos);
+        assert(before == p.pos);
       }
 
       if (!q && bencode::d::pair(p, "q", ctx.query)) {
         q = true;
         goto start;
       } else {
-        assert(before == p.buf.pos);
+        assert(before == p.pos);
       }
 
       {
@@ -149,7 +149,7 @@ krpc(ParseContext &ctx, F f) {
           ip_handled = true;
           goto start;
         } else {
-          assert(before == p.buf.pos);
+          assert(before == p.pos);
         }
       }
 
@@ -157,18 +157,18 @@ krpc(ParseContext &ctx, F f) {
         v = true;
         goto start;
       } else {
-        assert(before == p.buf.pos);
+        assert(before == p.pos);
       }
 
       // the application layer dict[request argument:a, reply: r]
       if (bencode::d::peek(p, "a") || bencode::d::peek(p, "r")) {
-        mark = p.buf.pos;
+        mark = p.pos;
         assert(bencode::d::value(p, "a") || bencode::d::value(p, "r"));
 
         if (!bencode::d::dict_wildcard(p)) {
           return false;
         }
-        mark_end = p.buf.pos;
+        mark_end = p.pos;
 
         goto start;
       } else {
@@ -210,9 +210,8 @@ krpc(ParseContext &ctx, F f) {
       return false;
     }
 
-    sp::Buffer copy(p.buf, mark, mark_end);
-    bencode::d::Decoder dc(copy);
-    krpc::ParseContext abbriged(ctx, dc);
+    sp::Buffer copy(p, mark, mark_end);
+    krpc::ParseContext abbriged(ctx, copy);
     return f(abbriged);
   });
 }
