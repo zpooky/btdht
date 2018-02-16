@@ -268,6 +268,8 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
   };
 
   Bucket &bucket = parent->bucket;
+  bucket.find_node = 0; // reset bucket
+
   std::size_t moved = 0;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];

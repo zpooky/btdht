@@ -148,6 +148,18 @@ struct Config {
    * start a search for more nodes.
    */
   std::size_t percentage_seek;
+  /*
+   * The interval of when a bucket can be used again to send find_node request
+   * during the 'look_for_nodes' stage.
+   */
+  std::size_t bucket_find_node_spam;
+  /*
+   * the number of times during 'look_for_nodes' stage a random bucket is
+   * selected and was not used to perform find_node because either it did not
+   * contain any good nodes or the bucket where too recently used by
+   * 'look_for_nodes'
+   */
+  std::size_t max_bucket_not_find_node;
 
   Config() noexcept;
 };
@@ -203,6 +215,7 @@ activity(const Peer &) noexcept;
 struct Bucket {
   static constexpr std::size_t K = 32;
   Node contacts[K];
+  std::time_t find_node;
   std::uint8_t bootstrap_generation;
 
   Bucket() noexcept;
@@ -269,6 +282,16 @@ struct KeyValue {
   KeyValue(const Infohash &, KeyValue *) noexcept;
 };
 
+template <typename F>
+bool
+for_all(const dht::KeyValue *it, F f) noexcept {
+  bool ret = true;
+  while (it && ret) {
+    ret = f(*it);
+  }
+  return ret;
+} // bencode::e::for_all()
+
 // dht::log
 struct Log {
   sp::byte id[4];
@@ -290,7 +313,7 @@ struct StatDirection {
   // TODO should only be used in /sent/
   StatTrafic response_timeout;
   StatTrafic response;
-  //TODO use StatTrafic for this
+  // TODO use StatTrafic for this
   std::size_t parse_error;
 
   StatDirection() noexcept;

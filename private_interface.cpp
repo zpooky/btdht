@@ -66,7 +66,7 @@ setup(dht::Module &module) noexcept {
 namespace search {
 
 static bool
-on_request(dht::MessageContext &ctx) noexcept {
+on_request(dht::MessageContext &) noexcept {
   // TODO
   return true;
 }

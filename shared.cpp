@@ -132,7 +132,12 @@ Config::Config() noexcept
     , transaction_timeout(1 * 60)
     //
     , bootstrap_generation_max(16)
-    , percentage_seek(10) {
+    , percentage_seek(10)
+    //
+    , bucket_find_node_spam(1 * 60)
+    , max_bucket_not_find_node(5)
+//
+{
 }
 
 // dht::Infohash
@@ -194,6 +199,7 @@ activity(const Peer &peer) noexcept {
 /*dht::Bucket*/
 Bucket::Bucket() noexcept
     : contacts()
+    , find_node(0)
     , bootstrap_generation(0) {
 }
 

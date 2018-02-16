@@ -60,7 +60,7 @@ static void
 loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
   time_t previous = 0;
 
-  constexpr std::size_t size = 1024 * 1024;
+  constexpr std::size_t size = 10 * 1024 * 1024;
   auto in = new sp::byte[size];
   auto out = new sp::byte[size];
 

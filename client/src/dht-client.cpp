@@ -190,17 +190,7 @@ main(int argc, char **args) {
 
   Contact local = udp::local(udp);
   prng::Xorshift32 r(1337);
-  // randomize(r, self);
-  const char *hex = "6A2D049F1F1BBE9EBB3A6DB3C87C3E99245E52";
-  std::size_t nlength = sizeof(self.id);
-  printf("id[%s]\n", hex);
-  assert(hex::decode(hex, self.id, nlength));
-  {
-    char str[256] = {0};
-    std::size_t l = sizeof(str);
-    hex::encode(self.id, sizeof(self.id), str, l);
-    assert(strcmp(hex, str));
-  }
+  randomize(r, self);
 
   Contact to(0, 0);
   if (!(argc > 1)) {
@@ -225,21 +215,21 @@ main(int argc, char **args) {
 
   // send_statistics(r, udp, to, outBuffer);
   // receive_statistics(udp, inBuffer);
+
+  send_dump(r, udp, to, outBuffer);
+  receive_dump(udp, inBuffer);
+
+  // send_find_node(r, udp, to, outBuffer);
+  // receive_find_node(udp, inBuffer);
   //
-  // send_dump(r, udp, to, outBuffer);
-  // receive_dump(udp, inBuffer);
-
-  send_find_node(r, udp, to, outBuffer);
-  receive_find_node(udp, inBuffer);
-
-  send_ping(r, udp, to, outBuffer);
-  receive_ping(udp, inBuffer);
-
-  send_get_peers(r, udp, to, outBuffer, search);
-  dht::Token token = receive_get_peers(udp, inBuffer);
-
-  send_announce_peer(r, udp, to, outBuffer, token, search);
-  receive_announce_peer(udp, inBuffer);
+  // send_ping(r, udp, to, outBuffer);
+  // receive_ping(udp, inBuffer);
+  //
+  // send_get_peers(r, udp, to, outBuffer, search);
+  // dht::Token token = receive_get_peers(udp, inBuffer);
+  //
+  // send_announce_peer(r, udp, to, outBuffer, token, search);
+  // receive_announce_peer(udp, inBuffer);
 
   delete[] in;
   delete[] out;

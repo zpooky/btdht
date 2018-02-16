@@ -206,19 +206,20 @@ look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     dht.active_searches++;
   };
 
+  Config config;
   bool bs_sent = false;
+  std::size_t bucket_not_used = 0;
 Lstart:
   NodeId id;
   randomize(dht.random, id);
 
-  auto search_id = [&dht, &id](dht::Bucket &b) -> NodeId & {
+  auto search_id = [&dht, &id, config](dht::Bucket &b) -> NodeId & {
     Lretry:
       if (b.bootstrap_generation == 0) {
         b.bootstrap_generation++;
         return dht.id;
       }
 
-      Config config;
       if (b.bootstrap_generation >= config.bootstrap_generation_max) {
         b.bootstrap_generation = 0;
         goto Lretry;
@@ -227,7 +228,7 @@ Lstart:
       b.bootstrap_generation++;
       return id;
   };
-  // TODO verify bad_nodes
+  // TODO verify bad_nodes works...
   // TODO bootstrap should be last. Tag bucket with bootstrap generation only
   // use bootstrap if we get the same bucket and we haven't sent any to
   // bootstrap this generation.
@@ -241,44 +242,48 @@ Lstart:
 
   // XXX if no good node is avaiable try bad/questionable nodes
   // TODO look_for_nodes should be called always each 15min
-  auto copy = [](Bucket &in, sp::Array<Node *> &outp) {
+  auto copy = [](Bucket &in, sp::StaticArray<Node *, Bucket::K> &outp) {
     for_each(in, [&outp](Node &remote) { //
       insert(outp, &remote);
     });
   };
 
-  bool ok = false;
   if (missing_contacts > 0) {
+    bool ok_sent = true;
     dht::Bucket *const b = dht::bucket_for(dht, id);
     if (b) {
-      Node *raw[Bucket::K] = {nullptr};
-      sp::Array<Node *> l(raw);
+      sp::StaticArray<Node *, Bucket::K> l;
       copy(*b, l);
       shuffle(dht.random, l);
       // printf("#routing table nodes: %zu\n", l.length);
 
       std::size_t sent_count = 0;
-      const NodeId &sid = search_id(*b);
-      ok =
-          for_all(l, [&dht, &out, inc_ongoing, sid, &sent_count](Node *remote) {
-            if (dht::is_good(dht, *remote)) {
+      const std::time_t next(b->find_node + config.bucket_find_node_spam);
+      if (next <= dht.now) {
+        const NodeId &sid = search_id(*b);
+        ok_sent = for_all(
+            l, [&dht, &out, inc_ongoing, sid, &sent_count](Node *remote) {
+              if (dht::is_good(dht, *remote)) {
 
-              Contact &c = remote->contact;
-              bool res = client::find_node(dht, out, c, sid, nullptr);
-              if (res) {
-                ++sent_count;
-                inc_ongoing();
+                Contact &c = remote->contact;
+                bool res = client::find_node(dht, out, c, sid, nullptr);
+                if (res) {
+                  ++sent_count;
+                  inc_ongoing();
+                }
+
+                return res;
               }
 
-              return res;
-            }
-
-            return true;
-          });
+              return true;
+            });
+      }
 
       if (sent_count == 0) {
-        ok = false;
+        ++bucket_not_used;
       }
+    } else {
+      ++bucket_not_used;
     }
 
     if (!bs_sent) {
@@ -298,12 +303,14 @@ Lstart:
       });
       bs_sent = true;
     }
-  }
 
-  if (ok) {
-    goto Lstart;
-  }
-}
+    if (ok_sent) {
+      if (bucket_not_used < config.max_bucket_not_find_node) {
+        goto Lstart;
+      }
+    }
+  } // missing_cntacts > 0
+} // look_for_nodes()
 
 static Timeout
 awake(DHT &dht, sp::Buffer &out) noexcept {
@@ -386,8 +393,8 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 } // namespace dht
 
 static void
-handle_ip_election(dht::MessageContext &ctx,
-                   const dht::NodeId &sender) noexcept {
+handle_ip_election(dht::MessageContext &ctx, const dht::NodeId &) noexcept {
+  // TODO?
   if (bool(ctx.ip_vote)) {
     // if (is_strict(ctx.remote.ip, sender)) {
     const Contact &v = ctx.ip_vote.get();

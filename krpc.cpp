@@ -225,6 +225,14 @@ value(sp::Buffer &buf, const dht::Node &node) noexcept {
       return false;
     }
 
+    if (!pair(b, "good", node.good)) {
+      return false;
+    }
+
+    if (!pair(b, "ping_outstanding", node.ping_outstanding)) {
+      return false;
+    }
+
     return true;
   });
 }
@@ -245,12 +253,12 @@ value(sp::Buffer &buf, const dht::RoutingTable &t) noexcept {
   // used by dump
 
   return dict(buf, [&t](sp::Buffer &b) {
-    dht::Infohash id; // TODO
-    if (!pair(b, "id", id.id, sizeof(id.id))) {
-      return false;
-    }
+    // dht::Infohash id; // TODO
+    // if (!pair(b, "id", id.id, sizeof(id.id))) {
+    //   return false;
+    // }
 
-    if (value(b, "bucket")) {
+    if (!value(b, "bucket")) {
       return false;
     }
 
@@ -277,16 +285,6 @@ pair(sp::Buffer &buf, const char *key, const dht::RoutingTable *t) noexcept {
     });
   });
 } // bencode::e::pair()
-
-template <typename F>
-static bool
-for_all(const dht::KeyValue *it, F f) noexcept {
-  bool ret = true;
-  while (it && ret) {
-    ret = f(*it);
-  }
-  return ret;
-} // bencode::e::for_all()
 
 static bool
 value(sp::Buffer &buf, const dht::Peer &t) noexcept {
@@ -583,7 +581,7 @@ announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &self,
 
 bool
 dump(sp::Buffer &b, const Transaction &t) noexcept {
-  return req(b, t, "sp_dump", [](sp::Buffer &buf) { //
+  return req(b, t, "sp_dump", [](sp::Buffer &) { //
 
     return true;
   });
@@ -591,7 +589,7 @@ dump(sp::Buffer &b, const Transaction &t) noexcept {
 
 bool
 statistics(sp::Buffer &b, const Transaction &t) noexcept {
-  return req(b, t, "sp_statistics", [](sp::Buffer &buf) { //
+  return req(b, t, "sp_statistics", [](sp::Buffer &) { //
 
     return true;
   });
@@ -709,9 +707,10 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
     if (!bencode::e::pair(b, "id", dht.id.id, sizeof(dht.id.id))) {
       return false;
     }
-    if (!bencode::e::pair(b, "ip", dht.ip)) {
-      return false;
-    }
+    // TODO?
+    // if (!bencode::e::pair(b, "ip", dht.ip)) {
+    //   return false;
+    // }
     if (!bencode::e::pair(b, "peer_db", dht.lookup_table)) {
       return false;
     }
