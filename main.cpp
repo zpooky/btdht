@@ -4,6 +4,7 @@
 
 #include "dht_interface.h"
 #include "private_interface.h"
+#include "dump.h"
 
 #include "Log.h"
 #include "Options.h"
@@ -16,9 +17,17 @@
 #include <errno.h>
 #include <exception>
 #include <memory>
+#include <signal.h>
 #include <sys/epoll.h> //epoll
 
 // TODO getopt: repeating bootstrap nodes
+
+static void
+sighandler(int signum) {
+  // sp::dump()
+  printf("Caught signal %d, coming out...\n", signum);
+  exit(1);
+}
 
 static void
 die(const char *s) {
@@ -267,6 +276,9 @@ main(int argc, char **argv) {
     dht->last_activity = now;
     return result;
   };
+
+  signal(SIGTERM, sighandler);
+  signal(SIGINT, sighandler);
 
   loop(poll, handle, awake);
   return 0;

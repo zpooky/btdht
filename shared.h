@@ -243,11 +243,35 @@ for_all(Bucket &b, F f) noexcept {
 }
 
 template <typename F>
+bool
+for_all(const Bucket &b, F f) noexcept {
+  bool result = true;
+  for (std::size_t i = 0; i < Bucket::K && result; ++i) {
+    const auto &current = b.contacts[i];
+    if (current) {
+      result = f(current);
+    }
+  }
+  return result;
+}
+
+template <typename F>
 void
 for_each(Bucket &b, F f) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     if (b.contacts[i]) {
       f(b.contacts[i]);
+    }
+  }
+}
+
+template <typename F>
+void
+for_each(const Bucket &b, F f) noexcept {
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    const auto &current = b.contacts[i];
+    if (current) {
+      f(current);
     }
   }
 }

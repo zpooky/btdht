@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <ctime>
 #include <list/FixedList.h>
+#include <buffer/ByteBuffer.h>
 
 namespace sp {
 /*sp::byte*/
@@ -125,40 +126,7 @@ is_valid(const Token &) noexcept;
 
 //---------------------------
 namespace sp {
-// sp::Buffer
-struct Buffer {
-  byte *raw;
-  const std::size_t capacity;
-  std::size_t length;
-  std::size_t pos;
-
-  Buffer(byte *, std::size_t) noexcept;
-  explicit Buffer(Buffer &) noexcept;
-  Buffer(Buffer &, std::size_t, std::size_t) noexcept;
-
-  template <std::size_t SIZE>
-  explicit Buffer(byte (&buffer)[SIZE]) noexcept
-      : Buffer(buffer, SIZE) {
-  }
-
-  byte &operator[](std::size_t) noexcept;
-  const byte &operator[](std::size_t) const noexcept;
-};
-
-void
-flip(Buffer &) noexcept;
-
-void
-reset(Buffer &) noexcept;
-
-byte *
-offset(Buffer &) noexcept;
-
-std::size_t
-remaining_read(const Buffer &) noexcept;
-
-std::size_t
-remaining_write(const Buffer &) noexcept;
+using Buffer = ByteBuffer;
 
 //---------------------------
 // sp::list
@@ -166,7 +134,7 @@ template <typename T>
 using list = FixedList<T>;
 
 template <typename T>
-using node = impl::LinkedList::Node<T>;
+using node = impl::LinkedList::LLNode<T>;
 } // namespace sp
 
 //---------------------------

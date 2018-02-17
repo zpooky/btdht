@@ -1,30 +1,12 @@
 #ifndef SP_MAINLINE_DHT_KRPC_H
 #define SP_MAINLINE_DHT_KRPC_H
 
-#include "bencode.h"
 #include "bencode_offset.h"
 #include "bencode_print.h"
+#include "dslbencode.h"
 #include "shared.h"
 #include <cassert>
 #include <cstring>
-
-namespace bencode {
-namespace e {
-// bool
-// value(sp::Buffer &buffer, const dht::Contact &p) noexcept;
-//
-// bool
-// value(sp::Buffer &buffer, const dht::Node &node) noexcept;
-
-bool
-pair_compact(sp::Buffer &, const char *, const Contact *list) noexcept;
-
-bool
-pair_compact(sp::Buffer &, const char *,
-             const sp::list<dht::Node> &list) noexcept;
-
-} // namespace e
-} // namespace bencode
 
 namespace krpc {
 enum class MessageType : char { query = 'q', response = 'r', error = 'e' };

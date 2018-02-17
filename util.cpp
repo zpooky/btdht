@@ -94,7 +94,7 @@ Contact::Contact(const Ipv6 &v6, Port p) noexcept
     , port(p) {
 }
 
-Contact::Contact(const Ip& i, Port p) noexcept
+Contact::Contact(const Ip &i, Port p) noexcept
     : ip(i)
     , port(p) {
 }
@@ -231,66 +231,7 @@ is_valid(const Token &o) noexcept {
 } // namespace dht
 
 //---------------------------
-namespace sp {
-/*Buffer*/
-Buffer::Buffer(byte *s, std::size_t l) noexcept
-    : raw(s)
-    , capacity(l)
-    , length(0)
-    , pos(0) {
-}
-
-Buffer::Buffer(Buffer &in) noexcept
-    : raw(in.raw)
-    , capacity(in.capacity)
-    , length(in.length)
-    , pos(in.pos) {
-}
-
-Buffer::Buffer(Buffer &in, std::size_t strt, std::size_t end) noexcept
-    : raw(in.raw + strt)
-    , capacity(end - strt)
-    , length(end - strt)
-    , pos(0) {
-}
-
-byte &Buffer::operator[](std::size_t idx) noexcept {
-  assert(idx < capacity);
-  return raw[idx];
-}
-
-const byte &Buffer::operator[](std::size_t idx) const noexcept {
-  assert(idx < capacity);
-  return raw[idx];
-}
-
-void
-flip(Buffer &b) noexcept {
-  std::swap(b.length, b.pos);
-}
-
-void
-reset(Buffer &b) noexcept {
-  b.length = 0;
-  b.pos = 0;
-}
-
-byte *
-offset(Buffer &b) noexcept {
-  return b.raw + b.pos;
-}
-
-std::size_t
-remaining_read(const Buffer &b) noexcept {
-  return b.length - b.pos;
-}
-
-std::size_t
-remaining_write(const Buffer &b) noexcept {
-  return b.capacity - b.pos;
-}
-
-} // namespace sp
+namespace sp {} // namespace sp
 namespace krpc {
 /*krpc::Transaction*/
 Transaction::Transaction() noexcept

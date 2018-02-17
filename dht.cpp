@@ -8,7 +8,7 @@
 #include <hash/crc.h>
 #include <new>
 #include <prng/util.h>
-#include <util/CircularBuffer.h>
+#include <buffer/CircularBuffer.h>
 
 namespace dht {
 

@@ -1,7 +1,7 @@
 #ifndef SP_MAINLINE_DHT_UDP_H
 #define SP_MAINLINE_DHT_UDP_H
 
-#include "shared.h"
+#include "util.h"
 
 namespace udp { //
 

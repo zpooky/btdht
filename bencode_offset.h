@@ -1,6 +1,8 @@
 #ifndef SP_MAINLINE_DHT_BENCODE_OFFSET_H
 #define SP_MAINLINE_DHT_BENCODE_OFFSET_H
 
+#include "util.h"
+
 namespace bencode {
 namespace d {
 /*
