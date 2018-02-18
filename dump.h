@@ -2,12 +2,12 @@
 #define SP_MAINLINE_DHT_DUMP_H
 
 #include "shared.h"
-#include "file.h"
+#include <io/file.h>
 
 namespace sp {
 
 bool
-dump(sp::Buffer &, const dht::DHT &, const file::Path &) noexcept;
+dump(sp::Buffer &, const dht::DHT &, const char *) noexcept;
 
 } // namespace sp
 

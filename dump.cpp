@@ -32,7 +32,7 @@ base(sp::Buffer &buf, const dht::NodeId &id, dht::RoutingTable *t) {
   });
 }
 bool
-dump(sp::Buffer &b, const dht::DHT &dht, const file::Path &file) noexcept {
+dump(sp::Buffer &b, const dht::DHT &dht, const char *file) noexcept {
   reset(b);
   if (!base(b, dht.id, dht.root)) {
     return false;

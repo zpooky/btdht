@@ -1,5 +1,5 @@
-#ifndef SP_MALLOC_UTIL_H
-#define SP_MALLOC_UTIL_H
+#ifndef SP_MAINLINE_DHT_UTIL_H
+#define SP_MAINLINE_DHT_UTIL_H
 
 #include <cassert>
 #include <cstddef>
@@ -7,34 +7,15 @@
 #include <ctime>
 #include <list/FixedList.h>
 #include <buffer/ByteBuffer.h>
+#include <io/fd.h>
+
+using sp::fd;
 
 namespace sp {
 /*sp::byte*/
 using byte = unsigned char;
 } // namespace sp
 
-// fd
-class fd {
-private:
-  int m_fd;
-
-public:
-  explicit fd(int) noexcept;
-
-  explicit operator bool() const noexcept;
-
-  fd(const fd &) = delete;
-  fd(fd &&o) noexcept;
-
-  fd &
-  operator=(const fd &) = delete;
-  fd &
-  operator=(const fd &&) = delete;
-
-  ~fd() noexcept;
-
-  explicit operator int() noexcept;
-};
 
 using Port = std::uint16_t;
 using Ipv4 = std::uint32_t;
