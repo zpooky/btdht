@@ -27,7 +27,7 @@ is_cycle(dht::DHT &dht) noexcept {
 TEST(TimeoutTest, test) {
   fd sock(-1);
   Contact c(0, 0);
-  prng::Xorshift32 r(1);
+  prng::xorshift32 r(1);
   dht::DHT dht(sock, c, r);
   ASSERT_EQ(std::size_t(0), is_cycle(dht));
 

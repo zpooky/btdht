@@ -6,8 +6,8 @@ PROJECT_ROOT = ..
 GTEST_ROOT = $(PROJECT_ROOT)/external/googletest/googletest
 HEADER_DIRS = -I$(GTEST_ROOT)/include -I$(PROJECT_ROOT) -I$(PROJECT_ROOT)/external/sputil/include
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb
-SUT_DIR = build_test
-LDLIBS = -L$(GTEST_ROOT)/make -lgtest_main -lpthread -L$(PROJECT_ROOT)/$(SUT_DIR) -lsut -L$(PROJECT_ROOT)/external/sputil/build -lsputil
+SUT_DIR = build/test
+LDLIBS = -L$(GTEST_ROOT)/make -lgtest_main -lpthread -L$(PROJECT_ROOT)/$(SUT_DIR) -lsut -L$(PROJECT_ROOT)/external/sputil/build/dht -lsputil
 BUILD = build
 
 # TODO `make all` get relinks to gtest because I copy gtest_main to lib... and change time stamp?
@@ -61,10 +61,19 @@ sut:
 # Build sut binaries and put result in $(SUT_DIR) directory to differentiate the build for test binaries with regular binaries.
 # Define the SP_TEST preprocessor macro
 # The resulting static library will be called libsut
-	$(MAKE) BUILD=$(SUT_DIR) LIB=libsut CXXFLAGS+=-DSP_TEST -C $(PROJECT_ROOT) staticlib
+	$(MAKE) BUILD_DIR=$(SUT_DIR) LIB=libsut CXXFLAGS+=-DSP_TEST -C $(PROJECT_ROOT) staticlib
 # }}}
 
 # test {{{
 test: all
 	./$(EXEC)
+# }}}
+
+# bear {{{
+# Creates compilation_database.json
+bear:
+	bear make BUILD_DIR=build/bear clean
+	bear make BUILD_DIR=build/bear CXXFLAGS+=-DSP_TEST
+	compdb list > tmp_compile_commands.json
+	mv tmp_compile_commands.json compile_commands.json
 # }}}

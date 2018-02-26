@@ -1,3 +1,4 @@
+#include "dslbencode.h"
 #include "krpc.h"
 #include <cassert>
 #include <cstring>

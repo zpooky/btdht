@@ -3,8 +3,8 @@
 #include <cstdio>
 
 #include "dht_interface.h"
-#include "private_interface.h"
 #include "dump.h"
+#include "private_interface.h"
 
 #include "Log.h"
 #include "Options.h"
@@ -196,7 +196,7 @@ main(int argc, char **argv) {
   fd udp = udp::bind(options.port, udp::Mode::NONBLOCKING);
   // fd udp = udp::bind(INADDR_ANY, 0);
 
-  prng::Xorshift32 r(14);
+  prng::xorshift32 r(14);
   Contact ext;
   {
     if (!convert("213.65.130.80:0", ext)) {

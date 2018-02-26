@@ -272,7 +272,7 @@ assert_count(DHT &dht, T &added) {
 TEST(dhtTest, test) {
   fd sock(-1);
   Contact c(0, 0);
-  prng::Xorshift32 r(1);
+  prng::xorshift32 r(1);
   dht::DHT dht(sock, c, r);
   dht::init(dht);
 
@@ -325,7 +325,7 @@ contains(const std::list<dht::NodeId> &n, const NodeId &search) {
 TEST(dhtTest, test_link) {
   fd sock(-1);
   Contact c(0, 0);
-  prng::Xorshift32 r(1);
+  prng::xorshift32 r(1);
   dht::DHT dht(sock, c, r);
   dht::init(dht);
 
@@ -371,7 +371,7 @@ is_unique(std::list<NodeId> &l) {
 TEST(dhtTest, test_append) {
   fd sock(-1);
   Contact c(0, 0);
-  prng::Xorshift32 r(1);
+  prng::xorshift32 r(1);
   dht::DHT dht(sock, c, r);
   dht::init(dht);
 
@@ -450,7 +450,7 @@ TEST(dhtTest, test_append) {
 
 TEST(dhtTest, test_node_id_strict) {
   fd sock(-1);
-  prng::Xorshift32 r(1);
+  prng::xorshift32 r(1);
   for (std::size_t i = 0; i < 10000; ++i) {
     Ip ip(i);
     Contact c(ip, 0);
@@ -462,7 +462,7 @@ TEST(dhtTest, test_node_id_strict) {
 
 TEST(dhtTest, test_node_id_not_strict) {
   fd sock(-1);
-  prng::Xorshift32 r(1);
+  prng::xorshift32 r(1);
   dht::NodeId id;
   for (std::size_t i = 0; i < 500000; ++i) {
     Ip ip(i);

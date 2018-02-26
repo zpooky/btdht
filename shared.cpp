@@ -255,7 +255,7 @@ Stat::Stat() noexcept
 }
 
 // dht::DHT
-DHT::DHT(fd &udp, const Contact &i, prng::Xorshift32 &r) noexcept
+DHT::DHT(fd &udp, const Contact &i, prng::xorshift32 &r) noexcept
     // self {{{
     : id()
     , client(udp)

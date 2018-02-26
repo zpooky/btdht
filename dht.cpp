@@ -126,7 +126,7 @@ randomize(DHT &dht, const Ip &addr, NodeId &id) noexcept {
 }
 
 void
-randomize(prng::Xorshift32 &r, NodeId &id) noexcept {
+randomize(prng::xorshift32 &r, NodeId &id) noexcept {
   fill(r, id.id);
   for (std::size_t i = 0; i < 3; ++i) {
     auto pre = uniform_dist(r, std::uint32_t(0), std::uint32_t(9));

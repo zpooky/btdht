@@ -7,15 +7,15 @@ HEADER_DIRS = -Iexternal -Iexternal/sputil/include
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb
 LDFLAGS =
-LDLIBS = -Lexternal/sputil/build -lsputil
+LDLIBS = -Lexternal/sputil/build/dht -lsputil
 PREFIX = /usr/local
-BUILD = build
+BUILD_DIR = build/debug
 
 # File names
 EXEC = dht
 LIB = lib$(EXEC)
 SOURCES = $(wildcard *.cpp)
-OBJECTS = $(patsubst %.cpp, $(BUILD)/%.o, $(SOURCES))
+OBJECTS = $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
 DEPENDS = $(OBJECTS:.o=.d)
 
 #TODO dynamic link lib
@@ -43,8 +43,8 @@ $(EXEC): $(OBJECTS) dependencies
 
 # The "object" file target
 # An implicit conversion from a cpp file to a object file?
-$(BUILD)/%.o: %.cpp
-	@mkdir -p $(BUILD)
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
 # -c means to create an intermediary object file, rather than an executable
 # -MMD means to create *object*.d depend file with its depending cpp & h files
 	$(CXX) $(CXXFLAGS_DEBUG) $(LDFLAGS) -MMD -c $< -o $@
@@ -54,8 +54,9 @@ $(BUILD)/%.o: %.cpp
 clean:
 	rm -f $(OBJECTS)
 	rm -f $(DEPENDS)
-	rm -f $(EXEC) $(BUILD)/$(LIB).a $(BUILD)/$(LIB).so
+	rm -f $(EXEC) $(BUILD_DIR)/$(LIB).a $(BUILD_DIR)/$(LIB).so
 	$(MAKE) -C test clean
+	$(MAKE) -C external/sputil BUILD_DIR=build/dht clean
 # }}}
 
 # test {{{
@@ -68,7 +69,7 @@ staticlib: $(OBJECTS)
 # 'r' means to insert with replacement
 # 'c' means to create a new archive
 # 's' means to write an index
-	$(AR) rcs $(BUILD)/$(LIB).a $(OBJECTS)
+	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS)
 # }}}
 
 # install {{{
@@ -77,7 +78,7 @@ install: $(EXEC) staticlib
 	mkdir -p $(DESTDIR)$(PREFIX)/lib
 # mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	cp -f $(EXEC) $(DESTDIR)$(PREFIX)/bin
-	cp -f $(BUILD)/$(LIB).a $(DESTDIR)$(PREFIX)/lib
+	cp -f $(BUILD_DIR)/$(LIB).a $(DESTDIR)$(PREFIX)/lib
 # gzip < $(EXEC).1 > $(DESTDIR)$(PREFIX)/share/man/man1/$(EXEC).1.gz
 # }}}
 
@@ -90,9 +91,12 @@ uninstall:
 
 # bear {{{
 # Creates compilation_database.json
-bear: clean
-	bear make
+bear:
+	bear make BUILD_DIR=build/bear clean
+	bear make BUILD_DIR=build/bear CXXFLAGS+=-DSP_TEST
+	compdb list > tmp_compile_commands.json
+	mv tmp_compile_commands.json compile_commands.json
 # }}}
 
 dependencies:
-	$(MAKE) -C external/sputil staticlib
+	$(MAKE) -C external/sputil BUILD_DIR=build/dht staticlib

@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <ctime>
 #include <list/FixedList.h>
-#include <buffer/ByteBuffer.h>
+#include <buffer/BytesView.h>
 #include <io/fd.h>
 
 using sp::fd;
@@ -14,6 +14,8 @@ using sp::fd;
 namespace sp {
 /*sp::byte*/
 using byte = unsigned char;
+
+using ByteBuffer = BytesView;
 } // namespace sp
 
 

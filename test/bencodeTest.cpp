@@ -1,5 +1,6 @@
 #include "util.h"
 #include "gtest/gtest.h"
+#include "dslbencode.h"
 
 using namespace bencode::e;
 

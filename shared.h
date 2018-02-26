@@ -361,7 +361,7 @@ struct DHT {
   Client client;
   Log log;
   Contact ip;
-  prng::Xorshift32 &random;
+  prng::xorshift32 &random;
   sp::ip_election election;
   Stat statistics;
   std::size_t ip_cnt;
@@ -394,7 +394,7 @@ struct DHT {
   std::uint32_t active_searches;
   // }}}
 
-  explicit DHT(fd &, const Contact &, prng::Xorshift32 &) noexcept;
+  explicit DHT(fd &, const Contact &, prng::xorshift32 &) noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;

@@ -2,12 +2,12 @@
 #define SP_MAINLINE_DHT_DUMP_H
 
 #include "shared.h"
-#include <io/file.h>
+#include <buffer/CircularByteBuffer.h>
 
 namespace sp {
 
 bool
-dump(sp::Buffer &, const dht::DHT &, const char *) noexcept;
+dump(sp::CircularByteBuffer &, const dht::DHT &, const char *path) noexcept;
 
 } // namespace sp
 
