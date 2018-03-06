@@ -59,7 +59,6 @@ serialize(sp::Buffer &b, const dht::Node &node) noexcept {
   b.pos += sizeof(node.id.id);
 
   if (!serialize(b, node.contact)) {
-    b.pos = pos;
     return false;
   }
 
