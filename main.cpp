@@ -22,10 +22,19 @@
 
 // TODO getopt: repeating bootstrap nodes
 
+static std::unique_ptr<dht::DHT> mdht;
+
 static void
 sighandler(int signum) {
-  // sp::dump()
   printf("Caught signal %d, coming out...\n", signum);
+  if (mdht) {
+    if (!sp::dump(*mdht, "/tmp/dht_db.dump")) {
+      printf("failed dump\n");
+    }
+  } else {
+    printf("failed to dump: dht is nullptr\n");
+  }
+
   exit(1);
 }
 
@@ -204,12 +213,12 @@ main(int argc, char **argv) {
     }
   }
 
-  auto dht = std::make_unique<dht::DHT>(udp, ext, r);
-  if (!dht::init(*dht)) {
+  mdht = std::make_unique<dht::DHT>(udp, ext, r);
+  if (!dht::init(*mdht)) {
     die("failed to init dht");
   }
   printf("node id: ");
-  dht::print_hex(dht->id);
+  dht::print_hex(mdht->id);
 
   {
     Contact local = udp::local(udp);
@@ -224,11 +233,11 @@ main(int argc, char **argv) {
       // "192.168.1.47:13596",
       // "127.0.0.1:13596",
       // "213.65.130.80:13596",
-      "192.168.1.47:51413",
+      "192.168.1.49:51413",
       // "127.0.0.1:51413", "213.65.130.80:51413",
   };
-  dht->now = time(nullptr);
-  for_each(bss, [&dht](const char *ip) {
+  mdht->now = time(nullptr);
+  for_each(bss, [](const char *ip) {
     Contact bs(0, 0);
     if (!convert(ip, bs)) {
       die("parse bootstrap ip failed");
@@ -238,7 +247,7 @@ main(int argc, char **argv) {
     assert(bs.port > 0);
 
     Contact node(bs);
-    if (!bootstrap(*dht, node)) {
+    if (!bootstrap(*mdht, node)) {
       die("failed to setup bootstrap");
     }
   });
@@ -256,24 +265,24 @@ main(int argc, char **argv) {
   }
 
   auto handle = [&](Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
-    dht->last_activity = dht->last_activity == 0 ? now : dht->last_activity;
-    dht->now = now;
+    mdht->last_activity = mdht->last_activity == 0 ? now : mdht->last_activity;
+    mdht->now = now;
 
     const sp::Buffer copy(in);
-    if (!parse(*dht, modules, from, in, out)) {
-      log::receive::parse::error(*dht, copy);
+    if (!parse(*mdht, modules, from, in, out)) {
+      log::receive::parse::error(*mdht, copy);
       return false;
     }
 
     return true;
   };
 
-  auto awake = [&modules, &dht](sp::Buffer &out, time_t now) {
-    print_result(dht->election);
-    dht->now = now;
-    auto result = modules.on_awake(*dht, out);
-    log::awake::timeout(*dht, result);
-    dht->last_activity = now;
+  auto awake = [&modules](sp::Buffer &out, time_t now) {
+    print_result(mdht->election);
+    mdht->now = now;
+    auto result = modules.on_awake(*mdht, out);
+    log::awake::timeout(*mdht, result);
+    mdht->last_activity = now;
     return result;
   };
 

@@ -38,10 +38,6 @@ base(Buffer &sink, const dht::NodeId &id, dht::RoutingTable *t) noexcept {
   });
 }
 
-// TODO template Sink & Circularbuffer
-// separate header and src
-// manual template instant in header or src
-
 static bool
 flush(CircularByteBuffer &b, void *arg) noexcept {
   assert(arg);
@@ -55,10 +51,9 @@ flush(CircularByteBuffer &b, void *arg) noexcept {
 }
 
 bool
-dump(sp::CircularByteBuffer &b, const dht::DHT &dht,
-     const char *file) noexcept {
-
-  reset(b);
+dump(const dht::DHT &dht, const char *file) noexcept {
+  sp::StaticCircularByteBuffer<128> b;
+  // sp::StatucCircularByteBuffer<4096> b;
 
   fd f = fs::open_trunc(file);
   if (!f) {

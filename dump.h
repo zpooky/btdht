@@ -7,7 +7,7 @@
 namespace sp {
 
 bool
-dump(sp::CircularByteBuffer &, const dht::DHT &, const char *path) noexcept;
+dump( const dht::DHT &, const char *path) noexcept;
 
 } // namespace sp
 
