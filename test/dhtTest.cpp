@@ -63,9 +63,9 @@ assert_empty(const Node &contact) {
   ASSERT_EQ(contact.contact.ip.ipv4, Ipv4(0));
   ASSERT_EQ(contact.contact.port, Port(0));
 
-  ASSERT_EQ(contact.request_activity, time_t(0));
-  ASSERT_EQ(contact.response_activity, time_t(0));
-  ASSERT_EQ(contact.ping_sent, time_t(0));
+  ASSERT_EQ(contact.request_activity, Timestamp(0));
+  ASSERT_EQ(contact.response_activity, Timestamp(0));
+  ASSERT_EQ(contact.ping_sent, Timestamp(0));
 
   ASSERT_EQ(contact.ping_outstanding, std::uint8_t(0));
   ASSERT_EQ(contact.good, true);

@@ -27,7 +27,7 @@ TEST(transactionTest, test_valid_tree) {
   fd s(-1);
   prng::xorshift32 r(1);
   dht::DHT dht(s, Contact(0, 0), r);
-  dht.now = now();
+  dht.now = sp::now();
   assert(tx::init(dht.client));
   // TODO
 }
@@ -37,7 +37,7 @@ TEST(transactionTest, test_valid) {
   fd s(-1);
   prng::xorshift32 r(1);
   dht::DHT dht(s, Contact(0, 0), r);
-  dht.now = now();
+  dht.now = sp::now();
   ASSERT_TRUE(tx::init(dht.client));
 
 Lrestart:
