@@ -15,7 +15,7 @@ add_front(Client &, Tx *) noexcept;
 static void
 reset(Tx &tx) noexcept {
   reset(tx.context);
-  tx.sent = 0;
+  tx.sent = Timestamp(0);
 
   tx.suffix[0] = '\0';
   tx.suffix[1] = '\0';
@@ -53,7 +53,7 @@ ordered(DHT &dht) noexcept {
   Tx *const head = client.timeout_head;
   Tx *it = head;
 
-  time_t t = it ? it->sent : 0;
+  Timestamp t = it ? it->sent : Timestamp(0);
 Lit:
   if (it) {
     if (!(it->sent >= t)) {
@@ -128,11 +128,11 @@ unlink(Client &client, Tx *t) noexcept {
 
 static bool
 is_sent(const Tx &tx) noexcept {
-  return tx.sent != 0;
+  return tx.sent != Timestamp(0);
 }
 
 static bool
-is_expired(const Tx &tx, time_t now) noexcept {
+is_expired(const Tx &tx, Timestamp now) noexcept {
   if (is_sent(tx)) {
     Config config;
     if ((tx.sent + config.transaction_timeout) > now) {
@@ -203,7 +203,7 @@ take(Client &client, const krpc::Transaction &needle,
 } // dht::take()
 
 static Tx *
-unlink_free(DHT &dht, time_t now) noexcept {
+unlink_free(DHT &dht, Timestamp now) noexcept {
   Client &client = dht.client;
   Tx *const head = client.timeout_head;
 

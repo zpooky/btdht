@@ -4,13 +4,25 @@
 
 namespace interface_priv {
 
+static Timeout
+on_awake(dht::DHT &, sp::Buffer &) noexcept;
+
 bool
 setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
   dump::setup(modules.module[i++]);
   statistics::setup(modules.module[i++]);
 
+  insert(modules.on_awake, on_awake);
+
   return true;
+}
+
+static Timeout
+on_awake(dht::DHT &, sp::Buffer &) noexcept {
+  dht::Config config;
+  Timeout next(config.refresh_interval);
+  return next;
 }
 
 } // namespace interface_priv

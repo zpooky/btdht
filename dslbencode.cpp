@@ -294,7 +294,7 @@ value(sp::Buffer &buf, const dht::Peer &t) noexcept {
       return false;
     }
 
-    if (!bencode::e::pair(b, "activity", t.activity)) {
+    if (!bencode::e::pair(b, "activity", std::uint64_t(t.activity))) {
       return false;
     }
 

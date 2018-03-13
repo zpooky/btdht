@@ -22,8 +22,7 @@ generic_receive(fd &u, sp::Buffer &b) noexcept {
   printf("contact: %s\n", str);
   // assert(b.length > 0);
 
-  bencode::d::Decoder d(b);
-  sp::bencode_print(d);
+  sp::bencode_print(b);
 }
 
 template <typename R>
@@ -43,7 +42,7 @@ make_t(R &r, dht::Token &t) {
  * # Statistics
  */
 static void
-send_statistics(prng::Xorshift32 &r, fd &udp, const Contact &to,
+send_statistics(prng::xorshift32 &r, fd &udp, const Contact &to,
                 sp::Buffer &b) noexcept {
   reset(b);
   krpc::Transaction t;
@@ -64,7 +63,7 @@ receive_statistics(fd &u, sp::Buffer &b) noexcept {
  * # Dump
  */
 static void
-send_dump(prng::Xorshift32 &r, fd &udp, const Contact &to,
+send_dump(prng::xorshift32 &r, fd &udp, const Contact &to,
           sp::Buffer &b) noexcept {
   reset(b);
   krpc::Transaction t;
@@ -86,7 +85,7 @@ receive_dump(fd &u, sp::Buffer &b) noexcept {
  */
 
 static void
-send_ping(prng::Xorshift32 &r, fd &udp, const Contact &to,
+send_ping(prng::xorshift32 &r, fd &udp, const Contact &to,
           sp::Buffer &b) noexcept {
   reset(b);
   krpc::Transaction t;
@@ -109,7 +108,7 @@ receive_ping(fd &u, sp::Buffer &b) noexcept {
  * # find_node
  */
 static void
-send_find_node(prng::Xorshift32 &r, fd &udp, const Contact &to,
+send_find_node(prng::xorshift32 &r, fd &udp, const Contact &to,
                sp::Buffer &b) noexcept {
   reset(b);
   krpc::Transaction t;
@@ -132,7 +131,7 @@ receive_find_node(fd &u, sp::Buffer &b) noexcept {
  * # get_peers
  */
 static void
-send_get_peers(prng::Xorshift32 &r, fd &udp, const Contact &to, sp::Buffer &b,
+send_get_peers(prng::xorshift32 &r, fd &udp, const Contact &to, sp::Buffer &b,
                dht::Infohash &search) noexcept {
   reset(b);
   krpc::Transaction t;
@@ -159,7 +158,7 @@ receive_get_peers(fd &u, sp::Buffer &b) noexcept {
  * # announce_peer
  */
 static void
-send_announce_peer(prng::Xorshift32 &r, fd &udp, const Contact &to,
+send_announce_peer(prng::xorshift32 &r, fd &udp, const Contact &to,
                    sp::Buffer &b, dht::Token &token,
                    dht::Infohash &search) noexcept {
   reset(b);
@@ -189,7 +188,7 @@ main(int argc, char **args) {
   }
 
   Contact local = udp::local(udp);
-  prng::Xorshift32 r(1337);
+  prng::xorshift32 r(1337);
   randomize(r, self);
 
   Contact to(0, 0);

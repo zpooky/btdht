@@ -541,7 +541,7 @@ bencode<Buffer>::e::value(Buffer &buf, const dht::Peer &t) noexcept {
       return false;
     }
 
-    if (!bencode<Buffer>::e::pair(b, "activity", t.activity)) {
+    if (!bencode<Buffer>::e::pair(b, "activity", t.activity.value)) {
       return false;
     }
 

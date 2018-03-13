@@ -2,6 +2,7 @@
 #define SP_MAINLINE_DHT_MODULE_H
 
 #include "shared.h"
+#include <collection/Array.h>
 
 //===========================================================
 // Module
@@ -23,7 +24,8 @@ struct Module {
 struct Modules {
   Module module[24];
   std::size_t length;
-  Timeout (*on_awake)(DHT &, sp::Buffer &) noexcept;
+  using AwakeType = Timeout (*)(DHT &, sp::Buffer &) noexcept;
+  sp::StaticArray<AwakeType, 4> on_awake;
 
   Modules() noexcept;
 };

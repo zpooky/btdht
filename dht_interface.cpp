@@ -32,7 +32,7 @@ setup(dht::Modules &modules) noexcept {
   announce_peer::setup(modules.module[i++]);
   error::setup(modules.module[i++]);
   //
-  modules.on_awake = &dht::awake;
+  insert(modules.on_awake, &dht::awake);
 
   return true;
 }
@@ -66,9 +66,9 @@ namespace timeout {
 
 template <typename T>
 static T *
-take(time_t now, T *&the_head, std::size_t max) noexcept {
-  auto is_expired = [](auto &node, time_t cmp) { //
-    time_t exp = dht::activity(node);
+take(Timestamp now, T *&the_head, std::size_t max) noexcept {
+  auto is_expired = [](auto &node, Timestamp cmp) { //
+    Timestamp exp = dht::activity(node);
     return exp <= cmp;
   };
 
@@ -108,7 +108,7 @@ head(dht::DHT &ctx) noexcept {
 } // timeout::head()
 
 static void
-update(dht::DHT &ctx, dht::Node *const contact, time_t now) noexcept {
+update(dht::DHT &ctx, dht::Node *const contact, Timestamp now) noexcept {
   assert(contact);
   assert(now >= dht::activity(*contact));
 
@@ -161,22 +161,24 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   Config config;
   Node *const tHead = timeout::head(ctx);
   if (tHead) {
-    const time_t next = tHead->ping_sent + config.refresh_interval;
+    const Timestamp next = tHead->ping_sent + config.refresh_interval;
     ctx.timeout_next = next;
+
     if (next > ctx.now) {
-
-      time_t next_seconds = next - ctx.now;
-      time_t normalized = std::max(config.min_timeout_interval, next_seconds);
-
-      // seconds to ms
-      return Timeout(normalized * 1000);
+      Timestamp next_seconds = next - ctx.now;
+      // return std::max(config.min_timeout_interval, next_seconds);
+      return config.min_timeout_interval > next_seconds
+                 ? Timeout(config.min_timeout_interval)
+                 : next_seconds;
     }
+
+    return Timeout(config.min_timeout_interval);
   } else {
     // timeout queue is empty
     ctx.timeout_next = ctx.now + config.refresh_interval;
   }
 
-  return Timeout(config.refresh_interval);
+  return config.refresh_interval;
 }
 
 static Timeout
@@ -192,7 +194,7 @@ awake_peer_db(DHT &) noexcept {
   // TODO
 
   Config config;
-  return Timeout(config.refresh_interval);
+  return config.refresh_interval;
 }
 
 static void
@@ -258,7 +260,7 @@ Lstart:
       // printf("#routing table nodes: %zu\n", l.length);
 
       std::size_t sent_count = 0;
-      const std::time_t next(b->find_node + config.bucket_find_node_spam);
+      const Timestamp next(b->find_node + config.bucket_find_node_spam);
       if (next <= dht.now) {
         const NodeId &sid = search_id(*b);
         ok_sent = for_all(
@@ -319,15 +321,15 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
 
   if (dht.now >= dht.timeout_next) {
     Timeout ap = awake_ping(dht, out);
+    log::awake::contact_ping(dht, ap);
     next = std::min(ap, next);
   }
-  log::awake::contact_ping(dht, 0);
 
   if (dht.now >= dht.timeout_peer_next) {
     Timeout ap = awake_peer_db(dht);
+    log::awake::peer_db(dht, ap);
     next = std::min(ap, next);
   }
-  log::awake::peer_db(dht, 0);
 
   {
     auto percentage = [](std::uint32_t t, std::uint32_t c) -> std::size_t {
@@ -351,7 +353,7 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
   }
 
   // Recalculate
-  return next * 1000;
+  return next;
 }
 
 static Node *
@@ -370,7 +372,7 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
     return nullptr;
   }
 
-  time_t now = dht.now;
+  Timestamp now = dht.now;
 
   Node *result = find_contact(dht, sender);
   if (result) {

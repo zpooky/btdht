@@ -73,4 +73,17 @@ dump(const dht::DHT &dht, const char *file) noexcept {
   return true;
 }
 
+bool
+restore(dht::DHT &, const char *file) noexcept {
+  fd f = fs::open_read(file);
+  if (!f) {
+    return false;
+  }
+  sp::StaticCircularByteBuffer<64> b;
+
+  // TODO
+
+  return true;
+}
+
 } // namespace sp

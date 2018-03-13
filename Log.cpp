@@ -5,9 +5,13 @@
 namespace log {
 /*log*/
 static void
-print_time(time_t now) noexcept {
-  char buff[20] = {};
-  strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&now));
+print_time(Timestamp now) noexcept {
+  char buff[32] = {0};
+
+  sp::Seconds sec(now, sp::RoundMode::UP);
+  time_t tim = time_t(sec);
+
+  strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", localtime(&tim));
   printf("%s|", buff);
 }
 
@@ -192,13 +196,14 @@ namespace awake {
 void
 timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
-  printf("awake next timeout[%dms]\n", timeout);
+  printf("awake next timeout[%lums]\n", std::uint64_t(timeout));
 }
 
 void
 contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
-  printf("awake contact_ping vote timeout[%dsec] next date:", timeout);
+  printf("awake contact_ping vote timeout[%lusec] next date:",
+         std::uint64_t(timeout)); // TODO fix better print
   print_time(ctx.timeout_next);
   printf("\n");
 }
@@ -206,7 +211,8 @@ contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
 void
 peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
-  printf("awake peer_db vote timeout[%dsec] next date:", timeout);
+  printf("awake peer_db vote timeout[%lusec] next date:",
+         std::uint64_t(timeout)); // TODO fix better print
   print_time(ctx.timeout_peer_next);
   printf("\n");
 }

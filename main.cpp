@@ -25,14 +25,14 @@
 static std::unique_ptr<dht::DHT> mdht;
 
 static void
-sighandler(int signum) {
-  printf("Caught signal %d, coming out...\n", signum);
+sighandler(int) {
+  // printf("Caught signal %d, coming out...\n", signum);
   if (mdht) {
     if (!sp::dump(*mdht, "/tmp/dht_db.dump")) {
-      printf("failed dump\n");
+      // printf("failed dump\n");
     }
   } else {
-    printf("failed to dump: dht is nullptr\n");
+    // printf("failed to dump: dht is nullptr\n");
   }
 
   exit(1);
@@ -76,19 +76,19 @@ bootstrap(dht::DHT &dht, Contact dest) noexcept {
 template <typename Handle, typename Awake>
 static void
 loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
-  time_t previous = 0;
+  Timestamp previous(0);
 
   constexpr std::size_t size = 10 * 1024 * 1024;
   auto in = new sp::byte[size];
   auto out = new sp::byte[size];
 
-  Timeout timeout = 0;
+  sp::Milliseconds timeout(0);
   for (;;) {
 
     constexpr std::size_t max_events = 1024;
     ::epoll_event events[max_events];
 
-    int no_events = ::epoll_wait(int(fdpoll), events, max_events, timeout);
+    int no_events = ::epoll_wait(int(fdpoll), events, max_events, int(timeout));
     if (no_events < 0) {
       if (errno != EINTR) {
         // TODO handle specific interrupt
@@ -97,7 +97,7 @@ loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
     }
 
     // always increasing clock
-    time_t now = std::max(time(nullptr), previous);
+    Timestamp now = std::max(sp::now(), previous);
 
     for (int i = 0; i < no_events; ++i) {
 
@@ -208,7 +208,7 @@ main(int argc, char **argv) {
   prng::xorshift32 r(14);
   Contact ext;
   {
-    if (!convert("213.65.130.80:0", ext)) {
+    if (!convert("81.232.82.13:0", ext)) {
       die("TODO");
     }
   }
@@ -233,10 +233,11 @@ main(int argc, char **argv) {
       // "192.168.1.47:13596",
       // "127.0.0.1:13596",
       // "213.65.130.80:13596",
-      "192.168.1.49:51413",
+      // "192.168.1.49:51413",
+      "192.168.2.14:51413",
       // "127.0.0.1:51413", "213.65.130.80:51413",
   };
-  mdht->now = time(nullptr);
+  mdht->now = sp::now();
   for_each(bss, [](const char *ip) {
     Contact bs(0, 0);
     if (!convert(ip, bs)) {
@@ -264,8 +265,10 @@ main(int argc, char **argv) {
     }
   }
 
-  auto handle = [&](Contact from, sp::Buffer &in, sp::Buffer &out, time_t now) {
-    mdht->last_activity = mdht->last_activity == 0 ? now : mdht->last_activity;
+  auto handle = [&](Contact from, sp::Buffer &in, sp::Buffer &out,
+                    Timestamp now) {
+    mdht->last_activity =
+        mdht->last_activity == Timestamp(0) ? now : mdht->last_activity;
     mdht->now = now;
 
     const sp::Buffer copy(in);
@@ -277,10 +280,18 @@ main(int argc, char **argv) {
     return true;
   };
 
-  auto awake = [&modules](sp::Buffer &out, time_t now) {
+  auto awake = [&modules](sp::Buffer &out, Timestamp now) {
     print_result(mdht->election);
     mdht->now = now;
-    auto result = modules.on_awake(*mdht, out);
+
+    dht::Config config;
+    Timeout result = config.refresh_interval;
+    result =
+        reduce(modules.on_awake, result, [&out](Timeout acum, auto callback) {
+          auto cr = callback(*mdht, out);
+          return std::min(cr, acum);
+        });
+
     log::awake::timeout(*mdht, result);
     mdht->last_activity = now;
     return result;

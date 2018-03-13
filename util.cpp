@@ -306,7 +306,7 @@ Node::Node() noexcept
 }
 
 /*Node*/
-Node::Node(const NodeId &nid, const Contact &p, time_t act) noexcept
+Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
     // timeout{{{
     : timeout_next(nullptr)
     , timeout_priv(nullptr)
@@ -329,7 +329,7 @@ Node::Node(const NodeId &nid, const Contact &p, time_t act) noexcept
 {
 }
 
-Node::Node(const Node &node, time_t now) noexcept
+Node::Node(const Node &node, Timestamp now) noexcept
     : Node(node.id, node.contact, now) {
 }
 

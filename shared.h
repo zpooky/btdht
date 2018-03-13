@@ -73,7 +73,7 @@ struct Tx {
   Tx *timeout_next;
   Tx *timeout_priv;
 
-  time_t sent;
+  Timestamp sent;
 
   sp::byte prefix[2];
   sp::byte suffix[2];
@@ -118,23 +118,22 @@ struct Client {
 namespace dht {
 // dht::Config
 struct Config {
-  // TODO change from time_t since time_t is a abs timestamp?
   /*
-   * Min Node refresh await timeout
+   * Minimum Node refresh await timeout
    */
-  time_t min_timeout_interval;
+  sp::Minutes min_timeout_interval;
   /*
    * Node refresh interval
    */
   Timeout refresh_interval;
-  time_t peer_age_refresh;
-  time_t token_max_age;
+  sp::Minutes peer_age_refresh;
+  sp::Minutes token_max_age;
   /*
    * Max age of transaction created for outgoing request. Used when reclaiming
    * transaction id. if age is greater than max age then we can reuse the
    * transaction.
    */
-  time_t transaction_timeout;
+  sp::Minutes transaction_timeout;
   /*
    * the generation of find_node request sent to bootstrap our routing table.
    * When max generation is reached we start from zero again. when generation is
@@ -152,7 +151,7 @@ struct Config {
    * The interval of when a bucket can be used again to send find_node request
    * during the 'look_for_nodes' stage.
    */
-  std::size_t bucket_find_node_spam;
+  sp::Minutes bucket_find_node_spam;
   /*
    * the number of times during 'look_for_nodes' stage a random bucket is
    * selected and was not used to perform find_node because either it did not
@@ -177,7 +176,7 @@ struct Infohash {
 // dht::Peer
 struct Peer {
   Contact contact;
-  time_t activity;
+  Timestamp activity;
   // {
   Peer *next;
   // }
@@ -185,8 +184,8 @@ struct Peer {
   Peer *timeout_priv;
   Peer *timeout_next;
   // }
-  Peer(Ipv4, Port, time_t) noexcept;
-  Peer(const Contact &, time_t, Peer *next) noexcept;
+  Peer(Ipv4, Port, Timestamp) noexcept;
+  Peer(const Contact &, Timestamp, Peer *next) noexcept;
   Peer() noexcept;
 
   bool
@@ -205,17 +204,17 @@ for_all(const dht::Peer *l, F f) noexcept {
   return true;
 }
 
-time_t
+Timestamp
 activity(const Node &) noexcept;
 
-time_t
+Timestamp
 activity(const Peer &) noexcept;
 
 /*dht::Bucket*/
 struct Bucket {
   static constexpr std::size_t K = 32;
   Node contacts[K];
-  std::time_t find_node;
+  Timestamp find_node;
   std::uint8_t bootstrap_generation;
 
   Bucket() noexcept;
@@ -369,13 +368,13 @@ struct DHT {
   // peer-lookup db {{{
   KeyValue *lookup_table;
   Peer *timeout_peer;
-  time_t timeout_peer_next;
+  Timestamp timeout_peer_next;
   //}}}
   // routing-table {{{
   RoutingTable *root;
   //}}}
   // timeout {{{
-  time_t timeout_next;
+  Timestamp timeout_next;
   Node *timeout_node;
   //}}}
   // recycle contact list {{{
@@ -383,11 +382,11 @@ struct DHT {
   sp::list<Contact> recycle_value_list;
   // }}}
   // stuff {{{
-  time_t last_activity;
+  Timestamp last_activity;
 
   std::uint32_t total_nodes;
   std::uint32_t bad_nodes;
-  time_t now;
+  Timestamp now;
   // }}}
   // boostrap {{{
   sp::list<Contact> bootstrap_contacts;

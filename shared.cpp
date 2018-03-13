@@ -125,16 +125,16 @@ namespace dht {
 /*dht::Config*/
 Config::Config() noexcept
     // seconds
-    : min_timeout_interval(60)
-    , refresh_interval(15 * 60)
-    , peer_age_refresh(60 * 45)
-    , token_max_age(15 * 60)
-    , transaction_timeout(1 * 60)
+    : min_timeout_interval(1)
+    , refresh_interval(sp::Minutes(15))
+    , peer_age_refresh(45)
+    , token_max_age(15)
+    , transaction_timeout(1)
     //
     , bootstrap_generation_max(16)
     , percentage_seek(10)
     //
-    , bucket_find_node_spam(1 * 60)
+    , bucket_find_node_spam(1)
     , max_bucket_not_find_node(5)
 //
 {
@@ -151,7 +151,7 @@ Infohash::operator==(const Infohash &o) const noexcept {
 }
 
 /*dht::Peer*/
-Peer::Peer(Ipv4 i, Port p, time_t n) noexcept
+Peer::Peer(Ipv4 i, Port p, Timestamp n) noexcept
     : contact(i, p)
     , activity(n)
     //{
@@ -164,7 +164,7 @@ Peer::Peer(Ipv4 i, Port p, time_t n) noexcept
 {
 }
 
-Peer::Peer(const Contact &c, time_t a, Peer *nxt) noexcept
+Peer::Peer(const Contact &c, Timestamp a, Peer *nxt) noexcept
     : contact(c)
     , activity(a)
     //{
@@ -178,7 +178,7 @@ Peer::Peer(const Contact &c, time_t a, Peer *nxt) noexcept
 }
 
 Peer::Peer() noexcept
-    : Peer(0, 0, 0) {
+    : Peer(0, 0, Timestamp(0)) {
 }
 
 bool
@@ -186,12 +186,12 @@ Peer::operator==(const Contact &c) const noexcept {
   return contact.operator==(c);
 }
 
-time_t
+Timestamp
 activity(const Node &head) noexcept {
   return std::max(head.request_activity, head.response_activity);
 }
 
-time_t
+Timestamp
 activity(const Peer &peer) noexcept {
   return peer.activity;
 }

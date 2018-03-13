@@ -1,0 +1,13 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	0.0.0	/7fcdea3f/
+TEST	test/AppTest.cpp	/^TEST(MainTest, dummy) {$/;"	f
+fun	src/app.cpp	/^fun(int arg) {$/;"	f	namespace:sp	typeref:typename:int
+inl	src/app.h	/^inline int inl(){$/;"	f	namespace:sp	typeref:typename:int
+main	src/main.cpp	/^main() {$/;"	f	typeref:typename:int
+sp	src/app.cpp	/^namespace sp {$/;"	n	file:
+sp	src/app.h	/^namespace sp {$/;"	n

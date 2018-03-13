@@ -32,11 +32,6 @@ the ip is not correct regenerate nodeid from that external ip insert from old
 RoutingTable in new
 -----------------
 
-keep track of transaction ids we sent out in requests,bounded queue of active
-transaction with a timout only send out pings based on how many free slots in
-queue,delay the rest ready for ping the next 'awake' slot.
------------------
-
 check that peer owns nodeid before change anything
 --------------
 
@@ -71,5 +66,6 @@ new DHT
 
 ip vote
 
-fix static tree
+staticRoutingTree
+staticReusableLists
 

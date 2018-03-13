@@ -8,6 +8,7 @@
 #include <list/FixedList.h>
 #include <buffer/BytesView.h>
 #include <io/fd.h>
+#include <util/timeout.h>
 
 using sp::fd;
 
@@ -87,8 +88,8 @@ to_string(const Contact &c, char (&msg)[SIZE]) noexcept {
 bool
 convert(const char *, Port &) noexcept;
 
-using Timeout = int;
-using Seconds = std::uint32_t;
+using Timeout = sp::Milliseconds;
+using Timestamp = sp::Timestamp;
 
 namespace dht {
 // dht::Token
@@ -186,9 +187,9 @@ struct Node {
   // }}}
 
   // activity {{{
-  time_t request_activity;
-  time_t response_activity;
-  time_t ping_sent;
+  Timestamp request_activity;
+  Timestamp response_activity;
+  Timestamp ping_sent;
   //}}}
 
   //{{{
@@ -198,8 +199,8 @@ struct Node {
   // }}}
 
   Node() noexcept;
-  Node(const NodeId &, const Contact &, time_t) noexcept;
-  Node(const Node &, time_t) noexcept;
+  Node(const NodeId &, const Contact &, Timestamp) noexcept;
+  Node(const Node &, Timestamp) noexcept;
 
   explicit operator bool() const noexcept;
 };

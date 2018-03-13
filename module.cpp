@@ -18,7 +18,7 @@ Module::Module() noexcept
 Modules::Modules() noexcept
     : module{}
     , length(0)
-    , on_awake(nullptr) {
+    , on_awake() {
 }
 
 Module &

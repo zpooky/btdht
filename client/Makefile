@@ -7,7 +7,7 @@ HEADER_DIRS = -I.. -I../external/sputil/include
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb
 LDFLAGS =
-LDLIBS = -L../build -ldht -L../external/sputil/build -lsputil
+LDLIBS = -L../build/debug -ldht -L../external/sputil/build/debug -lsputil
 PREFIX = /usr/local
 
 SOURCE_DIR = src
@@ -19,10 +19,6 @@ LIB = lib$(EXEC)
 SOURCES = $(wildcard $(SOURCE_DIR)/*.cpp)
 OBJECTS = $(patsubst $(SOURCE_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
 DEPENDS = $(OBJECTS:.o=.d)
-
-#TODO dynamic link lib
-#TODO https://kristerw.blogspot.se/2017/09/useful-gcc-warning-options-not-enabled.html
-#TODO build for different optimizations level in dedicated build directories
 
 # PHONY targets is not file backed targets
 .PHONY: all clean install uninstall bear
@@ -93,41 +89,4 @@ bear: clean
 
 dependencies:
 	$(MAKE) -C .. staticlib
-
-# gcc
-##linker flags
-# -static - On systems that support dynamic linking, this prevents linking with the shared libraries.
-
-# Make
-## Rule
-# target: dependencies
-
-##ref
-# -http://nullprogram.com/blog/2017/08/20/
-# -https://swcarpentry.github.io/make-novice/reference/
-
-## Special Macros
-#$@ - The target of the current rule.
-
-#$* - The target with the suffix cut off
-# example: $* of prog.c would be prog
-
-#$< - the name of the related file that caused the action
-# The name of the file that caused this target to get triggered and made. If we are
-# making prog.o, it is probably because prog.c has recently been modified, so $< is
-# prog.c.
-
-# $? - is the names of the changed dependents.
-
-# $^ - The dependencies of the current rule.
-
-## Externally override flags
-# make CC=clang CFLAGS='-O3 -march=native'
-
-## Read flags from env
-#export CC=clang
-#export CFLAGS=-O3
-#make -e all
-
-## Generate default make values explicitly
-#make -p
+	$(MAKE) -C ../external/sputil staticlib

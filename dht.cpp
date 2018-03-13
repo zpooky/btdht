@@ -2,13 +2,13 @@
 #include "dht.h"
 #include "timeout.h"
 #include <algorithm>
+#include <buffer/CircularBuffer.h>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <hash/crc.h>
 #include <new>
 #include <prng/util.h>
-#include <buffer/CircularBuffer.h>
 
 namespace dht {
 
@@ -268,7 +268,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
   };
 
   Bucket &bucket = parent->bucket;
-  bucket.find_node = 0; // reset bucket
+  bucket.find_node = Timestamp(0); // reset bucket
 
   std::size_t moved = 0;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
@@ -447,7 +447,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
 struct TokenPair {
   Ipv4 ip;
   Token token;
-  time_t created;
+  Timestamp created;
 
   TokenPair();
   operator bool() const noexcept;
@@ -457,7 +457,7 @@ struct TokenPair {
 TokenPair::TokenPair()
     : ip()
     , token()
-    , created() {
+    , created(0) {
 }
 
 TokenPair::operator bool() const noexcept {
@@ -568,10 +568,10 @@ is_good(const DHT &dht, const Node &contact) noexcept {
      * Using dht.last_activty to better handle a general outgate of network
      * connectivity
      */
-    time_t resp_timeout = contact.response_activity + config.refresh_interval;
+    auto resp_timeout = contact.response_activity + config.refresh_interval;
     if (resp_timeout > dht.last_activity) {
 
-      time_t req_activity = contact.request_activity + config.refresh_interval;
+      auto req_activity = contact.request_activity + config.refresh_interval;
       if (req_activity > dht.last_activity) {
         return false;
       }

@@ -23,13 +23,13 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
   };
 
   auto is_expired = [&dht](dht::Peer &peer) {
-    time_t peer_activity = peer.activity;
+    Timestamp peer_activity = peer.activity;
 
     // Determine to age if end of life is higher than now and make sure that
     // we have an internet connection by checking that we have received any
     // updates at all
     dht::Config config;
-    time_t peer_eol = peer_activity + config.peer_age_refresh;
+    Timestamp peer_eol = peer_activity + config.peer_age_refresh;
     if (peer_eol < dht.now) {
       if (dht.last_activity > peer_eol) {
         return true;
