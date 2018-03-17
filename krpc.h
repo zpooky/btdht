@@ -77,6 +77,9 @@ dump(sp::Buffer &b, const Transaction &t, const dht::DHT &) noexcept;
 bool
 statistics(sp::Buffer &b, const Transaction &t, const dht::Stat &) noexcept;
 
+bool
+search(sp::Buffer &b, const Transaction &t) noexcept;
+
 } // namespace response
 
 namespace d {
@@ -227,6 +230,19 @@ ping(Ctx &ctx, F f) noexcept {
     }
 
     return f(ctx, sender);
+  });
+}
+
+template <typename Ctx, typename F>
+bool
+search(Ctx &ctx, F f) noexcept {
+  return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
+    dht::Infohash search;
+    if (!bencode::d::pair(p, "search", search.id)) {
+      return false;
+    }
+
+    return f(ctx, search);
   });
 }
 } // namespace request

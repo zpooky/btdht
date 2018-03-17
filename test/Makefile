@@ -61,7 +61,7 @@ sut:
 # Build sut binaries and put result in $(SUT_DIR) directory to differentiate the build for test binaries with regular binaries.
 # Define the SP_TEST preprocessor macro
 # The resulting static library will be called libsut
-	$(MAKE) BUILD_DIR=$(SUT_DIR) LIB=libsut CXXFLAGS+=-DSP_TEST -C $(PROJECT_ROOT) staticlib
+	$(MAKE) BUILD_DIR=$(SUT_DIR) LIB=libsut CXXFLAGS+=-DSP_TEST -C $(PROJECT_ROOT)
 # }}}
 
 # test {{{

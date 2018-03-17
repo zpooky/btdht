@@ -256,6 +256,22 @@ find_node(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   printf("transmit find_node[%s],res[%s]\n", remote, status);
 }
 
+void
+get_peers(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.sent.request.find_node;
+
+  print_time(ctx);
+  char remote[30] = {0};
+  to_string(contact, remote, sizeof(remote));
+
+  // auto &tx = ctx.transaction;
+  // print_hex(tx.id, tx.length);
+
+  const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
+  printf("transmit get_peers[%s],res[%s]\n", remote, status);
+}
+
 namespace error {
 /* log::transmit::error */
 void

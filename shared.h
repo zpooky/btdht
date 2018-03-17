@@ -10,9 +10,12 @@
 #include <cstdlib>
 
 #include "bencode.h"
+#include <hash/util.h>
 #include <list/FixedList.h>
+#include <list/LinkedList.h>
 #include <tree/StaticTree.h>
 
+#include <heap/binary.h>
 #include <prng/xorshift.h>
 #include <util/maybe.h>
 
@@ -246,7 +249,7 @@ bool
 for_all(const Bucket &b, F f) noexcept {
   bool result = true;
   for (std::size_t i = 0; i < Bucket::K && result; ++i) {
-    const auto &current = b.contacts[i];
+    const Node &current = b.contacts[i];
     if (current) {
       result = f(current);
     }
@@ -290,10 +293,20 @@ bool
 for_all(const RoutingTable *it, F f) noexcept {
   bool result = true;
   while (result && it) {
-    result = f(*it);
+    const RoutingTable &current = *it;
+    result = f(current);
     it = it->in_tree;
   }
   return result;
+}
+
+template <typename F>
+bool
+for_all_node(const RoutingTable *it, F f) noexcept {
+  return for_all(it, [&f](const RoutingTable &r) {
+    /**/
+    return for_all(r.bucket, f);
+  });
 }
 
 // dht::KeyValue
@@ -352,6 +365,77 @@ struct Stat {
   Stat() noexcept;
 };
 
+struct SearchContext {
+  // ref_cnt is ok since we are in a single threaded ctx
+  // incremented for each successfull client::get_peers
+  // decremented on receieve & on timeout
+  std::size_t ref_cnt;
+  // whether this instance should be reclaimd. if ref_cnt is 0
+  bool is_dead;
+
+  SearchContext() noexcept;
+};
+
+struct K {
+  /* number of common prefix bits */
+  int common;
+  Contact contact;
+  K()
+      : common(-1)
+      , contact() {
+  }
+
+  explicit K(const Node &in, const Key &ref)
+      : common(int(common_bits(in.id.id, ref)))
+      , contact(in.contact) {
+  }
+
+  explicit operator bool() const noexcept {
+    return common != -1;
+  }
+
+  bool
+  operator>(const K &o) const noexcept {
+    assert(o.common != -1);
+    assert(common != -1);
+    return common > o.common;
+  }
+};
+
+struct Search {
+  SearchContext *ctx;
+  Infohash search;
+  sp::StaticArray<sp::Hasher<NodeId>, 2> hashers;
+  sp::BloomFilter<NodeId, 8 * 1024 * 1024> searched;
+  sp::Timestamp started;
+
+  heap::StaticMaxBinary<K, 1024> queue;
+  sp::LinkedList<Contact> result;
+
+  explicit Search(const Infohash &) noexcept;
+
+  Search(const Search &) = delete;
+  Search(const Search &&) = delete;
+
+  Search &
+  operator=(const Search &) = delete;
+  Search &
+  operator=(const Search &&) = delete;
+
+  ~Search() {
+    if (ctx) {
+      ctx->is_dead = true;
+      if (ctx->ref_cnt == 0) {
+        delete ctx;
+        ctx = nullptr;
+      }
+    }
+  }
+};
+
+Search *
+find_search(dht::DHT &, SearchContext *) noexcept;
+
 // dht::DHT
 struct DHT {
   static const std::size_t token_table = 64;
@@ -391,6 +475,9 @@ struct DHT {
   // boostrap {{{
   sp::list<Contact> bootstrap_contacts;
   std::uint32_t active_searches;
+  // }}}
+  // searches {{{
+  sp::LinkedList<Search> searches;
   // }}}
 
   explicit DHT(fd &, const Contact &, prng::xorshift32 &) noexcept;

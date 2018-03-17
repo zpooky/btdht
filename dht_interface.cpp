@@ -438,6 +438,7 @@ dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
     contact->response_activity = ctx.dht.now;
     f(*contact);
   } else {
+    /* phony */
     dht::Node n;
     n.id = sender;
     f(n);
@@ -708,21 +709,28 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
-                const dht::Token &, // XXX store token to used for announce
-                const sp::list<Contact> &) noexcept {
+                const dht::Token &, const sp::list<Contact> &result,
+                dht::Search &search) noexcept {
+  // XXX store token to used for announce
   log::receive::res::get_peers(ctx);
   /*
    * infohash lookup query found result, sender returns requested data.
    */
-  dht_response(ctx, sender, [](auto &) {
-    // XXX
+  dht_response(ctx, sender, [&search, &result](auto &) {
+    // search(NodeId) {
+    for_each(result, [&search](const Contact &c) {
+      /**/
+      assert(insert(search.result, c));
+    });
+    // }
   });
 }
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &, // XXX store token to used for announce
-                const sp::list<dht::Node> &contacts) noexcept {
+                const sp::list<dht::Node> &contacts,
+                dht::Search &search) noexcept {
   log::receive::res::get_peers(ctx);
   /*
    * sender has no information for queried infohash, returns the closest
@@ -730,8 +738,13 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
    */
   dht::DHT &dht = ctx.dht;
   dht_request(ctx, sender, [&](auto &) {
-    for_each(contacts, [&](const auto &contact) { //
-      // TODO handle self insert
+    for_each(contacts, [&](const auto &contact) {
+      // search(NodeId) {
+      if (!test(search.searched, contact.id)) {
+        assert(insert(search.searched, contact.id));
+        insert(search.queue, dht::K(contact, search.search.id));
+      }
+      // }
 
       dht::Node ins(contact, dht.now);
       dht::insert(dht, ins);
@@ -739,9 +752,40 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   });
 }
 
+static void
+dec(dht::SearchContext *ctx) noexcept {
+  ctx->ref_cnt--;
+  if (ctx->is_dead) {
+    if (ctx->ref_cnt == 0) {
+      delete ctx;
+    }
+  }
+}
+
+static void
+on_timeout(dht::DHT &, void *ctx) noexcept {
+  auto search = (dht::SearchContext *)ctx;
+  if (search) {
+    dec(search);
+  }
+}
+
 static bool
-on_response(dht::MessageContext &ctx, void *) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
+on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
+  assert(searchCtx);
+  if (!searchCtx) {
+    return true;
+  }
+
+  auto search_ctx = (dht::SearchContext *)searchCtx;
+  dht::Search *search = find_search(ctx.dht, search_ctx);
+  dec(search_ctx);
+
+  if (!search) {
+    return true;
+  }
+
+  return bencode::d::dict(ctx.in, [&ctx, search](auto &p) { //
     bool b_id = false;
     bool b_t = false;
     bool b_n = false;
@@ -797,12 +841,12 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
     }
 
     if (b_id && b_t && b_n) {
-      handle_response(ctx, id, token, nodes);
+      handle_response(ctx, id, token, nodes, *search);
       return true;
     }
 
     if (b_id && b_t && b_v) {
-      handle_response(ctx, id, token, values);
+      handle_response(ctx, id, token, values, *search);
       return true;
     }
 
@@ -844,6 +888,7 @@ setup(dht::Module &module) noexcept {
   module.query = "get_peers";
   module.request = on_request;
   module.response = on_response;
+  module.response_timeout = on_timeout;
 }
 } // namespace get_peers
 

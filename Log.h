@@ -86,6 +86,9 @@ ping(dht::DHT &, const Contact &, bool) noexcept;
 void
 find_node(dht::DHT &, const Contact &, bool) noexcept;
 
+void
+get_peers(dht::DHT &, const Contact &, bool) noexcept;
+
 namespace error {
 /* log::transmit::error */
 void

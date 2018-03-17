@@ -3,6 +3,9 @@
 #include <cassert>
 #include <cstring>
 #include <utility>
+
+#include <hash/djb2.h>
+#include <hash/fnv.h>
 //
 //---------------------------
 namespace krpc {
@@ -254,6 +257,33 @@ Stat::Stat() noexcept
     , unknown_tx() {
 }
 
+SearchContext::SearchContext() noexcept
+    : ref_cnt(0)
+    , is_dead(false) {
+}
+
+Search::Search(const Infohash &s) noexcept
+    : ctx(new SearchContext)
+    , search(s)
+    , hashers()
+    , searched(hashers)
+    , started(sp::now())
+    , queue() {
+
+  assert(insert(hashers, djb2a::hash<NodeId>));
+  assert(insert(hashers, fnv_1a::hash<NodeId>));
+}
+
+Search *
+find_search(dht::DHT &dht, SearchContext *needle) noexcept {
+  sp::LinkedList<Search> &ctx = dht.searches;
+  assert(needle);
+  return find_first(ctx, [&](const Search &current) {
+    /**/
+    return current.ctx == needle;
+  });
+}
+
 // dht::DHT
 DHT::DHT(fd &udp, const Contact &i, prng::xorshift32 &r) noexcept
     // self {{{
@@ -292,7 +322,10 @@ DHT::DHT(fd &udp, const Contact &i, prng::xorshift32 &r) noexcept
     // boostrap {{{
     , bootstrap_contacts()
     , active_searches(0)
-// }}}
+    // }}}
+    // searches{{{
+    , searches()
+//}}}
 
 //}}}
 {

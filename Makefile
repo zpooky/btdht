@@ -28,6 +28,7 @@ DEPENDS = $(OBJECTS:.o=.d)
 # all {{{
 # The "all" target. runs by default since it the first target
 all: ${EXEC}
+	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS)
 # }}}
 
 # $(EXEC) {{{
@@ -64,14 +65,6 @@ test:
 	$(MAKE) -C test test
 # }}}
 
-# staticlib {{{
-staticlib: $(OBJECTS)
-# 'r' means to insert with replacement
-# 'c' means to create a new archive
-# 's' means to write an index
-	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS)
-# }}}
-
 # install {{{
 install: $(EXEC) staticlib
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -99,4 +92,4 @@ bear:
 # }}}
 
 dependencies:
-	$(MAKE) -C external/sputil BUILD_DIR=build/dht staticlib
+	$(MAKE) -C external/sputil BUILD_DIR=build/dht

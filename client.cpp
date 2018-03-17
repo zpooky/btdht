@@ -68,4 +68,19 @@ find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
   return result;
 }
 
+bool
+get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
+          const dht::Infohash &search, void *closure) noexcept {
+  dht::Module get_peers;
+  get_peers::setup(get_peers);
+
+  auto serialize = [&dht, &search](sp::Buffer &o, const krpc::Transaction &t) {
+    return krpc::request::get_peers(o, t, dht.id, search);
+  };
+
+  bool result = send(dht, dest, buf, get_peers, closure, serialize);
+  log::transmit::get_peers(dht, dest, result); // TODO log tx
+  return result;
+}
+
 } // namespace client

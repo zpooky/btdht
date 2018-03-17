@@ -305,7 +305,8 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
     if (!bencode::e::pair(b, "routing", dht.root)) {
       return false;
     }
-    if (!bencode::e::pair(b, "last_activity", std::uint64_t(dht.last_activity))) {
+    if (!bencode::e::pair(b, "last_activity",
+                          std::uint64_t(dht.last_activity))) {
       return false;
     }
     if (!bencode::e::pair(b, "total_nodes", dht.total_nodes)) {
@@ -340,6 +341,13 @@ statistics(sp::Buffer &buf, const Transaction &t,
     if (!bencode::e::pair(b, "unknown_tx", stat.unknown_tx)) {
       return false;
     }
+    return true;
+  });
+}
+
+bool
+search(sp::Buffer &b, const Transaction &t) noexcept {
+  return resp(b, t, [](auto &) { //
     return true;
   });
 }

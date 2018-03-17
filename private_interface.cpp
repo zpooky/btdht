@@ -1,11 +1,12 @@
 #include "Log.h"
+#include "client.h"
 #include "krpc.h"
 #include "private_interface.h"
 
 namespace interface_priv {
 
 static Timeout
-on_awake(dht::DHT &, sp::Buffer &) noexcept;
+scheduled_search(dht::DHT &, sp::Buffer &) noexcept;
 
 bool
 setup(dht::Modules &modules) noexcept {
@@ -13,13 +14,41 @@ setup(dht::Modules &modules) noexcept {
   dump::setup(modules.module[i++]);
   statistics::setup(modules.module[i++]);
 
-  insert(modules.on_awake, on_awake);
+  insert(modules.on_awake, scheduled_search);
 
   return true;
 }
 
 static Timeout
-on_awake(dht::DHT &, sp::Buffer &) noexcept {
+scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
+  for_each(dht.searches, [&dht, &b](dht::Search &s) {
+    /**/
+  Lit:
+    auto head = peek_head(s.queue);
+    if (head) {
+      reset(b);
+
+      if (client::get_peers(dht, b, head->contact, s.search, s.ctx)) {
+        ++s.ctx->ref_cnt;
+      }
+      drop_head(s.queue);
+      goto Lit;
+    }
+
+    //
+    for_all_node(dht.root, [&dht, &b, &s](const dht::Node &n) {
+      if (!test(s.searched, n.id)) {
+        reset(b);
+        if (client::get_peers(dht, b, n.contact, s.search, s.ctx)) {
+          ++s.ctx->ref_cnt;
+          insert(s.searched, n.id);
+        }
+        return true;
+      }
+      return true;
+    });
+  });
+
   dht::Config config;
   Timeout next(config.refresh_interval);
   return next;
@@ -78,9 +107,15 @@ setup(dht::Module &module) noexcept {
 namespace search {
 
 static bool
-on_request(dht::MessageContext &) noexcept {
-  // TODO
-  return true;
+handle_request(dht::MessageContext &ctx, const dht::Infohash &search) {
+  auto &dht = ctx.dht;
+  insert(dht.searches, search);
+  return krpc::response::search(ctx.out, ctx.transaction);
+}
+
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  return krpc::d::request::search(ctx, handle_request);
 }
 
 void

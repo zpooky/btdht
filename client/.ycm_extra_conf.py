@@ -47,6 +47,7 @@ flags = [
     '-Wpointer-arith',
     '-Wshadow',
     '-std=c++14',
+    '-std=c++17',
 ]
 
 

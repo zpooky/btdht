@@ -12,6 +12,11 @@ bool
 find_node(dht::DHT &, sp::Buffer &, const Contact &, const dht::NodeId &,
           void *) noexcept;
 
+bool
+get_peers(dht::DHT &, sp::Buffer &, const Contact &, const dht::Infohash &,
+          void *) noexcept;
+
+
 } // namespace client
 
 #endif

@@ -659,6 +659,10 @@ insert(DHT &dht, const Node &contact) noexcept {
     return nullptr;
   }
 
+  if (dht.id == contact.id) {
+    return nullptr;
+  }
+
 Lstart:
   bool inTree = false;
   std::size_t idx = 0;

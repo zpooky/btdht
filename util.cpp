@@ -237,6 +237,10 @@ NodeId::operator<(const NodeId &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) == -1;
 }
 
+NodeId::operator bool() const noexcept {
+  return is_valid(*this);
+}
+
 void
 print_id(const NodeId &id, std::size_t color, const char *c) noexcept {
   for (std::size_t i = 0; i < NodeId::bits; ++i) {
@@ -275,6 +279,20 @@ bit(const Key &key, std::size_t idx) noexcept {
 bool
 bit(const NodeId &key, std::size_t idx) noexcept {
   return bit(key.id, idx);
+}
+
+std::size_t
+common_bits(const Key &a, const Key &b) noexcept {
+  std::size_t common = 0;
+  constexpr std::size_t bits(sizeof(Key) * 8);
+  for (std::size_t i = 0; i < bits; ++i) {
+    if (bit(a, i) == bit(b, i)) {
+      ++common;
+    } else {
+      break;
+    }
+  }
+  return common;
 }
 
 bool

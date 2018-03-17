@@ -1,13 +1,13 @@
 #ifndef SP_MAINLINE_DHT_UTIL_H
 #define SP_MAINLINE_DHT_UTIL_H
 
+#include <buffer/BytesView.h>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
-#include <list/FixedList.h>
-#include <buffer/BytesView.h>
 #include <io/fd.h>
+#include <list/FixedList.h>
 #include <util/timeout.h>
 
 using sp::fd;
@@ -18,7 +18,6 @@ using byte = unsigned char;
 
 using ByteBuffer = BytesView;
 } // namespace sp
-
 
 using Port = std::uint16_t;
 using Ipv4 = std::uint32_t;
@@ -152,6 +151,8 @@ struct NodeId {
 
   bool
   operator<(const NodeId &o) const noexcept;
+
+  explicit operator bool() const noexcept;
 };
 
 bool
@@ -162,6 +163,9 @@ bit(const Key &key, std::size_t idx) noexcept;
 
 bool
 bit(const NodeId &key, std::size_t idx) noexcept;
+
+std::size_t
+common_bits(const Key &a, const Key &b) noexcept;
 
 void
 print_id(const NodeId &, std::size_t color = 0, const char *c = "") noexcept;
