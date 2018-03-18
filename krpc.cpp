@@ -183,6 +183,21 @@ statistics(sp::Buffer &b, const Transaction &t) noexcept {
   });
 }
 
+bool
+search(sp::Buffer &b, const Transaction &t, const dht::Infohash &search,
+       std::size_t timeout) noexcept {
+  return req(b, t, "sp_search", [&search, &timeout](sp::Buffer &buffer) {
+    /**/
+    if (!bencode::e::pair(buffer, "search", search.id)) {
+      return false;
+    }
+    if (!bencode::e::pair(buffer, "timeout", timeout)) {
+      return false;
+    }
+    return true;
+  });
+}
+
 } // namespace request
 
 namespace response {

@@ -24,7 +24,7 @@ setup(dht::Module &) noexcept;
 namespace statistics {
 void
 setup(dht::Module &) noexcept;
-} // namespace dump
+} // namespace statistics
 
 //===========================================================
 // search
@@ -32,6 +32,14 @@ setup(dht::Module &) noexcept;
 namespace search {
 void
 setup(dht::Module &) noexcept;
-} // namespace dump
+} // namespace search
+
+//===========================================================
+// search stop
+//===========================================================
+namespace search_stop {
+void
+setup(dht::Module &) noexcept;
+} // namespace search_stop
 
 #endif

@@ -407,7 +407,7 @@ struct Search {
   Infohash search;
   sp::StaticArray<sp::Hasher<NodeId>, 2> hashers;
   sp::BloomFilter<NodeId, 8 * 1024 * 1024> searched;
-  sp::Timestamp started;
+  sp::Timestamp timeout;
 
   heap::StaticMaxBinary<K, 1024> queue;
   sp::LinkedList<Contact> result;

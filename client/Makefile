@@ -7,11 +7,11 @@ HEADER_DIRS = -I.. -I../external/sputil/include
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb
 LDFLAGS =
-LDLIBS = -L../build/debug -ldht -L../external/sputil/build/debug -lsputil
+LDLIBS = -L../build/client -ldht -L../external/sputil/build/client -lsputil
 PREFIX = /usr/local
 
 SOURCE_DIR = src
-BUILD_DIR = build
+BUILD_DIR = build/debug
 
 # File names
 EXEC = dht-client
@@ -26,6 +26,7 @@ DEPENDS = $(OBJECTS:.o=.d)
 # all {{{
 # The "all" target. runs by default since it the first target
 all: ${EXEC}
+	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS)
 # }}}
 
 # $(EXEC) {{{
@@ -56,16 +57,8 @@ clean:
 	$(MAKE) -C .. clean
 # }}}
 
-# staticlib {{{
-staticlib: $(OBJECTS)
-# 'r' means to insert with replacement
-# 'c' means to create a new archive
-# 's' means to write an index
-	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS)
-# }}}
-
 # install {{{
-install: $(EXEC) staticlib
+install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(PREFIX)/lib
 # mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
@@ -83,10 +76,13 @@ uninstall:
 
 # bear {{{
 # Creates compilation_database.json
-bear: clean
-	bear make
+bear:
+	make BUILD_DIR=build/bear clean
+	bear make BUILD_DIR=build/bear CXXFLAGS+=-DSP_TEST
+	compdb list > tmp_compile_commands.json
+	mv tmp_compile_commands.json compile_commands.json
 # }}}
 
 dependencies:
-	$(MAKE) -C .. staticlib
-	$(MAKE) -C ../external/sputil staticlib
+	$(MAKE) -C .. BUILD_DIR=build/client
+	$(MAKE) -C ../external/sputil BUILD_DIR=build/client

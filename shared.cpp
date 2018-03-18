@@ -267,12 +267,29 @@ Search::Search(const Infohash &s) noexcept
     , search(s)
     , hashers()
     , searched(hashers)
-    , started(sp::now())
+    , timeout(0)
     , queue() {
 
   assert(insert(hashers, djb2a::hash<NodeId>));
   assert(insert(hashers, fnv_1a::hash<NodeId>));
 }
+
+// Search::Search(Search &&o) noexcept
+//     : ctx(nullptr)
+//     , search()
+//     , hashers()
+//     , searched()
+//     , timeout()
+//     , queue() {
+//   using sp::swap;
+//
+//   swap(ctx, o.ctx);
+//   swap(search, o.search);
+//   swap(hashers, o.hashers);
+//   swap(searched, o.searched);
+//   swap(timeout, o.timeout);
+//   swap(queue, o.queue);
+// }
 
 Search *
 find_search(dht::DHT &dht, SearchContext *needle) noexcept {

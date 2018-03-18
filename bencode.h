@@ -58,6 +58,12 @@ dict(sp::Buffer &buffer, F f) noexcept {
 bool
 pair(sp::Buffer &, const char *key, const char *value) noexcept;
 
+template <std::size_t N>
+bool
+pair(sp::Buffer &b, const char *key, const char (&value)[N]) noexcept {
+  return pair(b, key, value, N);
+}
+
 bool
 pair(sp::Buffer &, const char *key, std::int16_t value) noexcept;
 
@@ -81,6 +87,12 @@ pair(sp::Buffer &, const char *key, bool value) noexcept;
 
 bool
 pair(sp::Buffer &, const char *, const sp::byte *, std::size_t) noexcept;
+
+template <std::size_t N>
+bool
+pair(sp::Buffer &b, const char *key, const sp::byte (&value)[N]) noexcept {
+  return pair(b, key, value, N);
+}
 } // namespace e
 
 //===============================================
@@ -144,7 +156,8 @@ pair(sp::Buffer &p, const char *key, char (&value)[SIZE],
 } // bencode::d::pair()
 
 bool
-pair_x(sp::Buffer &, const char *, sp::byte *, /*IN&OUT*/ std::size_t &) noexcept;
+pair_x(sp::Buffer &, const char *, sp::byte *,
+       /*IN&OUT*/ std::size_t &) noexcept;
 
 template <std::size_t SIZE>
 bool

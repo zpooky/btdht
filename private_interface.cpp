@@ -13,6 +13,8 @@ setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
   dump::setup(modules.module[i++]);
   statistics::setup(modules.module[i++]);
+  search::setup(modules.module[i++]);
+  search_stop::setup(modules.module[i++]);
 
   insert(modules.on_awake, scheduled_search);
 
@@ -21,6 +23,11 @@ setup(dht::Modules &modules) noexcept {
 
 static Timeout
 scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
+  // TODO drain result and send to receiver
+  remove_if(dht.searches, [&dht](const dht::Search &current) {
+    return current.timeout > dht.now;
+  });
+
   for_each(dht.searches, [&dht, &b](dht::Search &s) {
     /**/
   Lit:
@@ -30,9 +37,9 @@ scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
 
       if (client::get_peers(dht, b, head->contact, s.search, s.ctx)) {
         ++s.ctx->ref_cnt;
+        drop_head(s.queue);
+        goto Lit;
       }
-      drop_head(s.queue);
-      goto Lit;
     }
 
     //
@@ -42,16 +49,17 @@ scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
         if (client::get_peers(dht, b, n.contact, s.search, s.ctx)) {
           ++s.ctx->ref_cnt;
           insert(s.searched, n.id);
+        } else {
+          return false;
         }
-        return true;
       }
+
       return true;
     });
   });
 
   dht::Config config;
-  Timeout next(config.refresh_interval);
-  return next;
+  return Timeout(config.refresh_interval);
 }
 
 } // namespace interface_priv
@@ -107,9 +115,15 @@ setup(dht::Module &module) noexcept {
 namespace search {
 
 static bool
-handle_request(dht::MessageContext &ctx, const dht::Infohash &search) {
+handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
+               sp::Seconds timeout) {
   auto &dht = ctx.dht;
-  insert(dht.searches, search);
+  dht::Search *ins = insert(dht.searches, search);
+  assert(ins);
+  if (ins) {
+    ins->timeout = sp::now() + timeout;
+  }
+
   return krpc::response::search(ctx.out, ctx.transaction);
 }
 
@@ -126,3 +140,22 @@ setup(dht::Module &module) noexcept {
 }
 
 } // namespace search
+
+//===========================================================
+// search stop
+//===========================================================
+namespace search_stop {
+
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  // TODO
+  return true;
+}
+
+void
+setup(dht::Module &module) noexcept {
+  module.query = "sp_search_stop";
+  module.request = on_request;
+  module.response = nullptr;
+}
+} // namespace search_stop

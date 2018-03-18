@@ -103,6 +103,8 @@ ping_response_timeout(dht::DHT &) noexcept;
 void
 find_node_response_timeout(dht::DHT &) noexcept;
 
+void
+get_peers_response_timeout(dht::DHT &) noexcept;
 } // namespace error
 } // namespace transmit
 

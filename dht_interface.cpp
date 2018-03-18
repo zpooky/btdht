@@ -488,9 +488,9 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 static void
-timeout(dht::DHT &dht, void *arg) noexcept {
+on_timeout(dht::DHT &dht, void *arg) noexcept {
   log::transmit::error::ping_response_timeout(dht);
-  assert(!arg);
+  assert(arg == nullptr);
 }
 
 void
@@ -498,7 +498,7 @@ setup(dht::Module &module) noexcept {
   module.query = "ping";
   module.request = on_request;
   module.response = on_response;
-  module.response_timeout = timeout;
+  module.response_timeout = on_timeout;
 }
 } // namespace ping
 
@@ -763,7 +763,8 @@ dec(dht::SearchContext *ctx) noexcept {
 }
 
 static void
-on_timeout(dht::DHT &, void *ctx) noexcept {
+on_timeout(dht::DHT &dht, void *ctx) noexcept {
+  log::transmit::error::get_peers_response_timeout(dht);
   auto search = (dht::SearchContext *)ctx;
   if (search) {
     dec(search);

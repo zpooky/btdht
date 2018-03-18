@@ -1,14 +1,32 @@
 [
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/db.o db.cpp",
-  "file": "db.cpp"
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/dht_interface.o dht_interface.cpp",
+  "file": "dht_interface.cpp"
 },
 
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/dht.o dht.cpp",
-  "file": "dht.cpp"
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/udp.o udp.cpp",
+  "file": "udp.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/ip_election.o ip_election.cpp",
+  "file": "ip_election.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/krpc.o krpc.cpp",
+  "file": "krpc.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/client.o client.cpp",
+  "file": "client.cpp"
 },
 
 {
@@ -19,44 +37,8 @@
 
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/transaction.o transaction.cpp",
-  "file": "transaction.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/dslbencode.o dslbencode.cpp",
-  "file": "dslbencode.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/dht_interface.o dht_interface.cpp",
-  "file": "dht_interface.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/Log.o Log.cpp",
-  "file": "Log.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/client.o client.cpp",
-  "file": "client.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/krpcTest.o krpcTest.cpp",
-  "file": "krpcTest.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/dump.o dump.cpp",
-  "file": "dump.cpp"
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/private_interface.o private_interface.cpp",
+  "file": "private_interface.cpp"
 },
 
 {
@@ -66,39 +48,9 @@
 },
 
 {
-  "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/transactionTest.o transactionTest.cpp",
-  "file": "transactionTest.cpp"
-},
-
-{
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/udp.o udp.cpp",
-  "file": "udp.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/dhtTest.o dhtTest.cpp",
-  "file": "dhtTest.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/bencode_print.o bencode_print.cpp",
-  "file": "bencode_print.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/bencodeTest.o bencodeTest.cpp",
-  "file": "bencodeTest.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/timout_test.o timout_test.cpp",
-  "file": "timout_test.cpp"
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/dht.o dht.cpp",
+  "file": "dht.cpp"
 },
 
 {
@@ -109,14 +61,20 @@
 
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/bencode_offset.o bencode_offset.cpp",
-  "file": "bencode_offset.cpp"
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/dump.o dump.cpp",
+  "file": "dump.cpp"
 },
 
 {
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/ip_election.o ip_election.cpp",
-  "file": "ip_election.cpp"
+  "directory": "/home/spooky/development/repos/dht/test",
+  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/dhtTest.o dhtTest.cpp",
+  "file": "dhtTest.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht/test",
+  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/krpcTest.o krpcTest.cpp",
+  "file": "krpcTest.cpp"
 },
 
 {
@@ -133,14 +91,8 @@
 
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/module.o module.cpp",
-  "file": "module.cpp"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/private_interface.o private_interface.cpp",
-  "file": "private_interface.cpp"
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/dslbencode.o dslbencode.cpp",
+  "file": "dslbencode.cpp"
 },
 
 {
@@ -150,15 +102,63 @@
 },
 
 {
+  "directory": "/home/spooky/development/repos/dht/test",
+  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/transactionTest.o transactionTest.cpp",
+  "file": "transactionTest.cpp"
+},
+
+{
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/krpc.o krpc.cpp",
-  "file": "krpc.cpp"
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/bencode_offset.o bencode_offset.cpp",
+  "file": "bencode_offset.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/db.o db.cpp",
+  "file": "db.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht/test",
+  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/bencodeTest.o bencodeTest.cpp",
+  "file": "bencodeTest.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/module.o module.cpp",
+  "file": "module.cpp"
 },
 
 {
   "directory": "/home/spooky/development/repos/dht/test",
   "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/mainlineTest.o mainlineTest.cpp",
   "file": "mainlineTest.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/Log.o Log.cpp",
+  "file": "Log.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht/test",
+  "command": "c++ -c -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -o build/timout_test.o timout_test.cpp",
+  "file": "timout_test.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/transaction.o transaction.cpp",
+  "file": "transaction.cpp"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -c -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -o build/test/bencode_print.o bencode_print.cpp",
+  "file": "bencode_print.cpp"
 },
 
 {
@@ -211,8 +211,8 @@
 
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c external/sputil/include/collection/Array.h",
-  "file": "external/sputil/include/collection/Array.h"
+  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c external/sputil/include/tree/StaticTree.h",
+  "file": "external/sputil/include/tree/StaticTree.h"
 },
 
 {
@@ -222,9 +222,9 @@
 },
 
 {
-  "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../external/googletest/googletest/include/gtest/gtest-test-part.h",
-  "file": "../external/googletest/googletest/include/gtest/gtest-test-part.h"
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c dump.h",
+  "file": "dump.h"
 },
 
 {
@@ -241,8 +241,14 @@
 
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c external/sputil/include/tree/StaticTree.h",
-  "file": "external/sputil/include/tree/StaticTree.h"
+  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c external/sputil/include/collection/Array.h",
+  "file": "external/sputil/include/collection/Array.h"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht/test",
+  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../external/googletest/googletest/include/gtest/internal/gtest-filepath.h",
+  "file": "../external/googletest/googletest/include/gtest/internal/gtest-filepath.h"
 },
 
 {
@@ -270,9 +276,9 @@
 },
 
 {
-  "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../external/googletest/googletest/include/gtest/internal/gtest-internal.h",
-  "file": "../external/googletest/googletest/include/gtest/internal/gtest-internal.h"
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c priv_bencode.h",
+  "file": "priv_bencode.h"
 },
 
 {
@@ -295,8 +301,8 @@
 
 {
   "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../external/googletest/googletest/include/gtest/internal/gtest-filepath.h",
-  "file": "../external/googletest/googletest/include/gtest/internal/gtest-filepath.h"
+  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../external/googletest/googletest/include/gtest/gtest-message.h",
+  "file": "../external/googletest/googletest/include/gtest/gtest-message.h"
 },
 
 {
@@ -313,12 +319,6 @@
 
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c external/sputil/include/buffer/CircularByteBuffer.h",
-  "file": "external/sputil/include/buffer/CircularByteBuffer.h"
-},
-
-{
-  "directory": "/home/spooky/development/repos/dht",
   "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c external/sputil/include/stack/Stack.h",
   "file": "external/sputil/include/stack/Stack.h"
 },
@@ -330,15 +330,9 @@
 },
 
 {
-  "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../bencode_print.h",
-  "file": "../bencode_print.h"
-},
-
-{
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c private_interface.h",
-  "file": "private_interface.h"
+  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c bencode_print.h",
+  "file": "bencode_print.h"
 },
 
 {
@@ -456,9 +450,9 @@
 },
 
 {
-  "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c priv_bencode.h",
-  "file": "priv_bencode.h"
+  "directory": "/home/spooky/development/repos/dht/test",
+  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../external/googletest/googletest/include/gtest/internal/gtest-internal.h",
+  "file": "../external/googletest/googletest/include/gtest/internal/gtest-internal.h"
 },
 
 {
@@ -553,8 +547,14 @@
 
 {
   "directory": "/home/spooky/development/repos/dht/test",
-  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../external/googletest/googletest/include/gtest/gtest-message.h",
-  "file": "../external/googletest/googletest/include/gtest/gtest-message.h"
+  "command": "c++ -DSP_TEST -I../external/googletest/googletest/include -I.. -I../external/sputil/include -enable-frame-pointers -std=gnu++14 -Wall -Wextra -Wpointer-arith -ggdb -c ../external/googletest/googletest/include/gtest/gtest-test-part.h",
+  "file": "../external/googletest/googletest/include/gtest/gtest-test-part.h"
+},
+
+{
+  "directory": "/home/spooky/development/repos/dht",
+  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c external/sputil/include/buffer/CircularByteBuffer.h",
+  "file": "external/sputil/include/buffer/CircularByteBuffer.h"
 },
 
 {
@@ -565,8 +565,8 @@
 
 {
   "directory": "/home/spooky/development/repos/dht",
-  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c dump.h",
-  "file": "dump.h"
+  "command": "c++ -DSP_TEST -DSP_TEST -Iexternal -Iexternal/sputil/include -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow -ggdb -c private_interface.h",
+  "file": "private_interface.h"
 },
 
 {

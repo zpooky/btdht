@@ -19,6 +19,8 @@ enum class Error {
 
 namespace request {
 /*krpc::request*/
+/* DHT interface */
+//{
 bool
 ping(sp::Buffer &, const Transaction &, //
      const dht::NodeId &sender) noexcept;
@@ -36,16 +38,26 @@ announce_peer(sp::Buffer &, const Transaction &, //
               const dht::NodeId &self, bool implied_port,
               const dht::Infohash &search, Port port,
               const dht::Token &) noexcept;
+//}
 
+/*private interface*/
+//{
 bool
 dump(sp::Buffer &b, const Transaction &) noexcept;
 
 bool
 statistics(sp::Buffer &b, const Transaction &t) noexcept;
+
+bool
+search(sp::Buffer &b, const Transaction &, const dht::Infohash &,
+       std::size_t) noexcept;
+//}
 } // namespace request
 
 namespace response {
 /*krpc::response*/
+/* DHT interface */
+//{
 bool
 ping(sp::Buffer &, const Transaction &, //
      const dht::NodeId &receiver) noexcept;
@@ -70,7 +82,10 @@ announce_peer(sp::Buffer &, const Transaction &, //
 
 bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
+//}
 
+/*private interface*/
+//{
 bool
 dump(sp::Buffer &b, const Transaction &t, const dht::DHT &) noexcept;
 
@@ -79,6 +94,7 @@ statistics(sp::Buffer &b, const Transaction &t, const dht::Stat &) noexcept;
 
 bool
 search(sp::Buffer &b, const Transaction &t) noexcept;
+//}
 
 } // namespace response
 
@@ -241,8 +257,12 @@ search(Ctx &ctx, F f) noexcept {
     if (!bencode::d::pair(p, "search", search.id)) {
       return false;
     }
+    std::size_t sec = 0;
+    if (!bencode::d::pair(p, "timeout", sec)) {
+      return false;
+    }
 
-    return f(ctx, search);
+    return f(ctx, search, sp::Seconds(sec));
   });
 }
 } // namespace request

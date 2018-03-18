@@ -81,6 +81,37 @@ receive_dump(fd &u, sp::Buffer &b) noexcept {
   printf("\n\n");
 }
 /*
+ * # Search
+ */
+static void
+send_search(prng::xorshift32 &r, fd &udp, const Contact &to,
+            sp::Buffer &b) noexcept {
+  reset(b);
+  krpc::Transaction t;
+  make_tx(r, t);
+
+  dht::Infohash search;
+  {
+    const char *hex = "4e64aaaf48d922dbd93f8b9e4acaa78c99bc1f40";
+    std::size_t l = sizeof(search.id);
+    assert(hex::decode(hex, search.id, l));
+    assert(l == 20);
+  }
+
+  krpc::request::search(b, t, search, 60);
+  flip(b);
+
+  udp::send(udp, to, b);
+}
+
+static void
+receive_search(fd &u, sp::Buffer &b) noexcept {
+  printf("#receive search\n");
+  generic_receive(u, b);
+  printf("\n\n");
+}
+//====================================================
+/*
  * # Ping
  */
 
@@ -217,6 +248,9 @@ main(int argc, char **args) {
 
   send_dump(r, udp, to, outBuffer);
   receive_dump(udp, inBuffer);
+
+  send_search(r, udp, to, outBuffer);
+  receive_search(udp, inBuffer);
 
   // send_find_node(r, udp, to, outBuffer);
   // receive_find_node(udp, inBuffer);

@@ -336,40 +336,40 @@ TEST(krpcTest, test_anounce_peer) {
     sp::flip(buff);
 
     krpc::ParseContext ctx(buff);
-    test_request(ctx, [&id, implied_port, infohash, port,
-                       token](sp::Buffer &p) {
-      dht::NodeId sender;
-      if (!bencode::d::pair(p, "id", sender.id)) {
-        return false;
-      }
-      assert_eq(sender.id, id.id);
-      //
-      bool out_implied_port = false;
-      if (!bencode::d::pair(p, "implied_port", out_implied_port)) {
-        return false;
-      }
-      assert_eq(out_implied_port, implied_port);
-      //
-      dht::Infohash out_infohash;
-      if (!bencode::d::pair(p, "info_hash", out_infohash.id)) {
-        return false;
-      }
-      assert_eq(out_infohash.id, infohash.id);
-      //
-      Port out_port = 0;
-      if (!bencode::d::pair(p, "port", out_port)) {
-        return false;
-      }
-      assert_eq(out_port, port);
-      //
-      dht::Token out_token;
-      if (!bencode::d::pair(p, "token", out_token)) {
-        return false;
-      }
-      assert_eq(out_token, token);
+    test_request(ctx,
+                 [&id, implied_port, infohash, port, token](sp::Buffer &p) {
+                   dht::NodeId sender;
+                   if (!bencode::d::pair(p, "id", sender.id)) {
+                     return false;
+                   }
+                   assert_eq(sender.id, id.id);
+                   //
+                   bool out_implied_port = false;
+                   if (!bencode::d::pair(p, "implied_port", out_implied_port)) {
+                     return false;
+                   }
+                   assert_eq(out_implied_port, implied_port);
+                   //
+                   dht::Infohash out_infohash;
+                   if (!bencode::d::pair(p, "info_hash", out_infohash.id)) {
+                     return false;
+                   }
+                   assert_eq(out_infohash.id, infohash.id);
+                   //
+                   Port out_port = 0;
+                   if (!bencode::d::pair(p, "port", out_port)) {
+                     return false;
+                   }
+                   assert_eq(out_port, port);
+                   //
+                   dht::Token out_token;
+                   if (!bencode::d::pair(p, "token", out_token)) {
+                     return false;
+                   }
+                   assert_eq(out_token, token);
 
-      return true;
-    });
+                   return true;
+                 });
     //--
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     assert_eq(ctx.msg_type, "q");
@@ -395,6 +395,22 @@ TEST(krpcTest, test_anounce_peer) {
     assert_eq(ctx.msg_type, "r");
     assert_eq(t.id, ctx.tx.id);
     ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
+  }
+}
+
+TEST(krpcTest, print_error_debug3) {
+  const char *hex = "";
+
+  sp::byte b[4096] = {0};
+  std::size_t l = std::strlen(hex);
+  FromHex(b, hex, l);
+  sp::Buffer buffer(b);
+  buffer.length = l;
+  {
+    {
+      sp::Buffer copy(buffer);
+      sp::bencode_print(copy);
+    }
   }
 }
 

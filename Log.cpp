@@ -259,7 +259,7 @@ find_node(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
 void
 get_peers(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.request.find_node;
+  ++s.sent.request.get_peers;
 
   print_time(ctx);
   char remote[30] = {0};
@@ -303,6 +303,15 @@ find_node_response_timeout(dht::DHT &ctx) noexcept {
 
   print_time(ctx);
   printf("\033[91mfind_node response timeout\n\033[0m");
+}
+
+void
+get_peers_response_timeout(dht::DHT &ctx) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.sent.response_timeout.get_peers;
+
+  print_time(ctx);
+  printf("\033[91mget_peers response timeout\n\033[0m");
 }
 
 } // namespace error
