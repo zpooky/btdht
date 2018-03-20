@@ -25,7 +25,7 @@ static Timeout
 scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
   // TODO drain result and send to receiver
   remove_if(dht.searches, [&dht](const dht::Search &current) {
-    bool res = current.timeout > dht.now;
+    bool res = dht.now >= current.timeout;
     if (res) {
       log::search::retire(dht, current);
     }
@@ -63,6 +63,15 @@ scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
   });
 
   dht::Config config;
+  Timeout result(config.refresh_interval);
+  result = reduce(dht.searches, result, [](auto acum, auto &search) {
+    if (search.timeout < acum) {
+      return search.timeout;
+    }
+
+    return acum;
+  });
+
   return Timeout(config.refresh_interval);
 }
 
@@ -151,7 +160,7 @@ setup(dht::Module &module) noexcept {
 namespace search_stop {
 
 static bool
-on_request(dht::MessageContext &ctx) noexcept {
+on_request(dht::MessageContext &) noexcept {
   // TODO
   return true;
 }

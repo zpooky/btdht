@@ -286,11 +286,10 @@ main(int argc, char **argv) {
 
     dht::Config config;
     Timeout result = config.refresh_interval;
-    result =
-        reduce(modules.on_awake, result, [&out](Timeout acum, auto callback) {
-          auto cr = callback(*mdht, out);
-          return std::min(cr, acum);
-        });
+    result = reduce(modules.on_awake, result, [&out](auto acum, auto callback) {
+      auto cr = callback(*mdht, out);
+      return std::min(cr, acum);
+    });
 
     log::awake::timeout(*mdht, result);
     mdht->last_activity = now;

@@ -230,6 +230,7 @@ Lstart:
       b.bootstrap_generation++;
       return id;
   };
+  // XXX change to node circular buffer with timestamp of last sent
   // TODO verify bad_nodes works...
   // TODO bootstrap should be last. Tag bucket with bootstrap generation only
   // use bootstrap if we get the same bucket and we haven't sent any to
@@ -289,7 +290,7 @@ Lstart:
     }
 
     if (!bs_sent) {
-      printf("#bootstrap nodes\n");
+      // printf("#bootstrap nodes\n");
       auto &bs = dht.bootstrap_contacts;
       // TODO prune non good bootstrap nodes
       // XXX shuffle bootstrap list just before sending
@@ -321,13 +322,13 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
 
   if (dht.now >= dht.timeout_next) {
     Timeout ap = awake_ping(dht, out);
-    log::awake::contact_ping(dht, ap);
+    // log::awake::contact_ping(dht, ap);
     next = std::min(ap, next);
   }
 
   if (dht.now >= dht.timeout_peer_next) {
     Timeout ap = awake_peer_db(dht);
-    log::awake::peer_db(dht, ap);
+    // log::awake::peer_db(dht, ap);
     next = std::min(ap, next);
   }
 
@@ -795,6 +796,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     bool b_n = false;
     bool b_v = false;
     bool b_ip = false;
+    bool b_p = false;
 
     dht::NodeId id;
     dht::Token token;
@@ -814,6 +816,12 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
 
     if (!b_t && bencode::d::pair(p, "token", token)) {
       b_t = true;
+      goto Lstart;
+    }
+
+    std::uint64_t p_out = 0; // TODO what is this?
+    if (!b_p && bencode::d::pair(p, "p", p_out)) {
+      b_p = true;
       goto Lstart;
     }
 
