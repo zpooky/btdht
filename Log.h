@@ -123,6 +123,12 @@ void
 insert(const dht::DHT &, const dht::Infohash &, const Contact &) noexcept;
 } // namespace peer_db
 
+namespace search {
+
+void
+retire(const dht::DHT &, const dht::Search &) noexcept;
+
+} // namespace search
 } // namespace log
 
 #endif

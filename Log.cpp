@@ -2,6 +2,22 @@
 #include "cstdio"
 #include <cstring>
 
+// #define LOG_REQ_PING
+// #define LOG_REQ_FIND_NODE
+#define LOG_REQ_GET_PEERS
+
+// #define LOG_ROUTING_SPLIT
+// #define LOG_ROUTING_INSERT
+
+// #define LOG_ERROR_MINT_TX
+
+// #define LOG_RES_PING
+// #define LOG_RES_FIND_NODE
+#define LOG_RES_GET_PEERS
+#define LOG_RES_ANNOUNCE_PEER
+
+// #define LOG_KNOWN_TX
+
 namespace log {
 /*log*/
 static void
@@ -110,8 +126,10 @@ ping(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.response.ping;
 
+#ifdef LOG_RES_PING
   print_time(ctx);
   printf("receive response ping\n");
+#endif
 }
 
 void
@@ -119,8 +137,10 @@ find_node(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.response.find_node;
 
+#ifdef LOG_RES_FIND_NODE
   print_time(ctx);
   printf("receive response find_node\n");
+#endif
 }
 
 void
@@ -128,8 +148,10 @@ get_peers(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.response.get_peers;
 
+#ifdef LOG_RES_GET_PEERS
   print_time(ctx);
   printf("receive response get_peers\n");
+#endif
 }
 
 void
@@ -137,8 +159,10 @@ announce_peer(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.response.announce_peer;
 
+#ifdef LOG_RES_ANNOUNCE_PEER
   print_time(ctx);
   printf("receive response announce_peer\n");
+#endif
 }
 
 void
@@ -155,11 +179,13 @@ known_tx(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.known_tx;
 
+#ifdef LOG_KNOWN_TX
   print_time(ctx);
   printf("known transaction[");
   auto &tx = ctx.transaction;
   print_hex(tx.id, tx.length);
   printf("]\n");
+#endif
 }
 
 void
@@ -232,12 +258,14 @@ ping(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.request.ping;
 
+#ifdef LOG_REQ_PING
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
 
   const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
   printf("transmit ping[%s],res[%s]\n", remote, status);
+#endif
 }
 
 void
@@ -245,6 +273,7 @@ find_node(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.request.find_node;
 
+#ifdef LOG_REQ_FIND_NODE
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
@@ -254,6 +283,7 @@ find_node(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
 
   const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
   printf("transmit find_node[%s],res[%s]\n", remote, status);
+#endif
 }
 
 void
@@ -261,6 +291,7 @@ get_peers(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.request.get_peers;
 
+#ifdef LOG_REQ_GET_PEERS
   print_time(ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
@@ -270,15 +301,18 @@ get_peers(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
 
   const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
   printf("transmit get_peers[%s],res[%s]\n", remote, status);
+#endif
 }
 
 namespace error {
 /* log::transmit::error */
 void
 mint_transaction(const dht::DHT &ctx) noexcept {
+#ifdef LOG_ERROR_MINT_TX
   print_time(ctx);
   printf("\033[91mtransmit error mint_transaction\033[0m, acitve tx: %zu\n",
          ctx.client.active);
+#endif
 }
 
 void
@@ -323,16 +357,20 @@ namespace routing {
 void
 split(const dht::DHT &ctx, const dht::RoutingTable &,
       const dht::RoutingTable &) noexcept {
+#ifdef LOG_ROUTING_SPLIT
   print_time(ctx);
   printf("routing table split node\n");
+#endif
 }
 
 void
 insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
+#ifdef LOG_ROUTING_INSERT
   print_time(ctx);
   printf("routing table insert nodeId[");
   print_hex(d.id.id, sizeof(d.id.id));
   printf("]\n");
+#endif
 }
 } // namespace routing
 
@@ -347,4 +385,17 @@ insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
 }
 
 } // namespace peer_db
+
+namespace search {
+
+void
+retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
+  print_time(ctx);
+  printf("retire search[");
+  print_hex(current.search.id, sizeof(current.search.id));
+  printf("]\n");
+}
+
+} // namespace search
+
 } // namespace log

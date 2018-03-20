@@ -25,7 +25,11 @@ static Timeout
 scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
   // TODO drain result and send to receiver
   remove_if(dht.searches, [&dht](const dht::Search &current) {
-    return current.timeout > dht.now;
+    bool res = current.timeout > dht.now;
+    if (res) {
+      log::search::retire(dht, current);
+    }
+    return res;
   });
 
   for_each(dht.searches, [&dht, &b](dht::Search &s) {
@@ -121,7 +125,7 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
   dht::Search *ins = insert(dht.searches, search);
   assert(ins);
   if (ins) {
-    ins->timeout = sp::now() + timeout;
+    ins->timeout = dht.now + timeout;
   }
 
   return krpc::response::search(ctx.out, ctx.transaction);

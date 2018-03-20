@@ -175,21 +175,22 @@ Lstart:
   }
 }
 
-// static void
-// self_should_be_last(DHT &dht) {
-//   RoutingTable *root = dht.root;
-// Lstart:
-//   if (root) {
-//     Bucket &bucket = root->bucket;
-//     if (root->in_tree == nullptr) {
-//       // selfID should be in the last node routing table
-//       Node *res = find(bucket, dht.id);
-//       ASSERT_FALSE(res == nullptr);
-//     }
-//     root = root->in_tree;
-//     goto Lstart;
-//   }
-// }
+static void
+self_should_be_last(DHT &dht) {
+  RoutingTable *root = dht.root;
+Lstart:
+  if (root) {
+    Bucket &bucket = root->bucket;
+    if (root->in_tree == nullptr) {
+      // selfID should be in the last node routing table
+      dht.id.id[19] = ~dht.id.id[19];
+      Node *res = find(bucket, dht.id);
+      ASSERT_FALSE(res == nullptr);
+    }
+    root = root->in_tree;
+    goto Lstart;
+  }
+}
 
 static std::size_t
 count_nodes(const RoutingTable *r) {
@@ -249,6 +250,7 @@ count_nodes(const RoutingTable *r) {
   do {                                                                         \
     dht::Node self;                                                            \
     std::memcpy(self.id.id, dht.id.id, sizeof(dht.id.id));                     \
+    dht.id.id[19] = ~dht.id.id[19];                                            \
     auto *res = dht::insert(dht, self);                                        \
     ASSERT_TRUE(res);                                                          \
     added.push_back(res->id);                                                  \
@@ -296,7 +298,7 @@ TEST(dhtTest, test) {
     assert_present(dht, current);
   }
 
-  // self_should_be_last(dht);
+  self_should_be_last(dht);
 }
 
 template <typename F>

@@ -541,17 +541,20 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   });
 
 } // find_node::handle_response()
-
 static void
 handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
   if (closure) {
     auto *bs = (Contact *)closure;
     delete bs;
   }
-  log::transmit::error::find_node_response_timeout(dht);
-
   assert(dht.active_searches > 0);
   dht.active_searches--;
+}
+
+static void
+on_timeout(dht::DHT &dht, void *closure) noexcept {
+  log::transmit::error::find_node_response_timeout(dht);
+  handle_response_timeout(dht, closure);
 }
 
 static bool
@@ -672,7 +675,7 @@ setup(dht::Module &module) noexcept {
   module.query = "find_node";
   module.request = on_request;
   module.response = on_response;
-  module.response_timeout = handle_response_timeout;
+  module.response_timeout = on_timeout;
 }
 
 } // namespace find_node

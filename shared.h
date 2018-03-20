@@ -405,6 +405,7 @@ struct K {
 struct Search {
   SearchContext *ctx;
   Infohash search;
+
   sp::StaticArray<sp::Hasher<NodeId>, 2> hashers;
   sp::BloomFilter<NodeId, 8 * 1024 * 1024> searched;
   sp::Timestamp timeout;
