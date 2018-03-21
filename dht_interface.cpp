@@ -744,9 +744,11 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht_request(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) {
       // search(NodeId) {
+      /*test bloomfilter*/
       if (!test(search.searched, contact.id)) {
+        /*insert into bloomfilter*/
         assert(insert(search.searched, contact.id));
-        insert(search.queue, dht::K(contact, search.search.id));
+        insert_eager(search.queue, dht::K(contact, search.search.id));
       }
       // }
 

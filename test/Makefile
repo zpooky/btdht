@@ -73,7 +73,7 @@ test: all
 # Creates compilation_database.json
 bear:
 	make BUILD_DIR=build/bear clean
-	bear make BUILD_DIR=build/bear CXXFLAGS+=-DSP_TEST
+	bear make BUILD_DIR=build/bear CXXFLAGS+=-DSP_TEST -j
 	compdb list > tmp_compile_commands.json
 	mv tmp_compile_commands.json compile_commands.json
 # }}}

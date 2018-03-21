@@ -47,19 +47,6 @@ scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
     }
 
     //
-    for_all_node(dht.root, [&dht, &b, &s](const dht::Node &n) {
-      if (!test(s.searched, n.id)) {
-        reset(b);
-        if (client::get_peers(dht, b, n.contact, s.search, s.ctx)) {
-          ++s.ctx->ref_cnt;
-          insert(s.searched, n.id);
-        } else {
-          return false;
-        }
-      }
-
-      return true;
-    });
   });
 
   dht::Config config;
@@ -135,6 +122,11 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
   assert(ins);
   if (ins) {
     ins->timeout = dht.now + timeout;
+
+    for_all_node(dht.root, [&dht, &search, &ins](const dht::Node &n) {
+      insert_eager(ins->queue, dht::K(n, search.id));
+      return true;
+    });
   }
 
   return krpc::response::search(ctx.out, ctx.transaction);
