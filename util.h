@@ -193,7 +193,7 @@ struct Node {
   // activity {{{
   Timestamp request_activity;
   Timestamp response_activity;
-  Timestamp ping_sent;
+  Timestamp req_sent;
   //}}}
 
   //{{{

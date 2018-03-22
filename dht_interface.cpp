@@ -18,7 +18,7 @@
 
 namespace dht {
 static Timeout
-awake(DHT &dht, sp::Buffer &out) noexcept;
+on_awake(DHT &dht, sp::Buffer &out) noexcept;
 }
 
 namespace interface_dht {
@@ -32,7 +32,7 @@ setup(dht::Modules &modules) noexcept {
   announce_peer::setup(modules.module[i++]);
   error::setup(modules.module[i++]);
   //
-  insert(modules.on_awake, &dht::awake);
+  insert(modules.on_awake, &dht::on_awake);
 
   return true;
 }
@@ -102,6 +102,32 @@ Lstart:
   return result;
 } // timeout::take()
 
+template <typename F>
+bool
+for_all(dht::DHT &ctx, F f) {
+// TODO make ping have a timeout and find_node has another
+Lstart:
+  dht::Node *const node = timeout::take(ctx.now, ctx.timeout_node, 1);
+  if (node) {
+    assert(node->timeout_next == nullptr);
+    assert(node->timeout_priv == nullptr);
+    if (node->good) {
+      if (dht::should_mark_bad(ctx, *node)) {
+        node->good = false;
+        ctx.bad_nodes++;
+      }
+    }
+    if (f(ctx, *node)) {
+      timeout::append_all(ctx, node);
+      goto Lstart;
+    } else {
+      timeout::Return(ctx, node);
+      return false;
+    }
+  }
+  return true;
+}
+
 static dht::Node *
 head(dht::DHT &ctx) noexcept {
   return ctx.timeout_node;
@@ -115,7 +141,7 @@ update(dht::DHT &ctx, dht::Node *const contact, Timestamp now) noexcept {
   unlink(ctx, contact);
   assert(!contact->timeout_next);
   assert(!contact->timeout_priv);
-  contact->ping_sent = now; // TODO change ping_sent to activity
+  contact->req_sent = now;
   append_all(ctx, contact);
 } // timeout::update()
 
@@ -126,42 +152,28 @@ namespace dht {
 /*pings*/
 static Timeout
 awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
-  {
-  Lstart:
-    Node *const node = timeout::take(ctx.now, ctx.timeout_node, 1);
-    if (node) {
-      assert(node->timeout_next == nullptr);
-      assert(node->timeout_priv == nullptr);
-      if (node->good) {
-        if (dht::should_mark_bad(ctx, *node)) {
-          node->good = false;
-          ctx.bad_nodes++;
-        }
-      }
+  timeout::for_all(ctx, [&out](auto &dht, auto &node) {
+    if (client::ping(dht, out, node)) {
+      inc_outstanding(node);
 
-      if (client::ping(ctx, out, *node)) {
-        inc_outstanding(*node);
-
-        // Fake update activity otherwise if all nodes have to same timeout we
-        // will spam out pings, ex: 3 noes timed out, send ping, append, get the
-        // next timeout date, since there is only 3 in the queue and we will
-        // immediately awake and send ping  to the same 3 nodes
-        node->ping_sent = ctx.now;
-        assert(node->timeout_next == nullptr);
-        timeout::append_all(ctx, node);
-
-        goto Lstart;
-      } else {
-        timeout::Return(ctx, node);
-      }
+      /*
+       * Fake update activity otherwise if all nodes have to same timeout we
+       * will spam out pings, ex: 3 noes timed out, send ping, append, get the
+       * next timeout date, since there is only 3 in the queue and we will
+       * immediately awake and send ping  to the same 3 nodes
+       */
+      node.req_sent = dht.now;
+      assert(node.timeout_next == nullptr);
+      return true;
     }
-  }
+    return false;
+  });
 
   /*Calculate next timeout*/
   Config config;
   Node *const tHead = timeout::head(ctx);
   if (tHead) {
-    const Timestamp next = tHead->ping_sent + config.refresh_interval;
+    const Timestamp next = tHead->req_sent + config.refresh_interval;
     ctx.timeout_next = next;
 
     if (next > ctx.now) {
@@ -197,8 +209,9 @@ awake_peer_db(DHT &) noexcept {
   return config.refresh_interval;
 }
 
-static void
-look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
+static Timeout
+awke_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
+  // XXX change to node circular buffer with timestamp of last sent
   std::size_t searches = dht.active_searches * dht::Bucket::K;
   missing_contacts -= std::min(missing_contacts, searches);
 
@@ -230,7 +243,6 @@ Lstart:
       b.bootstrap_generation++;
       return id;
   };
-  // XXX change to node circular buffer with timestamp of last sent
   // TODO verify bad_nodes works...
   // TODO bootstrap should be last. Tag bucket with bootstrap generation only
   // use bootstrap if we get the same bucket and we haven't sent any to
@@ -244,7 +256,6 @@ Lstart:
   // only have a frew nodes in routing table?
 
   // XXX if no good node is avaiable try bad/questionable nodes
-  // TODO look_for_nodes should be called always each 15min
   auto copy = [](Bucket &in, sp::StaticArray<Node *, Bucket::K> &outp) {
     for_each(in, [&outp](Node &remote) { //
       insert(outp, &remote);
@@ -313,12 +324,35 @@ Lstart:
       }
     }
   } // missing_cntacts > 0
-} // look_for_nodes()
+
+  return config.refresh_interval;
+} // awke_look_for_nodes()
 
 static Timeout
-awake(DHT &dht, sp::Buffer &out) noexcept {
+on_awake(DHT &dht, sp::Buffer &out) noexcept {
   Config config;
   Timeout next(config.refresh_interval);
+
+  {
+    auto percentage = [](std::uint32_t t, std::uint32_t c) -> std::size_t {
+      return std::size_t(c) / std::size_t(t / std::size_t(100));
+    };
+
+    const std::uint32_t good = dht.total_nodes - dht.bad_nodes;
+    // TODO
+    auto total = std::max(std::uint32_t(dht::max_routing_nodes(dht)), good);
+    const std::uint32_t look_for = total - good;
+    printf("good[%u], total[%u], bad_nodes[%u], look_for[%u], "
+           "config.percentage_seek[%zu], "
+           "current percentage[%zu], max[%u]\n",
+           good, dht.total_nodes, dht.bad_nodes, look_for,
+           config.percentage_seek, percentage(total, good),
+           dht::max_routing_nodes(dht));
+    if (percentage(total, good) < config.percentage_seek) {
+      next = std::min(next, awke_look_for_nodes(dht, out, look_for));
+      log::awake::contact_scan(dht);
+    }
+  }
 
   if (dht.now >= dht.timeout_next) {
     Timeout ap = awake_ping(dht, out);
@@ -330,27 +364,6 @@ awake(DHT &dht, sp::Buffer &out) noexcept {
     Timeout ap = awake_peer_db(dht);
     // log::awake::peer_db(dht, ap);
     next = std::min(ap, next);
-  }
-
-  {
-    auto percentage = [](std::uint32_t t, std::uint32_t c) -> std::size_t {
-      return std::size_t(c) / std::size_t(t / std::size_t(100));
-    };
-
-    const std::uint32_t good = dht.total_nodes - dht.bad_nodes;
-    const std::uint32_t total =
-        std::max(std::uint32_t(dht::max_routing_nodes(dht)), good); // TODO
-    const std::uint32_t look_for = total - good;
-    printf("good[%u], total[%u], bad_nodes[%u], look_for[%u], "
-           "config.percentage_seek[%zu], "
-           "current percentage[%zu], max[%u]\n",
-           good, dht.total_nodes, dht.bad_nodes, look_for,
-           config.percentage_seek, percentage(total, good),
-           dht::max_routing_nodes(dht));
-    if (percentage(total, good) < config.percentage_seek) {
-      look_for_nodes(dht, out, look_for);
-      log::awake::contact_scan(dht);
-    }
   }
 
   // Recalculate

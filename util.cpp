@@ -313,7 +313,7 @@ Node::Node() noexcept
     //}}}
     , request_activity(0)
     , response_activity(0)
-    , ping_sent(0)
+    , req_sent(0)
     //}}}
     //{{{
     , ping_outstanding(0)
@@ -337,7 +337,7 @@ Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
     // activity {{{
     , request_activity(act)
     , response_activity(act) // TODO??
-    , ping_sent(act)         // TODO??
+    , req_sent(act)         // TODO??
     //}}}
     //{{{
     , ping_outstanding(0)
