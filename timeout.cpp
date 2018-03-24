@@ -100,7 +100,7 @@ append_all(dht::DHT &ctx, dht::Peer *peer) noexcept {
 } // timeout::append_all()
 
 void
-Return(dht::DHT &dht, dht::Node *ret) noexcept {
+prepend(dht::DHT &dht, dht::Node *ret) noexcept {
   assert(ret);
   assert(ret->timeout_next == nullptr);
   assert(ret->timeout_priv == nullptr);
@@ -120,6 +120,11 @@ Return(dht::DHT &dht, dht::Node *ret) noexcept {
   } else {
     dht.timeout_node = ret->timeout_priv = ret->timeout_next = ret;
   }
+}
+
+void
+insert_new(dht::DHT &dht, dht::Node *ret) noexcept {
+  return prepend(dht, ret);
 }
 
 } // namespace timeout

@@ -564,8 +564,7 @@ is_good(const DHT &dht, const Node &contact) noexcept {
   // XXX configurable non arbitrary limit?
   if (contact.ping_outstanding > 2) {
 
-    /*
-     * Using dht.last_activty to better handle a general outgate of network
+    /* Using dht.last_activty to better handle a general outgate of network
      * connectivity
      */
     auto resp_timeout = contact.response_activity + config.refresh_interval;
@@ -588,9 +587,9 @@ init(dht::DHT &dht) noexcept {
   if (!sp::init(dht.recycle_value_list, 64)) {
     return false;
   }
-  if (!sp::init(dht.bootstrap_contacts, 8)) {
-    return false;
-  }
+  // if (!sp::init(dht.bootstrap_contacts, 8)) {
+  //   return false;
+  // }
   if (!randomize(dht, dht.ip.ip, dht.id)) {
     return false;
   }
@@ -685,7 +684,7 @@ Lstart:
 
     if (inserted) {
       // printf("- insert\n");
-      timeout::append_all(dht, inserted);
+      timeout::insert_new(dht, inserted);
       assert(is_cycle(dht));
       assert(inserted->timeout_next);
       assert(inserted->timeout_priv);

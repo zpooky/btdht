@@ -13,6 +13,7 @@
 #include <hash/util.h>
 #include <list/FixedList.h>
 #include <list/LinkedList.h>
+#include <list/SkipList.h>
 #include <tree/StaticTree.h>
 
 #include <heap/binary.h>
@@ -474,7 +475,7 @@ struct DHT {
   Timestamp now;
   // }}}
   // boostrap {{{
-  sp::list<Contact> bootstrap_contacts;
+  sp::SkipList<Contact, 4> bootstrap_contacts;
   std::uint32_t active_searches;
   // }}}
   // searches {{{

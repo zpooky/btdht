@@ -35,13 +35,13 @@ TEST(TimeoutTest, test) {
   dht::Node n2;
   dht::Node n3;
   {
-    timeout::Return(dht, &n1);
+    timeout::prepend(dht, &n1);
     ASSERT_EQ(std::size_t(1), is_cycle(dht));
 
-    timeout::Return(dht, &n2);
+    timeout::prepend(dht, &n2);
     ASSERT_EQ(std::size_t(2), is_cycle(dht));
 
-    timeout::Return(dht, &n3);
+    timeout::prepend(dht, &n3);
     ASSERT_EQ(std::size_t(3), is_cycle(dht));
   }
 

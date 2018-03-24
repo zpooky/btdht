@@ -68,11 +68,6 @@ setup_epoll(fd &udp) noexcept {
   return fd{poll};
 }
 
-static bool
-bootstrap(dht::DHT &dht, Contact dest) noexcept {
-  return sp::push_back(dht.bootstrap_contacts, dest);
-}
-
 template <typename Handle, typename Awake>
 static void
 loop(fd &fdpoll, Handle handle, Awake on_awake) noexcept {
@@ -248,7 +243,8 @@ main(int argc, char **argv) {
     assert(bs.port > 0);
 
     Contact node(bs);
-    if (!bootstrap(*mdht, node)) {
+
+    if (sp::insert(mdht->bootstrap_contacts, node) == nullptr) {
       die("failed to setup bootstrap");
     }
   });
@@ -257,11 +253,11 @@ main(int argc, char **argv) {
 
   dht::Modules modules;
   {
-    if (!interface_dht::setup(modules)) {
-      die("interface_dht::setup(modules)");
-    }
     if (!interface_priv::setup(modules)) {
       die("interface_priv::setup(modules)");
+    }
+    if (!interface_dht::setup(modules)) {
+      die("interface_dht::setup(modules)");
     }
   }
 

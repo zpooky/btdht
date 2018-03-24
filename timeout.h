@@ -20,7 +20,9 @@ void
 append_all(dht::DHT &, dht::Peer *) noexcept;
 
 void
-Return(dht::DHT &, dht::Node *) noexcept;
+prepend(dht::DHT &, dht::Node *) noexcept;
+
+void insert_new(dht::DHT &, dht::Node *) noexcept;
 } // namespace timeout
 
 #endif

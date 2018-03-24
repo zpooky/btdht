@@ -125,6 +125,16 @@ size(const sp::list<T> &list) noexcept {
   return result;
 }
 
+template <typename T>
+static std::size_t
+size(const sp::SkipList<T, 4> &list) noexcept {
+  std::size_t result = 0;
+  sp::for_each(list, [&result](const T &ls) { //
+    result += size(ls);
+  });
+  return result;
+}
+
 bool
 pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
   if (!bencode::e::value(buf, key)) {
@@ -147,13 +157,13 @@ pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
                            });
 } // bencode::e::pair_compact()
 
-template <typename T>
+template <typename List>
 static bool
-sp_list(sp::Buffer &buf, const sp::list<T> &list) noexcept {
+sp_list(sp::Buffer &buf, const List &list) noexcept {
   std::size_t len = size(list);
   return bencode::e::value(buf, len, (void *)&list, [](sp::Buffer &b, void *a) {
 
-    const sp::list<T> *l = (sp::list<T> *)a;
+    const List *l = (List *)a;
     assert(l);
     return for_all(*l, [&b](const auto &value) {
 
@@ -401,6 +411,12 @@ value(sp::Buffer &buf, const sp::list<Contact> &t) noexcept {
 } // bencode::e::value()
 
 bool
+value(sp::Buffer &buf, const sp::SkipList<Contact, 4> &t) noexcept {
+  // used by dump
+  return sp_list(buf, t);
+} // bencode::e::value()
+
+bool
 pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept {
   // used by dump
   if (!bencode::e::value(buf, key)) {
@@ -409,6 +425,17 @@ pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept {
 
   return value(buf, t);
 } // bencode::e::pair()
+
+bool
+pair(sp::Buffer &buf, const char *key,
+     const sp::SkipList<Contact, 4> &t) noexcept {
+  // used by dump
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  return value(buf, t);
+}
 
 } // namespace priv
 

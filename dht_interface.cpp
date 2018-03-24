@@ -19,7 +19,13 @@
 namespace dht {
 static Timeout
 on_awake(DHT &dht, sp::Buffer &out) noexcept;
-}
+
+static Timeout
+on_awake_ping(DHT &, sp::Buffer &) noexcept;
+
+static Timeout
+on_awake_peer_db(DHT &, sp::Buffer &) noexcept;
+} // namespace dht
 
 namespace interface_dht {
 
@@ -31,8 +37,15 @@ setup(dht::Modules &modules) noexcept {
   get_peers::setup(modules.module[i++]);
   announce_peer::setup(modules.module[i++]);
   error::setup(modules.module[i++]);
-  //
+  // TODO binary-insert with prio
+  // 1. search
+  // 2.find_node
+  // 3. ping
+  // 4. bookkeep peer db
+
   insert(modules.on_awake, &dht::on_awake);
+  insert(modules.on_awake, &dht::on_awake_ping);
+  insert(modules.on_awake, &dht::on_awake_peer_db);
 
   return true;
 }
@@ -66,10 +79,10 @@ namespace timeout {
 
 template <typename T>
 static T *
-take(Timestamp now, T *&the_head, std::size_t max) noexcept {
-  auto is_expired = [](auto &node, Timestamp cmp) { //
-    Timestamp exp = dht::activity(node);
-    return exp <= cmp;
+take(Timestamp now, sp::Milliseconds timeout, T *&the_head,
+     std::size_t max) noexcept {
+  auto is_expired = [now, timeout](auto &node) { //
+    return (node.req_sent + timeout) > now;
   };
 
   T *result = nullptr;
@@ -78,7 +91,7 @@ take(Timestamp now, T *&the_head, std::size_t max) noexcept {
   std::size_t cnt = 0;
 Lstart:
   if (current && cnt < max) {
-    if (is_expired(*current, now)) {
+    if (is_expired(*current)) {
       T *const next = current->timeout_next;
       timeout::unlink(the_head, current);
 
@@ -102,12 +115,14 @@ Lstart:
   return result;
 } // timeout::take()
 
+// TODO XXX what is timeout????!?!?! (i want last sent timeout)
+
 template <typename F>
 bool
-for_all(dht::DHT &ctx, F f) {
+for_all(dht::DHT &ctx, sp::Milliseconds timeout, F f) {
 // TODO make ping have a timeout and find_node has another
 Lstart:
-  dht::Node *const node = timeout::take(ctx.now, ctx.timeout_node, 1);
+  dht::Node *node = timeout::take(ctx.now, timeout, ctx.timeout_node, 1);
   if (node) {
     assert(node->timeout_next == nullptr);
     assert(node->timeout_priv == nullptr);
@@ -117,11 +132,12 @@ Lstart:
         ctx.bad_nodes++;
       }
     }
+
     if (f(ctx, *node)) {
       timeout::append_all(ctx, node);
       goto Lstart;
     } else {
-      timeout::Return(ctx, node);
+      timeout::prepend(ctx, node);
       return false;
     }
   }
@@ -134,16 +150,12 @@ head(dht::DHT &ctx) noexcept {
 } // timeout::head()
 
 static void
-update(dht::DHT &ctx, dht::Node *const contact, Timestamp now) noexcept {
-  assert(contact);
-  assert(now >= dht::activity(*contact));
-
-  unlink(ctx, contact);
-  assert(!contact->timeout_next);
-  assert(!contact->timeout_priv);
-  contact->req_sent = now;
-  append_all(ctx, contact);
+update_receive(dht::DHT &, dht::Node *node) noexcept {
+  // TODO rename response_activity to receive_activity?
+  // node->response_activity = dht.now;
+  // return update(ctx, contact, now);
 } // timeout::update()
+
 
 } // namespace timeout
 
@@ -151,15 +163,19 @@ namespace dht {
 
 /*pings*/
 static Timeout
-awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
-  timeout::for_all(ctx, [&out](auto &dht, auto &node) {
+on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
+  Config config;
+  timeout::for_all(ctx, config.refresh_interval, [&out](auto &dht, auto &node) {
     if (client::ping(dht, out, node)) {
       inc_outstanding(node);
+      // timeout::update_send(dht, node);
+      node.req_sent = dht.now;
 
       /*
-       * Fake update activity otherwise if all nodes have to same timeout we
-       * will spam out pings, ex: 3 noes timed out, send ping, append, get the
-       * next timeout date, since there is only 3 in the queue and we will
+       * Fake update activity otherwise if all nodes have to
+       * same timeout we will spam out pings, ex: 3 noes timed
+       * out, send ping, append, get the next timeout date,
+       * since there is only 3 in the queue and we will
        * immediately awake and send ping  to the same 3 nodes
        */
       node.req_sent = dht.now;
@@ -170,7 +186,6 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   });
 
   /*Calculate next timeout*/
-  Config config;
   Node *const tHead = timeout::head(ctx);
   if (tHead) {
     const Timestamp next = tHead->req_sent + config.refresh_interval;
@@ -194,7 +209,7 @@ awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 }
 
 static Timeout
-awake_peer_db(DHT &) noexcept {
+on_awake_peer_db(DHT &, sp::Buffer &) noexcept {
   // {
   // Lstart:
   //   Peer *const peer = timeout::take(dht.now, dht.timeout_peer, 1);
@@ -221,28 +236,9 @@ awke_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     dht.active_searches++;
   };
 
-  Config config;
+  Config cfg;
   bool bs_sent = false;
-  std::size_t bucket_not_used = 0;
 Lstart:
-  NodeId id;
-  randomize(dht.random, id);
-
-  auto search_id = [&dht, &id, config](dht::Bucket &b) -> NodeId & {
-    Lretry:
-      if (b.bootstrap_generation == 0) {
-        b.bootstrap_generation++;
-        return dht.id;
-      }
-
-      if (b.bootstrap_generation >= config.bootstrap_generation_max) {
-        b.bootstrap_generation = 0;
-        goto Lretry;
-      }
-
-      b.bootstrap_generation++;
-      return id;
-  };
   // TODO verify bad_nodes works...
   // TODO bootstrap should be last. Tag bucket with bootstrap generation only
   // use bootstrap if we get the same bucket and we haven't sent any to
@@ -256,59 +252,38 @@ Lstart:
   // only have a frew nodes in routing table?
 
   // XXX if no good node is avaiable try bad/questionable nodes
-  auto copy = [](Bucket &in, sp::StaticArray<Node *, Bucket::K> &outp) {
-    for_each(in, [&outp](Node &remote) { //
-      insert(outp, &remote);
-    });
-  };
 
   if (missing_contacts > 0) {
     bool ok_sent = true;
-    dht::Bucket *const b = dht::bucket_for(dht, id);
-    if (b) {
-      sp::StaticArray<Node *, Bucket::K> l;
-      copy(*b, l);
-      shuffle(dht.random, l);
-      // printf("#routing table nodes: %zu\n", l.length);
 
-      std::size_t sent_count = 0;
-      const Timestamp next(b->find_node + config.bucket_find_node_spam);
-      if (next <= dht.now) {
-        const NodeId &sid = search_id(*b);
-        ok_sent = for_all(
-            l, [&dht, &out, inc_ongoing, sid, &sent_count](Node *remote) {
-              if (dht::is_good(dht, *remote)) {
+    std::size_t sent_count = 0;
+    const auto &sid = dht.id;
+    timeout::for_all(dht, cfg.refresh_interval, [&](auto &ctx, Node &remote) {
+      if (dht::is_good(ctx, remote)) {
 
-                Contact &c = remote->contact;
-                bool res = client::find_node(dht, out, c, sid, nullptr);
-                if (res) {
-                  ++sent_count;
-                  inc_ongoing();
-                }
+        const Contact &c = remote.contact;
+        bool res = client::find_node(ctx, out, c, sid, nullptr);
+        if (res) {
+          ++sent_count;
+          inc_ongoing();
+          remote.req_sent = dht.now;
+        }
 
-                return res;
-              }
-
-              return true;
-            });
+        return res;
       }
 
-      if (sent_count == 0) {
-        ++bucket_not_used;
-      }
-    } else {
-      ++bucket_not_used;
-    }
+      return true;
+    });
 
     if (!bs_sent) {
       // printf("#bootstrap nodes\n");
       auto &bs = dht.bootstrap_contacts;
       // TODO prune non good bootstrap nodes
       // XXX shuffle bootstrap list just before sending
-      for_all(bs, [&dht, &out, inc_ongoing, id](const Contact &remote) {
+      for_all(bs, [&dht, &out, inc_ongoing, sid](const Contact &remote) {
 
         auto *closure = new (std::nothrow) Contact(remote);
-        bool res = client::find_node(dht, out, remote, id, closure);
+        bool res = client::find_node(dht, out, remote, sid, closure);
         if (res) {
           inc_ongoing();
         }
@@ -319,13 +294,13 @@ Lstart:
     }
 
     if (ok_sent) {
-      if (bucket_not_used < config.max_bucket_not_find_node) {
+      if (sent_count > 0) {
         goto Lstart;
       }
     }
-  } // missing_cntacts > 0
+  } // missing_contacts > 0
 
-  return config.refresh_interval;
+  return cfg.refresh_interval;
 } // awke_look_for_nodes()
 
 static Timeout
@@ -354,19 +329,6 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
     }
   }
 
-  if (dht.now >= dht.timeout_next) {
-    Timeout ap = awake_ping(dht, out);
-    // log::awake::contact_ping(dht, ap);
-    next = std::min(ap, next);
-  }
-
-  if (dht.now >= dht.timeout_peer_next) {
-    Timeout ap = awake_peer_db(dht);
-    // log::awake::peer_db(dht, ap);
-    next = std::min(ap, next);
-  }
-
-  // Recalculate
   return next;
 }
 
@@ -386,11 +348,9 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
     return nullptr;
   }
 
-  Timestamp now = dht.now;
-
   Node *result = find_contact(dht, sender);
   if (result) {
-    timeout::update(dht, result, now);
+    timeout::update_receive(dht, result);
 
     if (!result->good) {
       result->good = true;
@@ -399,7 +359,7 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
     }
   } else {
 
-    Node contact(sender, ctx.remote, now);
+    Node contact(sender, ctx.remote, dht.now);
     result = dht::insert(dht, contact);
   }
 
@@ -544,12 +504,14 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::res::find_node(ctx);
 
   dht_response(ctx, sender, [&](auto &) {
-    for_each(contacts, [&](const auto &contact) { //
+    for_each(contacts, [&](const auto &contact) {
 
-      // TODO handle self insert
       dht::DHT &dht = ctx.dht;
       dht::Node node(contact, dht.now);
-      dht::insert(dht, node);
+      auto res = dht::insert(dht, node); // TODO does this return existing?
+      if (!res) {
+        insert(dht.bootstrap_contacts, node.contact); // TODO insert unique
+      }
 
     });
   });
@@ -644,10 +606,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     if (!is_empty(nodes)) {
       if (cap_ptr) {
         // only remove bootstrap node if we have gotten some nodes from it
-        remove_first(dht.bootstrap_contacts, [&cap_ptr](const auto &cmp) {
-          /**/
-          return cmp == *cap_ptr;
-        });
+        sp::remove(dht.bootstrap_contacts, *cap_ptr);
       }
     }
 
@@ -737,7 +696,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
     // search(NodeId) {
     for_each(result, [&search](const Contact &c) {
       /**/
-      assert(insert(search.result, c));
+      insert(search.result, c);
     });
     // }
   });
@@ -766,7 +725,10 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       // }
 
       dht::Node ins(contact, dht.now);
-      dht::insert(dht, ins);
+      auto res = dht::insert(dht, ins);
+      if (!res) {
+        insert(dht.bootstrap_contacts, ins.contact);
+      }
     });
   });
 }

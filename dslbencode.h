@@ -42,10 +42,16 @@ bool
 pair(sp::Buffer &buf, const char *key, const dht::StatDirection &d) noexcept;
 
 bool
-value(sp::Buffer &buf, const sp::list<Contact> &t) noexcept;
+value(sp::Buffer &buf, const sp::list<Contact> &) noexcept;
+
+bool
+value(sp::Buffer &buf, const sp::SkipList<Contact, 4> &) noexcept;
 
 bool
 pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept;
+
+bool
+pair(sp::Buffer &buf, const char *key, const sp::SkipList<Contact,4> &) noexcept;
 } // namespace priv
 
 } // namespace e
