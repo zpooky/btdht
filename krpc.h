@@ -224,6 +224,7 @@ bool
 ping(Ctx &ctx, F f) noexcept {
   return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
     bool b_id = false;
+    bool b_p = false;
     bool b_ip = false;
 
     dht::NodeId sender;
@@ -242,6 +243,12 @@ ping(Ctx &ctx, F f) noexcept {
         b_ip = true;
         goto Lstart;
       }
+    }
+
+    std::uint64_t thep = 0; // TODO
+    if (!b_p && bencode::d::pair(p, "p", thep)) {
+      b_p = true;
+      goto Lstart;
     }
 
     if (b_id) {

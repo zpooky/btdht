@@ -6,7 +6,7 @@
 
 using namespace dht;
 
-TEST(krpc2Test, test) {
+TEST(krpc2Test, get_peers) {
 
   fd sock(-1);
   Contact c(0, 0);
@@ -77,10 +77,158 @@ TEST(krpc2Test, test) {
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
-TEST(krpc2Test, test2) {
+TEST(krpc2Test, get_peers2) {
   sp::UinStaticArray<Contact, 128> nodes;
   char raw[] = "5:nodesl6:123456e";
   sp::Buffer in((unsigned char *)raw, sizeof(raw));
   in.length = sizeof(raw);
   ASSERT_TRUE(bencode::d::peers(in, "nodes", nodes));
+}
+
+TEST(krpc2Test, find_node) {
+  fd sock(-1);
+  Contact c(0, 0);
+  prng::xorshift32 r(1);
+  dht::DHT dht(sock, c, r);
+
+  unsigned char raw[1024];
+  sp::Buffer out(raw);
+  Contact peer;
+
+  unsigned char raw_in[1024];
+  sp::Buffer in(raw_in);
+  {
+    const char hex[] = "64313a7264323a696432303a61c58ef52d9f57f311e954e50a2eea9"
+                       "7b2a30ca4323a6970"
+                       "343a51e8520d353a6e6f6465733230383a61c5187c2acd7c756d4fb"
+                       "db034afe3e3cb0992"
+                       "745518b8b4c8d560a2c9fc1e7377d33891183965283e4be6c2578d5"
+                       "12315413b3d6439c5"
+                       "d2658e07471916c9b0b8a8a0dea7d525c5d93dc3641ae965454ca45"
+                       "95f382702aecefda2"
+                       "b40afe1659532658e649482fab6f69798cf4949c79f57a72a5a9f28"
+                       "92130b19398484f0c"
+                       "daeded6e2b5711c5af78cd9b0dbd1ed99cf6ec184828de5b7957bdd"
+                       "7476a83b658a95c56"
+                       "6924010f2ec0591ac0027cec6d3ed2c83dd75b6b966a083538b4722"
+                       "a5bf404641af694a5"
+                       "a5354a5beaf801272465313a74343a6569cbef313a76343a4c54000"
+                       "f313a79313a7265";
+    in.length = sizeof(raw_in);
+    ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
+    {
+      sp::Buffer copy(in);
+      sp::bencode_print(copy);
+    }
+  }
+
+  Module m;
+  find_node::setup(m);
+
+  auto f = [&](krpc::ParseContext &pctx) -> bool {
+
+    dht::MessageContext ctx{dht, pctx, out, peer};
+    assert(std::strcmp(pctx.msg_type, "r") == 0);
+
+    assert(bencode::d::value(pctx.decoder, "r"));
+
+    return m.response(ctx, nullptr);
+  };
+  dht.active_searches++;
+
+  krpc::ParseContext pctx(in);
+  ASSERT_TRUE(krpc::d::krpc(pctx, f));
+}
+
+TEST(krpc2Test, find_node2) {
+  fd sock(-1);
+  Contact c(0, 0);
+  prng::xorshift32 r(1);
+  dht::DHT dht(sock, c, r);
+
+  unsigned char raw[1024];
+  sp::Buffer out(raw);
+  Contact peer;
+
+  unsigned char raw_in[1024];
+  sp::Buffer in(raw_in);
+  {
+
+    const char hex[] =
+        "64313a7264323a696432303a61c58ef52d9f57f311e954e50a2eea97b2a30ca4323a69"
+        "70343a51e8520d353a6e6f6465733230383a61c5187c2acd7c756d4fbdb034afe3e3cb"
+        "0992745518b8b4c8d560a2c9fc1e7377d33891183965283e4be6c2578d512315413b3d"
+        "6439c5d2658e07471916c9b0b8a8a0dea7d525c5d93dc3641ae965454ca4595f382702"
+        "aecefda2b40afe1659532658e649482fab6f69798cf4949c79f57a72a5a9f2892130b1"
+        "9398484f0cdaeded6e2b5711c5af78cd9b0dbd1ed99cf6ec184828de5b7957bdd7476a"
+        "83b658a95c566924010f2ec0591ac0027cec6d3ed2c83dd75b6b966a083538b4722a5b"
+        "f404641af694a5a5354a5beaf801272465313a74343a6569cbef313a76343a4c54000f"
+        "313a79313a7265";
+    in.length = sizeof(raw_in);
+    ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
+    {
+      sp::Buffer copy(in);
+      sp::bencode_print(copy);
+    }
+  }
+
+  Module m;
+  find_node::setup(m);
+
+  auto f = [&](krpc::ParseContext &pctx) -> bool {
+
+    dht::MessageContext ctx{dht, pctx, out, peer};
+    assert(std::strcmp(pctx.msg_type, "r") == 0);
+
+    assert(bencode::d::value(pctx.decoder, "r"));
+
+    return m.response(ctx, nullptr);
+  };
+  dht.active_searches++;
+
+  krpc::ParseContext pctx(in);
+  ASSERT_TRUE(krpc::d::krpc(pctx, f));
+}
+
+TEST(krpc2Test, ping) {
+  fd sock(-1);
+  Contact c(0, 0);
+  prng::xorshift32 r(1);
+  dht::DHT dht(sock, c, r);
+
+  unsigned char raw[1024];
+  sp::Buffer out(raw);
+  Contact peer;
+
+  unsigned char raw_in[1024];
+  sp::Buffer in(raw_in);
+  {
+
+    const char hex[] = "64323a6970363a51e8520d2710313a7264323a696432303a676dcdf"
+                       "37a35fcb3a3478beca810cb10b1179f4e313a706931303030306565"
+                       "313a74343a656a10d3313a76343a4c540100313a79313a7265";
+    in.length = sizeof(raw_in);
+    ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
+    {
+      sp::Buffer copy(in);
+      sp::bencode_print(copy);
+    }
+  }
+
+  Module m;
+  ping::setup(m);
+
+  auto f = [&](krpc::ParseContext &pctx) -> bool {
+
+    dht::MessageContext ctx{dht, pctx, out, peer};
+    assert(std::strcmp(pctx.msg_type, "r") == 0);
+
+    assert(bencode::d::value(pctx.decoder, "r"));
+
+    return m.response(ctx, nullptr);
+  };
+  dht.active_searches++;
+
+  krpc::ParseContext pctx(in);
+  ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }

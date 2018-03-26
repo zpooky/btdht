@@ -566,9 +566,12 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     std::uint64_t p_param = 0;
 
   Lstart:
+    const std::size_t pos = p.pos;
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
       b_id = true;
       goto Lstart;
+    } else {
+      assert(p.pos == pos);
     }
 
     // optional
@@ -577,18 +580,24 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       if (bencode::d::nodes(p, "nodes", nodes)) {
         b_n = true;
         goto Lstart;
+      } else {
+        assert(p.pos == pos);
       }
     }
 
     if (!b_t && bencode::d::pair(p, "token", token)) {
       b_t = true;
       goto Lstart;
+    } else {
+      assert(p.pos == pos);
     }
 
     // optional
     if (!b_p && bencode::d::pair(p, "p", p_param)) {
       b_p = true;
       goto Lstart;
+    } else {
+      assert(p.pos == pos);
     }
 
     {
@@ -598,6 +607,8 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
         assert(bool(ctx.ip_vote));
         b_ip = true;
         goto Lstart;
+      } else {
+        assert(p.pos == pos);
       }
     }
 

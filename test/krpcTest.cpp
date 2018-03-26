@@ -191,19 +191,34 @@ TEST(krpcTest, test_find_node2) {
   //                    "aaca9580074380fe70ee638050dc024dfd8b1f7a215fc3e96c39aaca9"
   //                    "d34d74142bfb26fd28f101e01689a4b1f7a23f39311ec39aaca9bf2a6"
   //                    "5313a74343a696a015f313a79313a7265";
-  const char hex[] = "64313a7264323a696432303af6740b4a1ebc22851a8122215eb1f7a23"
-                     "9f437c9353a6e6f6465733135363a9b263668363403df06ef185700b1"
-                     "f7a2091f1a13c39ab302b8379bc03ea230f52daf10960a6684b1f7a21"
-                     "a5b0149c39aaca9860f9bcc24f0355501360d5914671eb1f7a20a172a"
-                     "85c39ab5e1c5e49bbc3f9f168c11dc2593096bdab1f7a208d63a7ad48"
-                     "113bca60d9bb230c702fc1e8702b837b3e9b1f7a2092124d1c39ab302"
-                     "84599b300fbc247418ff002c399e6db1f7a23ba41b11c39ab5e1c7836"
-                     "5313a74343a6972e9dd313a79313a7265";
+  // const char hex[] =
+  // "64313a7264323a696432303af6740b4a1ebc22851a8122215eb1f7a23"
+  //                    "9f437c9353a6e6f6465733135363a9b263668363403df06ef185700b1"
+  //                    "f7a2091f1a13c39ab302b8379bc03ea230f52daf10960a6684b1f7a21"
+  //                    "a5b0149c39aaca9860f9bcc24f0355501360d5914671eb1f7a20a172a"
+  //                    "85c39ab5e1c5e49bbc3f9f168c11dc2593096bdab1f7a208d63a7ad48"
+  //                    "113bca60d9bb230c702fc1e8702b837b3e9b1f7a2092124d1c39ab302"
+  //                    "84599b300fbc247418ff002c399e6db1f7a23ba41b11c39ab5e1c7836"
+  //                    "5313a74343a6972e9dd313a79313a7265";
+
+  const char hex[] =
+      "64313a7264323a696432303a61c58ef52d9f57f311e954e50a2eea97b2a30ca4323a6970"
+      "343a51e8520d353a6e6f6465733230383a61c5187c2acd7c756d4fbdb034afe3e3cb0992"
+      "745518b8b4c8d560a2c9fc1e7377d33891183965283e4be6c2578d512315413b3d6439c5"
+      "d2658e07471916c9b0b8a8a0dea7d525c5d93dc3641ae965454ca4595f382702aecefda2"
+      "b40afe1659532658e649482fab6f69798cf4949c79f57a72a5a9f2892130b19398484f0c"
+      "daeded6e2b5711c5af78cd9b0dbd1ed99cf6ec184828de5b7957bdd7476a83b658a95c56"
+      "6924010f2ec0591ac0027cec6d3ed2c83dd75b6b966a083538b4722a5bf404641af694a5"
+      "a5354a5beaf801272465313a74343a6569cbef313a76343a4c54000f313a79313a7265";
   sp::byte b[sizeof(hex) * 2] = {0};
   std::size_t l = sizeof(hex);
   FromHex(b, hex, l);
   sp::Buffer buffer(b);
   buffer.length = l;
+  {
+    sp::Buffer copy(buffer);
+    sp::bencode_print(copy);
+  }
   {
     sp::Buffer copy(buffer);
     ASSERT_TRUE(bencode::d::dict_wildcard(copy));
