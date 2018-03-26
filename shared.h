@@ -426,6 +426,7 @@ struct Search {
 
   ~Search() {
     if (ctx) {
+      // printf("~Search()\n");
       ctx->is_dead = true;
       if (ctx->ref_cnt == 0) {
         delete ctx;
@@ -464,8 +465,8 @@ struct DHT {
   Node *timeout_node;
   //}}}
   // recycle contact list {{{
-  sp::list<Node> recycle_contact_list;
-  sp::list<Contact> recycle_value_list;
+  sp::UinStaticArray<Node, 128> recycle_contact_list;
+  sp::UinStaticArray<Contact, 128> recycle_value_list;
   // }}}
   // stuff {{{
   Timestamp last_activity;

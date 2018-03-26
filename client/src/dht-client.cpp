@@ -243,11 +243,11 @@ main(int argc, char **args) {
   dht::Infohash search;
   prng::fill(r, search.id);
 
-  // send_statistics(r, udp, to, outBuffer);
-  // receive_statistics(udp, inBuffer);
+  send_statistics(r, udp, to, outBuffer);
+  receive_statistics(udp, inBuffer);
 
-  send_dump(r, udp, to, outBuffer);
-  receive_dump(udp, inBuffer);
+  // send_dump(r, udp, to, outBuffer);
+  // receive_dump(udp, inBuffer);
 
   send_search(r, udp, to, outBuffer);
   receive_search(udp, inBuffer);

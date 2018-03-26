@@ -125,19 +125,10 @@ value(sp::Buffer &buf, dht::Node &value) noexcept {
   return true;
 } // bencode::d::value()
 
+template <typename ListType>
 static bool
-value(sp::Buffer &buf, Contact &value) noexcept {
-  return value_to_peer(buf, value);
-}
-
-template <typename T>
-static bool
-compact_list(sp::Buffer &d, const char *key, sp::list<T> &l) noexcept {
+compact_list(sp::Buffer &d, const char *key, ListType &l) noexcept {
   const std::size_t pos = d.pos;
-  if (!bencode::d::value(d, key)) {
-    d.pos = pos;
-    return false;
-  }
 
   const sp::byte *val = nullptr;
   std::size_t length = 0;
@@ -155,7 +146,7 @@ compact_list(sp::Buffer &d, const char *key, sp::list<T> &l) noexcept {
     val_buf.length = length;
   Lcontinue:
     if (sp::remaining_read(val_buf) > 0) {
-      typename sp::list<T>::value_type n;
+      typename ListType::value_type n;
       std::size_t pls = val_buf.pos;
       if (!value(val_buf, n)) {
         d.pos = pos;
@@ -163,7 +154,7 @@ compact_list(sp::Buffer &d, const char *key, sp::list<T> &l) noexcept {
       }
       assert(val_buf.pos > pls);
 
-      if (!sp::push_back(l, n)) {
+      if (!insert(l, n)) {
         d.pos = pos;
         return false;
       }
@@ -175,15 +166,125 @@ compact_list(sp::Buffer &d, const char *key, sp::list<T> &l) noexcept {
   return true;
 }
 
+static bool
+value_contact(sp::Buffer &b, Contact &result) noexcept {
+  const std::size_t pos = b.pos;
+
+  const char *str = nullptr;
+  std::size_t len = 0;
+  if (!bencode::d::value_ref(b, str, len)) {
+    b.pos = pos;
+    return false;
+  }
+
+  sp::Buffer bx((unsigned char*)str, len);
+  bx.length = len;
+  if (!bencode::d::parse_convert(bx, result)) {
+    b.pos = pos;
+    return false;
+  }
+  assert(remaining_read(bx) == 0);
+
+  return true;
+}
+
+template <typename ListType>
+static bool
+list_contact(sp::Buffer &d, const char *key, ListType &l) noexcept {
+  static_assert(std::is_same<Contact, typename ListType::value_type>(), "");
+  const std::size_t pos = d.pos;
+
+  if (!internal::is(d, "l", 1)) {
+    d.pos = pos;
+    return false;
+  }
+
+  while (sp::remaining_read(d) > 0) {
+    typename ListType::value_type n;
+
+    const std::size_t itp = d.pos;
+    if (!value_contact(d, n)) {
+      d.pos = itp;
+      break;
+    }
+
+    if (!insert(l, n)) {
+      d.pos = pos;
+      // too many result
+      assert(false);
+      return false;
+    }
+  }
+
+  if (!internal::is(d, "e", 1)) {
+    d.pos = pos;
+    return false;
+  }
+
+  return true;
+}
+
+bool
+nodes(sp::Buffer &d, const char *key, sp::list<dht::Node> &l) noexcept {
+  const std::size_t pos = d.pos;
+  if (!bencode::d::value(d, key)) {
+    d.pos = pos;
+    return false;
+  }
+
+  if (!compact_list(d, key, l)) {
+    d.pos = pos;
+    return false;
+  }
+  return true;
+}
+
 bool
 nodes(sp::Buffer &d, const char *key,
-      sp::list<dht::Node> &l) noexcept {
-  return compact_list(d, key, l);
+      sp::UinStaticArray<dht::Node, 128> &l) noexcept {
+  const std::size_t pos = d.pos;
+  if (!bencode::d::value(d, key)) {
+    d.pos = pos;
+    return false;
+  }
+
+  if (!compact_list(d, key, l)) {
+    d.pos = pos;
+    return false;
+  }
+  return true;
 }
 
 bool
 peers(sp::Buffer &d, const char *key, sp::list<Contact> &l) noexcept {
-  return compact_list(d, key, l);
+  const std::size_t pos = d.pos;
+  if (!bencode::d::value(d, key)) {
+    d.pos = pos;
+    return false;
+  }
+
+  if (!list_contact(d, key, l)) {
+    d.pos = pos;
+    return false;
+  }
+  return true;
+}
+
+bool
+peers(sp::Buffer &d, const char *key,
+      sp::UinStaticArray<Contact, 128> &l) noexcept {
+  const std::size_t pos = d.pos;
+  if (!bencode::d::value(d, key)) {
+    d.pos = pos;
+    return false;
+  }
+
+  if (!list_contact(d, key, l)) {
+    d.pos = pos;
+    return false;
+  }
+
+  return true;
 }
 
 } // namespace d

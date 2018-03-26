@@ -131,6 +131,28 @@ dict(sp::Buffer &d, F f) noexcept {
   return true;
 } // bencode::d::dict
 
+// template <typename F>
+// bool
+// list(sp::Buffer &d, F f) noexcept {
+//   std::size_t pos = d.pos;
+//   if (!internal::is(d, "l", 1)) {
+//     d.pos = pos;
+//     return false;
+//   }
+//
+//   if (!f(d)) {
+//     d.pos = pos;
+//     return false;
+//   }
+//
+//   if (!internal::is(d, "e", 1)) {
+//     d.pos = pos;
+//     return false;
+//   }
+//
+//   return true;
+// } // bencode::d::dict
+
 bool
 pair_x(sp::Buffer &, const char *, char *, /*IN&OUT*/ std::size_t &) noexcept;
 
@@ -194,6 +216,12 @@ pair(sp::Buffer &, const char *, std::uint16_t &) noexcept;
 
 bool
 pair(sp::Buffer &p, const char *key, dht::Token &) noexcept;
+
+bool
+parse_convert(sp::Buffer &p, Contact &) noexcept;
+
+bool
+pair(sp::Buffer &p, const char *key, Contact &) noexcept;
 
 bool
 pair(sp::Buffer &p, const char *key, Contact &) noexcept;

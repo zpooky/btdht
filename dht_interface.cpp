@@ -156,7 +156,6 @@ update_receive(dht::DHT &, dht::Node *node) noexcept {
   // return update(ctx, contact, now);
 } // timeout::update()
 
-
 } // namespace timeout
 
 namespace dht {
@@ -498,9 +497,12 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
   });
 } // find_node::handle_request()
 
+template <typename ContactType>
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
-                const sp::list<dht::Node> &contacts) noexcept {
+                /*const sp::list<dht::Node>*/ ContactType &contacts) noexcept {
+  static_assert(
+      std::is_same<dht::Node, typename ContactType::value_type>::value, "");
   log::receive::res::find_node(ctx);
 
   dht_response(ctx, sender, [&](auto &) {
@@ -558,7 +560,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     dht::NodeId id;
     dht::Token token; // TODO
 
-    sp::list<dht::Node> &nodes = dht.recycle_contact_list;
+    auto &nodes = dht.recycle_contact_list;
     sp::clear(nodes);
 
     std::uint64_t p_param = 0;
@@ -683,35 +685,19 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
   });
 }
 
-static void
-handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
-                const dht::Token &, const sp::list<Contact> &result,
-                dht::Search &search) noexcept {
-  // XXX store token to used for announce
-  log::receive::res::get_peers(ctx);
-  /*
-   * infohash lookup query found result, sender returns requested data.
-   */
-  dht_response(ctx, sender, [&search, &result](auto &) {
-    // search(NodeId) {
-    for_each(result, [&search](const Contact &c) {
-      /**/
-      insert(search.result, c);
-    });
-    // }
-  });
-}
-
+template <typename ResultType, typename ContactType>
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &, // XXX store token to used for announce
-                const sp::list<dht::Node> &contacts,
+                const ResultType /*sp::list<Contact>*/ &result,
+                const ContactType /*sp::list<dht::Node>*/ &contacts,
                 dht::Search &search) noexcept {
+  static_assert(std::is_same<Contact, typename ResultType::value_type>::value,
+                "");
+  static_assert(
+      std::is_same<dht::Node, typename ContactType::value_type>::value, "");
+
   log::receive::res::get_peers(ctx);
-  /*
-   * sender has no information for queried infohash, returns the closest
-   * contacts.
-   */
   dht::DHT &dht = ctx.dht;
   dht_request(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) {
@@ -724,11 +710,18 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       }
       // }
 
+      /* sender returns the its closest contacts for search */
       dht::Node ins(contact, dht.now);
       auto res = dht::insert(dht, ins);
       if (!res) {
         insert(dht.bootstrap_contacts, ins.contact);
       }
+    });
+
+    /* sender returns matching values for search query */
+    for_each(result, [&search](const Contact &c) {
+      /**/
+      insert(search.result, c);
     });
   });
 }
@@ -754,7 +747,7 @@ on_timeout(dht::DHT &dht, void *ctx) noexcept {
 
 static bool
 on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
-  assert(searchCtx);
+  // assert(searchCtx);
   if (!searchCtx) {
     return true;
   }
@@ -763,6 +756,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
   dht::Search *search = find_search(ctx.dht, search_ctx);
   dec(search_ctx);
 
+  // assert(search);
   if (!search) {
     return true;
   }
@@ -779,63 +773,77 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     dht::Token token;
 
     dht::DHT &dht = ctx.dht;
-    sp::list<dht::Node> &nodes = dht.recycle_contact_list;
-    sp::clear(nodes);
+    auto &nodes = dht.recycle_contact_list;
+    clear(nodes);
 
-    sp::list<Contact> &values = dht.recycle_value_list;
-    sp::clear(values);
+    auto &values = dht.recycle_value_list;
+    clear(values);
 
   Lstart:
+    const std::size_t pos = p.pos;
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
+      // printf("id\n");
       b_id = true;
       goto Lstart;
+    } else {
+      assert(pos == p.pos);
     }
 
     if (!b_t && bencode::d::pair(p, "token", token)) {
+      // printf("token\n");
       b_t = true;
       goto Lstart;
+    } else {
+      assert(pos == p.pos);
     }
 
     std::uint64_t p_out = 0; // TODO what is this?
     if (!b_p && bencode::d::pair(p, "p", p_out)) {
+      // printf("p\n");
       b_p = true;
       goto Lstart;
+    } else {
+      assert(pos == p.pos);
     }
 
     {
       Contact ip;
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+        // printf("ip\n");
         ctx.ip_vote = ip;
         assert(bool(ctx.ip_vote));
         b_ip = true;
         goto Lstart;
+      } else {
+        assert(pos == p.pos);
       }
     }
 
     /*closes K nodes*/
     if (!b_n) {
-      sp::clear(nodes);
+      clear(nodes);
       if (bencode::d::nodes(p, "nodes", nodes)) {
+        // printf("nodes\n");
         b_n = true;
         goto Lstart;
+      } else {
+        assert(pos == p.pos);
       }
     }
 
     if (!b_v) {
-      sp::clear(values);
-      if (bencode::d::peers(p, "values", values)) {
+      clear(values);
+      if (bencode::d::peers(p, "values", values)) { // last
+        // printf("values\n");
         b_v = true;
         goto Lstart;
+      } else {
+        assert(pos == p.pos);
       }
     }
 
-    if (b_id && b_t && b_n) {
-      handle_response(ctx, id, token, nodes, *search);
-      return true;
-    }
-
-    if (b_id && b_t && b_v) {
-      handle_response(ctx, id, token, values, *search);
+    if (b_id && b_t && (b_n || b_v)) {
+      handle_response(ctx, id, token, values, nodes, *search);
       return true;
     }
 

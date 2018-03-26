@@ -581,12 +581,12 @@ is_good(const DHT &dht, const Node &contact) noexcept {
 
 bool
 init(dht::DHT &dht) noexcept {
-  if (!sp::init(dht.recycle_contact_list, 64)) {
-    return false;
-  }
-  if (!sp::init(dht.recycle_value_list, 64)) {
-    return false;
-  }
+  // if (!sp::init(dht.recycle_contact_list, 64)) {
+  //   return false;
+  // }
+  // if (!sp::init(dht.recycle_value_list, 64)) {
+  //   return false;
+  // }
   // if (!sp::init(dht.bootstrap_contacts, 8)) {
   //   return false;
   // }

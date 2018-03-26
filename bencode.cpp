@@ -423,12 +423,17 @@ parse_key_valuex(sp::Buffer &b, const char *key, std::uint64_t &val) noexcept {
 namespace internal {
 bool
 is(sp::Buffer &buf, const char *exact, std::size_t length) noexcept {
+  const std::size_t p = buf.pos;
   if (sp::remaining_read(buf) < length) {
+    buf.pos = p;
     return false;
   }
+
   if (std::memcmp(exact, buf.raw + buf.pos, length) != 0) {
+    buf.pos = p;
     return false;
   }
+
   buf.pos += length;
   return true;
 }
@@ -519,27 +524,8 @@ pair(sp::Buffer &p, const char *key, dht::Token &token) noexcept {
 } // bencode::d::pair()
 
 bool
-pair(sp::Buffer &d, const char *key, Contact &result) noexcept {
-  const std::size_t p = d.pos;
-
-  sp::byte val[32] = {0};
-  std::size_t length = sizeof(val);
-
-  if (!pair_x(d, key, val, length)) {
-    d.pos = p;
-    return false;
-  }
-  sp::Buffer b(val, length);
-
-  if (b.capacity == sizeof(Ipv4)) {
-    Ipv4 ip = 0;
-
-    std::memcpy(&ip, b.raw + b.pos, sizeof(ip));
-    b.pos += sizeof(ip);
-    ip = ntohl(ip);
-
-    result = Contact(ip, Port(0));
-  } else if (b.capacity == (sizeof(Ipv4) + sizeof(Port))) {
+parse_convert(sp::Buffer &b, Contact &result) noexcept {
+  if (remaining_read(b) >= (sizeof(Ipv4) + sizeof(Port))) {
     Ipv4 ip = 0;
     Port port = 0;
 
@@ -552,11 +538,45 @@ pair(sp::Buffer &d, const char *key, Contact &result) noexcept {
     port = ntohs(port);
 
     result = Contact(ip, port);
+    return true;
+  } else if (remaining_read(b) >= sizeof(Ipv4)) {
+    Ipv4 ip = 0;
+
+    std::memcpy(&ip, b.raw + b.pos, sizeof(ip));
+    b.pos += sizeof(ip);
+    ip = ntohl(ip);
+
+    result = Contact(ip, Port(0));
+    return true;
   } else {
-    printf("%s: %zu\n", val, length);
+    // printf("%zu->\n", remaining_read(b));
     // TODO ipv6
-    assert(false);
+    // assert(false);
+    return false;
   }
+
+  return true;
+}
+
+bool
+pair(sp::Buffer &d, const char *key, Contact &result) noexcept {
+  const std::size_t p = d.pos;
+
+  sp::byte val[32] = {0};
+  std::size_t length = sizeof(val);
+
+  if (!pair_x(d, key, val, length)) {
+    d.pos = p;
+    return false;
+  }
+
+  sp::Buffer b(val, length);
+  if (!parse_convert(b, result)) {
+    d.pos = p;
+    printf("%s: %zu\n", val, length);
+    return false;
+  }
+
   return true;
 } // bencode::d::pair()
 

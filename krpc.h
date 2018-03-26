@@ -223,12 +223,32 @@ template <typename Ctx, typename F>
 bool
 ping(Ctx &ctx, F f) noexcept {
   return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
+    bool b_id = false;
+    bool b_ip = false;
+
     dht::NodeId sender;
-    if (!bencode::d::pair(p, "id", sender.id)) {
-      return false;
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", sender.id)) {
+      b_id = true;
+      goto Lstart;
     }
 
-    return f(ctx, sender);
+    {
+      Contact ip;
+      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+        ctx.ip_vote = ip;
+        assert(bool(ctx.ip_vote));
+        b_ip = true;
+        goto Lstart;
+      }
+    }
+
+    if (b_id) {
+      return f(ctx, sender);
+    }
+
+    return false;
   });
 }
 
@@ -240,12 +260,32 @@ template <typename Ctx, typename F>
 bool
 ping(Ctx &ctx, F f) noexcept {
   return bencode::d::dict(ctx.in, [&ctx, f](auto &p) { //
+    bool b_id = false;
+    bool b_ip = false;
+
     dht::NodeId sender;
-    if (!bencode::d::pair(p, "id", sender.id)) {
-      return false;
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", sender.id)) {
+      b_id = true;
+      goto Lstart;
     }
 
-    return f(ctx, sender);
+    {
+      Contact ip;
+      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+        ctx.ip_vote = ip;
+        assert(bool(ctx.ip_vote));
+        b_ip = true;
+        goto Lstart;
+      }
+    }
+
+    if (b_id) {
+      return f(ctx, sender);
+    }
+
+    return false;
   });
 }
 
