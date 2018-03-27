@@ -619,7 +619,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     if (!is_empty(nodes)) {
       if (cap_ptr) {
         // only remove bootstrap node if we have gotten some nodes from it
-        sp::remove(dht.bootstrap_contacts, *cap_ptr);
+        remove(dht.bootstrap_contacts, *cap_ptr);
       }
     }
 

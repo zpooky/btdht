@@ -58,8 +58,11 @@ scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
 
     return acum;
   });
+  if (!is_empty(dht.searches)) {
+    result = std::min(result, Timeout(config.transaction_timeout));
+  }
 
-  return Timeout(config.refresh_interval);
+  return Timeout(result);
 }
 
 } // namespace interface_priv

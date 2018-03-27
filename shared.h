@@ -439,6 +439,8 @@ struct Search {
 Search *
 find_search(dht::DHT &, SearchContext *) noexcept;
 
+// TODO verify tx timeout
+
 // dht::DHT
 struct DHT {
   static const std::size_t token_table = 64;
@@ -465,8 +467,8 @@ struct DHT {
   Node *timeout_node;
   //}}}
   // recycle contact list {{{
-  sp::UinStaticArray<Node, 128> recycle_contact_list;
-  sp::UinStaticArray<Contact, 128> recycle_value_list;
+  sp::UinStaticArray<Node, 256> recycle_contact_list;
+  sp::UinStaticArray<Contact, 256> recycle_value_list;
   // }}}
   // stuff {{{
   Timestamp last_activity;
@@ -476,10 +478,11 @@ struct DHT {
   Timestamp now;
   // }}}
   // boostrap {{{
+  // TODO bloomfilter & counter for when bloomfilter should be reset
   sp::SkipList<Contact, 4> bootstrap_contacts;
   std::uint32_t active_searches;
   // }}}
-  // searches {{{
+  // priv interface searches {{{
   sp::LinkedList<Search> searches;
   // }}}
 

@@ -17,13 +17,13 @@ bool
 nodes(sp::Buffer &, const char *, sp::list<dht::Node> &) noexcept;
 
 bool
-nodes(sp::Buffer &, const char *, sp::UinStaticArray<dht::Node, 128> &) noexcept;
+nodes(sp::Buffer &, const char *, sp::UinStaticArray<dht::Node, 256> &) noexcept;
 
 bool
 peers(sp::Buffer &, const char *, sp::list<Contact> &) noexcept;
 
 bool
-peers(sp::Buffer &, const char *, sp::UinStaticArray<Contact, 128> &) noexcept;
+peers(sp::Buffer &, const char *, sp::UinStaticArray<Contact, 256> &) noexcept;
 
 } // namespace d
 } // namespace bencode

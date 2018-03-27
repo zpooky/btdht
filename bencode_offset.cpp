@@ -1,6 +1,7 @@
 #include "bencode.h"
 #include "bencode_offset.h"
 #include <arpa/inet.h>
+#include <cstdio>
 #include <cstring>
 
 namespace bencode {
@@ -177,7 +178,7 @@ value_contact(sp::Buffer &b, Contact &result) noexcept {
     return false;
   }
 
-  sp::Buffer bx((unsigned char*)str, len);
+  sp::Buffer bx((unsigned char *)str, len);
   bx.length = len;
   if (!bencode::d::parse_convert(bx, result)) {
     b.pos = pos;
@@ -208,12 +209,14 @@ list_contact(sp::Buffer &d, const char *key, ListType &l) noexcept {
       break;
     }
 
-    if (!insert(l, n)) {
-      d.pos = pos;
-      // too many result
-      assert(false);
-      return false;
-    }
+    insert(l, n);
+    // if (!insert(l, n)) {
+    //   d.pos = pos;
+    //   // too many result
+    //   printf("length[%zu] capacity[%zu]\n", length(l), capacity(l));
+    //   assert(false);
+    //   return false;
+    // }
   }
 
   if (!internal::is(d, "e", 1)) {
@@ -241,7 +244,7 @@ nodes(sp::Buffer &d, const char *key, sp::list<dht::Node> &l) noexcept {
 
 bool
 nodes(sp::Buffer &d, const char *key,
-      sp::UinStaticArray<dht::Node, 128> &l) noexcept {
+      sp::UinStaticArray<dht::Node, 256> &l) noexcept {
   const std::size_t pos = d.pos;
   if (!bencode::d::value(d, key)) {
     d.pos = pos;
@@ -272,7 +275,7 @@ peers(sp::Buffer &d, const char *key, sp::list<Contact> &l) noexcept {
 
 bool
 peers(sp::Buffer &d, const char *key,
-      sp::UinStaticArray<Contact, 128> &l) noexcept {
+      sp::UinStaticArray<Contact, 256> &l) noexcept {
   const std::size_t pos = d.pos;
   if (!bencode::d::value(d, key)) {
     d.pos = pos;

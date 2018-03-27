@@ -329,10 +329,12 @@ parse_string(sp::Buffer &b, /*OUT*/ const T *&str, std::size_t &len) noexcept {
     b.pos = p;
     return false;
   }
+
   if (len > sp::remaining_read(b)) {
     b.pos = p;
     return false;
   }
+
   str = (T *)b.raw + b.pos;
   b.pos += len;
 
@@ -571,6 +573,7 @@ pair(sp::Buffer &d, const char *key, Contact &result) noexcept {
   }
 
   sp::Buffer b(val, length);
+  b.length = length;
   if (!parse_convert(b, result)) {
     d.pos = p;
     printf("%s: %zu\n", val, length);
