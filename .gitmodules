@@ -4,3 +4,4 @@
 [submodule "external/sputil"]
 	path = external/sputil
 	url = https://github.com/zpooky/sputil
+	branch = master

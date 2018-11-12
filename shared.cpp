@@ -1,7 +1,7 @@
 #include "shared.h"
 #include <algorithm>
-#include <cassert>
 #include <cstring>
+#include <util/assert.h>
 #include <utility>
 
 #include <hash/djb2.h>
@@ -45,7 +45,7 @@ TxContext::cancel(dht::DHT &dht) noexcept {
 
 bool
 TxContext::handle(dht::MessageContext &ctx) noexcept {
-  assert(int_handle);
+  assertx(int_handle);
   return int_handle(ctx, closure);
 }
 
@@ -270,8 +270,16 @@ Search::Search(const Infohash &s) noexcept
     , timeout(0)
     , queue() {
 
-  assert(insert(hashers, djb2a::hash<NodeId>));
-  assert(insert(hashers, fnv_1a::hash<NodeId>));
+  auto djb_f = [](const NodeId &id) -> std::size_t {
+    return djb2::encode32(id.id, sizeof(id.id));
+  };
+
+  auto fnv_f = [](const NodeId &id) -> std::size_t {
+    return fnv_1a::encode64(id.id, sizeof(id.id));
+  };
+
+  assertx_n(insert(hashers, djb_f));
+  assertx_n(insert(hashers, fnv_f));
 }
 
 // Search::Search(Search &&o) noexcept
@@ -294,7 +302,7 @@ Search::Search(const Infohash &s) noexcept
 Search *
 find_search(dht::DHT &dht, SearchContext *needle) noexcept {
   sp::LinkedList<Search> &ctx = dht.searches;
-  assert(needle);
+  assertx(needle);
   return find_first(ctx, [&](const Search &current) {
     /**/
     return current.ctx == needle;
@@ -358,7 +366,7 @@ MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
     , transaction{ctx.tx}
     , remote{p_remote}
     , ip_vote(ctx.ip_vote) {
-  assert(bool(ip_vote) == bool(ctx.ip_vote));
+  assertx(bool(ip_vote) == bool(ctx.ip_vote));
 }
 
 } // namespace dht

@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
+#include <hash/standard.h>
 #include <io/fd.h>
 #include <list/FixedList.h>
 #include <util/timeout.h>
@@ -47,6 +48,20 @@ struct Ip {
   bool
   operator>(const Ip &) const noexcept;
 };
+
+namespace sp {
+template <>
+struct Hasher<Ipv6> {
+  std::size_t
+  operator()(const Ipv6 &) const noexcept;
+};
+
+template <>
+struct Hasher<Ip> {
+  std::size_t
+  operator()(const Ip &) const noexcept;
+};
+} // namespace sp
 
 // Contact
 struct Contact {
@@ -117,7 +132,7 @@ template <typename T>
 using list = FixedList<T>;
 
 template <typename T>
-using node = impl::LinkedList::LLNode<T>;
+using node = impl::LinkedListNode<T>;
 } // namespace sp
 
 //---------------------------
@@ -154,6 +169,17 @@ struct NodeId {
 
   explicit operator bool() const noexcept;
 };
+} // namespace dht
+
+namespace sp {
+template <>
+struct Hasher<dht::NodeId> {
+  std::size_t
+  operator()(const dht::NodeId &) const noexcept;
+};
+} // namespace sp
+
+namespace dht {
 
 bool
 is_valid(const NodeId &) noexcept;

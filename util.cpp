@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 #include <cassert>
 #include <cstring>
+#include <hash/fnv.h>
 #include <memory>
 
 /*Ip*/
@@ -56,6 +57,28 @@ Ip::operator>(const Ip &o) const noexcept {
   }
   return true;
 }
+
+namespace sp {
+std::size_t
+Hasher<Ipv6>::operator()(const ::Ipv6 &ip) const noexcept {
+  return fnv_1a::encode64(&ip.raw, sizeof(ip.raw));
+}
+
+std::size_t
+Hasher<Ip>::operator()(const Ip &c) const noexcept {
+  if (c.type == IpType::IPV4) {
+    Hasher<Ipv4> h;
+    return h(c.ipv4);
+  } else if (c.type == IpType::IPV6) {
+    Hasher<Ipv6> h;
+    return h(c.ipv6);
+  }
+
+  assertxs(false, (uint8_t)c.type);
+  return 0;
+}
+
+} // namespace sp
 
 /*Contact*/
 Contact::Contact(Ipv4 v4, Port p) noexcept
@@ -240,7 +263,16 @@ NodeId::operator<(const NodeId &o) const noexcept {
 NodeId::operator bool() const noexcept {
   return is_valid(*this);
 }
+} // namespace dht
 
+namespace sp {
+std::size_t
+Hasher<dht::NodeId>::operator()(const dht::NodeId &id) const noexcept {
+  return fnv_1a::encode64(&id.id, sizeof(id.id));
+}
+} // namespace sp
+
+namespace dht {
 void
 print_id(const NodeId &id, std::size_t color, const char *c) noexcept {
   for (std::size_t i = 0; i < NodeId::bits; ++i) {
@@ -267,7 +299,7 @@ print_hex(const NodeId &id) noexcept {
 
 bool
 bit(const Key &key, std::size_t idx) noexcept {
-  assert(idx < NodeId::bits);
+  assertxs(idx < NodeId::bits, idx, NodeId::bits);
 
   std::size_t byte = idx / 8;
   std::uint8_t bit = idx % 8;
@@ -337,7 +369,7 @@ Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
     // activity {{{
     , request_activity(act)
     , response_activity(act) // TODO??
-    , req_sent(act)         // TODO??
+    , req_sent(act)          // TODO??
     //}}}
     //{{{
     , ping_outstanding(0)

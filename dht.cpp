@@ -493,7 +493,7 @@ multiple_closest_nodes(DHT &dht, const Key &search, Node **result,
   }
 
   Bucket *raw[Bucket::K] = {nullptr};
-  sp::CircularBuffer best(raw);
+  sp::CircularBuffer<Bucket *> best(raw);
 
   RoutingTable *root = dht.root;
   std::size_t idx = 0;

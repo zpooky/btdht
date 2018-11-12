@@ -3,6 +3,7 @@
 
 #include "util.h"
 #include <collection/Array.h>
+#include <cstddef>
 #include <tuple>
 #include <util/Bloomfilter.h>
 
@@ -12,7 +13,7 @@ struct ip_election {
   using entry = std::tuple<Contact, std::size_t>;
 
   StaticArray<entry, 16> table;
-  StaticArray<Hasher<Ip>, 2> hs;
+  StaticArray<hasher<Ip>, 2> hs;
   BloomFilter<Ip, 256> voted;
   std::size_t votes;
 
