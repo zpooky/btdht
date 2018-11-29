@@ -1,10 +1,10 @@
 #include "bencode.h"
 #include <arpa/inet.h>
-#include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <type_traits>
+#include <util/assert.h>
 
 namespace bencode {
 
@@ -134,7 +134,7 @@ value(sp::Buffer &b, std::size_t length, void *closure,
     return false;
   }
 
-  if (sp::remaining_read(b) < length + 1) {
+  if (sp::remaining_write(b) < (length + 1)) {
     b.pos = pos;
     return false;
   }
@@ -145,7 +145,7 @@ value(sp::Buffer &b, std::size_t length, void *closure,
     b.pos = pos;
     return false;
   }
-  assert(before + length == b.pos);
+  assertx((before + length) == b.pos);
 
   return true;
 }
@@ -287,6 +287,7 @@ Lloop:
   out = std::atoll(str);
   return true;
 } // bencode::d::read_numeric()
+
 template <typename T>
 static bool
 read_numeric(sp::Buffer &b, T &out, char end) noexcept {
@@ -553,7 +554,7 @@ parse_convert(sp::Buffer &b, Contact &result) noexcept {
   } else {
     // printf("%zu->\n", remaining_read(b));
     // TODO ipv6
-    // assert(false);
+    // assertx(false);
     return false;
   }
 
@@ -627,7 +628,7 @@ list(sp::Buffer &d, sp::list<T> &list, void *arg, F f) noexcept {
 static void
 value_to_peer(const char *str, Contact &peer) noexcept {
   // TODO ipv4
-  assert(peer.ip.type == IpType::IPV4);
+  assertx(peer.ip.type == IpType::IPV4);
   std::memcpy(&peer.ip.ipv4, str, sizeof(peer.ip.ipv4));
   str += sizeof(peer.ip.ipv4);
   peer.ip.ipv4 = ntohl(peer.ip.ipv4);

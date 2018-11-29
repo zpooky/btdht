@@ -1,6 +1,5 @@
 #include "dslbencode.h"
 #include "krpc.h"
-#include <cassert>
 #include <cstring>
 #include <tuple>
 #include <type_traits>
@@ -27,7 +26,7 @@ message(sp::Buffer &buf, const Transaction &t, const char *mt,
         }
 
         // transaction: t
-        assert(t.length > 0);
+        assertx(t.length > 0);
         if (!bencode::e::pair(b, "t", t.id, t.length)) {
           return false;
         }

@@ -2,6 +2,7 @@
 #include "client.h"
 #include "krpc.h"
 #include "private_interface.h"
+#include <util/assert.h>
 
 namespace interface_priv {
 
@@ -78,7 +79,7 @@ on_request(dht::MessageContext &ctx) noexcept {
 
   dht::DHT &dht = ctx.dht;
   bool r = krpc::response::dump(ctx.out, ctx.transaction, dht);
-  assert(r);
+  assertx(r);
 
   return true;
 }
@@ -122,7 +123,7 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
                sp::Seconds timeout) {
   auto &dht = ctx.dht;
   dht::Search *ins = insert(dht.searches, search);
-  assert(ins);
+  assertx(ins);
   if (ins) {
     ins->timeout = dht.now + timeout;
 

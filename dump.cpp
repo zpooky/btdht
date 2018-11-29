@@ -1,46 +1,45 @@
 #include "priv_bencode.h"
 
 #include "dump.h"
+#include <arpa/inet.h>
 
 #include <buffer/CircularByteBuffer.h>
 #include <buffer/Sink.h>
+#include <buffer/Thing.h>
 #include <io/file.h>
 
 namespace sp {
 
 template <typename Buffer>
 static bool
-base(Buffer &sink, const dht::NodeId &id, dht::RoutingTable *t) noexcept {
-  return bencode<Buffer>::e::dict(sink, [&id, t](Buffer &buffer) {
-    if (!bencode<Buffer>::e::pair(buffer, "ip", id.id, sizeof(id.id))) {
+do_dump(Buffer &sink, const dht::NodeId &id, dht::RoutingTable *t) noexcept {
+  return bencode::e<Buffer>::dict(sink, [&id, t](Buffer &buffer) {
+    if (!bencode::e<Buffer>::pair(buffer, "id", id.id, sizeof(id.id))) {
       return false;
     }
 
-    if (!bencode<Buffer>::e::value(buffer, "nodes")) {
+    if (!bencode::e<Buffer>::value(buffer, "nodes")) {
       return false;
     }
 
-    if (!bencode<Buffer>::e::list(buffer, t, [](Buffer &b, void *a) {
+    return bencode::e<Buffer>::list(
+        buffer, /*ARG*/ t, [](Buffer &b, /*ARG*/ void *a) {
           auto *table = (dht::RoutingTable *)a;
           /**/
           return for_all(table, [&b](auto &current) {
             /**/
             return for_all(current.bucket, [&b](auto &node) {
-              return bencode<Buffer>::e::value(b, node.contact);
+              return bencode::e<Buffer>::value(b, node.contact);
             });
             // return true;
           });
-        })) {
-      return false;
-    }
-
-    return true;
+        });
   });
 }
 
 static bool
 flush(CircularByteBuffer &b, void *arg) noexcept {
-  assert(arg);
+  assertx(arg);
   fd *f = (fd *)arg;
 
   if (!fs::write(*f, b)) {
@@ -62,7 +61,7 @@ dump(const dht::DHT &dht, const char *file) noexcept {
 
   Sink s(b, &f, flush);
 
-  if (!base(s, dht.id, dht.root)) {
+  if (!do_dump(s, dht.id, dht.root)) {
     return false;
   }
 
@@ -73,15 +72,93 @@ dump(const dht::DHT &dht, const char *file) noexcept {
   return true;
 }
 
-bool
-restore(dht::DHT &, const char *file) noexcept {
-  fd f = fs::open_read(file);
-  if (!f) {
+//========================
+template <typename Buffer, typename Bootstrap>
+static bool
+restore(Buffer &thing, /*OUT*/ dht::NodeId &id,
+        /*OUT*/ Bootstrap &bs) noexcept {
+  assertx(!is_marked(thing));
+
+  return bencode::d<Buffer>::dict(thing, [&id, &bs](Buffer &buffer) {
+    assertx(!is_marked(buffer));
+    if (!bencode::d<Buffer>::pair(buffer, "id", id.id)) {
+      return false;
+    }
+
+    assertx(!is_marked(buffer));
+    if (!bencode::d<Buffer>::value(buffer, "nodes")) {
+      return false;
+    }
+
+    assertx(!is_marked(buffer));
+    return bencode::d<Buffer>::list(buffer, [&bs](Buffer &b) {
+      assertx(!is_marked(b));
+      return bencode::d<Buffer>::dict(b, [&bs](Buffer &buffer) {
+        /**/
+        Ipv4 ip(0);
+        Port port(0);
+        {
+          assertx(!is_marked(buffer));
+          if (!bencode::d<Buffer>::value(buffer, "ip")) {
+            return false;
+          }
+
+          assertx(!is_marked(buffer));
+          if (!bencode::d<Buffer>::value(buffer, ip)) {
+            return false;
+          }
+          assertx(!is_marked(buffer));
+        }
+        {
+          if (!bencode::d<Buffer>::value(buffer, "port")) {
+            return false;
+          }
+          assertx(!is_marked(buffer));
+          if (!bencode::d<Buffer>::value(buffer, port)) {
+            return false;
+          }
+          assertx(!is_marked(buffer));
+        }
+
+        auto current = emplace(bs, ntohl(ip), ntohs(port));
+        if (!current) {
+          assertx(false);
+          return false;
+        }
+
+        return true;
+      });
+    });
+  });
+
+  return true;
+} // namespace sp
+
+static bool
+topup(sp::CircularByteBuffer &b, void *arg) noexcept {
+  assertx(arg);
+  fd *f = (fd *)arg;
+
+  if (!fs::read(*f, b)) {
     return false;
   }
-  sp::StaticCircularByteBuffer<64> b;
 
-  // TODO
+  return true;
+}
+
+bool
+restore(dht::DHT &dht, const char *file) noexcept {
+  fd f = fs::open_read(file);
+  if (!f) {
+    return true;
+  }
+
+  sp::StaticCircularByteBuffer<128> b;
+  sp::Thing thing(b, &f, topup);
+
+  if (!restore(thing, dht.id, dht.bootstrap_contacts)) {
+    return false;
+  }
 
   return true;
 }

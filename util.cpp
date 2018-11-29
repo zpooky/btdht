@@ -1,9 +1,9 @@
 #include "util.h"
 #include <arpa/inet.h>
-#include <cassert>
 #include <cstring>
 #include <hash/fnv.h>
 #include <memory>
+#include <util/assert.h>
 
 /*Ip*/
 Ip::Ip(Ipv4 v4)

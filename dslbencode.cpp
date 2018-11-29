@@ -1,4 +1,5 @@
 #include "dslbencode.h"
+#include <util/assert.h>
 #include <arpa/inet.h>
 
 //=BEncode==================================================================
@@ -10,7 +11,7 @@ namespace e {
 static bool
 serialize(sp::Buffer &b, const Contact &p) noexcept {
   // TODO ipv4
-  assert(p.ip.type == IpType::IPV4);
+  assertx(p.ip.type == IpType::IPV4);
   const std::size_t pos = b.pos;
 
   Ipv4 ip = htonl(p.ip.ipv4);
@@ -51,7 +52,7 @@ static bool
 serialize(sp::Buffer &b, const dht::Node &node) noexcept {
   const std::size_t pos = b.pos;
 
-  if (sp::remaining_read(b) < sizeof(node.id.id)) {
+  if (sp::remaining_write(b) < sizeof(node.id.id)) {
     b.pos = pos;
     return false;
   }
@@ -68,7 +69,7 @@ serialize(sp::Buffer &b, const dht::Node &node) noexcept {
 static std::size_t
 size(const Contact &p) noexcept {
   // TODO ipv4
-  assert(p.ip.type == IpType::IPV4);
+  assertx(p.ip.type == IpType::IPV4);
   return sizeof(p.ip.ipv4) + sizeof(p.port);
 }
 
@@ -147,7 +148,6 @@ pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
                              const dht::Peer *l = (dht::Peer *)arg;
 
                              return dht::for_all(l, [&b](const auto &ls) {
-
                                if (!serialize(b, ls.contact)) {
                                  return false;
                                }
@@ -162,11 +162,9 @@ static bool
 sp_list(sp::Buffer &buf, const List &list) noexcept {
   std::size_t len = size(list);
   return bencode::e::value(buf, len, (void *)&list, [](sp::Buffer &b, void *a) {
-
     const List *l = (List *)a;
-    assert(l);
+    assertx(l);
     return for_all(*l, [&b](const auto &value) {
-
       if (!serialize(b, value)) {
         return false;
       }
@@ -207,7 +205,6 @@ xxx(sp::Buffer &buf, const char *key, const dht::Node **list,
     // const dht::Node **l = (dht::Node *)a;
     return for_all(std::get<0>(*targ), std::get<1>(*targ),
                    [&b](const auto &value) {
-
                      if (!serialize(b, value)) {
                        return false;
                      }
@@ -226,7 +223,6 @@ namespace priv {
 bool
 value(sp::Buffer &buf, const dht::Node &node) noexcept {
   return bencode::e::dict(buf, [&node](sp::Buffer &b) { //
-
     if (!bencode::e::pair(b, "id", node.id.id, sizeof(node.id.id))) {
       return false;
     }

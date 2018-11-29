@@ -1,4 +1,5 @@
 #include "timeout.h"
+#include <util/assert.h>
 
 namespace timeout {
 // template <typename T>
@@ -20,12 +21,12 @@ internal_unlink(T *&head, T *const node) noexcept {
   T *priv = node->timeout_priv;
   T *next = node->timeout_next;
 
-  assert(priv);
-  assert(next);
+  assertx(priv);
+  assertx(next);
 
   if (priv == node || next == node) {
-    assert(priv == node);
-    assert(next == node);
+    assertx(priv == node);
+    assertx(next == node);
     priv = nullptr;
     next = nullptr;
   }
@@ -64,8 +65,8 @@ unlink(dht::Peer *&head, dht::Peer *peer) noexcept {
 template <typename T>
 void
 internal_append_all(T *&head, T *const node) noexcept {
-  assert(node->timeout_next == nullptr);
-  assert(node->timeout_priv == nullptr);
+  assertx(node->timeout_next == nullptr);
+  assertx(node->timeout_priv == nullptr);
 
   if (!head) {
     // T *const lst = last(node);
@@ -79,7 +80,7 @@ internal_append_all(T *&head, T *const node) noexcept {
     // T *const l = last(node);
 
     T *const priv = head->timeout_priv;
-    assert(priv);
+    assertx(priv);
 
     priv->timeout_next = node;
     head->timeout_priv = node;
@@ -101,14 +102,14 @@ append_all(dht::DHT &ctx, dht::Peer *peer) noexcept {
 
 void
 prepend(dht::DHT &dht, dht::Node *ret) noexcept {
-  assert(ret);
-  assert(ret->timeout_next == nullptr);
-  assert(ret->timeout_priv == nullptr);
+  assertx(ret);
+  assertx(ret->timeout_next == nullptr);
+  assertx(ret->timeout_priv == nullptr);
 
   dht::Node *const head = dht.timeout_node;
   if (head) {
     dht::Node *priv = head->timeout_priv;
-    assert(priv);
+    assertx(priv);
 
     priv->timeout_next = ret;
     head->timeout_priv = ret;

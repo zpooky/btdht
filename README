@@ -45,12 +45,6 @@ find_node/get_peers
 ----------
 ----------
 
-
-sp_search[infohash,want_no_result,timeout]->
-  new Bloomfilter
-  check own peer db
-  create on_wait search to timeout result
-
 sp_statistics
   -req/res in out
   -bytes sent/rec

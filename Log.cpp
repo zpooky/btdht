@@ -222,7 +222,9 @@ namespace awake {
 void
 timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
-  printf("awake next timeout[%lums]\n", std::uint64_t(timeout));
+  printf("awake next timeout[%lums] ", std::uint64_t(timeout));
+  print_time(ctx.now + timeout);
+  printf("\n");
 }
 
 void

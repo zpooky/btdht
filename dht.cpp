@@ -3,7 +3,7 @@
 #include "timeout.h"
 #include <algorithm>
 #include <buffer/CircularBuffer.h>
-#include <cassert>
+#include <util/assert.h>
 #include <cstdlib>
 #include <cstring>
 #include <hash/crc.h>
@@ -20,14 +20,14 @@ is_cycle(DHT &dht) noexcept {
   Lit:
     if (head) {
       Peer *next = it->timeout_next;
-      assert(it == next->timeout_priv);
+      assertx(it == next->timeout_priv);
 
       it = next;
       if (it != head) {
         goto Lit;
       }
     } else {
-      assert(head);
+      assertx(head);
     }
   }
   return true;
@@ -120,7 +120,7 @@ randomize(DHT &dht, const Ip &addr, NodeId &id) noexcept {
   }
   id.id[19] = sp::byte(seed);
 
-  // assert(id.id[0] <= sp::byte(9));
+  // assertx(id.id[0] <= sp::byte(9));
 
   return true;
 }
@@ -130,7 +130,7 @@ randomize(prng::xorshift32 &r, NodeId &id) noexcept {
   fill(r, id.id);
   for (std::size_t i = 0; i < 3; ++i) {
     auto pre = uniform_dist(r, std::uint32_t(0), std::uint32_t(9));
-    assert(pre <= 9);
+    assertx(pre <= 9);
     id.id[i] = sp::byte(pre);
   }
 }
@@ -189,7 +189,7 @@ alloc(DHT &) {
 static void
 reset(DHT &dht, Node &contact) noexcept {
   if (!contact.good) {
-    assert(dht.bad_nodes > 0);
+    assertx(dht.bad_nodes > 0);
     dht.bad_nodes--;
     contact.good = true;
   }
@@ -205,7 +205,7 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
     Node &contact = bucket.contacts[i];
     if (!contact) {
       contact = c;
-      assert(contact);
+      assertx(contact);
 
       // timeout::append_all(dht, &contact);
       return &contact;
@@ -218,10 +218,10 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
       if (!is_good(dht, contact)) {
         timeout::unlink(dht, &contact);
         reset(dht, contact);
-        assert(!contact);
+        assertx(!contact);
 
         contact = c;
-        assert(contact);
+        assertx(contact);
 
         // timeout::append_all(dht, &contact);
 
@@ -254,7 +254,7 @@ find(Bucket &bucket, const NodeId &id) noexcept {
 
 static bool
 split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
-  assert(parent->in_tree == nullptr);
+  assertx(parent->in_tree == nullptr);
 
   auto in_tree = alloc<RoutingTable>(dht);
   if (!in_tree) {
@@ -287,23 +287,23 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
             next->timeout_priv = c;
         };
 
-        assert(is_cycle(dht));
+        assertx(is_cycle(dht));
         timeout::unlink(dht, &contact);
-        assert(!contact.timeout_next);
-        assert(!contact.timeout_priv);
+        assertx(!contact.timeout_next);
+        assertx(!contact.timeout_priv);
 
         const bool eager = false;
         bool replaced /*OUT*/ = false;
         auto *nc = do_insert(dht, in_tree->bucket, contact, eager, replaced);
-        assert(!replaced);
-        assert(nc);
+        assertx(!replaced);
+        assertx(nc);
 
         if (nc) {
           relink(nc);
           // reset
         }
         contact = Node();
-        assert(!contact);
+        assertx(!contact);
 
         ++moved;
       }
@@ -347,15 +347,15 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
 // static void
 // merge_children(DHT &dht, RoutingTable *parent) noexcept {
 //   RoutingTable *lower = parent->node.lower;
-//   assert(lower->type == NodeType::LEAF);
+//   assertx(lower->type == NodeType::LEAF);
 //   RoutingTable *higher = parent->node.higher;
-//   assert(higher->type == NodeType::LEAF);
+//   assertx(higher->type == NodeType::LEAF);
 //
 //   parent->~RoutingTable();
 //   parent = new (parent) RoutingTable;
 //
-//   assert(copy(lower->bucket, parent->bucket));
-//   assert(copy(higher->bucket, parent->bucket));
+//   assertx(copy(lower->bucket, parent->bucket));
+//   assertx(copy(higher->bucket, parent->bucket));
 //
 //   dealloc(dht, lower);
 //   dealloc(dht, higher);
@@ -377,7 +377,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
 //   std::size_t result = 0;
 //   for (std::size_t i = 0; i < Bucket::K; ++i) {
 //     Node &c = bucket.contacts[i];
-//     assert(c.timeout_next == nullptr);
+//     assertx(c.timeout_next == nullptr);
 //     if (c) {
 //       if (std::memcmp(c.id.id, search.id.id, sizeof(c.id)) == 0) {
 //         uncontact(c);
@@ -393,7 +393,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
 // remove(DHT &dht, Node &c) noexcept {
 //   // start:
 //   RoutingTable *parent = find_parent(dht, c.id);
-//   assert(parent->type == NodeType::NODE);
+//   assertx(parent->type == NodeType::NODE);
 //
 //   RoutingTable *lower = parent->node.lower;
 //   RoutingTable *higher = parent->node.higher;
@@ -433,7 +433,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
 //   for (std::size_t i = 0; i < Bucket::K; ++i) {
 //     Node &contact = b.contacts[i];
 //     if (contact) {
-//       assert(contact.timeout_next == nullptr);
+//       assertx(contact.timeout_next == nullptr);
 //       if (contact.activity < age) {
 //         contact.timeout_next = result;
 //         result = &contact;
@@ -489,7 +489,7 @@ static void
 multiple_closest_nodes(DHT &dht, const Key &search, Node **result,
                        std::size_t res_length) noexcept {
   for (std::size_t i = 0; i < res_length; ++i) {
-    assert(result[i] == nullptr);
+    assertx(result[i] == nullptr);
   }
 
   Bucket *raw[Bucket::K] = {nullptr};
@@ -526,7 +526,7 @@ Lstart:
     Bucket *best_ordered[Bucket::K]{nullptr};
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       // printf("-%p\n", best_ordered[i]);
-      assert(best_ordered[i] == nullptr);
+      assertx(best_ordered[i] == nullptr);
     }
     std::size_t best_idx = 0;
 
@@ -685,9 +685,9 @@ Lstart:
     if (inserted) {
       // printf("- insert\n");
       timeout::insert_new(dht, inserted);
-      assert(is_cycle(dht));
-      assert(inserted->timeout_next);
-      assert(inserted->timeout_priv);
+      assertx(is_cycle(dht));
+      assertx(inserted->timeout_next);
+      assertx(inserted->timeout_priv);
 
       log::routing::insert(dht, *inserted);
       if (!replaced) {
@@ -699,13 +699,13 @@ Lstart:
           // XXX make better
           goto Lstart;
         }
-        assert(false);
+        assertx(false);
       }
     }
 
     return inserted;
   } else {
-    assert(!dht.root);
+    assertx(!dht.root);
     dht.root = alloc<RoutingTable>(dht);
     if (dht.root) {
       goto Lstart;

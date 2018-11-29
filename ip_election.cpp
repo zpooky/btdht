@@ -1,6 +1,7 @@
 #include "ip_election.h"
 #include <hash/djb2.h>
 #include <hash/fnv.h>
+#include <util/assert.h>
 
 namespace sp {
 ip_election::ip_election() noexcept
@@ -25,8 +26,10 @@ ip_election::ip_election() noexcept
     }
   };
 
-  assert(insert(hs, djb));
-  assert(insert(hs, fnv1a));
+  auto dins = insert(hs, djb);
+  assertx(dins);
+  auto fins = insert(hs, fnv1a);
+  assertx(fins);
 }
 
 bool
@@ -78,7 +81,7 @@ winner(const ip_election &ctx, std::size_t min) noexcept {
     return acum;
   });
 
-  assert(best);
+  assertx(best);
 
   if (best->cnt >= min) {
     return best->contact;
@@ -94,7 +97,9 @@ print_result(const ip_election &election) noexcept {
     Contact c = std::get<0>(e);
     std::size_t votes = std::get<1>(e);
     char str[64] = {0};
-    assert(to_string(c, str));
+    if (!to_string(c, str)) {
+      assertx(false);
+    }
     printf("%s - %zu\n", str, votes);
   });
 }

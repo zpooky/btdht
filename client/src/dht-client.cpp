@@ -20,7 +20,7 @@ generic_receive(fd &u, sp::Buffer &b) noexcept {
   char str[256] = {'\0'};
   assert(to_string(c, str));
   printf("contact: %s\n", str);
-  // assert(b.length > 0);
+  // assertx(b.length > 0);
 
   sp::bencode_print(b);
 }
@@ -180,7 +180,7 @@ receive_get_peers(fd &u, sp::Buffer &b) noexcept {
   printf("\n\n");
 
   dht::Token t;
-  assert(find_entry(b, "token", t.id, t.length));
+  assertx(find_entry(b, "token", t.id, t.length));
   return t;
 }
 

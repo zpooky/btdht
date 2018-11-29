@@ -1,9 +1,9 @@
 #include "bencode_print.h"
 #include "udp.h"
 #include <arpa/inet.h>
-#include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <util/assert.h>
 // #include <exception>
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
@@ -135,7 +135,7 @@ receive(fd &udp, /*OUT*/ Contact &c, /*OUT*/ sp::Buffer &b) noexcept {
 
 static bool
 send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
-  assert(buf.length > 0);
+  assertx(buf.length > 0);
   int flag = 0;
   ::sockaddr *destaddr = (::sockaddr *)&dest;
 
@@ -144,7 +144,7 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
     // sp::bencode_print(buf);
     sp::byte *const raw = offset(buf);
     const std::size_t raw_len = remaining_read(buf);
-    assert(raw_len > 0);
+    assertx(raw_len > 0);
 
     sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
     if (sent > 0) {

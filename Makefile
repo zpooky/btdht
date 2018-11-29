@@ -7,7 +7,7 @@ HEADER_DIRS = -Iexternal -Iexternal/sputil/include
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb
 LDFLAGS = -fno-omit-frame-pointer
-LDLIBS = -Lexternal/sputil/build/dht -lbfd -ldl -lsputil
+LDLIBS = -Lexternal/sputil/build/dht -lsputil -lbfd -ldl
 PREFIX = /usr/local
 BUILD_DIR = build/debug
 
@@ -23,7 +23,7 @@ DEPENDS = $(OBJECTS:.o=.d)
 #TODO build for different optimizations level in dedicated build directories
 
 # PHONY targets is not file backed targets
-.PHONY: test all clean install uninstall bear
+.PHONY: test all clean install uninstall bear dependencies
 
 # all {{{
 # The "all" target. runs by default since it the first target

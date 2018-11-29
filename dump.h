@@ -2,10 +2,8 @@
 #define SP_MAINLINE_DHT_DUMP_H
 
 #include "shared.h"
-#include <buffer/CircularByteBuffer.h>
 
 namespace sp {
-
 bool
 dump(const dht::DHT &, const char *path) noexcept;
 

@@ -1,6 +1,6 @@
 #include "transaction.h"
 
-#include <cassert>
+#include <util/assert.h>
 #include <cstring>
 
 namespace tx {
@@ -30,13 +30,13 @@ Lit:
   if (it) {
     ++result;
 
-    assert(it == it->timeout_next->timeout_priv);
+    assertx(it == it->timeout_next->timeout_priv);
     it = it->timeout_next;
     if (it != head) {
       goto Lit;
     }
   } else {
-    assert(false);
+    assertx(false);
   }
   return result;
 }
@@ -66,7 +66,7 @@ Lit:
       goto Lit;
     }
   } else {
-    assert(false);
+    assertx(false);
   }
 
   return true;
@@ -77,8 +77,8 @@ init(Client &client) noexcept {
   sp::byte a = 'a';
   sp::byte b = 'a';
   in_order_for_each(client.tree, [&client, &a, &b](Tx &tx) {
-    assert(tx.prefix[0] == '\0');
-    assert(tx.prefix[1] == '\0');
+    assertx(tx.prefix[0] == '\0');
+    assertx(tx.prefix[1] == '\0');
 
     tx.prefix[0] = a;
     tx.prefix[1] = b++;
@@ -89,7 +89,7 @@ init(Client &client) noexcept {
     // printf("prefix: %c%c\n", tx.prefix[0], tx.prefix[1]);
     add_front(client, &tx);
   });
-  assert(debug_count(client) == Client::tree_capacity);
+  assertx(debug_count(client) == Client::tree_capacity);
   return true;
 }
 
@@ -100,7 +100,7 @@ search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
     // assert
     in_order_for_each(tree, [&needle](auto &current) {
       if (current == needle) {
-        assert(false);
+        assertx(false);
       }
     });
   }
@@ -143,8 +143,8 @@ is_expired(const Tx &tx, Timestamp now) noexcept {
 }
 static void
 ssss(Client &client, Tx *const t) noexcept {
-  assert(t->timeout_next == nullptr);
-  assert(t->timeout_priv == nullptr);
+  assertx(t->timeout_next == nullptr);
+  assertx(t->timeout_priv == nullptr);
 
   if (client.timeout_head) {
     auto *next = client.timeout_head;
@@ -209,8 +209,8 @@ unlink_free(DHT &dht, Timestamp now) noexcept {
 
   // auto cnt = debug_count(dht);
   // printf("cnt %zu\n", cnt);
-  assert(debug_count(dht) == Client::tree_capacity);
-  assert(ordered(dht));
+  assertx(debug_count(dht) == Client::tree_capacity);
+  assertx(ordered(dht));
   if (head) {
 
     if (is_expired(*head, now)) {
@@ -223,7 +223,7 @@ unlink_free(DHT &dht, Timestamp now) noexcept {
       return unlink(client, head);
     }
   } else {
-    assert(false);
+    assertx(false);
   }
 
   return nullptr;

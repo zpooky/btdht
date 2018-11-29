@@ -4,7 +4,7 @@
 #include "bencode_offset.h"
 #include "bencode_print.h"
 #include "shared.h"
-#include <cassert>
+#include <util/assert.h>
 #include <cstring>
 
 namespace krpc {
@@ -124,32 +124,32 @@ krpc(ParseContext &ctx, F f) {
         t = true;
         goto start;
       } else {
-        assert(before == p.pos);
+        assertx(before == p.pos);
       }
 
       if (!y && bencode::d::pair(p, "y", ctx.msg_type)) {
         y = true;
         goto start;
       } else {
-        assert(before == p.pos);
+        assertx(before == p.pos);
       }
 
       if (!q && bencode::d::pair(p, "q", ctx.query)) {
         q = true;
         goto start;
       } else {
-        assert(before == p.pos);
+        assertx(before == p.pos);
       }
 
       {
         Contact ip;
         if (!ip_handled && bencode::d::pair(p, "ip", ip)) {
           ctx.ip_vote = ip;
-          assert(bool(ctx.ip_vote));
+          assertx(bool(ctx.ip_vote));
           ip_handled = true;
           goto start;
         } else {
-          assert(before == p.pos);
+          assertx(before == p.pos);
         }
       }
 
@@ -157,13 +157,13 @@ krpc(ParseContext &ctx, F f) {
         v = true;
         goto start;
       } else {
-        assert(before == p.pos);
+        assertx(before == p.pos);
       }
 
       // the application layer dict[request argument:a, reply: r]
       if (bencode::d::peek(p, "a") || bencode::d::peek(p, "r")) {
         mark = p.pos;
-        assert(bencode::d::value(p, "a") || bencode::d::value(p, "r"));
+        assertx(bencode::d::value(p, "a") || bencode::d::value(p, "r"));
 
         if (!bencode::d::dict_wildcard(p)) {
           return false;
@@ -239,7 +239,7 @@ ping(Ctx &ctx, F f) noexcept {
       Contact ip;
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
         ctx.ip_vote = ip;
-        assert(bool(ctx.ip_vote));
+        assertx(bool(ctx.ip_vote));
         b_ip = true;
         goto Lstart;
       }
@@ -282,7 +282,7 @@ ping(Ctx &ctx, F f) noexcept {
       Contact ip;
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
         ctx.ip_vote = ip;
-        assert(bool(ctx.ip_vote));
+        assertx(bool(ctx.ip_vote));
         b_ip = true;
         goto Lstart;
       }

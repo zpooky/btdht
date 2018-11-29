@@ -7,7 +7,7 @@ HEADER_DIRS = -I.. -I../external/sputil/include
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++14 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb
 LDFLAGS =
-LDLIBS = -L../build/client -ldht -L../external/sputil/build/client -lsputil
+LDLIBS = -L../build/client -ldht -L../external/sputil/build/client -lsputil -lbfd -ldl
 PREFIX = /usr/local
 
 SOURCE_DIR = src

@@ -2,7 +2,6 @@
 #define SP_MAINLINE_DHT_UTIL_H
 
 #include <buffer/BytesView.h>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <ctime>

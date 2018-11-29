@@ -135,7 +135,7 @@ Config::Config() noexcept
     , transaction_timeout(1)
     //
     , bootstrap_generation_max(16)
-    , percentage_seek(10)
+    , percentage_seek(40)
     //
     , bucket_find_node_spam(1)
     , max_bucket_not_find_node(5)
@@ -310,12 +310,12 @@ find_search(dht::DHT &dht, SearchContext *needle) noexcept {
 }
 
 // dht::DHT
-DHT::DHT(fd &udp, const Contact &i, prng::xorshift32 &r) noexcept
+DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     // self {{{
     : id()
     , client(udp)
     , log()
-    , ip(i)
+    , ip(self)
     , random(r)
     , election()
     , statistics()
@@ -354,6 +354,10 @@ DHT::DHT(fd &udp, const Contact &i, prng::xorshift32 &r) noexcept
 
 //}}}
 {
+}
+
+DHT::~DHT() {
+  //TOD reclaim
 }
 
 /*dht::MessageContext*/

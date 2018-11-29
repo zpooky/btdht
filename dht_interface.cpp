@@ -10,10 +10,10 @@
 #include "transaction.h"
 
 #include <algorithm>
-#include <cassert>
 #include <collection/Array.h>
 #include <cstring>
 #include <prng/util.h>
+#include <util/assert.h>
 #include <utility>
 
 namespace dht {
@@ -124,8 +124,8 @@ for_all(dht::DHT &ctx, sp::Milliseconds timeout, F f) {
 Lstart:
   dht::Node *node = timeout::take(ctx.now, timeout, ctx.timeout_node, 1);
   if (node) {
-    assert(node->timeout_next == nullptr);
-    assert(node->timeout_priv == nullptr);
+    assertx(node->timeout_next == nullptr);
+    assertx(node->timeout_priv == nullptr);
     if (node->good) {
       if (dht::should_mark_bad(ctx, *node)) {
         node->good = false;
@@ -178,7 +178,7 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
        * immediately awake and send ping  to the same 3 nodes
        */
       node.req_sent = dht.now;
-      assert(node.timeout_next == nullptr);
+      assertx(node.timeout_next == nullptr);
       return true;
     }
     return false;
@@ -213,8 +213,8 @@ on_awake_peer_db(DHT &, sp::Buffer &) noexcept {
   // Lstart:
   //   Peer *const peer = timeout::take(dht.now, dht.timeout_peer, 1);
   //   if (peer) {
-  //     assert(peer->timeout_next == nullptr);
-  //     assert(peer->timeout_priv == nullptr);
+  //     assertx(peer->timeout_next == nullptr);
+  //     assertx(peer->timeout_priv == nullptr);
   //   }
   // }
   // TODO
@@ -280,7 +280,6 @@ Lstart:
       // TODO prune non good bootstrap nodes
       // XXX shuffle bootstrap list just before sending
       for_all(bs, [&dht, &out, inc_ongoing, sid](const Contact &remote) {
-
         auto *closure = new (std::nothrow) Contact(remote);
         bool res = client::find_node(dht, out, remote, sid, closure);
         if (res) {
@@ -353,7 +352,7 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
     if (!result->good) {
       result->good = true;
-      assert(dht.bad_nodes > 0);
+      assertx(dht.bad_nodes > 0);
       dht.bad_nodes--;
     }
   } else {
@@ -376,7 +375,7 @@ handle_ip_election(dht::MessageContext &ctx, const dht::NodeId &) noexcept {
     auto &dht = ctx.dht;
     vote(dht.election, ctx.remote, v);
     // } else {
-    //   // assert(false);
+    //   // assertx(false);
     // }
   }
 }
@@ -463,7 +462,7 @@ on_request(dht::MessageContext &ctx) noexcept {
 static void
 on_timeout(dht::DHT &dht, void *arg) noexcept {
   log::transmit::error::ping_response_timeout(dht);
-  assert(arg == nullptr);
+  assertx(arg == nullptr);
 }
 
 void
@@ -501,20 +500,17 @@ template <typename ContactType>
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 /*const sp::list<dht::Node>*/ ContactType &contacts) noexcept {
-  static_assert(
-      std::is_same<dht::Node, typename ContactType::value_type>::value, "");
+  static_assert(std::is_same<dht::Node, typename ContactType::value_type>::value, "");
   log::receive::res::find_node(ctx);
 
   dht_response(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) {
-
       dht::DHT &dht = ctx.dht;
       dht::Node node(contact, dht.now);
       auto res = dht::insert(dht, node); // TODO does this return existing?
       if (!res) {
-        insert(dht.bootstrap_contacts, node.contact); // TODO insert unique
+        insert_unique(dht.bootstrap_contacts, node.contact);
       }
-
     });
   });
 
@@ -525,7 +521,7 @@ handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
     auto *bs = (Contact *)closure;
     delete bs;
   }
-  assert(dht.active_searches > 0);
+  assertx(dht.active_searches > 0);
   dht.active_searches--;
 }
 
@@ -571,7 +567,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       b_id = true;
       goto Lstart;
     } else {
-      assert(p.pos == pos);
+      assertx(p.pos == pos);
     }
 
     // optional
@@ -581,7 +577,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
         b_n = true;
         goto Lstart;
       } else {
-        assert(p.pos == pos);
+        assertx(p.pos == pos);
       }
     }
 
@@ -589,7 +585,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       b_t = true;
       goto Lstart;
     } else {
-      assert(p.pos == pos);
+      assertx(p.pos == pos);
     }
 
     // optional
@@ -597,18 +593,33 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       b_p = true;
       goto Lstart;
     } else {
-      assert(p.pos == pos);
+      assertx(p.pos == pos);
     }
 
     {
       Contact ip;
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
         ctx.ip_vote = ip;
-        assert(bool(ctx.ip_vote));
+        assertx(bool(ctx.ip_vote));
         b_ip = true;
         goto Lstart;
       } else {
-        assert(p.pos == pos);
+        assertx(p.pos == pos);
+      }
+    }
+    {
+      const unsigned char *kit = nullptr;
+      std::size_t klen = 0;
+      if (bencode::d::value_ref(p, kit, klen)) {
+
+        const unsigned char *vit = nullptr;
+        std::size_t vlen = 0;
+        if (bencode::d::value_ref(p, vit, vlen)) {
+          printf("spooky\n");
+          goto Lstart;
+        } else {
+          return false;
+        }
       }
     }
 
@@ -716,7 +727,8 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       /*test bloomfilter*/
       if (!test(search.searched, contact.id)) {
         /*insert into bloomfilter*/
-        assert(insert(search.searched, contact.id));
+        auto ires = insert(search.searched, contact.id);
+        assertx(ires);
         insert_eager(search.queue, dht::K(contact, search.search.id));
       }
       // }
@@ -725,7 +737,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       dht::Node ins(contact, dht.now);
       auto res = dht::insert(dht, ins);
       if (!res) {
-        insert(dht.bootstrap_contacts, ins.contact);
+        insert_unique(dht.bootstrap_contacts, ins.contact);
       }
     });
 
@@ -758,7 +770,7 @@ on_timeout(dht::DHT &dht, void *ctx) noexcept {
 
 static bool
 on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
-  // assert(searchCtx);
+  // assertx(searchCtx);
   if (!searchCtx) {
     return true;
   }
@@ -767,7 +779,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
   dht::Search *search = find_search(ctx.dht, search_ctx);
   dec(search_ctx);
 
-  // assert(search);
+  // assertx(search);
   if (!search) {
     return true;
   }
@@ -797,7 +809,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       b_id = true;
       goto Lstart;
     } else {
-      assert(pos == p.pos);
+      assertx(pos == p.pos);
     }
 
     if (!b_t && bencode::d::pair(p, "token", token)) {
@@ -805,7 +817,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       b_t = true;
       goto Lstart;
     } else {
-      assert(pos == p.pos);
+      assertx(pos == p.pos);
     }
 
     std::uint64_t p_out = 0; // TODO what is this?
@@ -814,7 +826,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       b_p = true;
       goto Lstart;
     } else {
-      assert(pos == p.pos);
+      assertx(pos == p.pos);
     }
 
     {
@@ -822,11 +834,11 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
         // printf("ip\n");
         ctx.ip_vote = ip;
-        assert(bool(ctx.ip_vote));
+        assertx(bool(ctx.ip_vote));
         b_ip = true;
         goto Lstart;
       } else {
-        assert(pos == p.pos);
+        assertx(pos == p.pos);
       }
     }
 
@@ -838,7 +850,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
         b_n = true;
         goto Lstart;
       } else {
-        assert(pos == p.pos);
+        assertx(pos == p.pos);
       }
     }
 
@@ -849,7 +861,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
         b_v = true;
         goto Lstart;
       } else {
-        assert(pos == p.pos);
+        assertx(pos == p.pos);
       }
     }
 

@@ -5,6 +5,7 @@
 #include "dht_interface.h"
 #include "krpc.h"
 #include "udp.h"
+#include <util/assert.h>
 
 namespace client {
 
@@ -30,7 +31,9 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
       log::transmit::error::udp(dht);
       // since we fail to send request, we clear the transaction
       tx::TxContext dummy;
-      assert(tx::take(client, tx, dummy));
+      if (!tx::take(client, tx, dummy)) {
+        assertx(false);
+      }
     }
   } else {
     log::transmit::error::mint_transaction(dht);

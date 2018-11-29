@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <cstdio>
 #include <cstring>
+#include <util/assert.h>
 
 namespace bencode {
 namespace d {
@@ -138,10 +139,10 @@ compact_list(sp::Buffer &d, const char *key, ListType &l) noexcept {
     return false;
   }
 
-  // assert(l.length == 0);
+  // assertx(l.length == 0);
 
   if (length > 0) {
-    assert(val);
+    assertx(val);
 
     sp::Buffer val_buf((sp::byte *)val, length);
     val_buf.length = length;
@@ -153,7 +154,7 @@ compact_list(sp::Buffer &d, const char *key, ListType &l) noexcept {
         d.pos = pos;
         return false;
       }
-      assert(val_buf.pos > pls);
+      assertx(val_buf.pos > pls);
 
       if (!insert(l, n)) {
         d.pos = pos;
@@ -184,7 +185,7 @@ value_contact(sp::Buffer &b, Contact &result) noexcept {
     b.pos = pos;
     return false;
   }
-  assert(remaining_read(bx) == 0);
+  assertx(remaining_read(bx) == 0);
 
   return true;
 }
@@ -214,7 +215,7 @@ list_contact(sp::Buffer &d, const char *key, ListType &l) noexcept {
     //   d.pos = pos;
     //   // too many result
     //   printf("length[%zu] capacity[%zu]\n", length(l), capacity(l));
-    //   assert(false);
+    //   assertx(false);
     //   return false;
     // }
   }

@@ -216,7 +216,7 @@ activity(const Peer &) noexcept;
 
 /*dht::Bucket*/
 struct Bucket {
-  static constexpr std::size_t K = 32;
+  static inline constexpr std::size_t K = 32;
   Node contacts[K];
   Timestamp find_node;
   std::uint8_t bootstrap_generation;
@@ -397,8 +397,8 @@ struct K {
 
   bool
   operator>(const K &o) const noexcept {
-    assert(o.common != -1);
-    assert(common != -1);
+    assertx(o.common != -1);
+    assertx(common != -1);
     return common > o.common;
   }
 };
@@ -486,7 +486,7 @@ struct DHT {
   sp::LinkedList<Search> searches;
   // }}}
 
-  explicit DHT(fd &, const Contact &, prng::xorshift32 &) noexcept;
+  explicit DHT(fd &, const Contact &self, prng::xorshift32 &) noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;
@@ -495,6 +495,8 @@ struct DHT {
   operator=(const DHT &) = delete;
   DHT &
   operator=(const DHT &&) = delete;
+
+  ~DHT();
 };
 
 // dht::MessageContext
