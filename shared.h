@@ -49,8 +49,8 @@ struct DHT;
 
 namespace tx {
 
-using TxCancelHandle = void (*)(dht::DHT &, void *) noexcept;
-using TxHandle = bool (*)(dht::MessageContext &, void *) noexcept;
+using TxCancelHandle = void (*)(dht::DHT &, void *);
+using TxHandle = bool (*)(dht::MessageContext &, void *);
 // dht::TxContext
 struct TxContext {
   TxHandle int_handle;

@@ -156,7 +156,10 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
   if (sent < 0) {
     const std::size_t raw_len = remaining_read(buf);
     char dstr[128] = {0};
-    assert(inet_ntop(AF_INET6, &dest, dstr, socklen_t(sizeof(dstr))) != 0);
+
+    const char* res = ::inet_ntop(AF_INET6, &dest, dstr, socklen_t(sizeof(dstr)));
+    assertx(res);
+
     printf("sent[%zd] = "
            "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),destaddr[%s])\n", //
            sent, int(fd), raw_len, flag, dstr);

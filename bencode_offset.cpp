@@ -129,7 +129,7 @@ value(sp::Buffer &buf, dht::Node &value) noexcept {
 
 template <typename ListType>
 static bool
-compact_list(sp::Buffer &d, const char *key, ListType &l) noexcept {
+compact_list(sp::Buffer &d, ListType &l) noexcept {
   const std::size_t pos = d.pos;
 
   const sp::byte *val = nullptr;
@@ -236,7 +236,7 @@ nodes(sp::Buffer &d, const char *key, sp::list<dht::Node> &l) noexcept {
     return false;
   }
 
-  if (!compact_list(d, key, l)) {
+  if (!compact_list(d, l)) {
     d.pos = pos;
     return false;
   }
@@ -252,7 +252,7 @@ nodes(sp::Buffer &d, const char *key,
     return false;
   }
 
-  if (!compact_list(d, key, l)) {
+  if (!compact_list(d, l)) {
     d.pos = pos;
     return false;
   }

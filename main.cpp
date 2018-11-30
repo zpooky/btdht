@@ -114,7 +114,7 @@ setup_epoll(fd &udp, fd &signal) noexcept {
 }
 
 template <typename Handle, typename Awake, typename Interrupt>
-static void
+static int
 loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
      Interrupt on_int) noexcept {
   Timestamp previous(0);
@@ -153,8 +153,7 @@ loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
             die("read(signal)");
           }
 
-          on_int(info);
-          return;
+          return on_int(info);
         } else {
           sp::Buffer inBuffer(in, size);
           sp::Buffer outBuffer(out, size);
@@ -190,6 +189,8 @@ loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
 
     previous = now;
   } // for
+
+  return 0;
 }
 
 static bool
@@ -286,6 +287,8 @@ main(int argc, char **argv) {
     printf("bind(%s)\n", str);
   }
 
+  mdht->now = sp::now();
+
   /*boostrap*/
   // Contact bs_node(INADDR_ANY, local.port); // TODO
   const char *bss[] = {
@@ -307,15 +310,15 @@ main(int argc, char **argv) {
       // "192.168.2.14:51413",
       // "127.0.0.1:51413", "213.65.130.80:51413",
   };
-  mdht->now = sp::now();
+
   for_each(bss, [](const char *ip) {
     Contact bs(0, 0);
     if (!convert(ip, bs)) {
       die("parse bootstrap ip failed");
     }
 
-    assert(bs.ip.ipv4 > 0);
-    assert(bs.port > 0);
+    assertx(bs.ip.ipv4 > 0);
+    assertx(bs.port > 0);
 
     Contact node(bs);
 
@@ -323,18 +326,16 @@ main(int argc, char **argv) {
       die("failed to setup bootstrap");
     }
   });
-  fd sfd = setup_signal();
 
+  fd sfd = setup_signal();
   fd poll = setup_epoll(udp, sfd);
 
   dht::Modules modules;
-  {
-    if (!interface_priv::setup(modules)) {
-      die("interface_priv::setup(modules)");
-    }
-    if (!interface_dht::setup(modules)) {
-      die("interface_dht::setup(modules)");
-    }
+  if (!interface_priv::setup(modules)) {
+    die("interface_priv::setup(modules)");
+  }
+  if (!interface_dht::setup(modules)) {
+    die("interface_dht::setup(modules)");
   }
 
   auto handle_cb = [&](Contact from, sp::Buffer &in, sp::Buffer &out,
@@ -370,13 +371,12 @@ main(int argc, char **argv) {
 
   auto interrupt_cb = [](const signalfd_siginfo &info) {
     printf("signal: %s\n", strsignal(info.ssi_signo));
-    // TODO only if is warmed up so we are not 
+    // TODO only if is warmed up so we are not
     // sp::dump(dht,);
 
     /**/
-    return;
+    return 1;
   };
 
-  loop(poll, sfd, handle_cb, awake_cb, interrupt_cb);
-  return 0;
+  return loop(poll, sfd, handle_cb, awake_cb, interrupt_cb);
 }

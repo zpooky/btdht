@@ -272,6 +272,7 @@ value(sp::Buffer &buf, const dht::RoutingTable &t) noexcept {
   });
 } // bencode::e::value()
 
+#if 0
 static bool
 pair(sp::Buffer &buf, const char *key, const dht::RoutingTable *t) noexcept {
   // used by dump
@@ -287,6 +288,7 @@ pair(sp::Buffer &buf, const char *key, const dht::RoutingTable *t) noexcept {
     });
   });
 } // bencode::e::pair()
+
 
 static bool
 value(sp::Buffer &buf, const dht::Peer &t) noexcept {
@@ -307,6 +309,7 @@ value(sp::Buffer &buf, const dht::Peer &t) noexcept {
     return true;
   });
 } // bencode::e::value()
+
 
 static bool
 value(sp::Buffer &buf, const dht::KeyValue &t) noexcept {
@@ -344,6 +347,8 @@ pair(sp::Buffer &buf, const char *key, const dht::KeyValue *t) noexcept {
     });
   });
 } // bencode::e::pair()
+
+#endif
 
 bool
 pair(sp::Buffer &buf, const char *key, const dht::StatTrafic &t) noexcept {
