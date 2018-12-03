@@ -118,6 +118,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   if (len <= 0) {
     die("recvfrom()");
   }
+
   buf.pos += len;
 } // udp::receive()
 
@@ -152,17 +153,20 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
     }
 
   } while ((sent < 0 && errno == EAGAIN) && remaining_read(buf) > 0);
+  int error = errno;
 
   if (sent < 0) {
     const std::size_t raw_len = remaining_read(buf);
     char dstr[128] = {0};
 
-    const char* res = ::inet_ntop(AF_INET6, &dest, dstr, socklen_t(sizeof(dstr)));
+    const char *res =
+        ::inet_ntop(AF_INET6, &dest, dstr, socklen_t(sizeof(dstr)));
     assertx(res);
 
     printf("sent[%zd] = "
-           "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),destaddr[%s])\n", //
-           sent, int(fd), raw_len, flag, dstr);
+           "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),destaddr[%s]): %s\n", //
+           sent,                                                           //
+           int(fd), raw_len, flag, dstr, strerror(error));
     die("sendto()");
   }
 

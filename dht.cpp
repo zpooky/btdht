@@ -3,12 +3,12 @@
 #include "timeout.h"
 #include <algorithm>
 #include <buffer/CircularBuffer.h>
-#include <util/assert.h>
 #include <cstdlib>
 #include <cstring>
 #include <hash/crc.h>
 #include <new>
 #include <prng/util.h>
+#include <util/assert.h>
 
 namespace dht {
 
@@ -261,7 +261,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
     return false;
   }
 
-  auto should_move = [&dht, idx](const Node &n) { //
+  auto should_transfer = [&dht, idx](const Node &n) { //
     const bool current_high = bit(n.id, idx);
     const bool in_tree_high = bit(dht.id, idx);
     return current_high == in_tree_high;
@@ -272,9 +272,10 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
 
   std::size_t moved = 0;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
+
     Node &contact = bucket.contacts[i];
     if (contact) {
-      if (should_move(contact)) {
+      if (should_transfer(contact)) {
         Node *const priv = contact.timeout_priv;
         Node *const next = contact.timeout_next;
 
@@ -623,6 +624,7 @@ find_contact(DHT &dht, const NodeId &search) noexcept {
 
     return find(leaf->bucket, search);
   }
+
   return nullptr;
 } // dht::find_contact()
 
@@ -676,11 +678,14 @@ Lstart:
         return existing;
       }
     }
-    // when we are intree meaning we can add another bucket we do not
-    // necessarily need to evict a node that might be late responding to pings
+
+    /* when we are intree meaning we can add another bucket we do not
+     * necessarily need to evict a node that might be late responding to pings
+     */
     bool eager_merge = /*!inTree;*/ false;
-    bool /*OUT*/ replaced = false;
-    Node *inserted = do_insert(dht, bucket, contact, eager_merge, replaced);
+    bool replaced = false;
+    Node *const inserted =
+        do_insert(dht, bucket, contact, eager_merge, /*OUT*/ replaced);
 
     if (inserted) {
       // printf("- insert\n");
@@ -701,10 +706,12 @@ Lstart:
         }
         assertx(false);
       }
+      log::routing::can_not_insert(dht, contact);
     }
 
     return inserted;
   } else {
+    /* Empty tree */
     assertx(!dht.root);
     dht.root = alloc<RoutingTable>(dht);
     if (dht.root) {

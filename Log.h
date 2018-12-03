@@ -115,6 +115,9 @@ split(const dht::DHT &, const dht::RoutingTable &,
       const dht::RoutingTable &) noexcept;
 void
 insert(const dht::DHT &, const dht::Node &) noexcept;
+
+void
+can_not_insert(const dht::DHT &, const dht::Node &) noexcept;
 } // namespace routing
 
 namespace peer_db {

@@ -31,7 +31,7 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
       log::transmit::error::udp(dht);
       // since we fail to send request, we clear the transaction
       tx::TxContext dummy;
-      if (!tx::take(client, tx, dummy)) {
+      if (!tx::consume(client, tx, dummy)) {
         assertx(false);
       }
     }

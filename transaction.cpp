@@ -1,7 +1,7 @@
 #include "transaction.h"
 
-#include <util/assert.h>
 #include <cstring>
+#include <util/assert.h>
 
 namespace tx {
 
@@ -32,12 +32,14 @@ Lit:
 
     assertx(it == it->timeout_next->timeout_priv);
     it = it->timeout_next;
+
     if (it != head) {
       goto Lit;
     }
   } else {
     assertx(false);
   }
+
   return result;
 }
 
@@ -48,7 +50,7 @@ debug_count(DHT &dht) noexcept {
 }
 
 static bool
-ordered(DHT &dht) noexcept {
+is_ordered(DHT &dht) noexcept {
   Client &client = dht.client;
   Tx *const head = client.timeout_head;
   Tx *it = head;
@@ -56,12 +58,16 @@ ordered(DHT &dht) noexcept {
   Timestamp t = it ? it->sent : Timestamp(0);
 Lit:
   if (it) {
+    /* Current $it should have been sent later or at the same time as the
+     * previous.
+     */
     if (!(it->sent >= t)) {
       return false;
     }
-    t = it->sent;
 
+    t = it->sent;
     it = it->timeout_next;
+
     if (it != head) {
       goto Lit;
     }
@@ -180,8 +186,8 @@ move_front(Client &client, Tx *tx) noexcept {
 }
 
 bool
-take(Client &client, const krpc::Transaction &needle,
-     /*OUT*/ TxContext &out) noexcept {
+consume(Client &client, const krpc::Transaction &needle,
+        /*OUT*/ TxContext &out) noexcept {
   constexpr std::size_t c = sizeof(Tx::prefix) + sizeof(Tx::suffix);
   if (needle.length == c) {
 
@@ -200,7 +206,7 @@ take(Client &client, const krpc::Transaction &needle,
   }
 
   return false;
-} // dht::take()
+} // dht::consume()
 
 static Tx *
 unlink_free(DHT &dht, Timestamp now) noexcept {
@@ -210,24 +216,27 @@ unlink_free(DHT &dht, Timestamp now) noexcept {
   // auto cnt = debug_count(dht);
   // printf("cnt %zu\n", cnt);
   assertx(debug_count(dht) == Client::tree_capacity);
-  assertx(ordered(dht));
-  if (head) {
+  assertx(is_ordered(dht));
 
+  if (head) {
     if (is_expired(*head, now)) {
       if (is_sent(*head)) {
         --client.active;
       }
+
       head->context.cancel(dht);
       reset(*head);
 
       return unlink(client, head);
-    }
+    } // if is_expired
+
   } else {
     assertx(false);
   }
 
   return nullptr;
 }
+
 static void
 make(Tx &tx) noexcept {
   const int r = rand();
@@ -247,13 +256,14 @@ bool
 mint(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
   Client &client = dht.client;
 
-  Tx *const tx = unlink_free(dht, dht.now);
+  Tx *const tx = unlink_free(dht, /*timeout*/ dht.now);
   if (tx) {
     ++client.active;
     make(*tx);
 
     std::memcpy(out.id, tx->prefix, sizeof(tx->prefix));
     out.length = sizeof(tx->prefix);
+
     std::memcpy(out.id + out.length, tx->suffix, sizeof(tx->suffix));
     out.length += sizeof(tx->suffix);
 

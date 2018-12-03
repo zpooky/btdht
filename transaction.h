@@ -9,8 +9,8 @@ bool
 init(dht::Client &) noexcept;
 
 bool
-take(dht::Client &, const krpc::Transaction &,
-     /*OUT*/ TxContext &) noexcept;
+consume(dht::Client &, const krpc::Transaction &,
+        /*OUT*/ TxContext &) noexcept;
 
 /*
  * keep tracks of active outgoing transactions and what module should handle the

@@ -87,6 +87,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     if (result) {
       dht.lookup_table = result;
     }
+
     return result;
   };
 

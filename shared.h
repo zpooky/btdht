@@ -453,23 +453,29 @@ struct DHT {
   sp::ip_election election;
   Stat statistics;
   std::size_t ip_cnt;
+  Config config;
   //}}}
+
   // peer-lookup db {{{
   KeyValue *lookup_table;
   Peer *timeout_peer;
   Timestamp timeout_peer_next;
   //}}}
+
   // routing-table {{{
   RoutingTable *root;
   //}}}
+
   // timeout {{{
   Timestamp timeout_next;
   Node *timeout_node;
   //}}}
+
   // recycle contact list {{{
   sp::UinStaticArray<Node, 256> recycle_contact_list;
   sp::UinStaticArray<Contact, 256> recycle_value_list;
   // }}}
+
   // stuff {{{
   Timestamp last_activity;
 
@@ -477,11 +483,13 @@ struct DHT {
   std::uint32_t bad_nodes;
   Timestamp now;
   // }}}
+
   // boostrap {{{
   // TODO bloomfilter & counter for when bloomfilter should be reset
   sp::SkipList<Contact, 4> bootstrap_contacts;
   std::uint32_t active_searches;
   // }}}
+
   // priv interface searches {{{
   sp::LinkedList<Search> searches;
   // }}}

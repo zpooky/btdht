@@ -228,7 +228,6 @@ is_valid(const Token &o) noexcept {
 } // namespace dht
 
 //---------------------------
-namespace sp {} // namespace sp
 namespace krpc {
 /*krpc::Transaction*/
 Transaction::Transaction() noexcept

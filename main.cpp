@@ -24,22 +24,27 @@
 
 // TODO getopt: repeating bootstrap nodes
 
-static std::unique_ptr<dht::DHT> mdht;
-const char *dump_file = "/tmp/dht_db.dump2";
-
-// static void
-// sighandler(int) {
-//   // printf("Caught signal %d, coming out...\n", signum);
-//   if (mdht) {
-//     // if (!sp::dump(*mdht, dump_file)) {
-//     //   // printf("failed dump\n");
-//     // }
-//   } else {
-//     // printf("failed to dump: dht is nullptr\n");
-//   }
+// TODO
+// dht.c:
+// MinHeap of buckets
+// unallocated is of prio:0
+// each level of allocated buckets has id of level first id: 1
+// - if a node does not fit in a bucket and can not replace a existing and the
+//   bucket can not be split into two buckets:
+//   1. try take from top of MinHeap if MinHeap.peek.id != current_bucket.id
+//   2. if already allocated bucket: then do a controlled remove of member
+//      contacts
+//   3. stick new bucket as a linked list onto current_bucket
+//   4. insert new allocated bucket into MinHeap with id of current level
 //
-//   exit(1);
-// }
+// ...
+// - MinHeap should be sized based on seek_precent_config?
+// - There should be a prefix length which represent the number of buckets
+//   which does not have a bucket since it has been recycled and used to hold
+//   more precise contacts. the prefix length is used to denote the start of
+//   self.id...
+
+static const char *const dump_file = "/tmp/dht_db.dump2";
 
 static void
 die(const char *s) {
@@ -209,6 +214,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       }
 
       dht::Module &m = module_for(modules, pctx.query, error);
+
       return m.request(ctx);
     } else if (std::strcmp(pctx.msg_type, "r") == 0) {
       /*response*/
@@ -218,7 +224,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
 
       tx::TxContext context;
       std::size_t cnt = dht.client.active;
-      if (tx::take(dht.client, pctx.tx, context)) {
+      if (tx::consume(dht.client, pctx.tx, context)) {
         assertx((cnt - 1) == dht.client.active);
         log::receive::res::known_tx(ctx);
         bool res = context.handle(ctx);
@@ -228,14 +234,12 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
         // assertx(false);
       }
     }
+
     return false;
   };
 
   krpc::ParseContext pctx(in);
-  if (!krpc::d::krpc(pctx, f)) {
-    return false;
-  }
-  return true;
+  return krpc::d::krpc(pctx, f);
 }
 
 template <typename T, std::size_t SIZE, typename F>
@@ -255,10 +259,11 @@ main(int argc, char **argv) {
   dht::Options options;
   if (!dht::parse(argc, argv, options)) {
     //   die("TODO");
-    return 0;
+    return 1;
   }
   std::srand((unsigned int)time(nullptr));
 
+  fd sfd = setup_signal();
   fd udp = udp::bind(options.port, udp::Mode::NONBLOCKING);
   // fd udp = udp::bind(INADDR_ANY, 0);
 
@@ -269,7 +274,7 @@ main(int argc, char **argv) {
     die("TODO");
   }
 
-  mdht = std::make_unique<dht::DHT>(udp, self, r);
+  auto mdht = std::make_unique<dht::DHT>(udp, self, r);
   if (!dht::init(*mdht)) {
     die("failed to init dht");
   }
@@ -303,6 +308,26 @@ main(int argc, char **argv) {
       "192.168.0.15:13596",  //
       "127.0.0.1:13596",     //
       "192.168.0.113:13596", //
+      "192.168.1.49:13596",  //
+      //
+      "213.174.1.219:13680",  //
+      "90.243.184.9:6881",    //
+      "24.34.3.237:6881",     //
+      "105.99.128.147:40189", //
+      "79.160.16.63:6881",    //
+      "213.174.1.219:13680",  //
+      "24.34.3.237:6881",     //
+      "2.154.168.153:6881",   //
+      "47.198.79.139:50321",  //
+      "94.181.155.240:47661", //
+      "47.198.79.139:50321",  //
+      "213.93.18.70:24896",   //
+      "173.92.231.220:6881",  //
+      "93.80.248.65:8999",    //
+      "95.219.168.133:50321", //
+      "85.247.221.231:19743", //
+      "62.14.189.18:57539",   //
+      //
       "195.191.186.170:30337",
       // }
       //
@@ -311,7 +336,7 @@ main(int argc, char **argv) {
       // "127.0.0.1:51413", "213.65.130.80:51413",
   };
 
-  for_each(bss, [](const char *ip) {
+  for_each(bss, [&mdht](const char *ip) {
     Contact bs(0, 0);
     if (!convert(ip, bs)) {
       die("parse bootstrap ip failed");
@@ -320,14 +345,11 @@ main(int argc, char **argv) {
     assertx(bs.ip.ipv4 > 0);
     assertx(bs.port > 0);
 
-    Contact node(bs);
-
-    if (sp::insert(mdht->bootstrap_contacts, node) == nullptr) {
-      die("failed to setup bootstrap");
-    }
+    // TODO bootstrap should be a circular linked list and include a sent date
+    // and a outstanding request counter for each entry
+    insert_unique(mdht->bootstrap_contacts, bs);
   });
 
-  fd sfd = setup_signal();
   fd poll = setup_epoll(udp, sfd);
 
   dht::Modules modules;
@@ -353,26 +375,34 @@ main(int argc, char **argv) {
     return true;
   };
 
-  auto awake_cb = [&modules](sp::Buffer &out, Timestamp now) {
+  auto awake_cb = [&mdht, &modules](sp::Buffer &out, Timestamp now) {
+    printf("\n");
     print_result(mdht->election);
     mdht->now = now;
 
-    dht::Config config;
-    Timeout result = config.refresh_interval;
-    result = reduce(modules.on_awake, result, [&out](auto acum, auto callback) {
-      auto cr = callback(*mdht, out);
-      return std::min(cr, acum);
-    });
+    Timeout result = mdht->config.refresh_interval;
+    result = reduce(modules.on_awake, result,
+                    [&mdht, &out](auto acum, auto callback) {
+                      Timeout cr = callback(*mdht, out);
+                      return std::min(cr, acum);
+                    });
 
     log::awake::timeout(*mdht, result);
     mdht->last_activity = now;
+
     return result;
   };
 
-  auto interrupt_cb = [](const signalfd_siginfo &info) {
+  auto interrupt_cb = [&mdht](const signalfd_siginfo &info) {
     printf("signal: %s\n", strsignal(info.ssi_signo));
-    // TODO only if is warmed up so we are not
-    // sp::dump(dht,);
+
+    // TODO handle more signals
+    if (mdht) {
+      // TODO only if is warmed up so we are not
+      if (!sp::dump(*mdht, dump_file)) {
+        return 2;
+      }
+    }
 
     /**/
     return 1;

@@ -3,6 +3,7 @@
 
 #include "shared.h"
 
+// TODO dump should be a raw kind of image of the DHT struct
 namespace sp {
 bool
 dump(const dht::DHT &, const char *path) noexcept;

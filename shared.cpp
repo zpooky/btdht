@@ -123,6 +123,7 @@ Client::Client(fd &fd) noexcept
 }
 
 } // namespace dht
+
 //---------------------------
 namespace dht {
 /*dht::Config*/
@@ -320,6 +321,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     , election()
     , statistics()
     , ip_cnt(0)
+    , config()
     //}}}
     // peer-lookup db {{{
     , lookup_table(nullptr)
@@ -357,7 +359,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
 }
 
 DHT::~DHT() {
-  //TOD reclaim
+  // TOD reclaim
 }
 
 /*dht::MessageContext*/

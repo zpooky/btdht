@@ -3,7 +3,7 @@
 #include <cstring>
 
 // #define LOG_REQ_PING
-// #define LOG_REQ_FIND_NODE
+#define LOG_REQ_FIND_NODE
 #define LOG_REQ_GET_PEERS
 
 // #define LOG_ROUTING_SPLIT
@@ -374,6 +374,17 @@ insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
   printf("]\n");
 #endif
 }
+
+void
+can_not_insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
+#ifdef LOG_ROUTING_CAN_NOT_INSERT
+  print_time(ctx);
+  printf("routing table can not insert nodeId[");
+  print_hex(d.id.id, sizeof(d.id.id));
+  printf("]\n");
+#endif
+}
+
 } // namespace routing
 
 namespace peer_db {

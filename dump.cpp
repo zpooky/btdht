@@ -17,6 +17,7 @@ do_dump(Buffer &sink, const dht::NodeId &id, dht::RoutingTable *t) noexcept {
     if (!bencode::e<Buffer>::pair(buffer, "id", id.id, sizeof(id.id))) {
       return false;
     }
+    // TODO ip
 
     if (!bencode::e<Buffer>::value(buffer, "nodes")) {
       return false;
@@ -31,9 +32,10 @@ do_dump(Buffer &sink, const dht::NodeId &id, dht::RoutingTable *t) noexcept {
             return for_all(current.bucket, [&b](auto &node) {
               return bencode::e<Buffer>::value(b, node.contact);
             });
-            // return true;
           });
         });
+
+    // TODO bootstrap
   });
 }
 
@@ -50,22 +52,22 @@ flush(CircularByteBuffer &b, void *arg) noexcept {
 }
 
 bool
-dump(const dht::DHT &dht, const char *file) noexcept {
-  sp::StaticCircularByteBuffer<128> b;
-  // sp::StatucCircularByteBuffer<4096> b;
+dump(const dht::DHT &dht, const char *path) noexcept {
+  // sp::StaticCircularByteBuffer<128> b;
+  sp::StaticCircularByteBuffer<4096> b;
 
-  fd f = fs::open_trunc(file);
-  if (!f) {
+  fd file = fs::open_trunc(path);
+  if (!file) {
     return false;
   }
 
-  Sink s(b, &f, flush);
+  Sink sink(b, &file, flush);
 
-  if (!do_dump(s, dht.id, dht.root)) {
+  if (!do_dump(sink, dht.id, dht.root)) {
     return false;
   }
 
-  if (!flush(s)) {
+  if (!flush(sink)) {
     return false;
   }
 
@@ -93,31 +95,32 @@ restore(Buffer &thing, /*OUT*/ dht::NodeId &id,
     assertx(!is_marked(buffer));
     return bencode::d<Buffer>::list(buffer, [&bs](Buffer &b) {
       assertx(!is_marked(b));
-      return bencode::d<Buffer>::dict(b, [&bs](Buffer &buffer) {
+      return bencode::d<Buffer>::dict(b, [&bs](Buffer &bu) {
         /**/
         Ipv4 ip(0);
         Port port(0);
         {
-          assertx(!is_marked(buffer));
-          if (!bencode::d<Buffer>::value(buffer, "ip")) {
+          assertx(!is_marked(bu));
+          if (!bencode::d<Buffer>::value(bu, "ip")) {
             return false;
           }
 
-          assertx(!is_marked(buffer));
-          if (!bencode::d<Buffer>::value(buffer, ip)) {
+          assertx(!is_marked(bu));
+          if (!bencode::d<Buffer>::value(bu, ip)) {
             return false;
           }
-          assertx(!is_marked(buffer));
+          assertx(!is_marked(bu));
         }
+
         {
-          if (!bencode::d<Buffer>::value(buffer, "port")) {
+          if (!bencode::d<Buffer>::value(bu, "port")) {
             return false;
           }
-          assertx(!is_marked(buffer));
-          if (!bencode::d<Buffer>::value(buffer, port)) {
+          assertx(!is_marked(bu));
+          if (!bencode::d<Buffer>::value(bu, port)) {
             return false;
           }
-          assertx(!is_marked(buffer));
+          assertx(!is_marked(bu));
         }
 
         auto current = emplace(bs, ntohl(ip), ntohs(port));
