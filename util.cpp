@@ -18,6 +18,20 @@ Ip::Ip(const Ipv6 &v6)
   std::memcpy(ipv6.raw, v6.raw, sizeof(ipv6));
 }
 
+Ip &
+Ip::operator=(const Ipv4 &ip) noexcept {
+  ipv4 = ip;
+  type = IpType::IPV4;
+  return *this;
+}
+
+Ip &
+Ip::operator=(const Ipv6 &ip) noexcept {
+  ipv6 = ip;
+  type = IpType::IPV6;
+  return *this;
+}
+
 bool
 Ip::operator==(const Ip &ip) const noexcept {
   if (ip.type != type) {
@@ -342,8 +356,7 @@ Node::Node() noexcept
     , id()
     , contact()
     //}}}
-    , request_activity(0)
-    , response_activity(0)
+    , remote_activity(0)
     , req_sent(0)
     //}}}
     //{{{
@@ -366,9 +379,8 @@ Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
     , his_token()
     //}}}
     // activity {{{
-    , request_activity(act)
-    , response_activity(act) // TODO??
-    , req_sent(act)          // TODO??
+    , remote_activity(act)
+    , req_sent(act) // TODO??
     //}}}
     //{{{
     , ping_outstanding(0)

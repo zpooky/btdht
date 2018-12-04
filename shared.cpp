@@ -192,7 +192,7 @@ Peer::operator==(const Contact &c) const noexcept {
 
 Timestamp
 activity(const Node &head) noexcept {
-  return std::max(head.request_activity, head.response_activity);
+  return head.remote_activity;
 }
 
 Timestamp

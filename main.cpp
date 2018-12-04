@@ -269,15 +269,12 @@ main(int argc, char **argv) {
 
   prng::xorshift32 r(14);
 
-  Contact self;
-  if (!convert("81.232.82.13:0", self)) {
-    die("TODO");
-  }
-
+  Contact self = udp::local(udp);
   auto mdht = std::make_unique<dht::DHT>(udp, self, r);
   if (!dht::init(*mdht)) {
     die("failed to init dht");
   }
+
   printf("node id: ");
   dht::print_hex(mdht->id);
 

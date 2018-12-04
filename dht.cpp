@@ -555,26 +555,22 @@ is_blacklisted(DHT &, const Contact &) noexcept {
 
 bool
 should_mark_bad(DHT &dht, Node &contact) noexcept {
-  // TODO
+  // XXX
   return !is_good(dht, contact);
 }
 
 bool
 is_good(const DHT &dht, const Node &contact) noexcept {
-  Config config;
+  const Config &config = dht.config;
   // XXX configurable non arbitrary limit?
   if (contact.ping_outstanding > 2) {
 
     /* Using dht.last_activty to better handle a general outgate of network
      * connectivity
      */
-    auto resp_timeout = contact.response_activity + config.refresh_interval;
+    auto resp_timeout = contact.remote_activity + config.refresh_interval;
     if (resp_timeout > dht.last_activity) {
-
-      auto req_activity = contact.request_activity + config.refresh_interval;
-      if (req_activity > dht.last_activity) {
-        return false;
-      }
+      return false;
     }
   }
   return true;

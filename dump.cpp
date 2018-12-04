@@ -7,17 +7,24 @@
 #include <buffer/Sink.h>
 #include <buffer/Thing.h>
 #include <io/file.h>
+#include <util/assert.h>
 
 namespace sp {
 
 template <typename Buffer>
 static bool
-do_dump(Buffer &sink, const dht::NodeId &id, dht::RoutingTable *t) noexcept {
-  return bencode::e<Buffer>::dict(sink, [&id, t](Buffer &buffer) {
-    if (!bencode::e<Buffer>::pair(buffer, "id", id.id, sizeof(id.id))) {
+do_dump(Buffer &sink, const dht::DHT &dht, dht::RoutingTable *t) noexcept {
+  return bencode::e<Buffer>::dict(sink, [&dht, t](Buffer &buffer) {
+    if (!bencode::e<Buffer>::pair(buffer, "id", dht.id.id, sizeof(dht.id.id))) {
       return false;
     }
-    // TODO ip
+
+    Ip ip = dht.ip.ip;
+    assertx(ip.type == IpType::IPV4);
+
+    if (!bencode::e<Buffer>::pair(buffer, "ip", ip.ipv4)) {
+      return false;
+    }
 
     if (!bencode::e<Buffer>::value(buffer, "nodes")) {
       return false;
@@ -63,7 +70,7 @@ dump(const dht::DHT &dht, const char *path) noexcept {
 
   Sink sink(b, &file, flush);
 
-  if (!do_dump(sink, dht.id, dht.root)) {
+  if (!do_dump(sink, dht, dht.root)) {
     return false;
   }
 
@@ -75,15 +82,61 @@ dump(const dht::DHT &dht, const char *path) noexcept {
 }
 
 //========================
+template <typename Buffer>
+static bool
+restore_contact(Buffer &b, Contact &out) {
+  assertx(!is_marked(b));
+  return bencode::d<Buffer>::dict(b, [&out](Buffer &buffer) {
+    {
+      assertx(!is_marked(buffer));
+      if (!bencode::d<Buffer>::value(buffer, "ip")) {
+        return false;
+      }
+
+      assertx(!is_marked(buffer));
+      Ipv4 ip = 0;
+      if (!bencode::d<Buffer>::value(buffer, ip)) {
+        return false;
+      }
+      out.ip = ntohl(ip);
+    }
+
+    {
+      assertx(!is_marked(buffer));
+      if (!bencode::d<Buffer>::value(buffer, "port")) {
+        return false;
+      }
+      assertx(!is_marked(buffer));
+      if (!bencode::d<Buffer>::value(buffer, out.port)) {
+        return false;
+      }
+      out.port = ntohs(out.port);
+    }
+
+    assertx(!is_marked(buffer));
+    return true;
+  });
+}
+
 template <typename Buffer, typename Bootstrap>
 static bool
-restore(Buffer &thing, /*OUT*/ dht::NodeId &id,
+restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
         /*OUT*/ Bootstrap &bs) noexcept {
   assertx(!is_marked(thing));
 
-  return bencode::d<Buffer>::dict(thing, [&id, &bs](Buffer &buffer) {
+  return bencode::d<Buffer>::dict(thing, [&dht, &bs](Buffer &buffer) {
     assertx(!is_marked(buffer));
-    if (!bencode::d<Buffer>::pair(buffer, "id", id.id)) {
+    if (!bencode::d<Buffer>::pair(buffer, "id", dht.id.id)) {
+      return false;
+    }
+
+    Ip &ip = dht.ip.ip;
+    assertx(!is_marked(buffer));
+    if (!bencode::d<Buffer>::value(buffer, "ip")) {
+      return false;
+    }
+
+    if (!bencode::d<Buffer>::value(buffer,  ip.ipv4)) {
       return false;
     }
 
@@ -94,43 +147,18 @@ restore(Buffer &thing, /*OUT*/ dht::NodeId &id,
 
     assertx(!is_marked(buffer));
     return bencode::d<Buffer>::list(buffer, [&bs](Buffer &b) {
-      assertx(!is_marked(b));
-      return bencode::d<Buffer>::dict(b, [&bs](Buffer &bu) {
-        /**/
-        Ipv4 ip(0);
-        Port port(0);
-        {
-          assertx(!is_marked(bu));
-          if (!bencode::d<Buffer>::value(bu, "ip")) {
-            return false;
-          }
+      Contact contact;
+      if (!restore_contact(b, contact)) {
+        return false;
+      }
 
-          assertx(!is_marked(bu));
-          if (!bencode::d<Buffer>::value(bu, ip)) {
-            return false;
-          }
-          assertx(!is_marked(bu));
-        }
+      auto current = emplace(bs, contact);
+      if (!current) {
+        assertx(false);
+        return false;
+      }
 
-        {
-          if (!bencode::d<Buffer>::value(bu, "port")) {
-            return false;
-          }
-          assertx(!is_marked(bu));
-          if (!bencode::d<Buffer>::value(bu, port)) {
-            return false;
-          }
-          assertx(!is_marked(bu));
-        }
-
-        auto current = emplace(bs, ntohl(ip), ntohs(port));
-        if (!current) {
-          assertx(false);
-          return false;
-        }
-
-        return true;
-      });
+      return true;
     });
   });
 
@@ -159,7 +187,7 @@ restore(dht::DHT &dht, const char *file) noexcept {
   sp::StaticCircularByteBuffer<128> b;
   sp::Thing thing(b, &f, topup);
 
-  if (!restore(thing, dht.id, dht.bootstrap_contacts)) {
+  if (!restore(thing, dht, dht.bootstrap_contacts)) {
     return false;
   }
 

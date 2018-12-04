@@ -176,7 +176,6 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
     if (client::ping(dht, out, node)) {
       inc_outstanding(node);
       // timeout::update_send(dht, node);
-      node.req_sent = dht.now;
 
       /* Fake update activity otherwise if all nodes have to
        * same timeout we will spam out pings, ex: 3 nodes timed
@@ -353,6 +352,7 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   }
 
   DHT &dht = ctx.dht;
+
   /*request from self*/
   if (dht.id == sender.id) {
     return nullptr;
@@ -403,7 +403,7 @@ dht_request(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
 
   handle_ip_election(ctx, sender);
   if (contact) {
-    contact->request_activity = ctx.dht.now;
+    contact->remote_activity = ctx.dht.now;
     f(*contact);
   } else {
     dht::Node n;
@@ -423,7 +423,7 @@ dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   handle_ip_election(ctx, sender);
   if (contact) {
 
-    contact->response_activity = ctx.dht.now;
+    contact->remote_activity = ctx.dht.now;
     f(*contact);
   } else {
     /* phony */

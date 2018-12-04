@@ -38,6 +38,11 @@ struct Ip {
   explicit Ip(Ipv4);
   explicit Ip(const Ipv6 &);
 
+  Ip &
+  operator=(const Ipv4 &) noexcept;
+  Ip &
+  operator=(const Ipv6 &) noexcept;
+
   bool
   operator==(const Ip &) const noexcept;
 
@@ -216,8 +221,9 @@ struct Node {
   // }}}
 
   // activity {{{
-  Timestamp request_activity;
-  Timestamp response_activity;
+  /* When we received request & response from remote */
+  Timestamp remote_activity;
+  /* When we sent a request to remote */
   Timestamp req_sent;
   //}}}
 
