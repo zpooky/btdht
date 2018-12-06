@@ -63,6 +63,11 @@ print_hex(const sp::byte *arr, std::size_t length) {
   }
 }
 
+static void
+print_hex(const krpc::Transaction &tx) {
+  print_hex(tx.id, tx.length);
+}
+
 namespace receive {
 /*log::receive*/
 namespace req {
@@ -331,34 +336,49 @@ mint_transaction(const dht::DHT &ctx) noexcept {
 void
 udp(const dht::DHT &ctx) noexcept {
   print_time(ctx);
-  printf("\033[91mtransmit error udp\n\033[0m");
+  printf("\033[91mtransmit error udp\033[0m\n");
 }
 
 void
-ping_response_timeout(dht::DHT &ctx) noexcept {
+ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
+                      Timestamp sent) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.ping;
 
   print_time(ctx);
-  printf("\033[91mping response timeout\n\033[0m");
+  printf("\033[91mping response timeout\033[0m transaction[");
+  print_hex(tx);
+  printf("] sent: ");
+  print_time(ctx);
+  printf("\n");
 }
 
 void
-find_node_response_timeout(dht::DHT &ctx) noexcept {
+find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
+                           Timestamp sent) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.find_node;
 
   print_time(ctx);
-  printf("\033[91mfind_node response timeout\n\033[0m");
+  printf("\033[91mfind_node response timeout\033[0m transaction[");
+  print_hex(tx);
+  printf("] ");
+  print_time(ctx);
+  printf("\n");
 }
 
 void
-get_peers_response_timeout(dht::DHT &ctx) noexcept {
+get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
+                           Timestamp sent) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.get_peers;
 
   print_time(ctx);
-  printf("\033[91mget_peers response timeout\n\033[0m");
+  printf("\033[91mget_peers response timeout\033[0m transaction[");
+  print_hex(tx);
+  printf("] ");
+  print_time(ctx);
+  printf("\n");
 }
 
 } // namespace error

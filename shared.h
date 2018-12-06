@@ -48,8 +48,10 @@ struct DHT;
 } // namespace dht
 
 namespace tx {
+struct Tx;
 
-using TxCancelHandle = void (*)(dht::DHT &, void *);
+using TxCancelHandle = void (*)(dht::DHT &, const krpc::Transaction &,
+                                Timestamp, void *);
 using TxHandle = bool (*)(dht::MessageContext &, void *);
 // dht::TxContext
 struct TxContext {
@@ -64,7 +66,7 @@ struct TxContext {
   handle(dht::MessageContext &) noexcept;
 
   void
-  cancel(dht::DHT &) noexcept;
+  cancel(dht::DHT &, Tx *) noexcept;
 };
 
 void

@@ -151,6 +151,17 @@ struct Transaction {
   std::size_t length;
 
   Transaction() noexcept;
+
+  template <std::size_t N1, std::size_t N2>
+  Transaction(sp::byte (&one)[N1], sp::byte (&two)[N2]) noexcept
+      : Transaction() {
+    static_assert((N1 + N2) <= sizeof(id), "");
+    std::memcpy(id + length, one, N1);
+    length += N1;
+
+    std::memcpy(id + length, two, N2);
+    length += N2;
+  }
 };
 } // namespace krpc
 

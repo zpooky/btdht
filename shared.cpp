@@ -37,9 +37,11 @@ ParseContext::ParseContext(ParseContext &ctx, sp::Buffer &d) noexcept
 namespace tx {
 
 void
-TxContext::cancel(dht::DHT &dht) noexcept {
+TxContext::cancel(dht::DHT &dht, Tx *tx) noexcept {
+  assertx(tx);
   if (int_cancel) {
-    int_cancel(dht, closure);
+    krpc::Transaction t(tx->prefix, tx->suffix);
+    int_cancel(dht, t, tx->sent, closure);
   }
 }
 

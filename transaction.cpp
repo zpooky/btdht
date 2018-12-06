@@ -230,7 +230,7 @@ unlink_free(DHT &dht, Timestamp now) noexcept {
         --client.active;
       }
 
-      head->context.cancel(dht);
+      head->context.cancel(dht, head);
       reset(*head);
 
       return unlink(client, head);

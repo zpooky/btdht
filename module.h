@@ -13,8 +13,8 @@ namespace dht {
 struct Module {
   const char *query;
 
-  bool (*response)(MessageContext &, void *) noexcept;
-  void (*response_timeout)(DHT &, void *) noexcept;
+  tx::TxHandle response;
+  tx::TxCancelHandle response_timeout;
   bool (*request)(MessageContext &) noexcept;
 
   Module() noexcept;

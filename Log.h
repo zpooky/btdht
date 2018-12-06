@@ -98,13 +98,16 @@ void
 udp(const dht::DHT &) noexcept;
 
 void
-ping_response_timeout(dht::DHT &) noexcept;
+ping_response_timeout(dht::DHT &, const krpc::Transaction &,
+                      Timestamp) noexcept;
 
 void
-find_node_response_timeout(dht::DHT &) noexcept;
+find_node_response_timeout(dht::DHT &, const krpc::Transaction &,
+                           Timestamp) noexcept;
 
 void
-get_peers_response_timeout(dht::DHT &) noexcept;
+get_peers_response_timeout(dht::DHT &, const krpc::Transaction &,
+                           Timestamp) noexcept;
 } // namespace error
 } // namespace transmit
 
