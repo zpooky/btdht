@@ -253,10 +253,24 @@ contact_scan(const dht::DHT &ctx) noexcept {
 
 } // namespace awake
 
-namespace transmit {
 /*log::transmit*/
+namespace transmit {
+static const char *
+to_string(client::Res result) noexcept {
+  switch (result) {
+  case client::Res::OK:
+    return "\033[92mOK\033[0m";
+  case client::Res::ERR:
+    return "\033[91mERR\033[0m";
+  case client::Res::ERR_TOKEN:
+    return "\033[91mERR_TOKEN\033[0m";
+  }
+
+  return "";
+}
+
 void
-ping(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
+ping(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.request.ping;
 
@@ -265,13 +279,12 @@ ping(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
 
-  const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
-  printf("transmit ping[%s],res[%s]\n", remote, status);
+  printf("transmit ping[%s],res[%s]\n", remote, to_string(result));
 #endif
 }
 
 void
-find_node(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
+find_node(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.request.find_node;
 
@@ -283,13 +296,12 @@ find_node(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   // auto &tx = ctx.transaction;
   // print_hex(tx.id, tx.length);
 
-  const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
-  printf("transmit find_node[%s],res[%s]\n", remote, status);
+  printf("transmit find_node[%s],res[%s]\n", remote, to_string(result));
 #endif
 }
 
 void
-get_peers(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
+get_peers(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.request.get_peers;
 
@@ -301,8 +313,7 @@ get_peers(dht::DHT &ctx, const Contact &contact, bool result) noexcept {
   // auto &tx = ctx.transaction;
   // print_hex(tx.id, tx.length);
 
-  const char *status = result ? "\033[92mtrue\033[0m" : "\033[91mfalse\033[0m";
-  printf("transmit get_peers[%s],res[%s]\n", remote, status);
+  printf("transmit get_peers[%s],res[%s]\n", remote, to_string(result));
 #endif
 }
 

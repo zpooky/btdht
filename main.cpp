@@ -160,6 +160,7 @@ loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
 
           return on_int(info);
         } else {
+          // TODO while not EAGAIN?
           sp::Buffer inBuffer(in, size);
           sp::Buffer outBuffer(out, size);
 
@@ -287,6 +288,11 @@ main(int argc, char **argv) {
     char str[256] = {0};
     assertx(to_string(local, str, sizeof(str)));
     printf("bind(%s)\n", str);
+  }
+  {
+    char str[256] = {0};
+    assertx(to_string(mdht->ip, str, sizeof(str)));
+    printf("remote(%s)\n", str);
   }
 
   mdht->now = sp::now();

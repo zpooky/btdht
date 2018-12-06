@@ -12,6 +12,10 @@
 
 using sp::fd;
 
+namespace client {
+enum class Res { ERR, ERR_TOKEN, OK };
+}
+
 namespace sp {
 /*sp::byte*/
 using byte = unsigned char;

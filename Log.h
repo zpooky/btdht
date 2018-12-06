@@ -81,13 +81,13 @@ contact_scan(const dht::DHT &) noexcept;
 namespace transmit {
 /* log::transmit */
 void
-ping(dht::DHT &, const Contact &, bool) noexcept;
+ping(dht::DHT &, const Contact &, client::Res) noexcept;
 
 void
-find_node(dht::DHT &, const Contact &, bool) noexcept;
+find_node(dht::DHT &, const Contact &, client::Res) noexcept;
 
 void
-get_peers(dht::DHT &, const Contact &, bool) noexcept;
+get_peers(dht::DHT &, const Contact &, client::Res) noexcept;
 
 namespace error {
 /* log::transmit::error */

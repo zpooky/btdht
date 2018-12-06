@@ -40,7 +40,8 @@ scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
     if (head) {
       reset(b);
 
-      if (client::get_peers(dht, b, head->contact, s.search, s.ctx)) {
+      auto res = client::get_peers(dht, b, head->contact, s.search, s.ctx);
+      if (res == client::Res::OK) {
         ++s.ctx->ref_cnt;
         drop_head(s.queue);
         goto Lit;

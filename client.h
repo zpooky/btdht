@@ -1,21 +1,20 @@
 #ifndef SP_MAINLINE_DHT_CLIENT_H
 #define SP_MAINLINE_DHT_CLIENT_H
 
-#include "transaction.h"
+#include "shared.h"
 
 namespace client {
 
-bool
+Res
 ping(dht::DHT &, sp::Buffer &, const dht::Node &) noexcept;
 
-bool
+Res
 find_node(dht::DHT &, sp::Buffer &, const Contact &, const dht::NodeId &,
           void *) noexcept;
 
-bool
+Res
 get_peers(dht::DHT &, sp::Buffer &, const Contact &, const dht::Infohash &,
           void *) noexcept;
-
 
 } // namespace client
 

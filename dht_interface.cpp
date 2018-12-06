@@ -156,7 +156,7 @@ head(dht::DHT &ctx) noexcept {
 } // timeout::head()
 
 static void
-update_receive(dht::DHT &, dht::Node *node) noexcept {
+update_receive(dht::DHT &, dht::Node *) noexcept {
   // TODO rename response_activity to receive_activity?
   // node->response_activity = dht.now;
   // return update(ctx, contact, now);
@@ -173,7 +173,8 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 
   /* Send ping to nodes */
   timeout::for_all(ctx, cfg.refresh_interval, [&out](auto &dht, auto &node) {
-    if (client::ping(dht, out, node)) {
+    bool result = client::ping(dht, out, node) == client::Res::OK;
+    if (result) {
       inc_outstanding(node);
       // timeout::update_send(dht, node);
 
@@ -185,9 +186,9 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
        */
       node.req_sent = dht.now;
       assertx(node.timeout_next == nullptr);
-      return true;
     }
-    return false;
+
+    return result;
   });
 
   /* Calculate next timeout based on the head if the timeout list which is in
@@ -234,12 +235,14 @@ static Timeout
 awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   // XXX change to node circular buffer with timestamps of last sent
   std::size_t searches = dht.active_searches * dht::Bucket::K;
+  std::size_t now_sent = 0;
   missing_contacts -= std::min(missing_contacts, searches);
 
-  auto inc_active_searches = [&dht, &missing_contacts]() {
+  auto inc_active_searches = [&dht, &missing_contacts, &now_sent]() {
     std::size_t K = dht::Bucket::K;
     missing_contacts -= std::min(missing_contacts, K);
     dht.active_searches++;
+    now_sent++;
   };
 
   Config &cfg = dht.config;
@@ -258,30 +261,29 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
 
   // XXX if no good node is available try bad/questionable nodes
 
-  // TODO! if we failed to min transaction we should exit and calc next timeout
-  // based on soonest tx timeout
-Lstart:
-  if (missing_contacts > 0) {
-    bool ok_sent = true;
-
+  while (missing_contacts > 0) {
+    auto result = client::Res::OK;
     std::size_t sent_count = 0;
+
     timeout::for_all(dht, cfg.refresh_interval, [&](auto &ctx, Node &remote) {
       if (dht::is_good(ctx, remote)) {
         const Contact &c = remote.contact;
         dht::NodeId &self = dht.id;
 
-        bool res = client::find_node(ctx, out, c, /*search*/ self, nullptr);
-        if (res) {
+        result = client::find_node(ctx, out, c, /*search*/ self, nullptr);
+        if (result == client::Res::OK) {
           ++sent_count;
           inc_active_searches();
           remote.req_sent = dht.now;
         }
-
-        return res;
       }
 
-      return true;
+      return result == client::Res::OK;
     });
+
+    if (result == client::Res::ERR_TOKEN) {
+      break;
+    }
 
     /* Bootstrap contacts */
     if (!bs_sent) {
@@ -289,34 +291,43 @@ Lstart:
       auto &bcontacts = dht.bootstrap_contacts;
       // TODO prune non good bootstrap nodes
       // XXX shuffle bootstrap list just before sending
-      for_all(bcontacts, [&dht, &out, inc_active_searches](const Contact &bs) {
+      for_all(bcontacts, [&](const Contact &bs) {
         dht::NodeId &self = dht.id;
 
         auto *closure = new (std::nothrow) Contact(bs);
-        bool res = client::find_node(dht, out, bs, /*search*/ self, closure);
-        if (res) {
+        result = client::find_node(dht, out, bs, /*search*/ self, closure);
+        if (result == client::Res::OK) {
           inc_active_searches();
         }
 
-        return res;
+        return result == client::Res::OK;
       });
 
       bs_sent = true;
     }
 
-    if (ok_sent) {
-      if (sent_count > 0) {
-        goto Lstart;
-      }
+    if (result == client::Res::ERR_TOKEN) {
+      break;
     }
-  } // if missing_contacts > 0
+
+    if (sent_count == 0) {
+      break;
+    }
+  } // while missing_contacts > 0
+
+  if (missing_contacts > 0) {
+    if (now_sent > 0) {
+      auto next_timestamp = tx::next_available(dht);
+      return next_timestamp - dht.now;
+    }
+  }
 
   return cfg.refresh_interval;
 } // awake_look_for_nodes()
 
 static Timeout
 on_awake(DHT &dht, sp::Buffer &out) noexcept {
-  Timeout next(dht.config.refresh_interval);
+  Timeout result(dht.config.refresh_interval);
 
   auto percentage = [](std::uint32_t t, std::uint32_t c) -> std::size_t {
     return std::size_t(c) / std::size_t(t / std::size_t(100));
@@ -337,12 +348,12 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
     // TODO if we can't mint new tx then next should be calculated base on when
     // soonest next tx timesout is so we can directly reuse it. (it should not
     // be the config.refresh_interval of 15min if we are under conf.p_seek)
-    auto a_next = awake_look_for_nodes(dht, out, look_for);
-    next = std::min(next, a_next);
+    auto awake_next = awake_look_for_nodes(dht, out, look_for);
+    result = std::min(result, awake_next);
     log::awake::contact_scan(dht);
   }
 
-  return next;
+  return result;
 }
 
 static Node *

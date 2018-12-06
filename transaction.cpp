@@ -137,16 +137,22 @@ is_sent(const Tx &tx) noexcept {
   return tx.sent != Timestamp(0);
 }
 
+static Timestamp
+expire_time(const Tx &tx) {
+  Config config;
+  return tx.sent + config.transaction_timeout;
+}
+
 static bool
 is_expired(const Tx &tx, Timestamp now) noexcept {
   if (is_sent(tx)) {
-    Config config;
-    if ((tx.sent + config.transaction_timeout) > now) {
+    if (expire_time(tx) > now) {
       return false;
     }
   }
   return true;
 }
+
 static void
 ssss(Client &client, Tx *const t) noexcept {
   assertx(t->timeout_next == nullptr);
@@ -288,6 +294,24 @@ is_valid(DHT &dht, const krpc::Transaction &needle) noexcept {
   }
 
   return false;
+}
+
+Timestamp
+next_available(const dht::DHT &self) noexcept {
+  const Client &client = self.client;
+  const Tx *const head = client.timeout_head;
+  const Config &cfg = self.config;
+
+  if (!head) {
+    // some arbitrary date in the future
+    return self.now + cfg.refresh_interval;
+  }
+
+  if (is_expired(*head, self.now)) {
+    return self.now;
+  }
+
+  return expire_time(*head);
 }
 
 } // namespace tx
