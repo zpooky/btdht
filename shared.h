@@ -124,42 +124,35 @@ struct Client {
 namespace dht {
 // dht::Config
 struct Config {
-  /*
-   * Minimum Node refresh await timeout
+  /* Minimum Node refresh await timeout
    */
   sp::Minutes min_timeout_interval;
-  /*
-   * Node refresh interval
+  /* Node refresh interval
    */
   Timeout refresh_interval;
   sp::Minutes peer_age_refresh;
   sp::Minutes token_max_age;
-  /*
-   * Max age of transaction created for outgoing request. Used when reclaiming
+  /* Max age of transaction created for outgoing request. Used when reclaiming
    * transaction id. if age is greater than max age then we can reuse the
    * transaction.
    */
   sp::Minutes transaction_timeout;
-  /*
-   * the generation of find_node request sent to bootstrap our routing table.
+  /* the generation of find_node request sent to bootstrap our routing table.
    * When max generation is reached we start from zero again. when generation is
    * zero we send find_node(self) otherwise we randomize node id
    */
   std::uint8_t bootstrap_generation_max;
-  /*
-   * A low water mark indecating when we need to find_nodes to supplement nodes
+  /* A low water mark indecating when we need to find_nodes to supplement nodes
    * present in our RoutingTable. Is used when comparing active with total
    * nodes if there are < percentage active nodes than /percentage_seek/ we
    * start a search for more nodes.
    */
   std::size_t percentage_seek;
-  /*
-   * The interval of when a bucket can be used again to send find_node request
+  /* The interval of when a bucket can be used again to send find_node request
    * during the 'look_for_nodes' stage.
    */
   sp::Minutes bucket_find_node_spam;
-  /*
-   * the number of times during 'look_for_nodes' stage a random bucket is
+  /* the number of times during 'look_for_nodes' stage a random bucket is
    * selected and was not used to perform find_node because either it did not
    * contain any good nodes or the bucket where too recently used by
    * 'look_for_nodes'

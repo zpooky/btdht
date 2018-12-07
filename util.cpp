@@ -249,6 +249,13 @@ Transaction::Transaction() noexcept
     , length(0) {
 }
 
+Transaction &
+Transaction::operator=(const Transaction &o) noexcept {
+  memcpy(id, o.id, o.length);
+  length = o.length;
+  return *this;
+}
+
 } // namespace krpc
 
 //---------------------------

@@ -162,6 +162,9 @@ struct Transaction {
     std::memcpy(id + length, two, N2);
     length += N2;
   }
+
+  Transaction &
+  operator=(const Transaction &) noexcept;
 };
 } // namespace krpc
 

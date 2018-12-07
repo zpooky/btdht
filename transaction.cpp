@@ -150,6 +150,7 @@ is_expired(const Tx &tx, Timestamp now) noexcept {
       return false;
     }
   }
+
   return true;
 }
 
@@ -228,10 +229,9 @@ unlink_free(DHT &dht, Timestamp now) noexcept {
     if (is_expired(*head, now)) {
       if (is_sent(*head)) {
         --client.active;
+        head->context.cancel(dht, head);
+        reset(*head);
       }
-
-      head->context.cancel(dht, head);
-      reset(*head);
 
       return unlink(client, head);
     } // if is_expired
@@ -262,16 +262,12 @@ bool
 mint(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
   Client &client = dht.client;
 
-  Tx *const tx = unlink_free(dht, /*timeout*/ dht.now);
+  Tx *const tx = unlink_free(dht, dht.now);
   if (tx) {
     ++client.active;
     make(*tx);
 
-    std::memcpy(out.id, tx->prefix, sizeof(tx->prefix));
-    out.length = sizeof(tx->prefix);
-
-    std::memcpy(out.id + out.length, tx->suffix, sizeof(tx->suffix));
-    out.length += sizeof(tx->suffix);
+    out = krpc::Transaction(tx->prefix, tx->suffix);
 
     tx->context = ctx;
     tx->sent = dht.now;

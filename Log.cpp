@@ -339,6 +339,8 @@ udp(const dht::DHT &ctx) noexcept {
   printf("\033[91mtransmit error udp\033[0m\n");
 }
 
+static std::size_t tout = 0;
+
 void
 ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
                       Timestamp sent) noexcept {
@@ -350,7 +352,7 @@ ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   print_hex(tx);
   printf("] sent: ");
   print_time(ctx);
-  printf("\n");
+  printf("seq[%zu]\n", tout++);
 }
 
 void
@@ -364,7 +366,7 @@ find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   print_hex(tx);
   printf("] ");
   print_time(ctx);
-  printf("\n");
+  printf("seq[%zu]\n", tout++);
 }
 
 void
@@ -378,7 +380,7 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   print_hex(tx);
   printf("] ");
   print_time(ctx);
-  printf("\n");
+  printf("seq[%zu]\n", tout++);
 }
 
 } // namespace error
