@@ -489,7 +489,7 @@ on_request(dht::MessageContext &ctx) noexcept {
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *arg) noexcept {
-  log::transmit::error::ping_response_timeout(dht, sent, tx);
+  log::transmit::error::ping_response_timeout(dht, tx, sent);
   assertx(arg == nullptr);
 }
 
@@ -559,7 +559,7 @@ handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *closure) noexcept {
-  log::transmit::error::find_node_response_timeout(dht, sent, tx);
+  log::transmit::error::find_node_response_timeout(dht, tx, sent);
   handle_response_timeout(dht, closure);
 } // find_node::on_timeout
 
@@ -795,7 +795,7 @@ dec(dht::SearchContext *ctx) noexcept {
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *ctx) noexcept {
-  log::transmit::error::get_peers_response_timeout(dht, sent, tx);
+  log::transmit::error::get_peers_response_timeout(dht, tx, sent);
   auto search = (dht::SearchContext *)ctx;
   if (search) {
     dec(search);
