@@ -640,20 +640,16 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       }
     }
     {
-      const unsigned char *kit = nullptr;
+      const char *kit = nullptr;
       std::size_t klen = 0;
-      if (bencode::d::value_ref(p, kit, klen)) {
 
-        const unsigned char *vit = nullptr;
-        std::size_t vlen = 0;
-        if (bencode::d::value_ref(p, vit, vlen)) {
-          printf(
-              "find_node response[key: '%.*s': %zu, value: '%.*s': %zu]\n", //
-              int(klen), kit, klen, int(vlen), vit, vlen);
-          goto Lstart;
-        } else {
-          return false;
-        }
+      const unsigned char *vit = nullptr;
+      std::size_t vlen = 0;
+
+      if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
+        printf("find_node resp any['%.*s':%zu, '%.*s':%zu]\n", //
+               int(klen), kit, klen, int(vlen), vit, vlen);
+        goto Lstart;
       }
     }
 
@@ -690,6 +686,20 @@ on_request(dht::MessageContext &ctx) noexcept {
     if (!b_t && bencode::d::pair(p, "target", target.id)) {
       b_t = true;
       goto Lstart;
+    }
+
+    {
+      const char *kit = nullptr;
+      std::size_t klen = 0;
+
+      const unsigned char *vit = nullptr;
+      std::size_t vlen = 0;
+
+      if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
+        printf("find_node req any['%.*s':%zu, '%.*s':%zu]\n", //
+               int(klen), kit, klen, int(vlen), vit, vlen);
+        goto Lstart;
+      }
     }
 
     if (!(b_id && b_t)) {
@@ -801,7 +811,7 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
   if (search) {
     dec(search);
   }
-}
+} // get_peers::on_timeout
 
 static bool
 on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
@@ -900,6 +910,20 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       }
     }
 
+    {
+      const char *kit = nullptr;
+      std::size_t klen = 0;
+
+      const unsigned char *vit = nullptr;
+      std::size_t vlen = 0;
+
+      if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
+        printf("get_peers resp any['%.*s':%zu, '%.*s':%zu]\n", //
+               int(klen), kit, klen, int(vlen), vit, vlen);
+        goto Lstart;
+      }
+    }
+
     if (b_id && b_t && (b_n || b_v)) {
       handle_response(ctx, id, token, values, nodes, *search);
       return true;
@@ -907,7 +931,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
 
     return false;
   });
-}
+} // get_peers::on_response
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
@@ -918,15 +942,29 @@ on_request(dht::MessageContext &ctx) noexcept {
     dht::NodeId id;
     dht::Infohash infohash;
 
-  start:
+  Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
       b_id = true;
-      goto start;
+      goto Lstart;
     }
 
     if (!b_ih && bencode::d::pair(p, "info_hash", infohash.id)) {
       b_ih = true;
-      goto start;
+      goto Lstart;
+    }
+
+    {
+      const char *kit = nullptr;
+      std::size_t klen = 0;
+
+      const unsigned char *vit = nullptr;
+      std::size_t vlen = 0;
+
+      if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
+        printf("get_peers req any['%.*s':%zu, '%.*s':%zu]\n", //
+               int(klen), kit, klen, int(vlen), vit, vlen);
+        goto Lstart;
+      }
     }
 
     if (!(b_id && b_ih)) {
@@ -936,7 +974,7 @@ on_request(dht::MessageContext &ctx) noexcept {
     handle_request(ctx, id, infohash);
     return true;
   });
-}
+} // get_peers::on_request
 
 void
 setup(dht::Module &module) noexcept {

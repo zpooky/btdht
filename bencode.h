@@ -111,14 +111,14 @@ is(sp::Buffer &buf, const char (&exact)[SIZE]) {
 
 template <typename F>
 bool
-dict(sp::Buffer &d, F f) noexcept {
+dict(sp::Buffer &d, F body) noexcept {
   std::size_t pos = d.pos;
   if (!internal::is(d, "d", 1)) {
     d.pos = pos;
     return false;
   }
 
-  if (!f(d)) {
+  if (!body(d)) {
     d.pos = pos;
     return false;
   }
@@ -240,6 +240,10 @@ value_ref(sp::Buffer &, const char *&, std::size_t &) noexcept;
 
 bool
 value_ref(sp::Buffer &, const sp::byte *&, std::size_t &) noexcept;
+
+bool
+pair_ref(sp::Buffer &d, const char *&key, std::size_t &key_len,
+         const sp::byte *&value, std::size_t &value_len) noexcept;
 
 bool
 value(sp::Buffer &, std::uint64_t &) noexcept;

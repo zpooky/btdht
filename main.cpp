@@ -44,7 +44,7 @@
 //   more precise contacts. the prefix length is used to denote the start of
 //   self.id...
 
-//TODO
+// TODO
 // - cache tx raw sent and print when parse error response to file
 // - find_node response target field
 static const char *const dump_file = "/tmp/dht_db.dump2";
@@ -206,11 +206,11 @@ static bool
 parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       sp::Buffer &out) noexcept {
 
-  auto f = [&dht, &modules, &peer, &out](krpc::ParseContext &pctx) {
+  auto handle = [&](krpc::ParseContext &pctx) {
     dht::Module unknown;
     error::setup(unknown);
 
-    dht::MessageContext ctx{dht, pctx, out, peer};
+    dht::MessageContext mctx{dht, pctx, out, peer};
     if (std::strcmp(pctx.msg_type, "q") == 0) {
       /*query*/
       if (!bencode::d::value(pctx.decoder, "a")) {
@@ -219,22 +219,22 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
 
       dht::Module &m = module_for(modules, pctx.query, /*default*/ unknown);
 
-      return m.request(ctx);
+      return m.request(mctx);
     } else if (std::strcmp(pctx.msg_type, "r") == 0) {
       /*response*/
       if (!bencode::d::value(pctx.decoder, "r")) {
         return false;
       }
 
-      tx::TxContext context;
+      tx::TxContext tctx;
       std::size_t cnt = dht.client.active;
-      if (tx::consume(dht.client, pctx.tx, context)) {
+      if (tx::consume(dht.client, pctx.tx, tctx)) {
         assertx((cnt - 1) == dht.client.active);
-        log::receive::res::known_tx(ctx);
-        bool res = context.handle(ctx);
+        log::receive::res::known_tx(mctx);
+        bool res = tctx.handle(mctx);
         return res;
       } else {
-        log::receive::res::unknown_tx(ctx);
+        log::receive::res::unknown_tx(mctx);
         // assertx(false);
       }
     }
@@ -243,7 +243,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
   };
 
   krpc::ParseContext pctx(in);
-  return krpc::d::krpc(pctx, f);
+  return krpc::d::krpc(pctx, handle);
 }
 
 template <typename T, std::size_t SIZE, typename F>

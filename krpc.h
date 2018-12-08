@@ -4,8 +4,8 @@
 #include "bencode_offset.h"
 #include "bencode_print.h"
 #include "shared.h"
-#include <util/assert.h>
 #include <cstring>
+#include <util/assert.h>
 
 namespace krpc {
 enum class MessageType : char { query = 'q', response = 'r', error = 'e' };
@@ -102,8 +102,8 @@ namespace d {
 
 template <typename F>
 bool
-krpc(ParseContext &ctx, F f) {
-  return bencode::d::dict(ctx.decoder, [&ctx, f](auto &p) { //
+krpc(ParseContext &pctx, F handle) {
+  return bencode::d::dict(pctx.decoder, [&](auto &p) { //
     bool t = false;
     bool y = false;
     bool q = false;
@@ -115,28 +115,28 @@ krpc(ParseContext &ctx, F f) {
 
     char wkey[128] = {0};
     sp::byte wvalue[128] = {0};
-  start:
+  Lstart:
     // TODO length compare for all raw indexing everywhere!!
     if (p.raw[p.pos] != 'e') {
       const std::size_t before = p.pos;
-      krpc::Transaction &tx = ctx.tx;
+      krpc::Transaction &tx = pctx.tx;
       if (!t && bencode::d::pair(p, "t", tx.id, tx.length)) {
         t = true;
-        goto start;
+        goto Lstart;
       } else {
         assertx(before == p.pos);
       }
 
-      if (!y && bencode::d::pair(p, "y", ctx.msg_type)) {
+      if (!y && bencode::d::pair(p, "y", pctx.msg_type)) {
         y = true;
-        goto start;
+        goto Lstart;
       } else {
         assertx(before == p.pos);
       }
 
-      if (!q && bencode::d::pair(p, "q", ctx.query)) {
+      if (!q && bencode::d::pair(p, "q", pctx.query)) {
         q = true;
-        goto start;
+        goto Lstart;
       } else {
         assertx(before == p.pos);
       }
@@ -144,18 +144,18 @@ krpc(ParseContext &ctx, F f) {
       {
         Contact ip;
         if (!ip_handled && bencode::d::pair(p, "ip", ip)) {
-          ctx.ip_vote = ip;
-          assertx(bool(ctx.ip_vote));
+          pctx.ip_vote = ip;
+          assertx(bool(pctx.ip_vote));
           ip_handled = true;
-          goto start;
+          goto Lstart;
         } else {
           assertx(before == p.pos);
         }
       }
 
-      if (!v && bencode::d::pair(p, "v", ctx.remote_version)) {
+      if (!v && bencode::d::pair(p, "v", pctx.remote_version)) {
         v = true;
-        goto start;
+        goto Lstart;
       } else {
         assertx(before == p.pos);
       }
@@ -165,31 +165,33 @@ krpc(ParseContext &ctx, F f) {
         mark = p.pos;
         assertx(bencode::d::value(p, "a") || bencode::d::value(p, "r"));
 
+        // TODO document this, just verifys valid bencoded?
         if (!bencode::d::dict_wildcard(p)) {
           return false;
         }
         mark_end = p.pos;
 
-        goto start;
+        goto Lstart;
       } else {
         // parse and ignore unknown attributes for future compatability
         if (!bencode::d::pair_any(p, wkey, wvalue)) {
           return false;
         }
-        goto start;
+        goto Lstart;
       }
     }
 
     auto is_query = [&]() { //
-      return std::strcmp("q", ctx.msg_type) == 0;
+      return std::strcmp("q", pctx.msg_type) == 0;
     };
     auto is_reply = [&] { //
-      return std::strcmp("r", ctx.msg_type) == 0;
+      return std::strcmp("r", pctx.msg_type) == 0;
     };
     auto is_error = [&] { //
-      return std::strcmp("e", ctx.msg_type) == 0;
+      return std::strcmp("e", pctx.msg_type) == 0;
     };
 
+    /* Verify that required fields are present */
     if (is_error()) {
       if (!(t)) {
         return false;
@@ -210,9 +212,10 @@ krpc(ParseContext &ctx, F f) {
       return false;
     }
 
+    /* TODO document this */
     sp::Buffer copy(p, mark, mark_end);
-    krpc::ParseContext abbriged(ctx, copy);
-    return f(abbriged);
+    krpc::ParseContext abbriged(pctx, copy);
+    return handle(abbriged);
   });
 }
 
