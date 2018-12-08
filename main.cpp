@@ -44,6 +44,9 @@
 //   more precise contacts. the prefix length is used to denote the start of
 //   self.id...
 
+//TODO
+// - cache tx raw sent and print when parse error response to file
+// - find_node response target field
 static const char *const dump_file = "/tmp/dht_db.dump2";
 
 static void
@@ -204,8 +207,8 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       sp::Buffer &out) noexcept {
 
   auto f = [&dht, &modules, &peer, &out](krpc::ParseContext &pctx) {
-    dht::Module error;
-    error::setup(error);
+    dht::Module unknown;
+    error::setup(unknown);
 
     dht::MessageContext ctx{dht, pctx, out, peer};
     if (std::strcmp(pctx.msg_type, "q") == 0) {
@@ -214,7 +217,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
         return false;
       }
 
-      dht::Module &m = module_for(modules, pctx.query, error);
+      dht::Module &m = module_for(modules, pctx.query, /*default*/ unknown);
 
       return m.request(ctx);
     } else if (std::strcmp(pctx.msg_type, "r") == 0) {

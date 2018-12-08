@@ -1,6 +1,9 @@
 #include "Log.h"
 #include "cstdio"
 #include <cstring>
+#include <encode/hex.h>
+#include <io/file.h>
+#include <string/ascii.h>
 
 // #define LOG_REQ_PING
 #define LOG_REQ_FIND_NODE
@@ -43,6 +46,7 @@ print_time(const dht::MessageContext &ctx) noexcept {
 
 static void
 print_hex(const sp::byte *arr, std::size_t length) {
+  /* TODO convert to use hex::encode */
   const std::size_t hex_cap = 4096;
   char hexed[hex_cap + 1] = {0};
 
@@ -115,6 +119,37 @@ error(dht::MessageContext &ctx) noexcept {
 
   print_time(ctx);
   printf("unknow request query type %s\n", ctx.query);
+
+  auto query_len = std::strlen(ctx.query);
+
+  if (query_len < 127) {
+    if (ascii::is_alpha(ctx.query, query_len)) {
+      char path[256] = {'\0'};
+      sprintf(path, "./unknown_%s.txt", ctx.query);
+
+      auto fd = fs::open_append(path);
+      if (fd) {
+        const auto &in = ctx.in;
+        char buf[16] = {0};
+
+        const std::uint8_t *it = in.raw;
+        const std::uint8_t *const in_end = it + in.length;
+
+        /* Convert to hex and write to file */
+        while (it != in_end) {
+          std::size_t buf_len = sizeof(buf);
+          it = hex::encode_inc(it, in_end, buf, /*IN/OUT*/ buf_len);
+          assertxs(buf_len <= sizeof(buf), buf_len, sizeof(buf));
+          std::size_t wl = fs::write(fd, (unsigned char *)buf, buf_len);
+          assertxs(wl == buf_len, wl, buf_len);
+        }
+
+        const unsigned char nl = '\n';
+        std::size_t wl = fs::write(fd, &nl, 1);
+        assertxs(wl == 1, wl, 1);
+      }
+    }
+  }
 }
 
 void
@@ -286,6 +321,8 @@ ping(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
 
   printf("transmit ping[%s],res[%s]\n", remote, to_string(result));
 #endif
+  (void)contact;
+  (void)result;
 }
 
 void
@@ -331,6 +368,7 @@ mint_transaction(const dht::DHT &ctx) noexcept {
   printf("\033[91mtransmit error mint_transaction\033[0m, acitve tx: %zu\n",
          ctx.client.active);
 #endif
+  (void)ctx;
 }
 
 void
@@ -351,7 +389,7 @@ ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   printf("\033[91mping response timeout\033[0m transaction[");
   print_hex(tx);
   printf("] sent: ");
-  print_time(ctx);
+  print_time(sent);
   printf("seq[%zu]\n", tout++);
 }
 
@@ -364,8 +402,8 @@ find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   print_time(ctx);
   printf("\033[91mfind_node response timeout\033[0m transaction[");
   print_hex(tx);
-  printf("] ");
-  print_time(ctx);
+  printf("] sent: ");
+  print_time(sent);
   printf("seq[%zu]\n", tout++);
 }
 
@@ -378,8 +416,8 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   print_time(ctx);
   printf("\033[91mget_peers response timeout\033[0m transaction[");
   print_hex(tx);
-  printf("] ");
-  print_time(ctx);
+  printf("] sent: ");
+  print_time(sent);
   printf("seq[%zu]\n", tout++);
 }
 
@@ -396,6 +434,7 @@ split(const dht::DHT &ctx, const dht::RoutingTable &,
   print_time(ctx);
   printf("routing table split node\n");
 #endif
+  (void)ctx;
 }
 
 void
@@ -406,6 +445,8 @@ insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
   print_hex(d.id.id, sizeof(d.id.id));
   printf("]\n");
 #endif
+  (void)ctx;
+  (void)d;
 }
 
 void
@@ -416,6 +457,8 @@ can_not_insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
   print_hex(d.id.id, sizeof(d.id.id));
   printf("]\n");
 #endif
+  (void)ctx;
+  (void)d;
 }
 
 } // namespace routing

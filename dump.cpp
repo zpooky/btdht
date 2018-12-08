@@ -68,7 +68,7 @@ dump(const dht::DHT &dht, const char *path) noexcept {
     return false;
   }
 
-  Sink sink(b, &file, flush);
+  Sink sink(b, /*closure*/ &file, flush);
 
   if (!do_dump(sink, dht, dht.root)) {
     return false;
@@ -136,7 +136,7 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
       return false;
     }
 
-    if (!bencode::d<Buffer>::value(buffer,  ip.ipv4)) {
+    if (!bencode::d<Buffer>::value(buffer, ip.ipv4)) {
       return false;
     }
 

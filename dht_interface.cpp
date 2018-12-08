@@ -647,8 +647,9 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
         const unsigned char *vit = nullptr;
         std::size_t vlen = 0;
         if (bencode::d::value_ref(p, vit, vlen)) {
-          printf("spooky[key: '%.*s': %zu, value: '%.*s': %zu]\n", //
-                 int(klen), kit, klen, int(vlen), vit, vlen);
+          printf(
+              "find_node response[key: '%.*s': %zu, value: '%.*s': %zu]\n", //
+              int(klen), kit, klen, int(vlen), vit, vlen);
           goto Lstart;
         } else {
           return false;

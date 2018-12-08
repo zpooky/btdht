@@ -24,8 +24,9 @@ struct Module {
 struct Modules {
   Module module[24];
   std::size_t length;
+
   using AwakeType = Timeout (*)(DHT &, sp::Buffer &) noexcept;
-  sp::StaticArray<AwakeType, 4> on_awake;
+  sp::StaticArray<AwakeType, 24> on_awake;
 
   Modules() noexcept;
 };
