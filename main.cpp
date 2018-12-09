@@ -46,7 +46,6 @@
 
 // TODO
 // - cache tx raw sent and print when parse error response to file
-// - find_node response target field
 static const char *const dump_file = "/tmp/dht_db.dump2";
 
 static void

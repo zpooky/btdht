@@ -9,22 +9,10 @@ using dht::Client;
 using dht::Config;
 using dht::DHT;
 
-static void
-add_front(Client &, Tx *) noexcept;
-
-static void
-reset(Tx &tx) noexcept {
-  reset(tx.context);
-  tx.sent = Timestamp(0);
-
-  tx.suffix[0] = '\0';
-  tx.suffix[1] = '\0';
-}
-
 static std::size_t
-debug_count(Client &client) noexcept {
-  Tx *const head = client.timeout_head;
-  Tx *it = head;
+debug_count(const Client &client) noexcept {
+  const Tx *const head = client.timeout_head;
+  const Tx *it = head;
   std::size_t result = 0;
 Lit:
   if (it) {
@@ -44,13 +32,12 @@ Lit:
 }
 
 static std::size_t
-debug_count(DHT &dht) noexcept {
-  Client &client = dht.client;
-  return debug_count(client);
+debug_count(const DHT &dht) noexcept {
+  return debug_count(dht.client);
 }
 
 static bool
-is_ordered(DHT &dht) noexcept {
+debug_is_ordered(DHT &dht) noexcept {
   Client &client = dht.client;
   Tx *const head = client.timeout_head;
   Tx *it = head;
@@ -78,84 +65,10 @@ Lit:
   return true;
 }
 
-bool
-init(Client &client) noexcept {
-  sp::byte a = 'a';
-  sp::byte b = 'a';
-  in_order_for_each(client.tree, [&client, &a, &b](Tx &tx) {
-    assertx(tx.prefix[0] == '\0');
-    assertx(tx.prefix[1] == '\0');
-
-    tx.prefix[0] = a;
-    tx.prefix[1] = b++;
-    if (b == sp::byte('z')) {
-      ++a;
-      b = 'a';
-    }
-    // printf("prefix: %c%c\n", tx.prefix[0], tx.prefix[1]);
-    add_front(client, &tx);
-  });
-  assertx(debug_count(client) == Client::tree_capacity);
-  return true;
-}
-
-static Tx *
-search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
-  Tx *const result = (Tx *)find(tree, needle);
-  if (!result) {
-    // assert
-    in_order_for_each(tree, [&needle](auto &current) {
-      if (current == needle) {
-        assertx(false);
-      }
-    });
-  }
-  return result;
-}
-
-static Tx *
-unlink(Client &client, Tx *t) noexcept {
-  if (client.timeout_head == t) {
-    auto *next = t->timeout_next != t ? t->timeout_next : nullptr;
-    client.timeout_head = next;
-  }
-
-  auto *next = t->timeout_next;
-  auto *priv = t->timeout_priv;
-
-  next->timeout_priv = priv;
-  priv->timeout_next = next;
-
-  t->timeout_next = nullptr;
-  t->timeout_priv = nullptr;
-
-  return t;
-}
-
-static bool
-is_sent(const Tx &tx) noexcept {
-  return tx.sent != Timestamp(0);
-}
-
-static Timestamp
-expire_time(const Tx &tx) {
-  Config config;
-  return tx.sent + config.transaction_timeout;
-}
-
-static bool
-is_expired(const Tx &tx, Timestamp now) noexcept {
-  if (is_sent(tx)) {
-    if (expire_time(tx) > now) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
+//=====================================
 static void
 ssss(Client &client, Tx *const t) noexcept {
+  assertx(t);
   assertx(t->timeout_next == nullptr);
   assertx(t->timeout_priv == nullptr);
 
@@ -175,15 +88,93 @@ ssss(Client &client, Tx *const t) noexcept {
 }
 
 static void
-add_back(Client &client, Tx *t) noexcept {
+add_front(Client &client, Tx *t) noexcept {
+  std::size_t before = debug_count(client); // TODO only in debug
+  // TODO assert $i is not present in queue
   ssss(client, t);
-  client.timeout_head = t->timeout_next;
+  client.timeout_head = t;
+
+  assertxs((before + 1) == debug_count(client), (before + 1));
+}
+
+bool
+init(Client &client) noexcept {
+  sp::byte a = 'a';
+  sp::byte b = 'a';
+  std::size_t cnt = 0;
+  in_order_for_each(client.tree, [&client, &a, &b, &cnt](Tx &tx) {
+    assertx(tx.prefix[0] == '\0');
+    assertx(tx.prefix[1] == '\0');
+
+    ++cnt;
+
+    tx.prefix[0] = a;
+    tx.prefix[1] = b++;
+    if (b == sp::byte('z')) {
+      ++a;
+      b = 'a';
+    }
+    // printf("prefix: %c%c\n", tx.prefix[0], tx.prefix[1]);
+    add_front(client, &tx);
+  });
+
+  assertx(debug_count(client) == Client::tree_capacity);
+  assertx(Client::tree_capacity == cnt);
+
+  return true;
+}
+
+static Tx *
+unlink(Client &client, Tx *t) noexcept {
+  assertx(client.timeout_head);
+  assertx(t);
+
+  if (client.timeout_head == t) {
+    auto *next = t->timeout_next != t ? t->timeout_next : nullptr;
+    client.timeout_head = next;
+  }
+
+  auto *next = t->timeout_next;
+  auto *priv = t->timeout_priv;
+
+  next->timeout_priv = priv;
+  priv->timeout_next = next;
+
+  t->timeout_next = nullptr;
+  t->timeout_priv = nullptr;
+
+  assertx(debug_count(client) == (Client::tree_capacity - 1));
+
+  return t;
+}
+
+static bool
+is_sent(const Tx &tx) noexcept {
+  return tx.sent != Timestamp(0);
+}
+
+//=====================================
+static Tx *
+search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
+  Tx *const result = (Tx *)find(tree, needle);
+  if (!result) {
+    // assert
+    in_order_for_each(tree, [&needle](auto &current) {
+      if (current == needle) {
+        assertx(false);
+      }
+    });
+  }
+  return result;
 }
 
 static void
-add_front(Client &client, Tx *t) noexcept {
-  ssss(client, t);
-  client.timeout_head = t;
+reset(Tx &tx) noexcept {
+  reset(tx.context);
+  tx.sent = Timestamp(0);
+
+  tx.suffix[0] = '\0';
+  tx.suffix[1] = '\0';
 }
 
 static void
@@ -195,6 +186,9 @@ move_front(Client &client, Tx *tx) noexcept {
 bool
 consume(Client &client, const krpc::Transaction &needle,
         /*OUT*/ TxContext &out) noexcept {
+
+  assertx(debug_count(client) == Client::tree_capacity);
+
   constexpr std::size_t c = sizeof(Tx::prefix) + sizeof(Tx::suffix);
   if (needle.length == c) {
 
@@ -215,6 +209,24 @@ consume(Client &client, const krpc::Transaction &needle,
   return false;
 } // dht::consume()
 
+//=====================================
+static Timestamp
+expire_time(const Tx &tx) {
+  Config config;
+  return tx.sent + config.transaction_timeout;
+}
+
+static bool
+is_expired(const Tx &tx, Timestamp now) noexcept {
+  if (is_sent(tx)) {
+    if (expire_time(tx) > now) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 static Tx *
 unlink_free(DHT &dht, Timestamp now) noexcept {
   Client &client = dht.client;
@@ -222,13 +234,13 @@ unlink_free(DHT &dht, Timestamp now) noexcept {
 
   // auto cnt = debug_count(dht);
   // printf("cnt %zu\n", cnt);
-  assertx(debug_count(dht) == Client::tree_capacity);
-  assertx(is_ordered(dht));
+  assertx(debug_is_ordered(dht));
 
   if (head) {
     if (is_expired(*head, now)) {
       if (is_sent(*head)) {
         --client.active;
+
         head->context.cancel(dht, head);
         reset(*head);
       }
@@ -258,8 +270,16 @@ make(Tx &tx) noexcept {
   }
 }
 
+static void
+add_back(Client &client, Tx *t) noexcept {
+  ssss(client, t);
+  client.timeout_head = t->timeout_next;
+}
+
 bool
 mint(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
+  assertx(debug_count(dht) == Client::tree_capacity);
+
   Client &client = dht.client;
 
   Tx *const tx = unlink_free(dht, dht.now);
@@ -279,8 +299,11 @@ mint(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
   return false;
 } // dht::min_transaction()
 
+//=====================================
 bool
 is_valid(DHT &dht, const krpc::Transaction &needle) noexcept {
+  assertx(debug_count(dht) == Client::tree_capacity);
+
   Client &client = dht.client;
   Tx *const tx = search(client.tree, needle);
   if (tx) {
@@ -292,8 +315,11 @@ is_valid(DHT &dht, const krpc::Transaction &needle) noexcept {
   return false;
 }
 
+//=====================================
 Timestamp
 next_available(const dht::DHT &self) noexcept {
+  assertx(debug_count(self) == Client::tree_capacity);
+
   const Client &client = self.client;
   const Tx *const head = client.timeout_head;
   const Config &cfg = self.config;
@@ -310,4 +336,5 @@ next_available(const dht::DHT &self) noexcept {
   return expire_time(*head);
 }
 
+//=====================================
 } // namespace tx
