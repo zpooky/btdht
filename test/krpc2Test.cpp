@@ -63,7 +63,6 @@ TEST(krpc2Test, get_peers) {
   get_peers::setup(m);
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
-
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
@@ -126,7 +125,6 @@ TEST(krpc2Test, find_node) {
   find_node::setup(m);
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
-
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
@@ -176,7 +174,6 @@ TEST(krpc2Test, find_node2) {
   find_node::setup(m);
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
-
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
@@ -219,7 +216,6 @@ TEST(krpc2Test, ping) {
   ping::setup(m);
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
-
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
@@ -269,7 +265,6 @@ TEST(krpc2Test, xxx) {
   find_node::setup(m);
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
-
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
@@ -374,7 +369,6 @@ TEST(krpc2Test, get_peers3) {
   get_peers::setup(m);
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
-
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 

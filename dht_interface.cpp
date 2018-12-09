@@ -13,6 +13,7 @@
 #include <collection/Array.h>
 #include <cstring>
 #include <prng/util.h>
+#include <string/ascii.h>
 #include <util/assert.h>
 #include <utility>
 
@@ -446,6 +447,67 @@ dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   return contact;
 }
 
+static void
+print_raw(const char *val, std::size_t len) noexcept {
+  if (ascii::is_printable(val, len)) {
+    printf("'%.*s': %zu", int(len), val, len);
+  } else {
+    printf("hex[");
+    for (std::size_t i = 0; i < len; ++i) {
+      printf("%hhX", (unsigned char)val[i]);
+    }
+    printf("](");
+    for (std::size_t i = 0; i < len; ++i) {
+      if (ascii::is_printable(val[i])) {
+        printf("%c", val[i]);
+      } else {
+        printf("_");
+      }
+    }
+    printf(")");
+  }
+}
+
+static bool
+bencode_any(sp::Buffer &p, const char *ctx) noexcept {
+  /*any str*/ {
+    const char *kit = nullptr;
+    std::size_t klen = 0;
+
+    const unsigned char *vit = nullptr;
+    std::size_t vlen = 0;
+
+    if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
+      printf("%s any[", ctx);
+      print_raw(kit, klen);
+      printf(", ");
+      print_raw((const char *)vit, vlen);
+      printf("] \n");
+      return true;
+    }
+  }
+
+  /*any int*/ {
+    const char *kit = nullptr;
+    std::size_t klen = 0;
+
+    std::uint64_t value = 0;
+
+    if (bencode::d::pair_ref(p, kit, klen, value)) {
+      printf("%s any[", ctx);
+      print_raw(kit, klen);
+      printf(", %lu]\n", value);
+      return true;
+    }
+  }
+
+  /*any list*/ {
+    // TODO
+  }
+
+  return false;
+}
+
 //===========================================================
 // Ping
 //===========================================================
@@ -639,18 +701,9 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
         assertx(p.pos == pos);
       }
     }
-    {
-      const char *kit = nullptr;
-      std::size_t klen = 0;
 
-      const unsigned char *vit = nullptr;
-      std::size_t vlen = 0;
-
-      if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
-        printf("find_node resp any['%.*s':%zu, '%.*s':%zu]\n", //
-               int(klen), kit, klen, int(vlen), vit, vlen);
-        goto Lstart;
-      }
+    if (bencode_any(p, "find_node resp")) {
+      goto Lstart;
     }
 
     if (!(b_id)) {
@@ -688,18 +741,8 @@ on_request(dht::MessageContext &ctx) noexcept {
       goto Lstart;
     }
 
-    {
-      const char *kit = nullptr;
-      std::size_t klen = 0;
-
-      const unsigned char *vit = nullptr;
-      std::size_t vlen = 0;
-
-      if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
-        printf("find_node req any['%.*s':%zu, '%.*s':%zu]\n", //
-               int(klen), kit, klen, int(vlen), vit, vlen);
-        goto Lstart;
-      }
+    if (bencode_any(p, "find_node req")) {
+      goto Lstart;
     }
 
     if (!(b_id && b_t)) {
@@ -910,18 +953,8 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       }
     }
 
-    {
-      const char *kit = nullptr;
-      std::size_t klen = 0;
-
-      const unsigned char *vit = nullptr;
-      std::size_t vlen = 0;
-
-      if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
-        printf("get_peers resp any['%.*s':%zu, '%.*s':%zu]\n", //
-               int(klen), kit, klen, int(vlen), vit, vlen);
-        goto Lstart;
-      }
+    if (bencode_any(p, "get_peers resp")) {
+      goto Lstart;
     }
 
     if (b_id && b_t && (b_n || b_v)) {
@@ -953,18 +986,8 @@ on_request(dht::MessageContext &ctx) noexcept {
       goto Lstart;
     }
 
-    {
-      const char *kit = nullptr;
-      std::size_t klen = 0;
-
-      const unsigned char *vit = nullptr;
-      std::size_t vlen = 0;
-
-      if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
-        printf("get_peers req any['%.*s':%zu, '%.*s':%zu]\n", //
-               int(klen), kit, klen, int(vlen), vit, vlen);
-        goto Lstart;
-      }
+    if (bencode_any(p, "get_peers req")) {
+      goto Lstart;
     }
 
     if (!(b_id && b_ih)) {
@@ -1028,7 +1051,19 @@ static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     dht::NodeId id;
-    if (!bencode::d::pair(p, "id", id.id)) {
+    bool b_id = false;
+
+  Lstart:
+    if (bencode::d::pair(p, "id", id.id)) {
+      b_id = true;
+      goto Lstart;
+    }
+
+    if (bencode_any(p, "announce_peer resp")) {
+      goto Lstart;
+    }
+
+    if (!(b_id)) {
       return false;
     }
 
@@ -1072,6 +1107,10 @@ on_request(dht::MessageContext &ctx) noexcept {
     }
     if (!b_t && bencode::d::pair(p, "token", token)) {
       b_t = true;
+      goto Lstart;
+    }
+
+    if (bencode_any(p, "announce_peer req")) {
       goto Lstart;
     }
 

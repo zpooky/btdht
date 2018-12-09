@@ -749,7 +749,7 @@ value_ref(sp::Buffer &d, const sp::byte *&key, std::size_t &key_len) noexcept {
 
 bool
 pair_ref(sp::Buffer &d, const char *&key, std::size_t &key_len,
-          const sp::byte *&value, std::size_t &value_len) noexcept {
+         const sp::byte *&value, std::size_t &value_len) noexcept {
   const std::size_t p = d.pos;
   if (!parse_string(d, key, key_len)) {
     d.pos = p;
@@ -757,6 +757,23 @@ pair_ref(sp::Buffer &d, const char *&key, std::size_t &key_len,
   }
 
   if (!parse_string(d, value, value_len)) {
+    d.pos = p;
+    return false;
+  }
+
+  return true;
+}
+
+bool
+pair_ref(sp::Buffer &d, const char *&key, std::size_t &key_len,
+         std::uint64_t &value) noexcept {
+  const std::size_t p = d.pos;
+  if (!parse_string(d, key, key_len)) {
+    d.pos = p;
+    return false;
+  }
+
+  if (!parse_valuex(d, value)) {
     d.pos = p;
     return false;
   }

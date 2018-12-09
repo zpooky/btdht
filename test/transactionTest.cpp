@@ -76,7 +76,7 @@ Lrestart:
       tx::TxContext h;
       // printf("i: %zu\n", i);
       ASSERT_TRUE(tx::is_valid(dht, ts[i]));
-      ASSERT_TRUE(tx::take(dht.client, ts[i], h));
+      ASSERT_TRUE(tx::consume(dht.client, ts[i], h));
       ASSERT_FALSE(tx::is_valid(dht, ts[i]));
     }
     goto Lrestart;

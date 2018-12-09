@@ -148,6 +148,7 @@ loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
     // always increasing clock
     Timestamp now = std::max(sp::now(), previous);
 
+    printf("============================\n");
     for (int i = 0; i < no_events; ++i) {
       ::epoll_event &current = events[i];
 
@@ -163,24 +164,28 @@ loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
 
           return on_int(info);
         } else {
-          // TODO while not EAGAIN?
-          sp::Buffer inBuffer(in, size);
-          sp::Buffer outBuffer(out, size);
+          int res = 0;
+          while (res == 0) {
+            sp::Buffer inBuffer(in, size);
+            sp::Buffer outBuffer(out, size);
 
-          Contact from;
-          udp::receive(cfd, /*OUT*/ from, inBuffer);
-          flip(inBuffer);
+            Contact from;
+            res = udp::receive(cfd, /*OUT*/ from, inBuffer);
+            if (res == 0) {
+              flip(inBuffer);
 
-          if (inBuffer.length > 0) {
-            handle(from, inBuffer, outBuffer, now);
-            flip(outBuffer);
+              if (inBuffer.length > 0) {
+                handle(from, inBuffer, outBuffer, now);
+                flip(outBuffer);
 
-            if (outBuffer.length > 0) {
-              udp::send(cfd, /*to*/ from, outBuffer);
+                if (outBuffer.length > 0) {
+                  udp::send(cfd, /*to*/ from, outBuffer);
+                }
+              }
             }
-          }
-        }
-      }
+          } // while
+        }   // else
+      }     // if EPOLLIN
 
       if (current.events & EPOLLERR) {
         printf("EPOLLERR\n");
@@ -386,7 +391,6 @@ main(int argc, char **argv) {
   };
 
   auto awake_cb = [&mdht, &modules](sp::Buffer &out, Timestamp now) {
-    printf("\n");
     print_result(mdht->election);
     mdht->now = now;
 

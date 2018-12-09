@@ -1,5 +1,6 @@
 #include "bencode_print.h"
 #include <cstdio>
+#include <string/ascii.h>
 
 namespace internal {
 
@@ -13,29 +14,10 @@ print_tabs(std::size_t tabs) noexcept {
   }
 }
 
-static bool
-is_printable(char c) noexcept {
-  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
-         (c >= 'A' && c <= 'Z') || c == '\'' || c == '`' || c == ' ' ||
-         c == '-' || c == '_';
-}
-
-static bool
-is_only_printable(const char *val, std::size_t len) noexcept {
-  for (std::size_t i = 0; i < len; ++i) {
-    if (!is_printable(val[i])) {
-      return false;
-    }
-  }
-  return true;
-}
-
 static void
-print_len(const char *val, std::size_t len) noexcept {
-  if (is_only_printable(val, len)) {
-    for (std::size_t i = 0; i < len; ++i) {
-      printf("%c", val[i]);
-    }
+print_raw(const char *val, std::size_t len) noexcept {
+  if (ascii::is_printable(val, len)) {
+    printf("%.*s", int(len), val);
   } else {
     printf("hex[");
     for (std::size_t i = 0; i < len; ++i) {
@@ -43,7 +25,7 @@ print_len(const char *val, std::size_t len) noexcept {
     }
     printf("](");
     for (std::size_t i = 0; i < len; ++i) {
-      if (is_printable(val[i])) {
+      if (ascii::is_printable(val[i])) {
         printf("%c", val[i]);
       } else {
         printf("_");
@@ -71,7 +53,7 @@ string_wildcard(sp::Buffer &d, std::size_t tabs) noexcept {
   if (bencode::d::value_ref(d, val, len)) {
     print_tabs(tabs);
     printf("%zu:", len);
-    print_len(val, len);
+    print_raw(val, len);
     printf("\n");
     return true;
   }

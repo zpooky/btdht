@@ -101,7 +101,7 @@ bind(Port port, Mode m) noexcept {
   return bind(INADDR_ANY, port, m);
 }
 
-static void
+static int
 receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   int flag = 0;
   sockaddr *o = (sockaddr *)&other;
@@ -111,25 +111,30 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   std::size_t raw_len = remaining_write(buf);
 
   ssize_t len = 0;
-  do {
-    len = ::recvfrom(fd, raw, raw_len, flag, /*OUT*/ o, &slen);
-  } while (len < 0 && errno == EAGAIN);
+  len = ::recvfrom(fd, raw, raw_len, flag, /*OUT*/ o, &slen);
+  int err = errno;
 
   if (len <= 0) {
-    die("recvfrom()");
+    return errno;
   }
 
   buf.pos += len;
+  return 0;
 } // udp::receive()
 
-void
+int
 receive(int fd, Contact &other, sp::Buffer &buf) noexcept {
   ::sockaddr_in o;
-  receive(fd, o, buf);
-  to_peer(o, other);
+
+  int res = receive(fd, o, buf);
+  if (res == 0) {
+    to_peer(o, other);
+  }
+
+  return res;
 } // udp::receive()
 
-void
+int
 receive(fd &udp, /*OUT*/ Contact &c, /*OUT*/ sp::Buffer &b) noexcept {
   return receive(int(udp), c, b);
 }

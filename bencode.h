@@ -246,6 +246,10 @@ pair_ref(sp::Buffer &d, const char *&key, std::size_t &key_len,
          const sp::byte *&value, std::size_t &value_len) noexcept;
 
 bool
+pair_ref(sp::Buffer &, const char *&key, std::size_t &key_len,
+         std::uint64_t &value) noexcept;
+
+bool
 value(sp::Buffer &, std::uint64_t &) noexcept;
 
 bool

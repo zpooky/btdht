@@ -14,10 +14,10 @@ fd bind(Ipv4, Port, Mode) noexcept;
 
 fd bind(Port, Mode) noexcept;
 
-void
+int
 receive(int fd, /*OUT*/ Contact &, /*OUT*/ sp::Buffer &) noexcept;
 
-void
+int
 receive(fd &, /*OUT*/ Contact &, /*OUT*/ sp::Buffer &) noexcept;
 
 bool
