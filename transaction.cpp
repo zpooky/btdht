@@ -9,11 +9,35 @@ using dht::Client;
 using dht::Config;
 using dht::DHT;
 
+static bool
+debug_find(const Client &client, Tx *const needle) noexcept {
+  assertx(needle);
+  const Tx *const head = client.timeout_head;
+  const Tx *it = head;
+
+Lit:
+  if (it) {
+    if (it == needle) {
+      return true;
+    }
+
+    assertx(it == it->timeout_next->timeout_priv);
+    it = it->timeout_next;
+
+    if (it != head) {
+      goto Lit;
+    }
+  }
+
+  return false;
+}
+
 static std::size_t
 debug_count(const Client &client) noexcept {
   const Tx *const head = client.timeout_head;
   const Tx *it = head;
   std::size_t result = 0;
+
 Lit:
   if (it) {
     ++result;
@@ -24,8 +48,6 @@ Lit:
     if (it != head) {
       goto Lit;
     }
-  } else {
-    assertx(false);
   }
 
   return result;
@@ -89,6 +111,10 @@ ssss(Client &client, Tx *const t) noexcept {
 
 static void
 add_front(Client &client, Tx *t) noexcept {
+  assertx(t);
+
+  assertx(!debug_find(client, t));
+
   std::size_t before = debug_count(client); // TODO only in debug
   // TODO assert $i is not present in queue
   ssss(client, t);
@@ -158,7 +184,7 @@ static Tx *
 search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
   Tx *const result = (Tx *)find(tree, needle);
   if (!result) {
-    // assert
+    // TODO only assert
     in_order_for_each(tree, [&needle](auto &current) {
       if (current == needle) {
         assertx(false);
@@ -179,8 +205,16 @@ reset(Tx &tx) noexcept {
 
 static void
 move_front(Client &client, Tx *tx) noexcept {
+  assertx(tx);
+  assertx(debug_find(client, tx));
+
   unlink(client, tx);
+
+  assertx(!debug_find(client, tx));
+
   add_front(client, tx);
+
+  assertx(debug_find(client, tx));
 }
 
 bool
@@ -197,6 +231,7 @@ consume(Client &client, const krpc::Transaction &needle,
 
       if (*tx == needle) {
         out = tx->context;
+
         reset(*tx);
         move_front(client, tx);
         --client.active;
@@ -231,6 +266,7 @@ static Tx *
 unlink_free(DHT &dht, Timestamp now) noexcept {
   Client &client = dht.client;
   Tx *const head = client.timeout_head;
+  Tx *result = nullptr;
 
   // auto cnt = debug_count(dht);
   // printf("cnt %zu\n", cnt);
@@ -245,14 +281,16 @@ unlink_free(DHT &dht, Timestamp now) noexcept {
         reset(*head);
       }
 
-      return unlink(client, head);
+      assertx(debug_find(dht.client, head));
+      result = unlink(client, head);
+      assertx(!debug_find(dht.client, head));
     } // if is_expired
 
   } else {
     assertx(false);
   }
 
-  return nullptr;
+  return result;
 }
 
 static void

@@ -56,6 +56,7 @@ die(const char *s) {
 
 static fd
 setup_signal() {
+  // return fd{0};
   /* Fetch current signal mask */
   sigset_t sigset;
   if (sigprocmask(SIG_SETMASK, NULL, &sigset) < 0) {
