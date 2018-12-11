@@ -399,7 +399,7 @@ main(int argc, char **argv) {
   };
 
   auto awake_cb = [&mdht, &modules](sp::Buffer &out, Timestamp now) {
-    print_result(mdht->election);
+    // print_result(mdht->election);
     mdht->now = now;
 
     Timeout result = mdht->config.refresh_interval;

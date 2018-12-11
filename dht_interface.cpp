@@ -285,7 +285,6 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
 
     /* Bootstrap contacts */
     if (!bs_sent) {
-      // printf("#bootstrap nodes\n");
       auto &bcontacts = dht.bootstrap_contacts;
       // TODO prune non good bootstrap nodes
       // XXX shuffle bootstrap list just before sending
@@ -562,13 +561,11 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
-  // printf("response ping\n");
   return krpc::d::response::ping(ctx, handle_response);
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  // printf("request ping\n");
   return krpc::d::request::ping(ctx, handle_request);
 }
 
@@ -925,7 +922,6 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
   Lstart:
     const std::size_t pos = p.pos;
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
-      // printf("id\n");
       b_id = true;
       goto Lstart;
     } else {
@@ -933,7 +929,6 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     }
 
     if (!b_t && bencode::d::pair(p, "token", token)) {
-      // printf("token\n");
       b_t = true;
       goto Lstart;
     } else {
@@ -942,7 +937,6 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
 
     std::uint64_t p_out = 0; // TODO what is this?
     if (!b_p && bencode::d::pair(p, "p", p_out)) {
-      // printf("p\n");
       b_p = true;
       goto Lstart;
     } else {
@@ -952,7 +946,6 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     {
       Contact ip;
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-        // printf("ip\n");
         ctx.ip_vote = ip;
         assertx(bool(ctx.ip_vote));
         b_ip = true;
@@ -966,7 +959,6 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     if (!b_n) {
       clear(nodes);
       if (bencode::d::nodes(p, "nodes", nodes)) {
-        // printf("nodes\n");
         b_n = true;
         goto Lstart;
       } else {
@@ -977,7 +969,6 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     if (!b_v) {
       clear(values);
       if (bencode::d::peers(p, "values", values)) { // last
-        // printf("values\n");
         b_v = true;
         goto Lstart;
       } else {

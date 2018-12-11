@@ -6,7 +6,7 @@
 #include <string/ascii.h>
 
 // #define LOG_REQ_PING
-#define LOG_REQ_FIND_NODE
+// #define LOG_REQ_FIND_NODE
 #define LOG_REQ_GET_PEERS
 
 // #define LOG_ROUTING_SPLIT
@@ -287,8 +287,11 @@ peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
 
 void
 contact_scan(const dht::DHT &ctx) noexcept {
+#if 0
   print_time(ctx);
   printf("awake contact_scan\n");
+#endif
+  (void)ctx;
 }
 
 } // namespace awake
@@ -340,6 +343,8 @@ find_node(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
 
   printf("transmit find_node[%s],res[%s]\n", remote, to_string(result));
 #endif
+  (void)contact;
+  (void)result;
 }
 
 void
