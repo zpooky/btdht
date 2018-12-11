@@ -61,6 +61,15 @@ insert(DHT &, const Node &) noexcept;
 std::uint32_t
 max_routing_nodes(DHT &) noexcept;
 
+std::uint32_t
+nodes_good(const DHT &) noexcept;
+
+std::uint32_t
+nodes_total(const DHT &) noexcept;
+
+std::uint32_t
+nodes_bad(const DHT &) noexcept;
+
 } // namespace dht
 
 #endif

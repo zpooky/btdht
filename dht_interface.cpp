@@ -234,10 +234,7 @@ on_awake_peer_db(DHT &dht, sp::Buffer &) noexcept {
 
 static Timeout
 awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
-  // XXX change to node circular buffer with timestamps of last sent
-  std::size_t searches = dht.active_searches * dht::Bucket::K;
   std::size_t now_sent = 0;
-  missing_contacts -= std::min(missing_contacts, searches);
 
   auto inc_active_searches = [&dht, &missing_contacts, &now_sent]() {
     std::size_t K = dht::Bucket::K;
@@ -343,7 +340,7 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     }
   } else {
     // TODO only for debug
-    assertx(false);
+    assertxs(false, nodes_good(dht), nodes_total(dht), nodes_bad(dht));
   }
 
   return cfg.refresh_interval;
@@ -357,17 +354,17 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
     return std::size_t(c) / std::size_t(t / std::size_t(100));
   };
 
-  auto good = dht.total_nodes - dht.bad_nodes;
-  auto total = std::max(std::uint32_t(dht::max_routing_nodes(dht)), good);
-  auto look_for = total - good;
+  auto good = nodes_good(dht);
+  const auto all = dht::max_routing_nodes(dht);
+  auto look_for = all - good;
 
-  const auto cur = percentage(total, good);
-  printf("good[%u], total[%u], bad_nodes[%u], look_for[%u], "
-         "config.p_seek[%zu], "
-         "cur %s[%zu], max[%u]\n",
-         good, dht.total_nodes, dht.bad_nodes, look_for, //
-         dht.config.percentage_seek,                     //
-         "%", cur, dht::max_routing_nodes(dht));
+  const auto cur = percentage(all, good);
+  printf("good[%u], total[%u], bad[%u], look_for[%u], "
+         "config.seek[%zu%s], "
+         "cur[%zu%s], max[%u]\n",
+         good, nodes_total(dht), nodes_bad(dht), look_for, //
+         dht.config.percentage_seek, "%",                  //
+         cur, "%", all);
 
   if (cur < dht.config.percentage_seek) {
     // TODO if we can't mint new tx then next should be calculated base on when
@@ -650,8 +647,11 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *closure) noexcept {
   log::transmit::error::find_node_response_timeout(dht, tx, sent);
   if (closure) {
-    auto *bs = (Contact *)closure;
-    insert_unique(dht.bootstrap_contacts, *bs);
+    // arbitrary?
+    if (nodes_good(dht) < 100) {
+      auto *bs = (Contact *)closure;
+      insert_unique(dht.bootstrap_contacts, *bs);
+    }
   }
 
   handle_response_timeout(dht, closure);

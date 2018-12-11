@@ -724,4 +724,19 @@ max_routing_nodes(DHT &) noexcept {
   return std::uint32_t(Bucket::K) * std::uint32_t(sizeof(Key) * 8);
 }
 
+std::uint32_t
+nodes_good(const DHT &self) noexcept {
+  return nodes_total(self) - nodes_bad(self);
+}
+
+std::uint32_t
+nodes_total(const DHT &self) noexcept {
+  return self.total_nodes;
+}
+
+std::uint32_t
+nodes_bad(const DHT &self) noexcept {
+  return self.bad_nodes;
+}
+
 } // namespace dht
