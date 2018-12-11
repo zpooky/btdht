@@ -46,8 +46,7 @@
 
 // TODO
 // - cache tx raw sent and print when parse error response to file
-static const char *const dump_file = "/tmp/dht_db.dump2";
-
+// - find_respons & others should be able to handle error response
 static void
 die(const char *s) {
   perror(s);
@@ -66,10 +65,15 @@ setup_signal() {
   /* Block signals so that they aren't handled
    * according to their default dispositions
    */
-  sigaddset(&sigset, SIGINT);
-  sigaddset(&sigset, SIGQUIT);
-  sigaddset(&sigset, SIGTERM);
-  sigaddset(&sigset, SIGHUP);
+  // sigaddset(&sigset, SIGINT);
+  // sigaddset(&sigset, SIGQUIT);
+  // sigaddset(&sigset, SIGTERM);
+  // sigaddset(&sigset, SIGHUP);
+
+  sigfillset(&sigset);
+  /*job control*/
+  sigdelset(&sigset, SIGCONT);
+  sigdelset(&sigset, SIGTSTP);
 
   /* Modify signal mask */
   if (sigprocmask(SIG_SETMASK, &sigset, NULL) < 0) {
@@ -81,7 +85,11 @@ setup_signal() {
   sigaddset(&sigset, SIGINT);
   sigaddset(&sigset, SIGQUIT);
   sigaddset(&sigset, SIGTERM);
+  sigaddset(&sigset, SIGTERM);
   sigaddset(&sigset, SIGHUP);
+
+  // sigfillset(&sigset);
+  // sigdelset(&sigset, SIGWINCH);
 
   int flags = SFD_NONBLOCK | SFD_CLOEXEC;
   int sfd = signalfd(/*new fd*/ -1, &sigset, flags);
@@ -266,7 +274,7 @@ main(int argc, char **argv) {
   printf("sizeof(DHT): %zuB %zuKB\n", sizeof(dht::DHT),
          sizeof(dht::DHT) / 1024);
   dht::Options options;
-  if (!dht::parse(argc, argv, options)) {
+  if (!dht::parse(options, argc, argv)) {
     //   die("TODO");
     return 1;
   }
@@ -287,7 +295,7 @@ main(int argc, char **argv) {
   printf("node id: ");
   dht::print_hex(mdht->id);
 
-  if (!sp::restore(*mdht, dump_file)) {
+  if (!sp::restore(*mdht, options.dump_file)) {
     die("restore failed\n");
   }
 
@@ -407,13 +415,13 @@ main(int argc, char **argv) {
     return result;
   };
 
-  auto interrupt_cb = [&mdht](const signalfd_siginfo &info) {
-    printf("signal: %s\n", strsignal(info.ssi_signo));
+  auto interrupt_cb = [&](const signalfd_siginfo &info) {
+    printf("signal: %s: %d\n", strsignal(info.ssi_signo), info.ssi_signo);
 
     // TODO handle more signals
     if (mdht) {
       // TODO only if is warmed up so we are not
-      if (!sp::dump(*mdht, dump_file)) {
+      if (!sp::dump(*mdht, options.dump_file)) {
         return 2;
       }
     }

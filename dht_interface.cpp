@@ -292,6 +292,22 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
       auto &bcontacts = dht.bootstrap_contacts;
       // TODO prune non good bootstrap nodes
       // XXX shuffle bootstrap list just before sending
+      auto con = bcontacts.header[0];
+      while (con) {
+        dht::NodeId &self = dht.id;
+
+        auto *closure = new (std::nothrow) Contact(con->value);
+        result =
+            client::find_node(dht, out, con->value, /*search*/ self, closure);
+        if (result == client::Res::OK) {
+          inc_active_searches();
+          assertx_n(remove(bcontacts, con->value));
+          con = bcontacts.header[0];
+        } else {
+          con = nullptr;
+        }
+      }
+#if 0
       for_all(bcontacts, [&](const Contact &bs) {
         dht::NodeId &self = dht.id;
 
@@ -303,6 +319,7 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
 
         return result == client::Res::OK;
       });
+#endif
 
       bs_sent = true;
     }
@@ -320,7 +337,13 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     if (now_sent > 0) {
       auto next_timestamp = tx::next_available(dht);
       return next_timestamp - dht.now;
+    } else {
+      // arbritary?
+      return sp::Timestamp(cfg.transaction_timeout);
     }
+  } else {
+    // TODO only for debug
+    assertx(false);
   }
 
   return cfg.refresh_interval;
@@ -626,6 +649,11 @@ static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *closure) noexcept {
   log::transmit::error::find_node_response_timeout(dht, tx, sent);
+  if (closure) {
+    auto *bs = (Contact *)closure;
+    insert_unique(dht.bootstrap_contacts, *bs);
+  }
+
   handle_response_timeout(dht, closure);
 } // find_node::on_timeout
 

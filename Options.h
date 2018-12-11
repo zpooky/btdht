@@ -7,12 +7,13 @@ namespace dht {
 struct Options {
   Port port;
   sp::list<Contact> bootstrap;
+  char dump_file[256];
 
   Options();
 };
 
 bool
-parse(int, char **, Options &) noexcept;
+parse(Options &, int, char **) noexcept;
 
 } // namespace dht
 

@@ -115,7 +115,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   int err = errno;
 
   if (len <= 0) {
-    return errno;
+    return err;
   }
 
   buf.pos += len;
@@ -145,6 +145,7 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
   int flag = 0;
   ::sockaddr *destaddr = (::sockaddr *)&dest;
 
+  int error = 0;
   ssize_t sent = 0;
   do {
     // sp::bencode_print(buf);
@@ -153,19 +154,18 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
     assertx(raw_len > 0);
 
     sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
+    error = errno;
     if (sent > 0) {
       buf.pos += sent;
     }
 
-  } while ((sent < 0 && errno == EAGAIN) && remaining_read(buf) > 0);
-  int error = errno;
+  } while ((sent < 0 && error == EAGAIN) && remaining_read(buf) > 0);
 
   if (sent < 0) {
     const std::size_t raw_len = remaining_read(buf);
     char dstr[128] = {0};
-
-    const char *res =
-        ::inet_ntop(AF_INET6, &dest, dstr, socklen_t(sizeof(dstr)));
+    socklen_t s_len(sizeof(dstr));
+    const char *res = ::inet_ntop(AF_INET6, &dest, dstr, s_len);
     assertx(res);
 
     printf("sent[%zd] = "
