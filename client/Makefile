@@ -20,12 +20,10 @@ SOURCES = $(wildcard $(SOURCE_DIR)/*.cpp)
 OBJECTS = $(patsubst $(SOURCE_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
 DEPENDS = $(OBJECTS:.o=.d)
 
-# PHONY targets is not file backed targets
-.PHONY: all clean install uninstall bear
-
 # all {{{
 # The "all" target. runs by default since it the first target
-all: ${EXEC}
+.PHONY: all
+all: $(EXEC)
 	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS)
 # }}}
 
@@ -50,6 +48,7 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
 # }}}
 
 # clean {{{
+.PHONY: clean
 clean:
 	rm -f $(OBJECTS)
 	rm -f $(DEPENDS)
@@ -58,6 +57,7 @@ clean:
 # }}}
 
 # install {{{
+.PHONY: install
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(PREFIX)/lib
@@ -68,6 +68,7 @@ install: all
 # }}}
 
 # uninstall {{{
+.PHONY: uninstall
 uninstall:
 	rm $(DESTDIR)$(PREFIX)/bin/$(EXEC)
 	rm $(DESTDIR)$(PREFIX)/bin/$(lib).a
@@ -76,6 +77,7 @@ uninstall:
 
 # bear {{{
 # Creates compilation_database.json
+.PHONY: bear
 bear:
 	make BUILD_DIR=build/bear clean
 	bear make BUILD_DIR=build/bear CXXFLAGS+=-DSP_TEST -j
@@ -83,6 +85,7 @@ bear:
 	mv tmp_compile_commands.json compile_commands.json
 # }}}
 
+.PHONY: dependencies
 dependencies:
 	$(MAKE) -C .. BUILD_DIR=build/client
 	$(MAKE) -C ../external/sputil BUILD_DIR=build/client

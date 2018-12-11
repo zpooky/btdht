@@ -18,7 +18,7 @@ generic_receive(fd &u, sp::Buffer &b) noexcept {
   flip(b);
 
   char str[256] = {'\0'};
-  assert(to_string(c, str));
+  assertx(to_string(c, str));
   printf("contact: %s\n", str);
   // assertx(b.length > 0);
 
@@ -94,8 +94,8 @@ send_search(prng::xorshift32 &r, fd &udp, const Contact &to,
   {
     const char *hex = "4e64aaaf48d922dbd93f8b9e4acaa78c99bc1f40";
     std::size_t l = sizeof(search.id);
-    assert(hex::decode(hex, search.id, l));
-    assert(l == 20);
+    assertx(hex::decode(hex, search.id, l));
+    assertx(l == 20);
   }
 
   krpc::request::search(b, t, search, 60);

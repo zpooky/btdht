@@ -418,7 +418,6 @@ main(int argc, char **argv) {
   auto interrupt_cb = [&](const signalfd_siginfo &info) {
     printf("signal: %s: %d\n", strsignal(info.ssi_signo), info.ssi_signo);
 
-    // TODO handle more signals
     if (mdht) {
       // TODO only if is warmed up so we are not
       if (!sp::dump(*mdht, options.dump_file)) {

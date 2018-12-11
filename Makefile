@@ -22,12 +22,10 @@ DEPENDS = $(OBJECTS:.o=.d)
 #TODO https://kristerw.blogspot.se/2017/09/useful-gcc-warning-options-not-enabled.html
 #TODO build for different optimizations level in dedicated build directories
 
-# PHONY targets is not file backed targets
-.PHONY: test all clean install uninstall bear dependencies
-
 # all {{{
 # The "all" target. runs by default since it the first target
-all: ${EXEC}
+.PHONY: all
+all: $(EXEC)
 	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS)
 # }}}
 
@@ -52,6 +50,7 @@ $(BUILD_DIR)/%.o: %.cpp
 # }}}
 
 # clean {{{
+.PHONY: clean
 clean:
 	rm -f $(OBJECTS)
 	rm -f $(DEPENDS)
@@ -61,11 +60,13 @@ clean:
 # }}}
 
 # test {{{
+.PHONY: test
 test:
 	$(MAKE) -C test test
 # }}}
 
 # install {{{
+.PHONY: install
 install: $(EXEC) staticlib
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(PREFIX)/lib
@@ -76,6 +77,7 @@ install: $(EXEC) staticlib
 # }}}
 
 # uninstall {{{
+.PHONY: uninstall
 uninstall:
 	rm $(DESTDIR)$(PREFIX)/bin/$(EXEC)
 	rm $(DESTDIR)$(PREFIX)/bin/$(lib).a
@@ -84,6 +86,7 @@ uninstall:
 
 # bear {{{
 # Creates compilation_database.json
+.PHONY: bear
 bear:
 	$(MAKE) -C test bear
 	$(MAKE) -C client bear
@@ -94,5 +97,6 @@ bear:
 	mv tmp_compile_commands.json compile_commands.json
 # }}}
 
+.PHONY: dependencies
 dependencies:
 	$(MAKE) -C external/sputil BUILD_DIR=build/dht
