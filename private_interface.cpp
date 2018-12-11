@@ -118,7 +118,6 @@ setup(dht::Module &module) noexcept {
 // search
 //===========================================================
 namespace search {
-
 static bool
 handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
                sp::Seconds timeout) {

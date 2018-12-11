@@ -855,7 +855,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       if (!res) {
         insert_unique(dht.bootstrap_contacts, ins.contact);
       }
-    });
+    }); // for_each
 
     /* sender returns matching values for search query */
     for_each(result, [&search](const Contact &c) {

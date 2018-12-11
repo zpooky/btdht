@@ -92,13 +92,14 @@ send_search(prng::xorshift32 &r, fd &udp, const Contact &to,
 
   dht::Infohash search;
   {
-    const char *hex = "4e64aaaf48d922dbd93f8b9e4acaa78c99bc1f40";
+    const char *hex = "A8DB4EFE35E9A7265B2C05AE6AAA3F894DEFC9DD";
+    // const char *hex = "4e64aaaf48d922dbd93f8b9e4acaa78c99bc1f40";
     std::size_t l = sizeof(search.id);
     assertx(hex::decode(hex, search.id, l));
     assertx(l == 20);
   }
 
-  krpc::request::search(b, t, search, 60);
+  krpc::request::search(b, t, search, 6000000);
   flip(b);
 
   udp::send(udp, to, b);
@@ -250,7 +251,9 @@ main(int argc, char **args) {
   // receive_dump(udp, inBuffer);
 
   send_search(r, udp, to, outBuffer);
-  receive_search(udp, inBuffer);
+  while (true) {
+    receive_search(udp, inBuffer);
+  }
 
   // send_find_node(r, udp, to, outBuffer);
   // receive_find_node(udp, inBuffer);
