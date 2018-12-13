@@ -8,18 +8,22 @@ namespace db {
 
 dht::KeyValue *
 lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
-  auto find_haystack = [](dht::KeyValue *current, const dht::Infohash &id) {
+  auto find_haystack = [](dht::KeyValue *current,
+                          const dht::Infohash &id) -> dht::KeyValue * {
+    dht::KeyValue *const start = current;
     // XXX tree?
-  Lstart:
-    if (current) {
+    while (current) {
       if (id == current->id) {
         return current;
       }
+
       current = current->next;
-      goto Lstart;
+      if (current == start) {
+        break;
+      }
     }
 
-    return current;
+    return nullptr;
   };
 
   auto is_expired = [&dht](dht::Peer &peer) {
@@ -54,8 +58,7 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
     dht::Peer *it = dummy.next = needle->peers;
 
     dht::Peer *previous = &dummy;
-  Lloop:
-    if (it) {
+    while (it) {
       dht::Peer *const next = it->next;
       if (is_expired(*it)) {
         reclaim(it);
@@ -65,7 +68,6 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
       }
 
       it = next;
-      goto Lloop;
     }
 
     needle->peers = dummy.next;

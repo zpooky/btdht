@@ -265,9 +265,10 @@ SearchContext::SearchContext() noexcept
     , is_dead(false) {
 }
 
-Search::Search(const Infohash &s) noexcept
+Search::Search(const Infohash &s, const Contact &r) noexcept
     : ctx(new SearchContext)
     , search(s)
+    , remote(r)
     , hashers()
     , searched(hashers)
     , timeout(0)
@@ -285,22 +286,24 @@ Search::Search(const Infohash &s) noexcept
   assertx_n(insert(hashers, fnv_f));
 }
 
-// Search::Search(Search &&o) noexcept
-//     : ctx(nullptr)
-//     , search()
-//     , hashers()
-//     , searched()
-//     , timeout()
-//     , queue() {
-//   using sp::swap;
-//
-//   swap(ctx, o.ctx);
-//   swap(search, o.search);
-//   swap(hashers, o.hashers);
-//   swap(searched, o.searched);
-//   swap(timeout, o.timeout);
-//   swap(queue, o.queue);
-// }
+#if 0
+Search::Search(Search &&o) noexcept
+    : ctx(nullptr)
+    , search(o.search)
+    , remote(o.remote)
+    , hashers()
+    , searched(hashers)
+    , timeout(0)
+    , raw_queue(nullptr)
+    , queue(nullptr, 0) {
+  using sp::swap;
+
+  swap(ctx, o.ctx);
+  insert_all(hashers, o.hashers);
+  swap(searched, o.searched);
+  swap(timeout, o.timeout);
+}
+#endif
 
 Search *
 find_search(dht::DHT &dht, SearchContext *needle) noexcept {

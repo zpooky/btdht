@@ -616,11 +616,14 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::res::find_node(ctx);
 
   dht_response(ctx, sender, [&](auto &) {
-    for_each(contacts, [&](const auto &contact) {
+    for_each(contacts, [&](const dht::Node &contact) {
       dht::DHT &dht = ctx.dht;
       dht::Node node(contact, dht.now);
-      auto res = dht::insert(dht, node); // TODO does this return existing?
+
+      auto res = dht::insert(dht, node);
       if (!res) {
+        // TODO Maybe have a bloomfilter to filter out recently tried nodes.
+        //      This bloomfilter will be cleared at interval(on_awake).
         insert_unique(dht.bootstrap_contacts, node.contact);
       }
     });
@@ -797,6 +800,8 @@ setup(dht::Module &module) noexcept {
 // get_peers
 //===========================================================
 namespace get_peers {
+/* hang 2018-12-13 19:39:42|receive request get_peers
+ */
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search) noexcept {
@@ -809,6 +814,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
     db::mint_token(dht, from, ctx.remote, token);
 
     const krpc::Transaction &t = ctx.transaction;
+    // TODO infinite loop at 20% wtf?
     const dht::KeyValue *result = db::lookup(dht, search);
     if (result) {
       krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);

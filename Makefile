@@ -5,7 +5,7 @@ CXX = g++
 HEADER_DIRS = -Iexternal -Iexternal/sputil/include
 # ovrrides makes it possible to externaly append extra flags
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
-CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb
+CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb -O0
 LDFLAGS = -fno-omit-frame-pointer
 LDLIBS = -Lexternal/sputil/build/dht -lsputil -lbfd -ldl
 PREFIX = /usr/local

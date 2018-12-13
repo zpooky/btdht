@@ -13,7 +13,7 @@
 namespace dht {
 
 static bool
-is_cycle(DHT &dht) noexcept {
+debug_is_cycle(DHT &dht) noexcept {
   Peer *const head = dht.timeout_peer;
   if (head) {
     Peer *it = head;
@@ -288,7 +288,7 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
             next->timeout_priv = c;
         };
 
-        assertx(is_cycle(dht));
+        assertx(debug_is_cycle(dht));
         timeout::unlink(dht, &contact);
         assertx(!contact.timeout_next);
         assertx(!contact.timeout_priv);
@@ -686,7 +686,7 @@ Lstart:
     if (inserted) {
       // printf("- insert\n");
       timeout::insert_new(dht, inserted);
-      assertx(is_cycle(dht));
+      assertx(debug_is_cycle(dht));
       assertx(inserted->timeout_next);
       assertx(inserted->timeout_priv);
 

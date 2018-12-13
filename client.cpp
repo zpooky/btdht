@@ -5,6 +5,7 @@
 #include "dht_interface.h"
 #include "krpc.h"
 #include "udp.h"
+#include <list/LinkedList.h>
 #include <util/assert.h>
 
 namespace client {
@@ -85,5 +86,35 @@ get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
   log::transmit::get_peers(dht, dest, result); // TODO log tx
   return result;
 }
+
+namespace priv {
+template <typename Contacts>
+Res
+found(dht::DHT &dht, sp::Buffer &out, const dht::Infohash &search,
+      const Contact &remote, const Contacts &contacts) noexcept {
+  sp::reset(out);
+  dht::Client &client = dht.client;
+
+  // TODO
+  //- change from event to req and on resp we can mark sent contacts as
+  //  consumed, otherwise the UDP packet might have got lost and all work is
+  //  for not.
+  //- need to train all results before search can be deleted
+  Res result =
+      krpc::priv::event::found(out, search, contacts) ? Res::OK : Res::ERR;
+  if (result == Res::OK) {
+    sp::flip(out);
+    result = udp::send(client.udp, remote, out) ? Res::OK : Res::ERR;
+  }
+
+  return result;
+}
+
+template Res
+found<sp::LinkedList<Contact>>(dht::DHT &, sp::Buffer &, const dht::Infohash &,
+                               const Contact &,
+                               const sp::LinkedList<Contact> &) noexcept;
+
+} // namespace priv
 
 } // namespace client

@@ -98,6 +98,16 @@ search(sp::Buffer &b, const Transaction &t) noexcept;
 
 } // namespace response
 
+namespace priv {
+namespace event {
+
+template <typename Contacts>
+bool
+found(sp::Buffer &, const dht::Infohash &, const Contacts &) noexcept;
+
+} // namespace event
+} // namespace priv
+
 namespace d {
 
 template <typename F>

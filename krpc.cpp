@@ -1,6 +1,7 @@
 #include "dslbencode.h"
 #include "krpc.h"
 #include <cstring>
+#include <list/LinkedList.h>
 #include <tuple>
 #include <type_traits>
 
@@ -14,7 +15,6 @@ message(sp::Buffer &buf, const Transaction &t, const char *mt,
   return bencode::e::dict(
       buf, //
       [&t, &mt, query, &f](sp::Buffer &b) {
-
         if (!f(b)) {
           return false;
         }
@@ -169,7 +169,6 @@ announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &self,
 bool
 dump(sp::Buffer &b, const Transaction &t) noexcept {
   return req(b, t, "sp_dump", [](sp::Buffer &) { //
-
     return true;
   });
 } // request::dump()
@@ -177,7 +176,6 @@ dump(sp::Buffer &b, const Transaction &t) noexcept {
 bool
 statistics(sp::Buffer &b, const Transaction &t) noexcept {
   return req(b, t, "sp_statistics", [](sp::Buffer &) { //
-
     return true;
   });
 }
@@ -204,7 +202,6 @@ namespace response {
 bool
 ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
   return resp(buf, t, [&id](sp::Buffer &b) { //
-
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
@@ -218,7 +215,6 @@ find_node(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const dht::Node **target,
           std::size_t length) noexcept {
   return resp(buf, t, [&id, &target, &length](auto &b) { //
-
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
@@ -232,7 +228,6 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const dht::Token &token,
           const dht::Node **nodes, std::size_t length) noexcept {
   return resp(buf, t, [&id, &token, &nodes, &length](auto &b) { //
-
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
@@ -251,7 +246,6 @@ get_peers(sp::Buffer &buf,
           const dht::NodeId &id, const dht::Token &token,
           const dht::Peer *values) noexcept {
   return resp(buf, t, [&id, &token, values](auto &b) { //
-
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
@@ -268,7 +262,6 @@ bool
 announce_peer(sp::Buffer &buf, const Transaction &t,
               const dht::NodeId &id) noexcept {
   return resp(buf, t, [&id](auto &b) { //
-
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
@@ -281,7 +274,6 @@ bool
 error(sp::Buffer &buf, const Transaction &t, Error e,
       const char *msg) noexcept {
   return err(buf, t, [e, msg](auto &b) { //
-
     std::tuple<Error, const char *> tt(e, msg);
     return bencode::e::list(b, &tt, [](auto &b2, void *a) {
       auto targ = *((std::tuple<Error, const char *> *)a);
@@ -367,5 +359,53 @@ search(sp::Buffer &b, const Transaction &t) noexcept {
 }
 
 } // namespace response
+
+namespace priv {
+namespace event {
+
+template <typename F>
+static bool
+event(sp::Buffer &buf, F f) noexcept {
+  const Transaction t;
+  return message(buf, t, "e", "found", [&f](auto &b) { //
+    if (!bencode::e::value(b, "e")) {
+      return false;
+    }
+
+    return bencode::e::dict(b, [&f](auto &b2) { //
+      return f(b2);
+    });
+  });
+} // krpc::resp()
+
+template <typename Contacts>
+bool
+found(sp::Buffer &buf, const dht::Infohash &search,
+      const Contacts &contacts) noexcept {
+  return event(buf, [&contacts, &search](auto &b) {
+    if (!bencode::e::pair(b, "id", search.id, sizeof(search.id))) {
+      return false;
+    }
+
+    if (!bencode::e::value(b, "contacts")) {
+      return false;
+    }
+
+    return bencode::e::list(b, (void *)&contacts, [](auto &b2, void *a) {
+      Contacts *cx = (Contacts *)a;
+      return for_all(*cx, [&](auto &c) {
+        //
+        return bencode::e::value(b2, c);
+      });
+    });
+  });
+}
+
+template bool
+found<sp::LinkedList<Contact>>(sp::Buffer &, const dht::Infohash &,
+                               const sp::LinkedList<Contact> &) noexcept;
+
+} // namespace event
+} // namespace priv
 
 } // namespace krpc

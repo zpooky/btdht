@@ -92,7 +92,8 @@ send_search(prng::xorshift32 &r, fd &udp, const Contact &to,
 
   dht::Infohash search;
   {
-    const char *hex = "A8DB4EFE35E9A7265B2C05AE6AAA3F894DEFC9DD";
+    // const char *hex = "A8DB4EFE35E9A7265B2C05AE6AAA3F894DEFC9DD";
+    const char *hex = "DACA97ECE84DB7F7599E8D1BF9FD0AE2D68B6EA9";
     // const char *hex = "4e64aaaf48d922dbd93f8b9e4acaa78c99bc1f40";
     std::size_t l = sizeof(search.id);
     assertx(hex::decode(hex, search.id, l));

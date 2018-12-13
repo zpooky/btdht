@@ -23,24 +23,34 @@ setup(dht::Modules &modules) noexcept {
 }
 
 static Timeout
-scheduled_search(dht::DHT &dht, sp::Buffer &b) noexcept {
-  // TODO drain result and send to receiver
-  remove_if(dht.searches, [&dht](const dht::Search &current) {
+scheduled_search(dht::DHT &dht, sp::Buffer &scrtch) noexcept {
+  remove_if(dht.searches, [&](dht::Search &current) {
+    if (!is_empty(current.result)) {
+      reset(scrtch);
+      auto &search = current.search;
+      auto cx = sp::take(current.result, std::size_t(30));
+      auto res = client::priv::found(dht, scrtch, search, current.remote, cx);
+      if (res != client::Res::OK) {
+        prepend(current.result, std::move(cx));
+      }
+    }
+
     bool res = dht.now >= current.timeout;
     if (res) {
       log::search::retire(dht, current);
     }
+
     return res;
   });
 
-  for_each(dht.searches, [&dht, &b](dht::Search &s) {
+  for_each(dht.searches, [&dht, &scrtch](dht::Search &s) {
     /**/
   Lit:
     auto head = peek_head(s.queue);
     if (head) {
-      reset(b);
 
-      auto res = client::get_peers(dht, b, head->contact, s.search, s.ctx);
+      reset(scrtch);
+      auto res = client::get_peers(dht, scrtch, head->contact, s.search, s.ctx);
       if (res == client::Res::OK) {
         ++s.ctx->ref_cnt;
         drop_head(s.queue);
@@ -122,8 +132,10 @@ static bool
 handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
                sp::Seconds timeout) {
   auto &dht = ctx.dht;
-  dht::Search *ins = insert(dht.searches, search);
+
+  dht::Search *ins = emplace(dht.searches, search, ctx.remote);
   assertx(ins);
+
   if (ins) {
     ins->timeout = dht.now + timeout;
 

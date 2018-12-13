@@ -401,6 +401,7 @@ struct K {
 struct Search {
   SearchContext *ctx;
   Infohash search;
+  Contact remote;
 
   sp::StaticArray<sp::hasher<NodeId>, 2> hashers;
   sp::BloomFilter<NodeId, 8 * 1024 * 1024> searched;
@@ -409,10 +410,11 @@ struct Search {
   heap::StaticMaxBinary<K, 1024> queue;
   sp::LinkedList<Contact> result;
 
-  explicit Search(const Infohash &) noexcept;
+  explicit Search(const Infohash &, const Contact &) noexcept;
 
-  Search(const Search &) = delete;
+  // Search(Search &&) noexcept;
   Search(const Search &&) = delete;
+  Search(const Search &) = delete;
 
   Search &
   operator=(const Search &) = delete;
