@@ -142,6 +142,8 @@ Config::Config() noexcept
     //
     , bucket_find_node_spam(1)
     , max_bucket_not_find_node(5)
+    //
+    , bootstrap_reset(60)
 //
 {
 }
@@ -352,6 +354,9 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     , bad_nodes(0)
     , now(0)
     // boostrap {{{
+    , bootstrap_last_reset(0)
+    , bootstrap_hashers()
+    , bootstrap_filter(bootstrap_hashers)
     , bootstrap_contacts()
     , active_searches(0)
     // }}}
@@ -361,6 +366,9 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
 
 //}}}
 {
+
+  assertx_n(insert(bootstrap_hashers, djb_contact));
+  assertx_n(insert(bootstrap_hashers, fnv_contact));
 }
 
 DHT::~DHT() {

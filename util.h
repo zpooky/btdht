@@ -92,6 +92,12 @@ struct Contact {
   operator>(const Contact &) const noexcept;
 };
 
+std::size_t
+fnv_contact(const Contact &contact) noexcept;
+
+std::size_t
+djb_contact(const Contact &contact) noexcept;
+
 bool
 convert(const char *, Contact &) noexcept;
 

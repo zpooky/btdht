@@ -158,6 +158,8 @@ struct Config {
    * 'look_for_nodes'
    */
   std::size_t max_bucket_not_find_node;
+  /*  */
+  sp::Minutes bootstrap_reset;
 
   Config() noexcept;
 };
@@ -482,7 +484,9 @@ struct DHT {
   // }}}
 
   // boostrap {{{
-  // TODO bloomfilter & counter for when bloomfilter should be reset
+  Timestamp bootstrap_last_reset;
+  sp::StaticArray<sp::hasher<Contact>, 2> bootstrap_hashers;
+  sp::BloomFilter<Contact, 8 * 1024> bootstrap_filter;
   sp::SkipList<Contact, 4> bootstrap_contacts;
   std::uint32_t active_searches;
   // }}}

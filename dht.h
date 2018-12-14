@@ -70,6 +70,20 @@ nodes_total(const DHT &) noexcept;
 std::uint32_t
 nodes_bad(const DHT &) noexcept;
 
+//==========================================
+void
+bootstrap_insert(DHT &, const Contact &) noexcept;
+
+void
+bootstrap_insert_force(DHT &, const Contact &) noexcept;
+
+void
+bootstrap_remove(DHT &, const Contact &) noexcept;
+
+void
+bootstrap_reset(DHT &) noexcept;
+
+//==========================================
 } // namespace dht
 
 #endif

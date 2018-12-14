@@ -739,4 +739,29 @@ nodes_bad(const DHT &self) noexcept {
   return self.bad_nodes;
 }
 
+void
+bootstrap_insert(DHT &self, const Contact &remote) noexcept {
+  if (!test(self.bootstrap_filter, remote)) {
+    insert_unique(self.bootstrap_contacts, remote);
+    insert(self.bootstrap_filter, remote);
+  }
+}
+
+void
+bootstrap_insert_force(DHT &self, const Contact &remote) noexcept {
+  insert_unique(self.bootstrap_contacts, remote);
+}
+
+void
+bootstrap_remove(DHT &self, const Contact &remote) noexcept {
+  remove(self.bootstrap_contacts, remote);
+}
+
+void
+bootstrap_reset(DHT &self) noexcept {
+  auto &filter = self.bootstrap_filter;
+  auto &set = filter.bitset;
+  std::memset(set.raw, 0, sizeof(set.raw));
+}
+
 } // namespace dht

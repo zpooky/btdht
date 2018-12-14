@@ -1,6 +1,7 @@
 #include "util.h"
 #include <arpa/inet.h>
 #include <cstring>
+#include <hash/djb2.h>
 #include <hash/fnv.h>
 #include <memory>
 #include <util/assert.h>
@@ -127,6 +128,62 @@ Contact::operator<(const Contact &o) const noexcept {
 bool
 Contact::operator>(const Contact &o) const noexcept {
   return ip > o.ip;
+}
+
+static std::uint64_t
+fnv_ipv4(const Ipv4 &c) {
+  return fnv_1a::encode64(&c, sizeof(c));
+}
+
+static std::uint64_t
+fnv_ipv6(const Ipv6 &c) {
+  return fnv_1a::encode64(c.raw, sizeof(c.raw));
+}
+
+static std::uint64_t
+fnv_ip(const Ip &c) {
+  if (c.type == IpType::IPV4) {
+    return fnv_ipv4(c.ipv4);
+  } else if (c.type == IpType::IPV6) {
+    return fnv_ipv6(c.ipv6);
+  }
+
+  assertxs(false, (uint8_t)c.type);
+  return 0;
+}
+
+static std::uint32_t
+djb_ipv4(const Ipv4 &c) {
+  return djb2::encode32(&c, sizeof(c));
+}
+
+static std::uint32_t
+djb_ipv6(const Ipv6 &c) {
+  return djb2::encode32(c.raw, sizeof(c.raw));
+}
+
+static std::uint32_t
+djb_ip(const Ip &c) {
+  if (c.type == IpType::IPV4) {
+    return djb_ipv4(c.ipv4);
+  } else if (c.type == IpType::IPV6) {
+    return djb_ipv6(c.ipv6);
+  }
+
+  assertxs(false, (uint8_t)c.type);
+  return 0;
+}
+
+std::size_t
+fnv_contact(const Contact &contact) noexcept {
+  std::uint64_t result = fnv_ip(contact.ip);
+  return fnv_1a::encode(&contact.port, sizeof(contact.port), result);
+}
+
+std::size_t
+djb_contact(const Contact &contact) noexcept {
+  std::uint32_t result = djb_ip(contact.ip);
+  return djb2::encode(&contact.port, sizeof(contact.port), result);
 }
 
 bool

@@ -26,6 +26,9 @@ on_awake_ping(DHT &, sp::Buffer &) noexcept;
 
 static Timeout
 on_awake_peer_db(DHT &, sp::Buffer &) noexcept;
+
+static Timeout
+on_awake_bootstrap_reset(DHT &, sp::Buffer &) noexcept;
 } // namespace dht
 
 namespace interface_dht {
@@ -47,6 +50,7 @@ setup(dht::Modules &modules) noexcept {
   insert(modules.on_awake, &dht::on_awake);
   insert(modules.on_awake, &dht::on_awake_ping);
   insert(modules.on_awake, &dht::on_awake_peer_db);
+  insert(modules.on_awake, &dht::on_awake_bootstrap_reset);
 
   return true;
 }
@@ -230,6 +234,18 @@ on_awake_peer_db(DHT &dht, sp::Buffer &) noexcept {
   // TODO
 
   return dht.config.refresh_interval;
+}
+
+static Timeout
+on_awake_bootstrap_reset(DHT &dht, sp::Buffer &) noexcept {
+  Timestamp timeout = dht.bootstrap_last_reset + dht.config.bootstrap_reset;
+  if (dht.now >= timeout) {
+    bootstrap_reset(dht);
+    dht.bootstrap_last_reset = dht.now;
+    timeout = dht.bootstrap_last_reset + dht.config.bootstrap_reset;
+  }
+
+  return timeout - dht.now;
 }
 
 static Timeout
@@ -622,9 +638,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 
       auto res = dht::insert(dht, node);
       if (!res) {
-        // TODO Maybe have a bloomfilter to filter out recently tried nodes.
-        //      This bloomfilter will be cleared at interval(on_awake).
-        insert_unique(dht.bootstrap_contacts, node.contact);
+        bootstrap_insert(dht, node.contact);
       }
     });
   });
@@ -650,7 +664,7 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
     // arbitrary?
     if (nodes_good(dht) < 100) {
       auto *bs = (Contact *)closure;
-      insert_unique(dht.bootstrap_contacts, *bs);
+      bootstrap_insert_force(dht, *bs);
     }
   }
 
@@ -742,10 +756,12 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       return false;
     }
 
-    if (!is_empty(nodes)) {
+    if (is_empty(nodes)) {
       if (cap_ptr) {
-        // only remove bootstrap node if we have gotten some nodes from it
-        remove(dht.bootstrap_contacts, *cap_ptr);
+        if (nodes_good(dht) < 100) {
+          // only remove bootstrap node if we have gotten some nodes from it
+          bootstrap_insert_force(dht, *cap_ptr);
+        }
       }
     }
 
@@ -859,7 +875,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       dht::Node ins(contact, dht.now);
       auto res = dht::insert(dht, ins);
       if (!res) {
-        insert_unique(dht.bootstrap_contacts, ins.contact);
+        bootstrap_insert(dht, ins.contact);
       }
     }); // for_each
 

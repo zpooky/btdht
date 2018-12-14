@@ -366,9 +366,9 @@ main(int argc, char **argv) {
     assertx(bs.ip.ipv4 > 0);
     assertx(bs.port > 0);
 
-    // TODO bootstrap should be a circular linked list and include a sent date
-    // and a outstanding request counter for each entry
-    insert_unique(mdht->bootstrap_contacts, bs);
+    // TODO bootstrap should  include a sent date and a outstanding request
+    // counter for each entry
+    bootstrap_insert(*mdht, bs);
   });
 
   printf("total bootstrap(%zu)\n", sp::n::length(mdht->bootstrap_contacts));
