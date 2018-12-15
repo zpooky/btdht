@@ -57,80 +57,14 @@ setup(dht::Modules &modules) noexcept {
 
 } // namespace interface_dht
 
-namespace dht {
-
-template <typename F>
-static void
-for_each(Node *node, F f) noexcept {
-Lstart:
-  if (node) {
-    f(node);
-    node = node->timeout_next;
-    goto Lstart;
-  }
-}
-
-static void
-inc_outstanding(Node &node) noexcept {
-  const std::uint8_t max = ~0;
-  if (node.ping_outstanding != max) {
-    ++node.ping_outstanding;
-  }
-}
-
-} // namespace dht
-
 namespace timeout {
-
-template <typename T>
-static T *
-take(Timestamp now, sp::Milliseconds timeout, T *&the_head,
-     std::size_t max) noexcept {
-  auto is_expired = [now, timeout](auto &node) { //
-    return (node.req_sent + timeout) > now;
-  };
-
-  T *result = nullptr;
-  T *const head = the_head;
-  T *current = head;
-  std::size_t cnt = 0;
-
-Lstart:
-  if (current && cnt < max) {
-
-    if (is_expired(*current)) {
-      T *const next = current->timeout_next;
-      timeout::unlink(the_head, current);
-
-      if (!result) {
-        result = current;
-      } else {
-        current->timeout_next = result;
-        result = current;
-      }
-      ++cnt;
-
-      if (next != head) {
-        current = next;
-        goto Lstart;
-      } else {
-        the_head = nullptr;
-      }
-    }
-  }
-
-  return result;
-} // timeout::take()
-
-// TODO XXX what is timeout????!?!?! (i want last sent timeout)
-
 template <typename F>
 bool
-for_all(dht::DHT &ctx, sp::Milliseconds timeout, F f) {
+for_all_node(dht::DHT &ctx, sp::Milliseconds timeout, F f) {
 // TODO make ping have a timeout and find_node has another
 Lstart:
 
-  dht::Node *node = timeout::take(ctx.now, timeout, ctx.timeout_node, 1);
+  dht::Node *node = timeout::take_node(ctx, timeout);
   if (node) {
     assertx(node->timeout_next == nullptr);
     assertx(node->timeout_priv == nullptr);
@@ -155,11 +89,6 @@ Lstart:
   return true;
 }
 
-static dht::Node *
-head(dht::DHT &ctx) noexcept {
-  return ctx.timeout_node;
-} // timeout::head()
-
 static void
 update_receive(dht::DHT &, dht::Node *) noexcept {
   // TODO rename response_activity to receive_activity?
@@ -170,6 +99,22 @@ update_receive(dht::DHT &, dht::Node *) noexcept {
 } // namespace timeout
 
 namespace dht {
+template <typename F>
+static void
+for_each(Node *node, F f) noexcept {
+  while (node) {
+    f(node);
+    node = node->timeout_next;
+  }
+}
+
+static void
+inc_outstanding(Node &node) noexcept {
+  const std::uint8_t max = ~0;
+  if (node.ping_outstanding != max) {
+    ++node.ping_outstanding;
+  }
+}
 
 /*pings*/
 static Timeout
@@ -177,7 +122,7 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   Config &cfg = ctx.config;
 
   /* Send ping to nodes */
-  timeout::for_all(ctx, cfg.refresh_interval, [&out](auto &dht, auto &node) {
+  timeout::for_all_node(ctx, cfg.refresh_interval, [&out](auto &dht, auto &node) {
     bool result = client::ping(dht, out, node) == client::Res::OK;
     if (result) {
       inc_outstanding(node);
@@ -199,7 +144,7 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   /* Calculate next timeout based on the head if the timeout list which is in
    * sorted order where to oldest node is first in the list.
    */
-  Node *const tHead = timeout::head(ctx);
+  Node *const tHead = ctx.timeout_node;
   if (tHead) {
     const Timestamp next = tHead->req_sent + cfg.refresh_interval;
     ctx.timeout_next = next;
@@ -279,7 +224,7 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     auto result = client::Res::OK;
     std::size_t sent_count = 0;
 
-    timeout::for_all(dht, cfg.refresh_interval, [&](auto &ctx, Node &remote) {
+    timeout::for_all_node(dht, cfg.refresh_interval, [&](auto &ctx, Node &remote) {
       if (dht::is_good(ctx, remote)) {
         const Contact &c = remote.contact;
         dht::NodeId &self = dht.id;

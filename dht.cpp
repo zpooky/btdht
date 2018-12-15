@@ -11,28 +11,6 @@
 #include <util/assert.h>
 
 namespace dht {
-
-static bool
-debug_is_cycle(DHT &dht) noexcept {
-  Peer *const head = dht.timeout_peer;
-  if (head) {
-    Peer *it = head;
-  Lit:
-    if (head) {
-      Peer *next = it->timeout_next;
-      assertx(it == next->timeout_priv);
-
-      it = next;
-      if (it != head) {
-        goto Lit;
-      }
-    } else {
-      assertx(head);
-    }
-  }
-  return true;
-}
-
 template <std::size_t SIZE>
 static bool
 randomize(DHT &dht, sp::byte (&buffer)[SIZE]) noexcept {
@@ -288,7 +266,6 @@ split(DHT &dht, RoutingTable *parent, std::size_t idx) noexcept {
             next->timeout_priv = c;
         };
 
-        assertx(debug_is_cycle(dht));
         timeout::unlink(dht, &contact);
         assertx(!contact.timeout_next);
         assertx(!contact.timeout_priv);
@@ -686,7 +663,6 @@ Lstart:
     if (inserted) {
       // printf("- insert\n");
       timeout::insert_new(dht, inserted);
-      assertx(debug_is_cycle(dht));
       assertx(inserted->timeout_next);
       assertx(inserted->timeout_priv);
 
