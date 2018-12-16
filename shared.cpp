@@ -206,18 +206,18 @@ activity(const Peer &peer) noexcept {
 
 /*dht::Bucket*/
 Bucket::Bucket() noexcept
-    : contacts()
-    , find_node(0)
-    , bootstrap_generation(0) {
+    : contacts() {
 }
 
 Bucket::~Bucket() noexcept {
 }
 
 /*dht::RoutingTable*/
-RoutingTable::RoutingTable() noexcept
-    : in_tree()
-    , bucket() {
+RoutingTable::RoutingTable(std::size_t d) noexcept
+    : depth(d)
+    , in_tree()
+    , bucket()
+    , next(nullptr) {
 }
 
 RoutingTable::~RoutingTable() noexcept {

@@ -216,8 +216,6 @@ activity(const Peer &) noexcept;
 struct Bucket {
   static inline constexpr std::size_t K = 32;
   Node contacts[K];
-  Timestamp find_node;
-  std::uint8_t bootstrap_generation;
 
   Bucket() noexcept;
   ~Bucket() noexcept;
@@ -279,10 +277,12 @@ for_each(const Bucket &b, F f) noexcept {
 
 // dht::RoutingTable
 struct RoutingTable {
+  std::size_t depth;
   RoutingTable *in_tree;
   Bucket bucket;
+  RoutingTable *next;
 
-  RoutingTable() noexcept;
+  RoutingTable(std::size_t) noexcept;
 
   ~RoutingTable() noexcept;
 };
