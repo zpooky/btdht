@@ -44,11 +44,12 @@ debug_is_cycle(T *const head) noexcept {
 template <typename T>
 void
 internal_unlink(T *&head, T *const node) noexcept {
+  assertx(node);
+
   T *priv = node->timeout_priv;
   T *next = node->timeout_next;
-
-  assertx(priv);
-  assertx(next);
+  assertxs(priv, priv, next);
+  assertxs(next, next, priv);
 
   if (priv == node || next == node) {
     assertx(priv == node);
@@ -88,8 +89,8 @@ unlink(dht::DHT &self, dht::Node *contact) noexcept {
 } // timeout::unlink()
 
 void
-unlink(dht::Peer *&head, dht::Peer *peer) noexcept {
-  return internal_unlink(head, peer);
+unlink(dht::DHT &self, dht::Peer *peer) noexcept {
+  return internal_unlink(self.timeout_peer, peer);
 } // timeout::unlink()
 
 //=====================================

@@ -9,10 +9,10 @@ void
 unlink(dht::Node *&head, dht::Node *) noexcept;
 
 void
-unlink(dht::DHT &ctx, dht::Node *contact) noexcept;
+unlink(dht::DHT &, dht::Node *) noexcept;
 
-// void
-// unlink(dht::Peer *&head, dht::Peer *) noexcept;
+void
+unlink(dht::DHT &, dht::Peer *) noexcept;
 
 //=====================================
 void

@@ -94,12 +94,8 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
   };
 
   auto add_peer = [&dht](dht::KeyValue &s, const Contact &c) {
-    auto p = new dht::Peer(c, dht.now, s.peers);
-    if (p) {
-      s.peers = p;
-      return true;
-    }
-    return false;
+    s.peers = new dht::Peer(c, dht.now, s.peers);
+    return s.peers;
   };
 
   auto find = [](dht::KeyValue &t, const Contact &s) {
@@ -122,17 +118,20 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
   }
 
   if (table) {
-    dht::Peer *const existing = find(*table, contact);
+    dht::Peer *existing = find(*table, contact);
     if (existing) {
-      // TODO timeout::unlink_x(dht, existing);
+      timeout::unlink(dht, existing);
       existing->activity = dht.now;
       timeout::append_all(dht, existing);
 
       return true;
-    } else if (add_peer(*table, contact)) {
-      log::peer_db::insert(dht, infohash, contact);
-
-      return true;
+    } else {
+      existing = add_peer(*table, contact);
+      if (existing) {
+        timeout::append_all(dht, existing);
+        log::peer_db::insert(dht, infohash, contact);
+        return true;
+      }
     }
     if (!table->peers) {
       // TODO if add false and create needle reclaim needle
