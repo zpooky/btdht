@@ -18,6 +18,7 @@
 
 #include <heap/binary.h>
 #include <prng/xorshift.h>
+#include <tree/avl.h>
 #include <util/maybe.h>
 
 //---------------------------
@@ -309,12 +310,20 @@ for_all_node(const RoutingTable *it, F f) noexcept {
 
 // dht::KeyValue
 struct KeyValue {
-  KeyValue *next;
   Peer *peers;
   Infohash id;
   //
-  KeyValue(const Infohash &, KeyValue *) noexcept;
+  KeyValue(const Infohash &) noexcept;
+
+  bool
+  operator>(const Infohash &) const noexcept;
+
+  bool
+  operator>(const KeyValue &) const noexcept;
 };
+
+bool
+operator>(const Infohash &, const KeyValue &) noexcept;
 
 template <typename F>
 bool
@@ -456,7 +465,8 @@ struct DHT {
   //}}}
 
   // peer-lookup db {{{
-  KeyValue *lookup_table;
+  avl::Tree<KeyValue> lookup_table;
+  // KeyValue* lookup_table;
   Peer *timeout_peer;
   Timestamp timeout_peer_next;
   //}}}

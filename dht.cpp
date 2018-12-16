@@ -611,8 +611,9 @@ bucket_for(DHT &dht, const NodeId &id) noexcept {
 }
 
 Node *
-insert(DHT &dht, const Node &contact) noexcept {
-  auto can_split = [&dht](const Bucket &bucket, std::size_t idx) {
+insert(DHT &self, const Node &contact) noexcept {
+  // TODO ONLY add a linked list entry to Bucket when we can NOT split
+  auto can_split = [&self](const Bucket &bucket, std::size_t idx) {
     std::size_t bits[2] = {0};
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       const Node &c = bucket.contacts[i];
@@ -633,7 +634,7 @@ insert(DHT &dht, const Node &contact) noexcept {
     return nullptr;
   }
 
-  if (dht.id == contact.id) {
+  if (self.id == contact.id) {
     return nullptr;
   }
 
@@ -641,7 +642,7 @@ Lstart:
   bool inTree = false;
   std::size_t idx = 0;
 
-  RoutingTable *const leaf = find_closest(dht, contact.id, inTree, idx);
+  RoutingTable *const leaf = find_closest(self, contact.id, inTree, idx);
   if (leaf) {
     Bucket &bucket = leaf->bucket;
     {
@@ -658,38 +659,37 @@ Lstart:
     bool eager_merge = /*!inTree;*/ false;
     bool replaced = false;
     Node *const inserted =
-        do_insert(dht, bucket, contact, eager_merge, /*OUT*/ replaced);
+        do_insert(self, bucket, contact, eager_merge, /*OUT*/ replaced);
 
     if (inserted) {
       // printf("- insert\n");
-      timeout::insert_new(dht, inserted);
+      timeout::insert_new(self, inserted);
       assertx(inserted->timeout_next);
       assertx(inserted->timeout_priv);
 
-      log::routing::insert(dht, *inserted);
+      log::routing::insert(self, *inserted);
       if (!replaced) {
-        ++dht.total_nodes;
+        ++self.total_nodes;
       }
     } else {
       if (inTree || can_split(bucket, idx)) {
-        if (split(dht, leaf, idx)) {
+        if (split(self, leaf, idx)) {
           // XXX make better
           goto Lstart;
         }
         assertx(false);
       }
-      log::routing::can_not_insert(dht, contact);
+      log::routing::can_not_insert(self, contact);
     }
 
     return inserted;
   } else {
     /* Empty tree */
-    assertx(!dht.root);
-    dht.root = alloc<RoutingTable>(dht);
-    if (dht.root) {
+    assertx(!self.root);
+    self.root = alloc<RoutingTable>(self);
+    if (self.root) {
       goto Lstart;
     }
-    printf("- failed alloc\n");
   }
 
   return nullptr;

@@ -7,10 +7,11 @@
 namespace db {
 
 dht::KeyValue *
-lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
-  auto find_haystack = [](dht::KeyValue *current,
-                          const dht::Infohash &id) -> dht::KeyValue * {
-    dht::KeyValue *const start = current;
+lookup(dht::DHT &self, const dht::Infohash &infohash) noexcept {
+  auto find_haystack = [&self](const dht::Infohash &id) -> dht::KeyValue * {
+#if 0
+    dht::KeyValue *const start = self.lookup_table;
+    dht::KeyValue *current = start;
     // XXX tree?
     while (current) {
       if (id == current->id) {
@@ -22,11 +23,11 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
         break;
       }
     }
-
-    return nullptr;
+#endif
+    return find(self.lookup_table, id);
   };
 
-  auto is_expired = [&dht](dht::Peer &peer) {
+  auto is_expired = [&self](dht::Peer &peer) {
     Timestamp peer_activity = peer.activity;
 
     // Determine to age if end of life is higher than now and make sure that
@@ -34,25 +35,28 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
     // updates at all
     dht::Config config;
     Timestamp peer_eol = peer_activity + config.peer_age_refresh;
-    if (peer_eol < dht.now) {
-      if (dht.last_activity > peer_eol) {
+    if (peer_eol < self.now) {
+      if (self.last_activity > peer_eol) {
         return true;
       }
     }
     return false;
   };
 
-  auto reclaim = [&dht](dht::Peer *peer) { //
+  auto reclaim = [&self](dht::Peer *peer) { //
+    assertx(peer);
+    timeout::unlink(self, peer);
     // XXX pool
     delete peer;
   };
 
-  auto reclaim_table = [&dht](dht::KeyValue *kv) { //
+  auto reclaim_table = [&self](dht::KeyValue *kv) { //
+    bool res = remove(self.lookup_table, *kv);
+    assertx(res);
     // XXX pool
-    delete kv;
   };
 
-  dht::KeyValue *const needle = find_haystack(dht.lookup_table, infohash);
+  dht::KeyValue *const needle = find_haystack(infohash);
   if (needle) {
     dht::Peer dummy;
     dht::Peer *it = dummy.next = needle->peers;
@@ -74,6 +78,7 @@ lookup(dht::DHT &dht, const dht::Infohash &infohash) noexcept {
     if (needle->peers) {
       return needle;
     }
+
     reclaim_table(needle);
   }
 
@@ -85,12 +90,8 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
        const Contact &contact) noexcept {
 
   auto new_table = [&dht, infohash]() -> dht::KeyValue * {
-    auto result = new dht::KeyValue(infohash, dht.lookup_table);
-    if (result) {
-      dht.lookup_table = result;
-    }
-
-    return result;
+    auto result = insert(dht.lookup_table, infohash);
+    return std::get<0>(result);
   };
 
   auto add_peer = [&dht](dht::KeyValue &s, const Contact &c) {

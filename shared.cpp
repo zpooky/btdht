@@ -228,11 +228,24 @@ RoutingTable::~RoutingTable() noexcept {
 }
 
 // dht::KeyValue
-KeyValue::KeyValue(const Infohash &pid, KeyValue *nxt) noexcept
-    : next(nxt)
-    , peers(nullptr)
-    , id() {
-  std::memcpy(id.id, pid.id, sizeof(id.id));
+KeyValue::KeyValue(const Infohash &pid) noexcept
+    : peers(nullptr)
+    , id(pid) {
+}
+
+bool
+KeyValue::operator>(const Infohash &o) const noexcept {
+  return id > o;
+}
+
+bool
+KeyValue::operator>(const KeyValue &o) const noexcept {
+  return id > o.id;
+}
+
+bool
+operator>(const Infohash &f, const KeyValue &s) noexcept {
+  return f > s.id;
 }
 
 // dht::Log
@@ -331,7 +344,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     , config()
     //}}}
     // peer-lookup db {{{
-    , lookup_table(nullptr)
+    , lookup_table()
     , timeout_peer(nullptr)
     , timeout_peer_next(0)
     //}}}
