@@ -158,6 +158,11 @@ Infohash::operator==(const Infohash &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) == 0;
 }
 
+bool
+Infohash::operator>(const Key &o) const noexcept {
+  return std::memcmp(id, o, sizeof(id)) > 0;
+}
+
 /*dht::Peer*/
 Peer::Peer(Ipv4 i, Port p, Timestamp n) noexcept
     : contact(i, p)
@@ -235,17 +240,17 @@ KeyValue::KeyValue(const Infohash &pid) noexcept
 
 bool
 KeyValue::operator>(const Infohash &o) const noexcept {
-  return id > o;
+  return id.operator>(o.id);
 }
 
 bool
 KeyValue::operator>(const KeyValue &o) const noexcept {
-  return id > o.id;
+  return id.operator>(o.id.id);
 }
 
 bool
 operator>(const Infohash &f, const KeyValue &s) noexcept {
-  return f > s.id;
+  return f.operator>(s.id.id);
 }
 
 // dht::Log

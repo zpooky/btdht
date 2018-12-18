@@ -180,9 +180,9 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];
-    if (!contact) {
+    if (!is_valid(contact)) {
       contact = c;
-      assertx(contact);
+      assertx(is_valid(contact));
 
       // timeout::append_all(dht, &contact);
       return &contact;
@@ -195,10 +195,10 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
       if (!is_good(dht, contact)) {
         timeout::unlink(dht, &contact);
         reset(dht, contact);
-        assertx(!contact);
+        assertx(!is_valid(contact));
 
         contact = c;
-        assertx(contact);
+        assertx(is_valid(contact));
 
         // timeout::append_all(dht, &contact);
 
@@ -220,7 +220,7 @@ find(RoutingTable &table, const Key &id) noexcept {
 
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
-      if (contact) {
+      if (is_valid(contact)) {
 
         if (contact.id == id) {
           return &contact;
@@ -260,7 +260,7 @@ split(DHT &self, RoutingTable *parent, std::size_t idx) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
 
     Node &contact = bucket.contacts[i];
-    if (contact) {
+    if (is_valid(contact)) {
       if (should_transfer(contact)) {
         Node *const priv = contact.timeout_priv;
         Node *const next = contact.timeout_next;
@@ -290,7 +290,7 @@ split(DHT &self, RoutingTable *parent, std::size_t idx) noexcept {
           // reset
         }
         contact = Node();
-        assertx(!contact);
+        assertx(!is_valid(contact));
 
         ++moved;
       }
@@ -380,7 +380,7 @@ Lstart:
 
       for (std::size_t i = 0; i < res_length; ++i) {
         Node &contact = b.contacts[i];
-        if (contact) {
+        if (is_valid(contact)) {
 
           if (is_good(self, contact)) {
             result[resIdx++] = &contact;
@@ -513,7 +513,7 @@ insert(DHT &self, const Node &contact) noexcept {
     std::size_t bits[2] = {0};
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       const Node &c = bucket.contacts[i];
-      if (c) {
+      if (is_valid(c)) {
         std::size_t bit_idx = bit(c.id, idx) ? 0 : 1;
         bits[bit_idx]++;
       }

@@ -194,8 +194,6 @@ struct NodeId {
 
   bool
   operator<(const NodeId &o) const noexcept;
-
-  explicit operator bool() const noexcept;
 };
 } // namespace dht
 
@@ -260,9 +258,10 @@ struct Node {
   Node() noexcept;
   Node(const NodeId &, const Contact &, Timestamp) noexcept;
   Node(const Node &, Timestamp) noexcept;
-
-  explicit operator bool() const noexcept;
 };
+
+bool
+is_valid(const Node &) noexcept;
 
 } // namespace dht
 

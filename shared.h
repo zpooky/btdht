@@ -173,6 +173,9 @@ struct Infohash {
 
   bool
   operator==(const Infohash &) const noexcept;
+
+  bool
+  operator>(const Key &) const noexcept;
 };
 
 // dht::Peer
@@ -234,7 +237,7 @@ bool
 for_all(Bucket &b, F f) noexcept {
   bool result = true;
   for (std::size_t i = 0; i < Bucket::K && result; ++i) {
-    if (b.contacts[i]) {
+    if (is_valid(b.contacts[i])) {
       result = f(b.contacts[i]);
     }
   }
@@ -247,7 +250,7 @@ for_all(const Bucket &b, F f) noexcept {
   bool result = true;
   for (std::size_t i = 0; i < Bucket::K && result; ++i) {
     const Node &current = b.contacts[i];
-    if (current) {
+    if (is_valid(current)) {
       result = f(current);
     }
   }

@@ -336,10 +336,6 @@ bool
 NodeId::operator<(const NodeId &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) == -1;
 }
-
-NodeId::operator bool() const noexcept {
-  return is_valid(*this);
-}
 } // namespace dht
 
 namespace sp {
@@ -458,8 +454,9 @@ Node::Node(const Node &node, Timestamp now) noexcept
     : Node(node.id, node.contact, now) {
 }
 
-Node::operator bool() const noexcept {
-  return is_valid(id);
+bool
+is_valid(const Node &n) noexcept {
+  return is_valid(n.id);
 }
 
 } // namespace dht
