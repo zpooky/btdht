@@ -232,6 +232,33 @@ RoutingTable::~RoutingTable() noexcept {
   }
 }
 
+#if 0
+bool
+operator<(const RoutingTable &f, std::size_t depth) noexcept {
+  return f.depth < depth;
+}
+
+bool
+operator<(const RoutingTable &f, const RoutingTable &s) noexcept {
+  return f.depth < s.depth;
+}
+#endif
+
+bool
+RoutingTableLess::operator()(const RoutingTable *f, std::size_t depth) const
+    noexcept {
+  assertx(f);
+  return f->depth < depth;
+}
+
+bool
+RoutingTableLess::operator()(const RoutingTable *f, const RoutingTable *s) const
+    noexcept {
+  assertx(f);
+  assertx(s);
+  return f->depth < s->depth;
+}
+
 // dht::KeyValue
 KeyValue::KeyValue(const Infohash &pid) noexcept
     : peers(nullptr)
@@ -355,6 +382,10 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     //}}}
     // routing-table {{{
     , root(nullptr)
+    // TODO
+    , rt_reuse_raw{nullptr}
+    , rt_reuse(rt_reuse_raw, 0)
+    , root_prefix(0)
     //}}}
     // timeout{{{
     , timeout_next(0)

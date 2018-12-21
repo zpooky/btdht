@@ -290,6 +290,22 @@ struct RoutingTable {
   ~RoutingTable() noexcept;
 };
 
+#if 0
+bool
+operator<(const RoutingTable &, std::size_t) noexcept;
+
+bool
+operator<(const RoutingTable &, const RoutingTable &) noexcept;
+#endif
+
+struct RoutingTableLess {
+  bool
+  operator()(const RoutingTable *f, std::size_t s) const noexcept;
+
+  bool
+  operator()(const RoutingTable *f, const RoutingTable *s) const noexcept;
+};
+
 template <typename F>
 bool
 for_all(const RoutingTable *it, F f) noexcept {
@@ -476,6 +492,9 @@ struct DHT {
 
   // routing-table {{{
   RoutingTable *root;
+  RoutingTable **rt_reuse_raw;
+  heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
+  std::size_t root_prefix;
   //}}}
 
   // timeout {{{

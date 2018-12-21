@@ -125,15 +125,15 @@ find_closest(DHT &self, const NodeId &search, /*OUT*/ bool &in_tree,
   RoutingTable *root = self.root;
   bidx = 0;
 
-Lstart:
-  if (root) {
+  while (root) {
     bool high = bit(search, bidx);
-    bool ref_high = bit(self.id, bidx);
+    bool self_high = bit(self.id, bidx);
     // in_tree is true if search so far share the same prefix with self.id
-    in_tree &= (ref_high == high);
+    in_tree &= (self_high == high);
 
     if (in_tree) {
       if (root->in_tree) {
+        /* More precise match */
         root = root->in_tree;
       } else {
         return root;
@@ -143,24 +143,117 @@ Lstart:
     }
 
     ++bidx;
-    goto Lstart;
   }
+
   return root;
 }
 
+// TODO this function is not used
 template <typename T>
 static void
-dealloc(DHT &, T *reclaim) {
-  // reclaim->~T();
-  // free(reclaim);
-  delete reclaim;
+dealloc(DHT &self, T *reclaim) {
+  assertx(reclaim);
+
+  // TODO this is not correctly impl in heap
+  auto fres = find(self.rt_reuse, reclaim);
+  assertx(fres);
+  if (fres) {
+    // TODO this function is not implemented
+    //      i = index_of($reclaim)
+    //      for i swap(i,i+1)
+    //        ++i
+    //      length=length-1;
+    auto res = remove(self.rt_reuse, reclaim);
+    assertx(res);
+
+    delete reclaim;
+  }
+}
+
+static bool
+dequeue(DHT &self, RoutingTable *subject) noexcept {
+  if (self.root == subject) {
+    self.root = subject->next;
+  } else {
+    auto it = self.root;
+    while (it) {
+      if (it->next == subject) {
+        it->next = subject->next;
+        break;
+      }
+      it = it->next;
+    }
+
+    if (it == nullptr) {
+      return false;
+    }
+  }
+
+  auto &bucket = subject->bucket;
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    auto &contact = bucket.contacts[i];
+    if (is_valid(contact)) {
+      timeout::unlink(self, &contact);
+    }
+
+    assertx(!contact.timeout_next);
+    assertx(!contact.timeout_priv);
+  }
+
+  if (self.root == nullptr) {
+    assertxs(subject->in_tree, subject->depth);
+    self.root = subject->in_tree;
+  }
+
+  // TODO how to handle $subject->in_tree
+  subject->in_tree = nullptr;
+  subject->next = nullptr;
+
+  // TODO check this when inserting
+  self.root_prefix++;
+
+  return true;
 }
 
 static RoutingTable *
-alloc_RoutingTable(DHT &, std::size_t depth) {
-  // raw alloc stash
-  // void *result = malloc(sizeof(T));
-  return new RoutingTable(depth);
+alloc_RoutingTable(DHT &self, std::size_t depth) {
+  if (!is_full(self.rt_reuse)) {
+    auto result = new RoutingTable(depth);
+    if (result) {
+      auto r = insert(self.rt_reuse, result);
+      assertx(r);
+      assertx(*r == result);
+    }
+    return result;
+  }
+
+  RoutingTable **head = peek_head(self.rt_reuse);
+  assertxs(head, capacity(self.rt_reuse), length(self.rt_reuse));
+  if (head) {
+    auto h = *head;
+    assertx(h);
+
+    if (h->depth < depth) {
+      if (!dequeue(self, h)) {
+        assertx(false);
+        return nullptr;
+      }
+      // XXX  migrate of possible good contacts in $h to empty/bad linked
+      //      RoutingTable contacts. timeout contact
+
+      h->~RoutingTable();
+      new (h) RoutingTable(depth);
+
+      auto res = decrease_key(self.rt_reuse, head);
+      assertx(res);
+      assertx(res != head);
+      assertx(*res == h);
+
+      return h;
+    }
+  }
+
+  return nullptr;
 }
 
 static void
@@ -174,8 +267,8 @@ reset(DHT &dht, Node &contact) noexcept {
 }
 
 static Node *
-do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
-          /*OUT*/ bool &replaced) noexcept {
+do_insert(DHT &dht, Bucket &bucket, const Node &c, //
+          bool eager, /*OUT*/ bool &replaced) noexcept {
   replaced = false;
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
@@ -206,6 +299,22 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, bool eager,
         return &contact;
       }
     }
+  }
+
+  return nullptr;
+}
+
+static Node *
+do_insert(DHT &self, RoutingTable &table, const Node &c, //
+          bool eager, /*OUT*/ bool &replaced) noexcept {
+  RoutingTable *it = &table;
+  while (it) {
+    Node *result = do_insert(self, it->bucket, c, eager, replaced);
+    if (result) {
+      return result;
+    }
+
+    it = it->next;
   }
 
   return nullptr;
@@ -280,8 +389,7 @@ split(DHT &self, RoutingTable *parent, std::size_t idx) noexcept {
 
         const bool eager = false;
         bool replaced /*OUT*/ = false;
-        auto *nc =
-            do_insert(self, in_tree->bucket, contact, eager, /*OUT*/ replaced);
+        auto *nc = do_insert(self, *in_tree, contact, eager, /*OUT*/ replaced);
         assertx(!replaced);
         assertx(nc);
 
@@ -427,9 +535,9 @@ is_blacklisted(DHT &, const Contact &) noexcept {
 }
 
 bool
-should_mark_bad(DHT &dht, Node &contact) noexcept {
+should_mark_bad(DHT &self, Node &contact) noexcept {
   // XXX
-  return !is_good(dht, contact);
+  return !is_good(self, contact);
 }
 
 bool
@@ -506,26 +614,39 @@ bucket_for(DHT &dht, const NodeId &id) noexcept {
   return leaf ? &leaf->bucket : nullptr;
 }
 
-Node *
-insert(DHT &self, const Node &contact) noexcept {
-  // TODO ONLY add a linked list entry to Bucket when we can NOT split
-  auto can_split = [&self](const Bucket &bucket, std::size_t idx) {
-    std::size_t bits[2] = {0};
-    for (std::size_t i = 0; i < Bucket::K; ++i) {
-      const Node &c = bucket.contacts[i];
-      if (is_valid(c)) {
-        std::size_t bit_idx = bit(c.id, idx) ? 0 : 1;
-        bits[bit_idx]++;
-      }
+static bool
+can_split(const Bucket &bucket, std::size_t idx) {
+  std::size_t bits[2] = {0};
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    const Node &c = bucket.contacts[i];
+    if (is_valid(c)) {
+      std::size_t bit_idx = bit(c.id, idx) ? 0 : 1;
+      bits[bit_idx]++;
     }
+  }
 
-    if (bits[0] > 0 && bits[1] > 0) {
+  if (bits[0] > 0 && bits[1] > 0) {
+    return true;
+  }
+
+  return false;
+}
+
+static bool
+can_split(const RoutingTable &table, std::size_t idx) {
+  const RoutingTable *it = &table;
+  while (it) {
+    if (can_split(it->bucket, idx)) {
       return true;
     }
+    it = it->next;
+  }
 
-    return false;
-  };
+  return false;
+}
 
+Node *
+insert(DHT &self, const Node &contact) noexcept {
   if (!is_valid(contact.id)) {
     return nullptr;
   }
@@ -544,7 +665,12 @@ Lstart:
   RoutingTable *const leaf =
       find_closest(self, contact.id, /*OUT*/ inTree, /*OUT*/ bidx);
   if (leaf) {
-    Bucket &bucket = leaf->bucket;
+    assertx(shared_prefix(self.id, contact.id.id) == bidx); // TODO is the same?
+    if (shared_prefix(self.id, contact.id.id) < self.root_prefix) {
+      assertxs(!find(*leaf, contact.id), shared_prefix(self.id, contact.id.id));
+      return nullptr;
+    }
+
     {
       /*check if already present*/
       Node *const existing = find(*leaf, contact.id);
@@ -559,7 +685,7 @@ Lstart:
     bool eager_merge = /*!inTree;*/ false;
     bool replaced = false;
     Node *const inserted =
-        do_insert(self, bucket, contact, eager_merge, /*OUT*/ replaced);
+        do_insert(self, *leaf, contact, eager_merge, /*OUT*/ replaced);
 
     if (inserted) {
       timeout::insert_new(self, inserted);
@@ -569,13 +695,14 @@ Lstart:
         ++self.total_nodes;
       }
     } else {
-      if (inTree || can_split(bucket, bidx)) {
+      if (inTree || can_split(*leaf, bidx)) {
         if (split(self, leaf, bidx)) {
           // XXX make better
           goto Lstart;
         }
         assertx(false);
       } else {
+        // TODO ONLY add a linked list entry to Bucket when we can NOT split
         // TODO link->
       }
       log::routing::can_not_insert(self, contact);
@@ -584,7 +711,7 @@ Lstart:
     return inserted;
   } else {
     /* Empty tree */
-    assertx(!self.root);
+    assertx(!self.root); // TODO
     self.root = alloc_RoutingTable(self, 0);
     if (self.root) {
       goto Lstart;
