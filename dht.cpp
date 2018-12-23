@@ -119,8 +119,8 @@ randomize(prng::xorshift32 &r, NodeId &id) noexcept {
 // }
 
 static RoutingTable *
-find_closest(DHT &self, const NodeId &search, /*OUT*/ bool &in_tree,
-             /*OUT*/ std::size_t &bidx) noexcept {
+find_closest(DHT &self, const NodeId &search, //
+             /*OUT*/ bool &in_tree, /*OUT*/ std::size_t &bidx) noexcept {
   in_tree = true;
   RoutingTable *root = self.root;
   bidx = 0;
@@ -171,7 +171,7 @@ dealloc(DHT &self, T *reclaim) {
 }
 
 static bool
-dequeue(DHT &self, RoutingTable *subject) noexcept {
+dequeue_root(DHT &self, RoutingTable *subject) noexcept {
   if (self.root == subject) {
     self.root = subject->next;
   } else {
@@ -185,6 +185,7 @@ dequeue(DHT &self, RoutingTable *subject) noexcept {
     }
 
     if (it == nullptr) {
+      assertx(false);
       return false;
     }
   }
@@ -215,8 +216,22 @@ dequeue(DHT &self, RoutingTable *subject) noexcept {
   return true;
 }
 
+static void
+enqueue(RoutingTable *leaf, RoutingTable *next) noexcept {
+  assertx(leaf);
+  assertx(next);
+  RoutingTable *it = leaf;
+  while (it) {
+    if (!it->next) {
+      it->next = next;
+      break;
+    }
+    it = it->next;
+  }
+}
+
 static RoutingTable *
-alloc_RoutingTable(DHT &self, std::size_t depth) {
+alloc_RoutingTable(DHT &self, std::size_t depth) noexcept {
   if (!is_full(self.rt_reuse)) {
     auto result = new RoutingTable(depth);
     if (result) {
@@ -234,20 +249,22 @@ alloc_RoutingTable(DHT &self, std::size_t depth) {
     assertx(h);
 
     if (h->depth < depth) {
-      if (!dequeue(self, h)) {
+      if (!dequeue_root(self, h)) {
         assertx(false);
         return nullptr;
       }
-      // XXX  migrate of possible good contacts in $h to empty/bad linked
-      //      RoutingTable contacts. timeout contact
+      // XXX migrate of possible good contacts in $h to empty/bad linked
+      //     RoutingTable contacts. timeout contact
+
+      const auto h_depth = h->depth;
 
       h->~RoutingTable();
       new (h) RoutingTable(depth);
 
-      auto res = decrease_key(self.rt_reuse, head);
-      assertx(res);
-      assertx(res != head);
-      assertx(*res == h);
+      auto res = increase_key(self.rt_reuse, head); // TODO make sure this works
+      assertxs(res, h_depth, depth);
+      assertxs(*res == h, h_depth, depth);
+      assertxs(res != head, h_depth, depth);
 
       return h;
     }
@@ -267,8 +284,8 @@ reset(DHT &dht, Node &contact) noexcept {
 }
 
 static Node *
-do_insert(DHT &dht, Bucket &bucket, const Node &c, //
-          bool eager, /*OUT*/ bool &replaced) noexcept {
+bucket_insert(DHT &dht, Bucket &bucket, const Node &c, //
+              bool eager, /*OUT*/ bool &replaced) noexcept {
   replaced = false;
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
@@ -277,7 +294,6 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, //
       contact = c;
       assertx(is_valid(contact));
 
-      // timeout::append_all(dht, &contact);
       return &contact;
     }
   }
@@ -305,11 +321,11 @@ do_insert(DHT &dht, Bucket &bucket, const Node &c, //
 }
 
 static Node *
-do_insert(DHT &self, RoutingTable &table, const Node &c, //
-          bool eager, /*OUT*/ bool &replaced) noexcept {
+table_insert(DHT &self, RoutingTable &table, const Node &c, //
+             bool eager, /*OUT*/ bool &replaced) noexcept {
   RoutingTable *it = &table;
   while (it) {
-    Node *result = do_insert(self, it->bucket, c, eager, replaced);
+    Node *result = bucket_insert(self, it->bucket, c, eager, replaced);
     if (result) {
       return result;
     }
@@ -349,69 +365,153 @@ find(RoutingTable &table, const NodeId &id) noexcept {
 }
 
 static bool
-split(DHT &self, RoutingTable *parent, std::size_t idx) noexcept {
-  assertx(parent->in_tree == nullptr);
+node_reseat(DHT &self, Node &source, Bucket &dest) noexcept {
+  assertx(is_valid(source));
 
-  auto in_tree = alloc_RoutingTable(self, /*TODO?*/ idx);
-  if (!in_tree) {
-    return false;
+  Node *const priv = source.timeout_priv;
+  Node *const next = source.timeout_next;
+
+  auto relink = [priv, next](Node *c) {
+    c->timeout_priv = priv;
+    c->timeout_next = next;
+    if (priv)
+      priv->timeout_next = c;
+    if (next)
+      next->timeout_priv = c;
+  };
+
+  timeout::unlink(self, &source);
+  assertx(!source.timeout_next);
+  assertx(!source.timeout_priv);
+
+  const bool eager = false;
+  bool replaced /*OUT*/ = false;
+  auto *nc = bucket_insert(self, dest, source, eager, /*OUT*/ replaced);
+  if (nc) {
+    assertx(!replaced);
+
+    if (nc) {
+      relink(nc);
+      // reset
+    }
+
+    source = Node();
+    assertx(!is_valid(source));
   }
 
-  auto should_transfer = [&self, idx](const Node &n) {
-    const bool current_high = bit(n.id, idx);
-    const bool in_tree_high = bit(self.id, idx);
+  return nc;
+}
+
+static RoutingTable *
+split_transfer(DHT &self, RoutingTable *better, //
+               Bucket &subject, std::size_t level) {
+  RoutingTable *better_it = better;
+
+  auto should_transfer = [&self, level](const Node &n) {
+    const bool current_high = bit(n.id, level);
+    const bool in_tree_high = bit(self.id, level);
     return current_high == in_tree_high;
   };
 
-  Bucket &bucket = parent->bucket;
-
-  std::size_t moved = 0;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-
-    Node &contact = bucket.contacts[i];
+    Node &contact = subject.contacts[i];
     if (is_valid(contact)) {
       if (should_transfer(contact)) {
-        Node *const priv = contact.timeout_priv;
-        Node *const next = contact.timeout_next;
 
-        auto relink = [priv, next](Node *c) {
-          c->timeout_priv = priv;
-          c->timeout_next = next;
-          if (priv)
-            priv->timeout_next = c;
-          if (next)
-            next->timeout_priv = c;
-        };
-
-        timeout::unlink(self, &contact);
-        assertx(!contact.timeout_next);
-        assertx(!contact.timeout_priv);
-
-        const bool eager = false;
-        bool replaced /*OUT*/ = false;
-        auto *nc = do_insert(self, *in_tree, contact, eager, /*OUT*/ replaced);
-        assertx(!replaced);
-        assertx(nc);
-
-        if (nc) {
-          relink(nc);
-          // reset
+        if (!better_it) {
+          better_it = alloc_RoutingTable(self, level);
+          if (!better_it) {
+            goto Lreset;
+          }
         }
-        contact = Node();
-        assertx(!is_valid(contact));
 
-        ++moved;
+        assertx(better_it);
+        while (!node_reseat(self, /*src*/ contact, better_it->bucket)) {
+          assertx(!better_it->next);
+          // TODO what happens if it tries to reallocate a table node we are
+          // currently using?
+          better_it->next = alloc_RoutingTable(self, level);
+          if (!better_it->next) {
+            goto Lreset;
+          }
+          better_it = better_it->next;
+        }
+      } // should_transfer
+    }   // if is_valid
+  }     // for
+
+  return better_it;
+Lreset:
+  assertx(false);
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    subject.contacts[i] = Node();
+  }
+  return better_it;
+}
+
+static RoutingTable *
+split(DHT &self, RoutingTable *target, std::size_t level) noexcept {
+  assertx(target);
+  /* If there already is a target->in_tree node then we already have performed
+   * the split and should not get here again.
+   */
+  assertx(target->in_tree == nullptr);
+
+  const auto target_depth = target->depth;
+  RoutingTable *better_root = nullptr;
+  RoutingTable *better_it = nullptr;
+
+  RoutingTable *target_root = nullptr;
+  RoutingTable *t_priv = nullptr;
+  RoutingTable *t_it = target;
+
+  while (t_it) {
+    Bucket &bucket = t_it->bucket;
+
+    better_it = split_transfer(self, /*dest*/ better_it, /*src*/ bucket, level);
+    if (!better_root) {
+      better_root = better_it;
+    }
+
+    std::size_t present_cnt = 0;
+    /*compact with $t_priv if present*/
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      Node &contact = bucket.contacts[i];
+      if (is_valid(contact)) {
+        if (t_priv) {
+          // TODO transfer
+        }
+      }
+
+      if (is_valid(contact)) {
+        ++present_cnt;
       }
     }
-  } // for
-  if (moved == Bucket::K) {
-    // printf("moved all from [%p] to[%p]\n", parent, in_tree);
+
+    RoutingTable *const t_next = t_it->next;
+    if (present_cnt > 0) {
+      t_priv = t_it;
+      if (!target_root) {
+        target_root = t_it;
+      }
+    } else {
+    }
+
+    // * 2. compact()
+    //   2.1 if $t_it = empty recycle
+
+    t_it = t_next;
+  }
+  assertx(better_root);
+  if (!target_root) {
+    target_root = alloc_RoutingTable(self, target_depth);
+    assertx(target_root); // TODO This can fail, how to solve?!?!?
   }
 
-  parent->in_tree = in_tree;
+  target_root->in_tree = better_root;
 
   // TODO log::routing::split(dht, *higher, *lower);
-  return true;
+  return target_root;
 }
 
 /*TokenPair*/
@@ -665,9 +765,9 @@ Lstart:
   RoutingTable *const leaf =
       find_closest(self, contact.id, /*OUT*/ inTree, /*OUT*/ bidx);
   if (leaf) {
-    assertx(shared_prefix(self.id, contact.id.id) == bidx); // TODO is the same?
-    if (shared_prefix(self.id, contact.id.id) < self.root_prefix) {
-      assertxs(!find(*leaf, contact.id), shared_prefix(self.id, contact.id.id));
+    auto sp = shared_prefix(self.id, contact.id.id);
+    if (sp < self.root_prefix) {
+      assertxs(!find(*leaf, contact.id), sp);
       return nullptr;
     }
 
@@ -685,7 +785,7 @@ Lstart:
     bool eager_merge = /*!inTree;*/ false;
     bool replaced = false;
     Node *const inserted =
-        do_insert(self, *leaf, contact, eager_merge, /*OUT*/ replaced);
+        table_insert(self, *leaf, contact, eager_merge, /*OUT*/ replaced);
 
     if (inserted) {
       timeout::insert_new(self, inserted);
@@ -696,14 +796,16 @@ Lstart:
       }
     } else {
       if (inTree || can_split(*leaf, bidx)) {
-        if (split(self, leaf, bidx)) {
+        if (split(self, /*parent*/ leaf, bidx)) {
           // XXX make better
           goto Lstart;
         }
-        assertx(false);
       } else {
-        // TODO ONLY add a linked list entry to Bucket when we can NOT split
-        // TODO link->
+        auto next = alloc_RoutingTable(self, bidx);
+        if (next) {
+          enqueue(leaf, next);
+          goto Lstart;
+        }
       }
       log::routing::can_not_insert(self, contact);
     }
@@ -711,7 +813,7 @@ Lstart:
     return inserted;
   } else {
     /* Empty tree */
-    assertx(!self.root); // TODO
+    assertx(!self.root);
     self.root = alloc_RoutingTable(self, 0);
     if (self.root) {
       goto Lstart;

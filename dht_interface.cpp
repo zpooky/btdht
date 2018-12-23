@@ -324,17 +324,18 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
          dht.config.percentage_seek, "%",                  //
          cur, "%", all);
 
+#if 0
   if (cur < dht.config.percentage_seek) {
+#endif
     // TODO if we can't mint new tx then next should be calculated base on when
     // soonest next tx timesout is so we can directly reuse it. (it should not
     // be the config.refresh_interval of 15min if we are under conf.p_seek)
     auto awake_next = awake_look_for_nodes(dht, out, look_for);
     result = std::min(result, awake_next);
     log::awake::contact_scan(dht);
-  } else {
-    // TODO 40% really?
-    assertxs(false, cur, dht.config.percentage_seek);
+#if 0
   }
+#endif
 
   return result;
 }
