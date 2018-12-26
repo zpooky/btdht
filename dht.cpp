@@ -148,30 +148,44 @@ find_closest(DHT &self, const NodeId &search, //
   return root;
 }
 
-// TODO this function is not used
 template <typename T>
 static void
-dealloc(DHT &self, T *reclaim) {
+dealloc_RoutingTable(DHT &self, T *reclaim) {
   assertx(reclaim);
+  assertx(!reclaim->next);
+  assertx(!reclaim->in_tree);
 
   // TODO this is not correctly impl in heap
   auto fres = find(self.rt_reuse, reclaim);
   assertx(fres);
+  assertx(*fres == reclaim);
   if (fres) {
-    // TODO this function is not implemented
-    //      i = index_of($reclaim)
-    //      for i swap(i,i+1)
-    //        ++i
-    //      length=length-1;
-    auto res = remove(self.rt_reuse, reclaim);
-    assertx(res);
+    const auto bdepth = reclaim->depth;
 
+    if (self.root_extra) {
+      auto tmp = self.root_extra;
+      self.root_extra = tmp->next;
+      assertx(tmp->table);
+
+      delete reclaim;
+      reclaim = tmp->table;
+      delete tmp;
+
+    } else {
+      reclaim->~T();
+      new (reclaim) RoutingTable(0);
+    }
+
+    auto res = update_key(self.rt_reuse, fres);
+    assertxs(*res == reclaim, bdepth, reclaim->depth);
+  } else {
     delete reclaim;
   }
 }
 
 static bool
-dequeue_root(DHT &self, RoutingTable *subject) noexcept {
+dequeue_root(DHT &self, RoutingTable *const subject) noexcept {
+  assertx(subject);
   if (self.root == subject) {
     self.root = subject->next;
   } else {
@@ -185,7 +199,6 @@ dequeue_root(DHT &self, RoutingTable *subject) noexcept {
     }
 
     if (it == nullptr) {
-      assertx(false);
       return false;
     }
   }
@@ -231,7 +244,7 @@ enqueue(RoutingTable *leaf, RoutingTable *next) noexcept {
 }
 
 static RoutingTable *
-alloc_RoutingTable(DHT &self, std::size_t depth) noexcept {
+alloc_RoutingTable(DHT &self, std::size_t depth, bool prio) noexcept {
   if (!is_full(self.rt_reuse)) {
     auto result = new RoutingTable(depth);
     if (result) {
@@ -249,8 +262,29 @@ alloc_RoutingTable(DHT &self, std::size_t depth) noexcept {
     assertx(h);
 
     if (h->depth < depth) {
+      // TODO only do this when we are in high prio: (modify alloc prototype)
+#if 1
+      if ((h->depth + 1) == depth) {
+        if (!prio) {
+          return nullptr;
+        }
+
+        auto result = new RoutingTable(depth);
+        if (result) {
+          auto ires = new RoutingTableStack(self.root_extra, result);
+          if (ires) {
+            self.root_extra = ires;
+          } else {
+            delete result;
+            result = nullptr;
+          }
+        }
+        return result;
+      }
+#endif
+
       if (!dequeue_root(self, h)) {
-        assertx(false);
+        assertxs(false, h->depth, h->in_tree);
         return nullptr;
       }
       // XXX migrate of possible good contacts in $h to empty/bad linked
@@ -261,7 +295,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth) noexcept {
       h->~RoutingTable();
       new (h) RoutingTable(depth);
 
-      auto res = increase_key(self.rt_reuse, head); // TODO make sure this works
+      auto res = update_key(self.rt_reuse, head);
       assertxs(res, h_depth, depth);
       assertxs(*res == h, h_depth, depth);
       assertxs(res != head, h_depth, depth);
@@ -275,6 +309,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth) noexcept {
 
 static void
 reset(DHT &dht, Node &contact) noexcept {
+  assertx(is_valid(contact));
   if (!contact.good) {
     assertx(dht.bad_nodes > 0);
     dht.bad_nodes--;
@@ -292,7 +327,6 @@ bucket_insert(DHT &dht, Bucket &bucket, const Node &c, //
     Node &contact = bucket.contacts[i];
     if (!is_valid(contact)) {
       contact = c;
-      assertx(is_valid(contact));
 
       return &contact;
     }
@@ -368,36 +402,40 @@ static bool
 node_reseat(DHT &self, Node &source, Bucket &dest) noexcept {
   assertx(is_valid(source));
 
-  Node *const priv = source.timeout_priv;
-  Node *const next = source.timeout_next;
-
-  auto relink = [priv, next](Node *c) {
-    c->timeout_priv = priv;
-    c->timeout_next = next;
-    if (priv)
-      priv->timeout_next = c;
-    if (next)
-      next->timeout_priv = c;
-  };
-
-  timeout::unlink(self, &source);
-  assertx(!source.timeout_next);
-  assertx(!source.timeout_priv);
+  Node dummy;
 
   const bool eager = false;
   bool replaced /*OUT*/ = false;
-  auto *nc = bucket_insert(self, dest, source, eager, /*OUT*/ replaced);
+  auto *nc = bucket_insert(self, dest, dummy, eager, /*OUT*/ replaced);
+  assertx(!replaced);
   if (nc) {
-    assertx(!replaced);
 
-    if (nc) {
-      relink(nc);
-      // reset
-    }
+    Node *const priv = source.timeout_priv;
+    assertx(priv);
+    Node *const next = source.timeout_next;
+    assertx(next);
 
+    auto relink = [priv, next](Node *c) {
+      c->timeout_priv = priv;
+      c->timeout_next = next;
+      if (priv)
+        priv->timeout_next = c;
+      if (next)
+        next->timeout_priv = c;
+    };
+
+    timeout::unlink(self, &source);
+    assertx(!source.timeout_next);
+    assertx(!source.timeout_priv);
+
+    *nc = source;
+    relink(nc);
+    assertx(is_valid(*nc));
+
+    // reset
     source = Node();
     assertx(!is_valid(source));
-  }
+  } // if
 
   return nc;
 }
@@ -419,54 +457,59 @@ split_transfer(DHT &self, RoutingTable *better, //
       if (should_transfer(contact)) {
 
         if (!better_it) {
-          better_it = alloc_RoutingTable(self, level);
+          better_it = alloc_RoutingTable(self, level, true);
           if (!better_it) {
             goto Lreset;
           }
         }
 
-        assertx(better_it);
+        assertx(!better_it->next);
         while (!node_reseat(self, /*src*/ contact, better_it->bucket)) {
           assertx(!better_it->next);
           // TODO what happens if it tries to reallocate a table node we are
           // currently using?
-          better_it->next = alloc_RoutingTable(self, level);
+          better_it->next = alloc_RoutingTable(self, level, true);
           if (!better_it->next) {
             goto Lreset;
           }
           better_it = better_it->next;
-        }
+        } // while
+
       } // should_transfer
     }   // if is_valid
   }     // for
 
   return better_it;
 Lreset:
-  assertx(false);
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    subject.contacts[i] = Node();
+    if (is_valid(subject.contacts[i])) {
+      reset(self, subject.contacts[i]);
+    }
   }
+  assertxs(false, level, self.root_prefix, length(self.rt_reuse),
+           capacity(self.rt_reuse));
   return better_it;
 }
 
-static RoutingTable *
-split(DHT &self, RoutingTable *target, std::size_t level) noexcept {
-  assertx(target);
-  /* If there already is a target->in_tree node then we already have performed
-   * the split and should not get here again.
+static bool
+split(DHT &self, RoutingTable *target_root, std::size_t level) noexcept {
+  assertx(target_root);
+  /* If there already is a target_root->in_tree node then we already have
+   * performed the split and should not get here again.
    */
-  assertx(target->in_tree == nullptr);
+  // assertxs(target_root->depth == (level + 1), target_root->depth, level);
+  const std::size_t target_depth = target_root->depth;
 
-  const auto target_depth = target->depth;
   RoutingTable *better_root = nullptr;
   RoutingTable *better_it = nullptr;
 
-  RoutingTable *target_root = nullptr;
-  RoutingTable *t_priv = nullptr;
-  RoutingTable *t_it = target;
+  RoutingTable *target_priv = nullptr;
+  RoutingTable *target_it = target_root;
 
-  while (t_it) {
-    Bucket &bucket = t_it->bucket;
+  while (target_it) {
+    assertx(target_depth == target_it->depth); // TODO fails
+    assertx(target_it->in_tree == nullptr);
+    Bucket &bucket = target_it->bucket;
 
     better_it = split_transfer(self, /*dest*/ better_it, /*src*/ bucket, level);
     if (!better_root) {
@@ -474,12 +517,12 @@ split(DHT &self, RoutingTable *target, std::size_t level) noexcept {
     }
 
     std::size_t present_cnt = 0;
-    /*compact with $t_priv if present*/
+    /*compact with $target_priv if present*/
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
       if (is_valid(contact)) {
-        if (t_priv) {
-          // TODO transfer
+        if (target_priv) {
+          node_reseat(self, contact, target_priv->bucket);
         }
       }
 
@@ -488,30 +531,26 @@ split(DHT &self, RoutingTable *target, std::size_t level) noexcept {
       }
     }
 
-    RoutingTable *const t_next = t_it->next;
-    if (present_cnt > 0) {
-      t_priv = t_it;
-      if (!target_root) {
-        target_root = t_it;
-      }
+    RoutingTable *const t_next = target_it->next;
+    if (present_cnt > 0 || target_it == target_root) {
+      target_priv = target_it;
     } else {
+      target_it->in_tree = nullptr;
+      target_it->next = nullptr;
+      dealloc_RoutingTable(self, target_it);
+      if (target_priv) {
+        target_priv->next = t_next;
+      }
     }
 
-    // * 2. compact()
-    //   2.1 if $t_it = empty recycle
-
-    t_it = t_next;
+    target_it = t_next;
   }
   assertx(better_root);
-  if (!target_root) {
-    target_root = alloc_RoutingTable(self, target_depth);
-    assertx(target_root); // TODO This can fail, how to solve?!?!?
-  }
 
   target_root->in_tree = better_root;
 
   // TODO log::routing::split(dht, *higher, *lower);
-  return target_root;
+  return true;
 }
 
 /*TokenPair*/
@@ -795,13 +834,13 @@ Lstart:
         ++self.total_nodes;
       }
     } else {
-      if (inTree || can_split(*leaf, bidx)) {
+      if (can_split(*leaf, bidx)) {
         if (split(self, /*parent*/ leaf, bidx)) {
           // XXX make better
           goto Lstart;
         }
       } else {
-        auto next = alloc_RoutingTable(self, bidx);
+        auto next = alloc_RoutingTable(self, bidx, false);
         if (next) {
           enqueue(leaf, next);
           goto Lstart;
@@ -814,7 +853,9 @@ Lstart:
   } else {
     /* Empty tree */
     assertx(!self.root);
-    self.root = alloc_RoutingTable(self, 0);
+    assertx(is_empty(self.rt_reuse));
+
+    self.root = alloc_RoutingTable(self, 0, false);
     if (self.root) {
       goto Lstart;
     }

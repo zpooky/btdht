@@ -466,7 +466,13 @@ struct Search {
 Search *
 find_search(dht::DHT &, SearchContext *) noexcept;
 
-// TODO verify tx timeout
+struct RoutingTableStack {
+  RoutingTableStack *next;
+  RoutingTable *table;
+
+  RoutingTableStack() noexcept;
+  RoutingTableStack(RoutingTableStack *, RoutingTable *) noexcept;
+};
 
 // dht::DHT
 struct DHT {
@@ -495,6 +501,7 @@ struct DHT {
   RoutingTable **rt_reuse_raw;
   heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
   std::size_t root_prefix;
+  RoutingTableStack *root_extra;
   //}}}
 
   // timeout {{{

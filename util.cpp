@@ -456,7 +456,16 @@ Node::Node(const Node &node, Timestamp now) noexcept
 
 bool
 is_valid(const Node &n) noexcept {
-  return is_valid(n.id);
+  bool res = is_valid(n.id);
+  if (res) {
+    assertx(n.timeout_next);
+    assertx(n.timeout_priv);
+  } else {
+    assertx(!n.timeout_next);
+    assertx(!n.timeout_priv);
+  }
+
+  return res;
 }
 
 } // namespace dht
