@@ -217,7 +217,7 @@ activity(const Peer &) noexcept;
 
 /*dht::Bucket*/
 struct Bucket {
-  static inline constexpr std::size_t K = 32;
+  static constexpr std::size_t K = 32;
   Node contacts[K];
 
   Bucket() noexcept;
@@ -440,7 +440,7 @@ struct Search {
   heap::StaticMaxBinary<K, 1024> queue;
   sp::LinkedList<Contact> result;
 
-  explicit Search(const Infohash &, const Contact &) noexcept;
+  Search(const Infohash &, const Contact &) noexcept;
 
   // Search(Search &&) noexcept;
   Search(const Search &&) = delete;
@@ -465,14 +465,6 @@ struct Search {
 
 Search *
 find_search(dht::DHT &, SearchContext *) noexcept;
-
-struct RoutingTableStack {
-  RoutingTableStack *next;
-  RoutingTable *table;
-
-  RoutingTableStack() noexcept;
-  RoutingTableStack(RoutingTableStack *, RoutingTable *) noexcept;
-};
 
 // dht::DHT
 struct DHT {
@@ -501,7 +493,7 @@ struct DHT {
   RoutingTable **rt_reuse_raw;
   heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
   std::size_t root_prefix;
-  RoutingTableStack *root_extra;
+  sp::dstack<RoutingTable *> root_extra;
   //}}}
 
   // timeout {{{

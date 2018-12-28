@@ -61,7 +61,7 @@ debug_correct_level(const DHT &self) noexcept {
 
   std::size_t extra_cnt = 0;
   {
-    auto e_it = self.root_extra;
+    auto e_it = self.root_extra.root;
     while (e_it) {
       ++extra_cnt;
       e_it = e_it->next;
@@ -219,38 +219,36 @@ find_closest(DHT &self, const NodeId &search, //
 
 template <typename T>
 static void
-dealloc_RoutingTable(DHT &self, T *reclaim) {
-  assertx(reclaim);
-  assertx(!reclaim->next);
-  assertx(!reclaim->in_tree);
+dealloc_RoutingTable(DHT &self, T *recycle) {
+  assertx(recycle);
+  assertx(!recycle->next);
+  assertx(!recycle->in_tree);
 
   // TODO this is not correctly impl in heap
-  auto fres = find(self.rt_reuse, reclaim);
+  auto fres = find(self.rt_reuse, recycle);
   assertx(fres);
-  assertx(*fres == reclaim);
+  assertx(*fres == recycle);
   if (fres) {
-    const auto bdepth = reclaim->depth;
+    const auto bdepth = recycle->depth;
 
-    if (self.root_extra) {
-      auto tmp = self.root_extra;
-      self.root_extra = tmp->next;
-      assertxs(tmp->table, self.root_prefix, length(self.rt_reuse),
-               capacity(self.rt_reuse)); // TODO fails
+    sp::dstack_node<RoutingTable *> *tmp = nullptr;
+    if (pop(self.root_extra, tmp)) {
+      assertxs(tmp->value, self.root_prefix, length(self.rt_reuse),
+               capacity(self.rt_reuse));
 
-      delete reclaim;
+      delete recycle;
 
-      *fres = reclaim = tmp->table;
-      delete tmp;
-
+      *fres = recycle = tmp->value;
+      reclaim(self.root_extra, tmp);
     } else {
-      reclaim->~T();
-      new (reclaim) RoutingTable(-1);
+      recycle->~T();
+      new (recycle) RoutingTable(-1);
     }
 
     auto res = update_key(self.rt_reuse, fres);
-    assertxs(*res == reclaim, bdepth, reclaim->depth);
+    assertxs(*res == recycle, bdepth, recycle->depth);
   } else {
-    delete reclaim;
+    delete recycle;
   }
 }
 
@@ -362,10 +360,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
       if (aType == AllocType::REC && (h->depth + 1) == depth) {
         auto result = new RoutingTable(depth);
         if (result) {
-          auto ires = new RoutingTableStack(self.root_extra, result);
-          if (ires) {
-            self.root_extra = ires;
-          } else {
+          if (!push(self.root_extra, result)) {
             delete result;
             result = nullptr;
           }

@@ -18,7 +18,7 @@ TEST(dumpTest, test) {
   const char *file = "/tmp/wasd.dump";
   {
     ASSERT_EQ(dht.root, nullptr);
-    dht.root = new dht::RoutingTable;
+    dht.root = new dht::RoutingTable(0);
     const std::size_t cap = dht::Bucket::K;
     for (std::size_t i = 0; i < cap; ++i) {
       // TODO rand nodeId
@@ -41,5 +41,5 @@ TEST(dumpTest, test) {
   ASSERT_TRUE(sp::restore(restore_dht, file));
 
   ASSERT_EQ(dht.id, restore_dht.id);
-  ASSERT_EQ(dht::Bucket::K, sp::n::length(restore_dht.bootstrap_contacts));
+  ASSERT_EQ(dht::Bucket::K, sp::length(restore_dht.bootstrap));
 }

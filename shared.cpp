@@ -365,15 +365,6 @@ find_search(dht::DHT &dht, SearchContext *needle) noexcept {
     return current.ctx == needle;
   });
 }
-RoutingTableStack::RoutingTableStack(RoutingTableStack *n,
-                                     RoutingTable *t) noexcept
-    : next{n}
-    , table{t} {
-}
-
-RoutingTableStack::RoutingTableStack() noexcept
-    : RoutingTableStack{nullptr, nullptr} {
-}
 
 // dht::DHT
 DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
@@ -399,7 +390,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     , rt_reuse_raw{new RoutingTable *[8] { nullptr }}
     , rt_reuse(rt_reuse_raw, 8)
     , root_prefix(0)
-    , root_extra(nullptr)
+    , root_extra()
     //}}}
     // timeout{{{
     , timeout_next(0)

@@ -189,7 +189,10 @@ on_awake_bootstrap_reset(DHT &dht, sp::Buffer &) noexcept {
    * are starved for potential contacts
    */
   if (dht.now >= timeout) {
-    bootstrap_reset(dht);
+    // XXX arbitrary
+    if (length(dht.bootstrap) < 100 || nodes_good(dht) < 100) {
+      bootstrap_reset(dht);
+    }
     dht.bootstrap_last_reset = dht.now;
     timeout = dht.bootstrap_last_reset + dht.config.bootstrap_reset;
   }
