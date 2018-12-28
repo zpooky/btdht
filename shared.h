@@ -280,12 +280,12 @@ for_each(const Bucket &b, F f) noexcept {
 
 // dht::RoutingTable
 struct RoutingTable {
-  std::size_t depth;
+  ssize_t depth;
   RoutingTable *in_tree;
   Bucket bucket;
   RoutingTable *next;
 
-  RoutingTable(std::size_t) noexcept;
+  RoutingTable(ssize_t) noexcept;
 
   ~RoutingTable() noexcept;
 };

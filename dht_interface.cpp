@@ -64,10 +64,10 @@ for_all_node(dht::DHT &ctx, sp::Milliseconds timeout, F f) {
 // TODO make ping have a timeout and find_node has another
 Lstart:
 
-  dht::Node *node = timeout::take_node(ctx, timeout);
+  dht::Node *const node = timeout::take_node(ctx, timeout);
   if (node) {
-    assertx(node->timeout_next == nullptr);
-    assertx(node->timeout_priv == nullptr);
+    assertx(!node->timeout_next);
+    assertx(!node->timeout_priv);
 
     if (node->good) {
       if (dht::should_mark_bad(ctx, *node)) {
@@ -327,12 +327,12 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
 #if 0
   if (cur < dht.config.percentage_seek) {
 #endif
-    // TODO if we can't mint new tx then next should be calculated base on when
-    // soonest next tx timesout is so we can directly reuse it. (it should not
-    // be the config.refresh_interval of 15min if we are under conf.p_seek)
-    auto awake_next = awake_look_for_nodes(dht, out, look_for);
-    result = std::min(result, awake_next);
-    log::awake::contact_scan(dht);
+  // TODO if we can't mint new tx then next should be calculated base on when
+  // soonest next tx timesout is so we can directly reuse it. (it should not
+  // be the config.refresh_interval of 15min if we are under conf.p_seek)
+  auto awake_next = awake_look_for_nodes(dht, out, look_for);
+  result = std::min(result, awake_next);
+  log::awake::contact_scan(dht);
 #if 0
   }
 #endif

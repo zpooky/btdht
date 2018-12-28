@@ -52,7 +52,7 @@ valid(DHT &, const krpc::Transaction &) noexcept;
 Node *
 find_contact(DHT &, const NodeId &) noexcept;
 
-Bucket *
+const Bucket *
 bucket_for(DHT &, const NodeId &) noexcept;
 
 Node *

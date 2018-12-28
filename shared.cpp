@@ -218,7 +218,7 @@ Bucket::~Bucket() noexcept {
 }
 
 /*dht::RoutingTable*/
-RoutingTable::RoutingTable(std::size_t d) noexcept
+RoutingTable::RoutingTable(ssize_t d) noexcept
     : depth(d)
     , in_tree()
     , bucket()
@@ -248,6 +248,10 @@ bool
 RoutingTableLess::operator()(const RoutingTable *f, std::size_t depth) const
     noexcept {
   assertx(f);
+  if (f->depth < 0) {
+    return true;
+  }
+
   return f->depth < depth;
 }
 
@@ -361,9 +365,10 @@ find_search(dht::DHT &dht, SearchContext *needle) noexcept {
     return current.ctx == needle;
   });
 }
-RoutingTableStack::RoutingTableStack(RoutingTableStack *, RoutingTable *) noexcept
-    : next{nullptr}
-    , table{nullptr} {
+RoutingTableStack::RoutingTableStack(RoutingTableStack *n,
+                                     RoutingTable *t) noexcept
+    : next{n}
+    , table{t} {
 }
 
 RoutingTableStack::RoutingTableStack() noexcept
