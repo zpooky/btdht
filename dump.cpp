@@ -152,8 +152,7 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
         return false;
       }
 
-      auto current = emplace(bs, contact);
-      if (!current) {
+      if (!push(bs, contact)) {
         assertx(false);
         return false;
       }
@@ -187,7 +186,7 @@ restore(dht::DHT &dht, const char *file) noexcept {
   sp::StaticCircularByteBuffer<128> b;
   sp::Thing thing(b, &f, topup);
 
-  if (!restore(thing, dht, dht.bootstrap_contacts)) {
+  if (!restore(thing, dht, dht.bootstrap)) {
     return false;
   }
 

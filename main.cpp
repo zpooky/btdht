@@ -299,7 +299,7 @@ main(int argc, char **argv) {
     die("restore failed\n");
   }
 
-  printf("bootstrap from db(%zu)\n", sp::n::length(mdht->bootstrap_contacts));
+  printf("bootstrap from db(%zu)\n", sp::length(mdht->bootstrap));
 
   {
     Contact local = udp::local(udp);
@@ -371,7 +371,7 @@ main(int argc, char **argv) {
     bootstrap_insert(*mdht, bs);
   });
 
-  printf("total bootstrap(%zu)\n", sp::n::length(mdht->bootstrap_contacts));
+  printf("total bootstrap(%zu)\n", sp::length(mdht->bootstrap));
 
   fd poll = setup_epoll(udp, sfd);
 

@@ -977,19 +977,36 @@ nodes_bad(const DHT &self) noexcept {
 void
 bootstrap_insert(DHT &self, const Contact &remote) noexcept {
   if (!test(self.bootstrap_filter, remote)) {
-    insert_unique(self.bootstrap_contacts, remote);
-    insert(self.bootstrap_filter, remote);
+    if (push(self.bootstrap, remote)) {
+      insert(self.bootstrap_filter, remote);
+    }
+  }
+}
+
+void
+bootstrap_insert(DHT &self, sp::dstack_node<Contact> *in) noexcept {
+  assertx(in);
+  if (!test(self.bootstrap_filter, in->value)) {
+    push(self.bootstrap, in);
+
+    insert(self.bootstrap_filter, in->value);
   }
 }
 
 void
 bootstrap_insert_force(DHT &self, const Contact &remote) noexcept {
-  insert_unique(self.bootstrap_contacts, remote);
+  if (push(self.bootstrap, remote)) {
+    insert(self.bootstrap_filter, remote);
+  }
 }
 
 void
-bootstrap_remove(DHT &self, const Contact &remote) noexcept {
-  remove(self.bootstrap_contacts, remote);
+bootstrap_insert_force(DHT &self, sp::dstack_node<Contact> *in) noexcept {
+  assertx(in);
+  if (in) {
+    push(self.bootstrap, in);
+    insert(self.bootstrap_filter, in->value);
+  }
 }
 
 void

@@ -1,6 +1,6 @@
 #include "dslbencode.h"
-#include <util/assert.h>
 #include <arpa/inet.h>
+#include <util/assert.h>
 
 //=BEncode==================================================================
 namespace bencode {
@@ -128,7 +128,7 @@ size(const sp::list<T> &list) noexcept {
 
 template <typename T>
 static std::size_t
-size(const sp::SkipList<T, 4> &list) noexcept {
+size(const sp::dstack<T> &list) noexcept {
   std::size_t result = 0;
   sp::for_each(list, [&result](const T &ls) { //
     result += size(ls);
@@ -412,7 +412,7 @@ value(sp::Buffer &buf, const sp::list<Contact> &t) noexcept {
 } // bencode::e::value()
 
 bool
-value(sp::Buffer &buf, const sp::SkipList<Contact, 4> &t) noexcept {
+value(sp::Buffer &buf, const sp::dstack<Contact> &t) noexcept {
   // used by dump
   return sp_list(buf, t);
 } // bencode::e::value()
@@ -428,8 +428,7 @@ pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept {
 } // bencode::e::pair()
 
 bool
-pair(sp::Buffer &buf, const char *key,
-     const sp::SkipList<Contact, 4> &t) noexcept {
+pair(sp::Buffer &buf, const char *key, const sp::dstack<Contact> &t) noexcept {
   // used by dump
   if (!bencode::e::value(buf, key)) {
     return false;

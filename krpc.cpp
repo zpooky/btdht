@@ -321,7 +321,7 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
     if (!bencode::e::pair(b, "bad_nodes", dht.bad_nodes)) {
       return false;
     }
-    if (!bencode::e::priv::pair(b, "boostrap", dht.bootstrap_contacts)) {
+    if (!bencode::e::priv::pair(b, "boostrap", dht.bootstrap)) {
       return false;
     }
     if (!bencode::e::pair(b, "active_searches", dht.active_searches)) {

@@ -75,10 +75,13 @@ void
 bootstrap_insert(DHT &, const Contact &) noexcept;
 
 void
+bootstrap_insert(DHT &, sp::dstack_node<Contact> *) noexcept;
+
+void
 bootstrap_insert_force(DHT &, const Contact &) noexcept;
 
 void
-bootstrap_remove(DHT &, const Contact &) noexcept;
+bootstrap_insert_force(DHT &, sp::dstack_node<Contact> *) noexcept;
 
 void
 bootstrap_reset(DHT &) noexcept;

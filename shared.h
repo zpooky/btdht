@@ -10,10 +10,10 @@
 #include <cstdlib>
 
 #include "bencode.h"
+#include "dstack.h"
 #include <hash/util.h>
 #include <list/FixedList.h>
 #include <list/LinkedList.h>
-#include <list/SkipList.h>
 #include <tree/StaticTree.h>
 
 #include <heap/binary.h>
@@ -526,7 +526,7 @@ struct DHT {
   Timestamp bootstrap_last_reset;
   sp::StaticArray<sp::hasher<Contact>, 2> bootstrap_hashers;
   sp::BloomFilter<Contact, 8 * 1024> bootstrap_filter;
-  sp::SkipList<Contact, 4> bootstrap_contacts;
+  sp::dstack<Contact> bootstrap;
   std::uint32_t active_searches;
   // }}}
 

@@ -45,13 +45,13 @@ bool
 value(sp::Buffer &buf, const sp::list<Contact> &) noexcept;
 
 bool
-value(sp::Buffer &buf, const sp::SkipList<Contact, 4> &) noexcept;
+value(sp::Buffer &buf, const sp::dstack<Contact> &) noexcept;
 
 bool
 pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept;
 
 bool
-pair(sp::Buffer &buf, const char *key, const sp::SkipList<Contact,4> &) noexcept;
+pair(sp::Buffer &buf, const char *key, const sp::dstack<Contact> &) noexcept;
 } // namespace priv
 
 } // namespace e

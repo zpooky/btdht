@@ -135,7 +135,7 @@ Config::Config() noexcept
     , refresh_interval(sp::Minutes(15))
     , peer_age_refresh(45)
     , token_max_age(15)
-    , transaction_timeout(1)
+    , transaction_timeout(2)
     //
     , bootstrap_generation_max(16)
     , percentage_seek(40)
@@ -396,8 +396,8 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     // routing-table {{{
     , root(nullptr)
     // TODO
-    , rt_reuse_raw{new RoutingTable *[32] { nullptr }}
-    , rt_reuse(rt_reuse_raw, 32)
+    , rt_reuse_raw{new RoutingTable *[8] { nullptr }}
+    , rt_reuse(rt_reuse_raw, 8)
     , root_prefix(0)
     , root_extra(nullptr)
     //}}}
@@ -420,7 +420,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     , bootstrap_last_reset(0)
     , bootstrap_hashers()
     , bootstrap_filter(bootstrap_hashers)
-    , bootstrap_contacts()
+    , bootstrap()
     , active_searches(0)
     // }}}
     // searches{{{

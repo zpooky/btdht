@@ -185,6 +185,9 @@ on_awake_peer_db(DHT &dht, sp::Buffer &) noexcept {
 static Timeout
 on_awake_bootstrap_reset(DHT &dht, sp::Buffer &) noexcept {
   Timestamp timeout = dht.bootstrap_last_reset + dht.config.bootstrap_reset;
+  /* Only reset if there is a small amount of nodes in self.bootstrap since we
+   * are starved for potential contacts
+   */
   if (dht.now >= timeout) {
     bootstrap_reset(dht);
     dht.bootstrap_last_reset = dht.now;
@@ -248,37 +251,21 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
 
     /* Bootstrap contacts */
     if (!bs_sent) {
-      auto &bcontacts = dht.bootstrap_contacts;
+      const dht::NodeId &self = dht.id;
       // TODO prune non good bootstrap nodes
       // XXX shuffle bootstrap list just before sending
-      auto con = bcontacts.header[0];
-      while (con) {
-        dht::NodeId &self = dht.id;
+      sp::dstack_node<Contact> *cur = nullptr;
+      while (pop(dht.bootstrap, cur)) {
 
-        auto *closure = new (std::nothrow) Contact(con->value);
-        result =
-            client::find_node(dht, out, con->value, /*search*/ self, closure);
+        result = client::find_node(dht, out, cur->value, /*search*/ self, cur);
         if (result == client::Res::OK) {
           inc_active_searches();
-          assertx_n(remove(bcontacts, con->value));
-          con = bcontacts.header[0];
+          cur = nullptr;
         } else {
-          con = nullptr;
+          push(dht.bootstrap, cur);
+          break;
         }
-      }
-#if 0
-      for_all(bcontacts, [&](const Contact &bs) {
-        dht::NodeId &self = dht.id;
-
-        auto *closure = new (std::nothrow) Contact(bs);
-        result = client::find_node(dht, out, bs, /*search*/ self, closure);
-        if (result == client::Res::OK) {
-          inc_active_searches();
-        }
-
-        return result == client::Res::OK;
-      });
-#endif
+      } // while
 
       bs_sent = true;
     }
@@ -319,10 +306,10 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
   const auto cur = percentage(all, good);
   printf("good[%u], total[%u], bad[%u], look_for[%u], "
          "config.seek[%zu%s], "
-         "cur[%zu%s], max[%u]\n",
+         "cur[%zu%s], max[%u], dht.root[%zu], bootstraps[%zu]\n",
          good, nodes_total(dht), nodes_bad(dht), look_for, //
          dht.config.percentage_seek, "%",                  //
-         cur, "%", all);
+         cur, "%", all, dht.root_prefix, length(dht.bootstrap));
 
 #if 0
   if (cur < dht.config.percentage_seek) {
@@ -592,8 +579,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 static void
 handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
   if (closure) {
-    auto *bs = (Contact *)closure;
-    delete bs;
+    reclaim(dht.bootstrap, (sp::dstack_node<Contact> *)closure);
   }
 
   assertx(dht.active_searches > 0);
@@ -607,8 +593,9 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
   if (closure) {
     // arbitrary?
     if (nodes_good(dht) < 100) {
-      auto *bs = (Contact *)closure;
-      bootstrap_insert_force(dht, *bs);
+      auto *bs = (sp::dstack_node<Contact> *)closure;
+      bootstrap_insert_force(dht, bs);
+      closure = nullptr;
     }
   }
 
@@ -622,10 +609,10 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
   Contact cap_copy;
   Contact *cap_ptr = nullptr;
   if (closure) {
-    auto *bs = (Contact *)closure;
+    auto *bs = (sp::dstack_node<Contact> *)closure;
 
     // make a copy of the capture so we can delete it
-    cap_copy = *bs;
+    cap_copy = bs->value;
     cap_ptr = &cap_copy;
   }
   handle_response_timeout(ctx.dht, closure);
