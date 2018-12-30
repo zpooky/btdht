@@ -21,11 +21,16 @@ TEST(dumpTest, test) {
     dht.root = new dht::RoutingTable(0);
     const std::size_t cap = dht::Bucket::K;
     for (std::size_t i = 0; i < cap; ++i) {
+      auto &current = dht.root->bucket.contacts[i];
       // TODO rand nodeId
       dht::NodeId id;
       fill(r, id.id);
-      dht.root->bucket.contacts[i] =
-          dht::Node(id, rand_contact(r), Timestamp(0));
+
+      current = dht::Node(id, rand_contact(r), Timestamp(0));
+
+      // dummy
+      current.timeout_next = &current;
+      current.timeout_priv = &current;
     }
 
     std::size_t nodes = 0;
@@ -41,5 +46,6 @@ TEST(dumpTest, test) {
   ASSERT_TRUE(sp::restore(restore_dht, file));
 
   ASSERT_EQ(dht.id, restore_dht.id);
-  ASSERT_EQ(dht::Bucket::K, sp::length(restore_dht.bootstrap));
+  const auto K = dht::Bucket::K;
+  ASSERT_EQ(K, sp::length(restore_dht.bootstrap));
 }

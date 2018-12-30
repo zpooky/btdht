@@ -309,13 +309,22 @@ struct RoutingTableLess {
 template <typename F>
 bool
 for_all(const RoutingTable *it, F f) noexcept {
-  bool result = true;
-  while (result && it) {
-    const RoutingTable &current = *it;
-    result = f(current);
+  while (it) {
+
+    auto it_width = it;
+    while (it_width) {
+
+      const RoutingTable &current = *it_width;
+      if (!f(current)) {
+        return false;
+      }
+      it_width = it_width->next;
+    } // while
+
     it = it->in_tree;
-  }
-  return result;
+  } // while
+
+  return true;
 }
 
 template <typename F>

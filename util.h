@@ -195,6 +195,10 @@ struct NodeId {
   bool
   operator<(const NodeId &o) const noexcept;
 };
+
+const char *
+to_string(const NodeId &) noexcept;
+
 } // namespace dht
 
 namespace sp {

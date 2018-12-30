@@ -336,6 +336,23 @@ bool
 NodeId::operator<(const NodeId &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) == -1;
 }
+
+const char *
+to_string(const NodeId &id) noexcept {
+
+  constexpr std::size_t bits = sizeof(id.id) * 4;
+  // constexpr std::size_t bits = sizeof(id.id) * 8;
+  constexpr std::size_t sz = bits + 1;
+  static char buf[sz];
+  memset(buf, 0, sz);
+  std::size_t i = 0;
+  for (; i < bits; ++i) {
+    buf[i] = bit(id, i) ? '1' : '0';
+  }
+  buf[i] = '\0';
+
+  return buf;
+}
 } // namespace dht
 
 namespace sp {

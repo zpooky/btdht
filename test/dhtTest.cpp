@@ -42,6 +42,25 @@ random_insert(T &added, dht::DHT &dht) {
   } else {
     assert(!find_res);
   }
+
+  dht::Node *buf[Bucket::K]{nullptr};
+  dht::multiple_closest(dht, n.id, buf);
+  dht::Node **it = buf;
+  bool found = false;
+  // while (*it) {
+  for (std::size_t i = 0; i < Bucket::K && it[i]; ++i) {
+    if (it[i]->id == n.id) {
+      found = true;
+      break;
+    }
+  }
+
+  if (res) {
+    // assert(found);
+  } else {
+    assert(!found);
+  }
+
   return res;
 }
 
@@ -49,13 +68,14 @@ template <typename T>
 static void
 random_insert(T &added, dht::DHT &dht, std::size_t cap) {
   for (std::size_t i = 0; i < cap; ++i) {
+    printf("%zu.\n", i);
     random_insert(added, dht);
   }
 }
 
 static void
 assert_empty(const Node &contact) {
-  ASSERT_FALSE(bool(contact));
+  ASSERT_FALSE(is_valid(contact));
   ASSERT_EQ(contact.timeout_next, nullptr);
   ASSERT_EQ(contact.timeout_priv, nullptr);
 
@@ -135,7 +155,7 @@ static Node *
 find(Bucket &bucket, const NodeId &search) {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &c = bucket.contacts[i];
-    if (bool(c)) {
+    if (is_valid(c)) {
       if (c.id == search)
         return &c;
     }
@@ -159,7 +179,7 @@ Lstart:
     print_id(id, idx, "\033[91m");
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &c = bucket.contacts[i];
-      if (bool(c)) {
+      if (is_valid(c)) {
         printf("-");
         print_id(c.id, idx, "\033[92m");
         ++contacts;

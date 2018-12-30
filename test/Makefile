@@ -23,11 +23,11 @@ DEPENDS = $(OBJECTS:.o=.d)
 .PHONY: test all clean gtest
 
 # all {{{
-all: sut $(EXEC)
+all: $(EXEC)
 # }}}
 
 # $(EXEC) linking {{{
-$(EXEC): gtest $(OBJECTS)
+$(EXEC): sut gtest $(OBJECTS)
 	$(CXX) $(OBJECTS) -o $(EXEC) $(LDLIBS)
 # }}}
 

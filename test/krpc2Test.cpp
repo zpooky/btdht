@@ -14,7 +14,8 @@ TEST(krpc2Test, get_peers) {
   dht::DHT dht(sock, c, r);
 
   Infohash h;
-  auto sctx = insert(dht.searches, h);
+  Contact ch;
+  auto sctx = emplace(dht.searches, h, ch);
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
