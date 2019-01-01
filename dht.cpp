@@ -11,6 +11,22 @@
 #include <util/assert.h>
 
 namespace dht {
+void
+debug_for_each(DHT &self, void *c,
+               void (*f)(void *, DHT &, const Node &)) noexcept {
+  const RoutingTable *it = self.root;
+  while (it) {
+    const RoutingTable *it_next = it;
+    while (it_next) {
+      for (std::size_t i = 0; i < Bucket::K; ++i) {
+        const Node &node = it_next->bucket.contacts[i];
+        f(c, self, node);
+      }
+      it_next = it_next->next;
+    }
+    it = it->in_tree;
+  }
+}
 
 static bool
 bit_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
@@ -22,6 +38,42 @@ bit_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
   return true;
 }
 
+static std::size_t
+rank(const NodeId &id, const Key &o) noexcept {
+  std::size_t i = 0;
+  for (; i < NodeId::bits; ++i) {
+    if (bit(id.id, i) != bit(o, i)) {
+      return i;
+    }
+  }
+
+  return i;
+}
+
+static std::size_t
+rank(const NodeId &id, const NodeId &o) noexcept {
+  return rank(id, o.id);
+}
+
+static bool
+debug_find(const DHT &self, RoutingTable *next) {
+  assertx(next);
+
+  auto it = self.root;
+  while (it) {
+    auto it_next = it;
+    while (it_next) {
+      if (it_next == next) {
+        return true;
+      }
+      it_next = it_next->next;
+    }
+    it = it->in_tree;
+  }
+
+  return false;
+}
+
 static bool
 debug_correct_level(const DHT &self) noexcept {
   auto it = self.root;
@@ -29,27 +81,34 @@ debug_correct_level(const DHT &self) noexcept {
   std::size_t node_cnt = 0;
   if (it) {
     std::size_t depth = it->depth;
-    assertxs(depth == self.root_prefix, depth, self.root_prefix);
     while (it) {
       auto it_next = it;
       std::size_t n = 0;
+      std::size_t lvl_nodes = 0;
 
+      // printf("in_tree");
       while (it_next) {
+        // printf("[%p]->", it_next);
         /* it_next->depth=1, depth=2, self.root_prefix=1,
          * length(self.rt_reuse)=8, capacity(self.rt_reuse)=8 assertion failed:
          * (it_next->depth == depth) dht.cpp: 39
          */
         assertxs(it_next->depth == depth, it_next->depth, depth,
-                 self.root_prefix, length(self.rt_reuse),
-                 capacity(self.rt_reuse), n);
+                 length(self.rt_reuse), capacity(self.rt_reuse), n);
 
         for (std::size_t i = 0; i < Bucket::K; ++i) {
           auto &contact = it_next->bucket.contacts[i];
           if (is_valid(contact)) {
-            ++node_cnt;
-            assertxs(bit_compare(self.id, contact.id.id, depth), depth,
-                     self.root_prefix, length(self.rt_reuse),
-                     capacity(self.rt_reuse));
+            ++lvl_nodes;
+            if (!bit_compare(self.id, contact.id.id, depth)) {
+
+              printf("\n%s\n", to_string(self.id));
+              printf("%s\nshared[%zu]\n", //
+                     to_string(contact.id), rank(self.id, contact.id));
+
+              assertxs(bit_compare(self.id, contact.id.id, depth), depth,
+                       length(self.rt_reuse), capacity(self.rt_reuse));
+            }
           }
         } // for
 
@@ -59,6 +118,8 @@ debug_correct_level(const DHT &self) noexcept {
         it_next = it_next->next;
         ++n;
       } // while
+      // printf(" lvl[%zu]: %zu\n", depth, lvl_nodes);
+      node_cnt += lvl_nodes;
 
       it = it->in_tree;
       ++depth;
@@ -79,10 +140,15 @@ debug_correct_level(const DHT &self) noexcept {
   //          length(self.rt_reuse), extra_cnt + length(self.rt_reuse),
   //          self.root_prefix, capacity(self.rt_reuse));
 
-  assertxs(node_cnt == nodes_total(self), node_cnt, nodes_total(self));
+  assertxs(node_cnt == nodes_total(self), //
+           node_cnt, nodes_total(self));
+  assertxs(node_cnt == timeout::debug_count_nodes(self), //
+           node_cnt, timeout::debug_count_nodes(self));
+  // printf("node_cnt[%zu]\n", node_cnt);
   assertxs(nodes_good(self) <= nodes_total(self), //
            nodes_good(self), nodes_total(self));
 
+  // printf("\n");
   return true;
 }
 
@@ -199,6 +265,9 @@ find_closest(DHT &self, const NodeId &search, //
   in_tree = true;
   RoutingTable *root = self.root;
   bidx = 0;
+  if (root) {
+    bidx = root->depth;
+  }
 
   while (root) {
     bool high = bit(search, bidx);
@@ -239,8 +308,7 @@ dealloc_RoutingTable(DHT &self, T *recycle) {
 
     sp::dstack_node<RoutingTable *> *tmp = nullptr;
     if (pop(self.root_extra, tmp)) {
-      assertxs(tmp->value, self.root_prefix, length(self.rt_reuse),
-               capacity(self.rt_reuse));
+      assertxs(tmp->value, length(self.rt_reuse), capacity(self.rt_reuse));
 
       delete recycle;
 
@@ -285,10 +353,17 @@ unlink_reset(DHT &self, Node &contact) {
 }
 
 static bool
-dequeue_root_dtor(DHT &self, RoutingTable *const subject) noexcept {
+dequeue_root(DHT &self, RoutingTable *const subject) noexcept {
+  // printf("dequeue_root %p", subject);
   assertx(subject);
+  assertx(self.root);
+  auto in_tree = self.root->in_tree;
+
   if (self.root == subject) {
     self.root = subject->next;
+    if (self.root) {
+      self.root->in_tree = in_tree;
+    }
   } else {
     auto it = self.root;
     while (it) {
@@ -305,22 +380,21 @@ dequeue_root_dtor(DHT &self, RoutingTable *const subject) noexcept {
   }
 
   auto &bucket = subject->bucket;
+  // printf(" total[%zu]", nodes_total(self));
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     auto &contact = bucket.contacts[i];
     unlink_reset(self, contact);
   }
+  // printf(" atotal[%zu]\n", nodes_total(self));
 
   if (!self.root) {
-    assertxs(subject->in_tree, subject->depth, self.root_prefix,
-             length(self.rt_reuse), capacity(self.rt_reuse));
-    self.root = subject->in_tree;
+    assertxs(in_tree, subject->depth, length(self.rt_reuse),
+             capacity(self.rt_reuse));
+    self.root = in_tree;
   }
 
   subject->in_tree = nullptr;
   subject->next = nullptr;
-
-  // TODO check this when inserting
-  self.root_prefix++;
 
   return true;
 }
@@ -329,6 +403,7 @@ static void
 enqueue(RoutingTable *leaf, RoutingTable *next) noexcept {
   assertx(leaf);
   assertx(next);
+#if 0
   RoutingTable *it = leaf;
   while (it) {
     if (!it->next) {
@@ -337,6 +412,10 @@ enqueue(RoutingTable *leaf, RoutingTable *next) noexcept {
     }
     it = it->next;
   }
+#endif
+  assertx(!next->next);
+  next->next = leaf->next;
+  leaf->next = next;
 }
 
 enum class AllocType { REC, PLAIN };
@@ -374,9 +453,9 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
         return result;
       }
 
-      if (!dequeue_root_dtor(self, h)) {
-        assertxs(false, h->depth, h->in_tree, self.root_prefix,
-                 length(self.rt_reuse), capacity(self.rt_reuse)); // TODO fails
+      if (!dequeue_root(self, h)) {
+        assertxs(false, h->depth, h->in_tree, length(self.rt_reuse),
+                 capacity(self.rt_reuse)); // TODO fails
         return nullptr;
       }
       // XXX migrate of possible good contacts in $h to empty/bad linked
@@ -385,6 +464,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
       const auto h_depth = h->depth;
 
       h->~RoutingTable();
+      memset(h, 0, sizeof(*h));
       new (h) RoutingTable(depth);
 
       auto res = update_key(self.rt_reuse, head);
@@ -537,15 +617,20 @@ split_transfer(DHT &self, RoutingTable *better, //
   RoutingTable *better_it = better;
 
   auto should_transfer = [&self, level](const Node &n) {
+    // #if 0
     const bool current_high = bit(n.id, level);
     const bool in_tree_high = bit(self.id, level);
     return current_high == in_tree_high;
+    // #endif
+    // return bit_compare(self.id, n.id.id, level + 1);
   };
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = subject.contacts[i];
     if (is_valid(contact)) {
+      // printf("- :%s", to_string(contact.id));
       if (should_transfer(contact)) {
+        // printf("=split[%zu]\n", level);
 
         if (!better_it) {
           better_it = alloc_RoutingTable(self, level + 1, AllocType::REC);
@@ -566,8 +651,11 @@ split_transfer(DHT &self, RoutingTable *better, //
         } // while
 
       } // should_transfer
-    }   // if is_valid
-  }     // for
+      else {
+        // printf("\n");
+      }
+    } // if is_valid
+  }   // for
 
   return better_it;
 Lreset:
@@ -579,8 +667,7 @@ Lreset:
 
   // level=0, self.root_prefix=0, length(self.rt_reuse)=32,
   // capacity(self.rt_reuse)=32
-  assertxs(false, level, self.root_prefix, length(self.rt_reuse),
-           capacity(self.rt_reuse));
+  assertxs(false, level, length(self.rt_reuse), capacity(self.rt_reuse));
   return better_it;
 }
 
@@ -599,6 +686,7 @@ split(DHT &self, RoutingTable *target_root, std::size_t level) noexcept {
   RoutingTable *target_priv = nullptr;
   RoutingTable *target_it = target_root;
 
+  // printf("id:%s, %zu\n", to_string(self.id), target_root->depth);
   while (target_it) {
     assertx(target_depth == target_it->depth); // TODO fails
     assertx(target_it->in_tree == nullptr);
@@ -614,11 +702,13 @@ split(DHT &self, RoutingTable *target_root, std::size_t level) noexcept {
     /*compact with $target_priv if present*/
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
+      // #if 0
       if (is_valid(contact)) {
         if (target_priv) {
           node_reseat(self, contact, target_priv->bucket);
         }
       }
+      // #endif
 
       if (is_valid(contact)) {
         ++present_cnt;
@@ -669,18 +759,6 @@ TokenPair::operator bool() const noexcept {
   return ip != Ipv4(0);
 }
 
-static std::size_t
-shared_prefix(const NodeId &id, const Key &cmp) noexcept {
-  std::size_t i = 0;
-  for (; i < NodeId::bits; ++i) {
-    if (bit(id.id, i) != bit(cmp, i)) {
-      return i;
-    }
-  }
-
-  return i;
-}
-
 static void
 multiple_closest_nodes(DHT &self, const Key &search, Node **result,
                        std::size_t res_length) noexcept {
@@ -688,16 +766,23 @@ multiple_closest_nodes(DHT &self, const Key &search, Node **result,
     assertx(result[i] == nullptr);
   }
 
-  RoutingTable *raw[Bucket::K] = {nullptr};
+  RoutingTable *raw[Bucket::K] = {nullptr}; // XXX arbitrary
   sp::CircularBuffer<RoutingTable *> best(raw);
 
   /* Fill buffer */
   RoutingTable *root = self.root;
   std::size_t idx = 0;
-  const std::size_t max = shared_prefix(self.id, search);
+  if (root) {
+    idx = root->depth;
+  }
+  const std::size_t max = rank(self.id, search);
 Lstart:
   if (root) {
-    sp::push_back(best, root);
+    auto it = root;
+    while (it) {
+      sp::push_back(best, root);
+      it = it->next;
+    }
     if (idx++ < max) {
       root = root->in_tree;
       goto Lstart;
@@ -729,6 +814,7 @@ Lstart:
       it = it->next;
     }
 
+    /* Not Full */
     return false;
   };
 
@@ -739,7 +825,7 @@ Lstart:
     /* Reverse order */
     while (!is_empty(best)) {
       sp::pop_back(best, best_ordered[best_idx++]);
-    }
+    } // while
 
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       if (best_ordered[i]) {
@@ -748,7 +834,7 @@ Lstart:
           return;
         }
       }
-    }
+    } // for
   }
 } // dht::find_closest_nodes()
 
@@ -845,14 +931,18 @@ can_split(const Bucket &bucket, std::size_t idx) {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     const Node &c = bucket.contacts[i];
     if (is_valid(c)) {
+      // #if 0
       std::size_t bit_idx = bit(c.id, idx) ? 0 : 1;
       bits[bit_idx]++;
+      // #endif
     }
   }
 
+  // #if 0
   if (bits[0] > 0 && bits[1] > 0) {
     return true;
   }
+  // #endif
 
   return false;
 }
@@ -890,8 +980,11 @@ Lstart:
   RoutingTable *const leaf =
       find_closest(self, contact.id, /*OUT*/ inTree, /*OUT*/ xx);
   if (leaf) {
-    auto sp = shared_prefix(self.id, contact.id.id);
-    if (sp < self.root_prefix) {
+    // assertxs(bit_compare(self.id, contact.id.id, leaf->depth), xx,
+    // leaf->depth);
+    assertx(self.root);
+    auto sp = rank(self.id, contact.id);
+    if (sp < self.root->depth) {
       assertxs(!find(*leaf, contact.id), sp);
       return nullptr;
     }
@@ -910,10 +1003,13 @@ Lstart:
     bool eager_merge = /*!inTree;*/ false;
     bool replaced = false;
     assertx(debug_correct_level(self));
-    Node *const inserted =
+    Node *inserted =
         table_insert(self, *leaf, contact, eager_merge, /*OUT*/ replaced);
 
     if (inserted) {
+      assertxs(bit_compare(self.id, inserted->id.id, leaf->depth), xx,
+               leaf->depth);
+      // printf("insert(%s)\n", to_string(contact.id));
       timeout::insert_new(self, inserted);
 
       log::routing::insert(self, *inserted);
@@ -921,12 +1017,12 @@ Lstart:
         ++self.total_nodes;
       }
       assertx(debug_correct_level(self));
+      assertx(rank(self.id, inserted->id) >= self.root->depth);
     } else {
       assertx(debug_correct_level(self));
-      printf("can_split[%zu]\n", leaf->depth);
       // XXX calc can_split when inserting into bucket
       if (can_split(*leaf, leaf->depth)) {
-        printf("split[%zu]\n", leaf->depth);
+        // printf("split[%zu]\n", leaf->depth);
         assertx(!leaf->in_tree);
 
         // 0: any
@@ -938,13 +1034,23 @@ Lstart:
           goto Lstart;
         }
       } else {
+        assertx(debug_correct_level(self));
         auto next = alloc_RoutingTable(self, leaf->depth, AllocType::PLAIN);
         if (next) {
+          assertx(!debug_find(self, next));
+          for (std::size_t i = 0; i < Bucket::K; ++i) {
+            assertx(!is_valid(next->bucket.contacts[i]));
+          }
+
+          // printf("=====next[%zu]\n", leaf->depth);
           enqueue(leaf, next);
           assertx(debug_correct_level(self));
           goto Lstart;
         }
       }
+      auto rnk = rank(self.id, contact.id);
+      assertxs(rnk <= self.root->depth, rnk, self.root->depth);
+
       log::routing::can_not_insert(self, contact);
     }
 

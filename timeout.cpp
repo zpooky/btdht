@@ -3,6 +3,23 @@
 
 namespace timeout {
 //=====================================
+std::size_t
+debug_count_nodes(const dht::DHT &self) noexcept {
+  std::size_t result = 0;
+  auto it = self.timeout_node;
+
+  dht::Node *const head = it;
+  if (head) {
+    do {
+      ++result;
+      it = it->timeout_next;
+    } while (it != head);
+  }
+
+  return result;
+}
+
+//=====================================
 template <typename T>
 static bool
 debug_is_cycle(T *const head) noexcept {

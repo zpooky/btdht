@@ -5,6 +5,10 @@
 
 namespace timeout {
 //=====================================
+std::size_t
+debug_count_nodes(const dht::DHT &) noexcept;
+
+//=====================================
 void
 unlink(dht::Node *&head, dht::Node *) noexcept;
 

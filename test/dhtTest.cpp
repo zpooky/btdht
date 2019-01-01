@@ -5,6 +5,7 @@
 #include <list>
 #include <prng/util.h>
 #include <set>
+#include <util/assert.h>
 
 using namespace dht;
 
@@ -20,27 +21,25 @@ insert(std::set<T> &collection, const T &v) noexcept {
   collection.insert(v);
 }
 
-template <typename T>
 static Node *
-random_insert(T &added, dht::DHT &dht) {
+random_insert(dht::DHT &dht) {
   dht::Node n;
   fill(dht.random, n.id.id);
 
   dht::Node *res = dht::insert(dht, n);
   // ASSERT_TRUE(res);
   if (res) {
-    assert(res->timeout_next);
-    assert(res->timeout_priv);
-    insert(added, n.id);
+    assertx(res->timeout_next);
+    assertx(res->timeout_priv);
     // printf("i%zu\n", i);
   }
 
   const dht::Node *find_res = dht::find_contact(dht, n.id);
   if (res) {
-    assert(find_res);
-    assert(find_res->id == n.id);
+    assertx(find_res);
+    assertx(find_res->id == n.id);
   } else {
-    assert(!find_res);
+    assertx(!find_res);
   }
 
   dht::Node *buf[Bucket::K]{nullptr};
@@ -56,20 +55,19 @@ random_insert(T &added, dht::DHT &dht) {
   }
 
   if (res) {
-    // assert(found);
+    // assertx(found);
   } else {
-    assert(!found);
+    assertx(!found);
   }
 
   return res;
 }
 
-template <typename T>
 static void
-random_insert(T &added, dht::DHT &dht, std::size_t cap) {
+random_insert(dht::DHT &dht, std::size_t cap) {
   for (std::size_t i = 0; i < cap; ++i) {
-    printf("%zu.\n", i);
-    random_insert(added, dht);
+    // printf("%zu.\n", i);
+    random_insert(dht);
   }
 }
 
@@ -141,7 +139,7 @@ static Node *
 find(Node *(&buf)[size], const NodeId &search) {
   for (std::size_t i = 0; i < size; ++i) {
     // printf("find: %p\n", buf[i]);
-    if (buf[i] != nullptr) {
+    if (buf[i]) {
       if (buf[i]->id == search) {
         return buf[i];
       }
@@ -166,28 +164,34 @@ find(Bucket &bucket, const NodeId &search) {
 
 static void
 verify_routing(DHT &dht, std::size_t &nodes, std::size_t &contacts) {
-  const NodeId &id = dht.id;
-  std::size_t idx = 0;
+  const NodeId &self_id = dht.id;
+
+  assertx(dht.root);
+  std::size_t idx = dht.root->depth;
 
   RoutingTable *root = dht.root;
 
 Lstart:
   if (root) {
     ++nodes;
-    Bucket &bucket = root->bucket;
     printf("%zu.  ", idx);
-    print_id(id, idx, "\033[91m");
-    for (std::size_t i = 0; i < Bucket::K; ++i) {
-      Node &c = bucket.contacts[i];
-      if (is_valid(c)) {
-        printf("-");
-        print_id(c.id, idx, "\033[92m");
-        ++contacts;
-        assert_prefix(c.id, id, idx);
-      } else {
-        assert_empty(c);
+    print_id(self_id, idx, "\033[91m");
+    auto it = root;
+    while (it) {
+      Bucket &bucket = it->bucket;
+      for (std::size_t i = 0; i < Bucket::K; ++i) {
+        Node &c = bucket.contacts[i];
+        if (is_valid(c)) {
+          printf("-");
+          print_id(c.id, idx, "\033[92m");
+          ++contacts;
+          assert_prefix(c.id, self_id, idx);
+        } else {
+          assert_empty(c);
+        }
       }
-    }
+      it = it->next;
+    } // while
     root = root->in_tree;
     ++idx;
     goto Lstart;
@@ -211,16 +215,6 @@ Lstart:
   }
 }
 
-static std::size_t
-count_nodes(const RoutingTable *r) {
-  std::size_t result = 0;
-  if (r) {
-    ++result;
-    result += count_nodes(r->in_tree);
-  }
-  return result;
-}
-
 // static std::size_t
 // equal(const NodeId &id, const Key &cmp) noexcept {
 //   std::size_t i = 0;
@@ -233,61 +227,51 @@ count_nodes(const RoutingTable *r) {
 // }
 
 // assert_present(DHT &dht, const NodeId &current) {
-#define assert_present(dht, current)                                           \
-  do {                                                                         \
-    Node *buff[Bucket::K] = {nullptr};                                         \
-    {                                                                          \
-      dht::multiple_closest(dht, current, buff);                               \
-                                                                               \
-      for (std::size_t i = 0; i < 8; ++i) {                                    \
-        ASSERT_TRUE(buff[i] != nullptr);                                       \
-      }                                                                        \
-                                                                               \
-      Node *search = find(buff, current);                                      \
-      ASSERT_TRUE(search != nullptr);                                          \
-      ASSERT_EQ(search->id, current);                                          \
-    }                                                                          \
-                                                                               \
-    {                                                                          \
-      dht::Node *res = dht::find_contact(dht, current);                        \
-      ASSERT_TRUE(res);                                                        \
-      ASSERT_EQ(res->id, current);                                             \
-      ASSERT_TRUE(res->timeout_next);                                          \
-      ASSERT_TRUE(res->timeout_priv);                                          \
-                                                                               \
-      timeout::unlink(dht, res);                                               \
-      ASSERT_FALSE(res->timeout_next);                                         \
-      ASSERT_FALSE(res->timeout_priv);                                         \
-                                                                               \
-      timeout::append_all(dht, res);                                           \
-      ASSERT_TRUE(res->timeout_next);                                          \
-      ASSERT_TRUE(res->timeout_priv);                                          \
-    }                                                                          \
-  } while (0)
+static void
+assert_present(dht::DHT &dht, const Node &current) {
+  Node *buff[Bucket::K * 8] = {nullptr};
+  {
+    dht::multiple_closest(dht, current.id, buff);
 
-#define insert_self(dht, added)                                                \
+    Node *search = find(buff, current.id);
+    assertx(search != nullptr);
+    ASSERT_EQ(search->id, current.id);
+  }
+
+  {
+    dht::Node *res = dht::find_contact(dht, current.id);
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->id, current.id);
+    ASSERT_TRUE(res->timeout_next);
+    ASSERT_TRUE(res->timeout_priv);
+
+    timeout::unlink(dht, res);
+    ASSERT_FALSE(res->timeout_next);
+    ASSERT_FALSE(res->timeout_priv);
+
+    timeout::append_all(dht, res);
+    ASSERT_TRUE(res->timeout_next);
+    ASSERT_TRUE(res->timeout_priv);
+  }
+}
+
+#define insert_self(dht)                                                       \
   do {                                                                         \
     dht::Node self;                                                            \
     std::memcpy(self.id.id, dht.id.id, sizeof(dht.id.id));                     \
     dht.id.id[19] = ~dht.id.id[19];                                            \
     auto *res = dht::insert(dht, self);                                        \
     ASSERT_TRUE(res);                                                          \
-    added.push_back(res->id);                                                  \
   } while (0)
 
-template <typename T>
 static void
-assert_count(DHT &dht, T &added) {
+assert_count(DHT &dht) {
   std::size_t v_nodes = 0;
   std::size_t v_contacts = 0;
   verify_routing(dht, v_nodes, v_contacts);
 
-  std::size_t cnt = count_nodes(dht.root);
-  printf("added routing nodes %zu\n", cnt);
-  printf("added contacts: %zu\n", added.size());
-
-  ASSERT_EQ(v_contacts, added.size());
-  ASSERT_EQ(v_nodes, cnt);
+  printf("added routing nodes %zu\n", v_nodes);
+  printf("added contacts: %zu\n", v_contacts);
 }
 
 TEST(dhtTest, test) {
@@ -297,25 +281,19 @@ TEST(dhtTest, test) {
   dht::DHT dht(sock, c, r);
   dht::init(dht);
 
-  std::list<dht::NodeId> added;
-  insert_self(dht, added);
+  insert_self(dht);
 
   //
-  random_insert(added, dht, 1024 * 1024 * 4);
-
-  for (auto &current : added) {
-    const dht::Node *res = dht::find_contact(dht, current);
-    ASSERT_TRUE(res);
-  }
-
-  assert_count(dht, added);
+  random_insert(dht, 1024 * 1024 * 4);
+  assert_count(dht);
 
   // printf("==============\n");
   // printf("dht: ");
   // print_id(dht.id, 18, "");
-  for (auto &current : added) {
-    assert_present(dht, current);
-  }
+  dht::debug_for_each(dht, nullptr,
+                      [](void *, dht::DHT &self, const auto &current) {
+                        assert_present(self, current);
+                      });
 
   self_should_be_last(dht);
 }
@@ -334,16 +312,6 @@ Lstart:
   }
 }
 
-static bool
-contains(const std::list<dht::NodeId> &n, const NodeId &search) {
-  for (const auto &i : n) {
-    if (i == search) {
-      return true;
-    }
-  }
-  return true;
-}
-
 TEST(dhtTest, test_link) {
   fd sock(-1);
   Contact c(0, 0);
@@ -351,27 +319,17 @@ TEST(dhtTest, test_link) {
   dht::DHT dht(sock, c, r);
   dht::init(dht);
 
-  // TODO set<>
-  std::list<dht::NodeId> added;
-  random_insert(added, dht, 1024);
+  random_insert(dht, 1024);
 
-  for (auto &current : added) {
-    const dht::Node *res = dht::find_contact(dht, current);
-    ASSERT_TRUE(res);
-  }
-
-  assert_count(dht, added);
+  assert_count(dht);
 
   // printf("==============\n");
   // printf("dht: ");
   // print_id(dht.id, 18, "");
-  for (auto &current : added) {
-    assert_present(dht, current);
-  }
-
-  for_each(dht.timeout_node, [&](Node *n) { //
-    ASSERT_TRUE(contains(added, n->id));
-  });
+  dht::debug_for_each(dht, nullptr,
+                      [](void *, dht::DHT &self, const auto &current) {
+                        assert_present(self, current);
+                      });
 }
 
 static bool
@@ -397,11 +355,11 @@ TEST(dhtTest, test_append) {
   dht::DHT dht(sock, c, r);
   dht::init(dht);
 
-  std::list<dht::NodeId> added;
   for (std::size_t i = 1; i <= 50; ++i) {
     // int i = 1;
   Lretry:
-    Node *ins = random_insert(added, dht);
+    printf("%zu.\n", i);
+    Node *ins = random_insert(dht);
     if (ins == nullptr) {
       goto Lretry;
     }
@@ -418,7 +376,6 @@ TEST(dhtTest, test_append) {
 
         std::size_t number = 0;
         for_each(dht.timeout_node, [&](Node *n) { //
-          ASSERT_TRUE(contains(added, n->id));
           ++number;
           insert(unique, n->id);
           // printf("NodeId: ");
@@ -438,7 +395,6 @@ TEST(dhtTest, test_append) {
 
         std::size_t number = 0;
         for_each(dht.timeout_node, [&](Node *n) { //
-          ASSERT_TRUE(contains(added, n->id));
           ++number;
           insert(unique, n->id);
         });
@@ -458,7 +414,6 @@ TEST(dhtTest, test_append) {
 
         std::size_t number = 0;
         for_each(dht.timeout_node, [&](Node *n) { //
-          ASSERT_TRUE(contains(added, n->id));
           ++number;
           insert(unique, n->id);
         });
@@ -531,6 +486,6 @@ TEST(dhtTest, test_node_id_not_strict) {
 //     assert_present(dht, current);
 //   }
 //
-//   assert_count(dht, added);
+//   assert_count(dht);
 //   self_should_be_last(dht);
 // }

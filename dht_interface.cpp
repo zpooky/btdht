@@ -312,7 +312,7 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
          "cur[%zu%s], max[%u], dht.root[%zu], bootstraps[%zu]\n",
          good, nodes_total(dht), nodes_bad(dht), look_for, //
          dht.config.percentage_seek, "%",                  //
-         cur, "%", all, dht.root_prefix, length(dht.bootstrap));
+         cur, "%", all, dht.root ? dht.root->depth : 0, length(dht.bootstrap));
 
 #if 0
   if (cur < dht.config.percentage_seek) {

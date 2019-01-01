@@ -9,6 +9,9 @@
 // - Node implements Mainline DHT protocol
 
 namespace dht {
+void
+debug_for_each(DHT &, void *, void (*)(void *, DHT &, const Node &)) noexcept;
+
 bool
 is_strict(const Ip &, const NodeId &) noexcept;
 

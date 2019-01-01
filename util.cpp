@@ -339,7 +339,6 @@ NodeId::operator<(const NodeId &o) const noexcept {
 
 const char *
 to_string(const NodeId &id) noexcept {
-
   constexpr std::size_t bits = sizeof(id.id) * 4;
   // constexpr std::size_t bits = sizeof(id.id) * 8;
   constexpr std::size_t sz = bits + 1;
@@ -475,8 +474,8 @@ bool
 is_valid(const Node &n) noexcept {
   bool res = is_valid(n.id);
   if (res) {
-    assertx(n.timeout_next);
-    assertx(n.timeout_priv);
+    assertxs(n.timeout_next, n.timeout_next, n.timeout_priv);
+    assertxs(n.timeout_priv, n.timeout_priv, n.timeout_next);
   } else {
     assertx(!n.timeout_next);
     assertx(!n.timeout_priv);

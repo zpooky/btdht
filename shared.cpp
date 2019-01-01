@@ -387,9 +387,8 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     // routing-table {{{
     , root(nullptr)
     // TODO
-    , rt_reuse_raw{new RoutingTable *[8] { nullptr }}
-    , rt_reuse(rt_reuse_raw, 8)
-    , root_prefix(0)
+    , rt_reuse_raw{new RoutingTable *[4] { nullptr }}
+    , rt_reuse(rt_reuse_raw, 4)
     , root_extra()
     //}}}
     // timeout{{{

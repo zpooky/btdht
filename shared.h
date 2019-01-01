@@ -501,7 +501,6 @@ struct DHT {
   RoutingTable *root;
   RoutingTable **rt_reuse_raw;
   heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
-  std::size_t root_prefix;
   sp::dstack<RoutingTable *> root_extra;
   //}}}
 
