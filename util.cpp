@@ -1,6 +1,7 @@
 #include "util.h"
 #include <arpa/inet.h>
 #include <cstring>
+#include <encode/hex.h>
 #include <hash/djb2.h>
 #include <hash/fnv.h>
 #include <memory>
@@ -335,6 +336,36 @@ NodeId::operator==(const NodeId &o) const noexcept {
 bool
 NodeId::operator<(const NodeId &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) == -1;
+}
+
+bool
+from_hex(NodeId &id, const char *b) noexcept {
+  assertxs(std::strlen(b) == (2 * sizeof(id.id)), std::strlen(b),
+           (2 * sizeof(id.id)));
+  std::size_t id_len = sizeof(id.id);
+  bool res = hex::decode(b, id.id, id_len);
+  assertx(res);
+  assertxs(id_len == sizeof(id.id), id_len, sizeof(id.id));
+  return res;
+}
+
+const char *
+to_hex(const NodeId &id) noexcept {
+  constexpr std::size_t sz = (sizeof(Key) * 2) + 1;
+  assertx(sz == 41);
+  static char buf[sz];
+  memset(buf, 0, sz);
+
+  auto len = sz - 1;
+  auto res = hex::encode(id.id, sizeof(id.id), buf, len);
+  assertx(len < sz);
+  buf[len] = '\0';
+
+  assertx(res);
+  assertxs(len == sz - 1, len, sz - 1);
+  assertxs(std::strlen(buf) == sz - 1, std::strlen(buf), sz - 1);
+
+  return buf;
 }
 
 const char *

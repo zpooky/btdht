@@ -196,6 +196,16 @@ struct NodeId {
   operator<(const NodeId &o) const noexcept;
 };
 
+template <std::size_t N>
+bool
+from_hex(NodeId &id, const char (&b)[N]) noexcept;
+
+bool
+from_hex(NodeId &id, const char *b) noexcept;
+
+const char *
+to_hex(const NodeId &id) noexcept;
+
 const char *
 to_string(const NodeId &) noexcept;
 
@@ -266,6 +276,13 @@ struct Node {
 
 bool
 is_valid(const Node &) noexcept;
+
+//=====================================
+template <std::size_t N>
+bool
+from_hex(NodeId &id, const char (&b)[N]) noexcept {
+  return from_hex(id, b, N);
+}
 
 } // namespace dht
 

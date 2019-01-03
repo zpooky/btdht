@@ -292,8 +292,7 @@ main(int argc, char **argv) {
     die("failed to init dht");
   }
 
-  printf("node id: ");
-  dht::print_hex(mdht->id);
+  printf("node id: %s\n", to_hex(mdht->id));
 
   if (!sp::restore(*mdht, options.dump_file)) {
     die("restore failed\n");

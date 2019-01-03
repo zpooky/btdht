@@ -21,11 +21,23 @@ debug_for_each(DHT &self, void *c,
       for (std::size_t i = 0; i < Bucket::K; ++i) {
         const Node &node = it_next->bucket.contacts[i];
         f(c, self, node);
-      }
+      } // for
       it_next = it_next->next;
-    }
+    } // while
+    it = it->in_tree;
+  } // while
+}
+
+std::size_t
+debug_levels(const DHT &self) noexcept {
+  std::size_t result = 0;
+  const RoutingTable *it = self.root;
+  while (it) {
+    ++result;
     it = it->in_tree;
   }
+
+  return result;
 }
 
 static bool
@@ -116,6 +128,9 @@ debug_correct_level(const DHT &self) noexcept {
 
         ++table_cnt;
         it_next = it_next->next;
+        if (it_next) {
+          assertx(!it_next->in_tree);
+        }
         ++n;
       } // while
       // printf(" lvl[%zu]: %zu\n", depth, lvl_nodes);
@@ -454,8 +469,9 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
       }
 
       if (!dequeue_root(self, h)) {
+        // TODO fails
         assertxs(false, h->depth, h->in_tree, length(self.rt_reuse),
-                 capacity(self.rt_reuse)); // TODO fails
+                 capacity(self.rt_reuse));
         return nullptr;
       }
       // XXX migrate of possible good contacts in $h to empty/bad linked
@@ -688,7 +704,7 @@ split(DHT &self, RoutingTable *target_root, std::size_t level) noexcept {
 
   // printf("id:%s, %zu\n", to_string(self.id), target_root->depth);
   while (target_it) {
-    assertx(target_depth == target_it->depth); // TODO fails
+    assertx(target_depth == target_it->depth);
     assertx(target_it->in_tree == nullptr);
     Bucket &bucket = target_it->bucket;
 
@@ -925,39 +941,64 @@ bucket_for(DHT &dht, const NodeId &id) noexcept {
   return leaf ? &leaf->bucket : nullptr;
 }
 
-static bool
-can_split(const Bucket &bucket, std::size_t idx) {
-  std::size_t bits[2] = {0};
-  for (std::size_t i = 0; i < Bucket::K; ++i) {
-    const Node &c = bucket.contacts[i];
-    if (is_valid(c)) {
-      // #if 0
-      std::size_t bit_idx = bit(c.id, idx) ? 0 : 1;
-      bits[bit_idx]++;
-      // #endif
-    }
-  }
+static std::size_t
+shared_rank(const dht::DHT &self, const RoutingTable &table) {
+  std::size_t result = 0;
+  const RoutingTable *it = &table;
+  while (it) {
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      const Node &c = it->bucket.contacts[i];
+      if (is_valid(c)) {
+        result = std::min(rank(self.id, c.id), result);
+      }
+    } // for
 
-  // #if 0
-  if (bits[0] > 0 && bits[1] > 0) {
-    return true;
-  }
-  // #endif
+    it = it->next;
+  } // while
 
-  return false;
+  return result;
 }
 
 static bool
 can_split(const RoutingTable &table, std::size_t idx) {
   const RoutingTable *it = &table;
   while (it) {
-    if (can_split(it->bucket, idx)) {
+    std::size_t bits[2] = {0};
+
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      const Node &c = it->bucket.contacts[i];
+      if (is_valid(c)) {
+        // #if 0
+        std::size_t bit_idx = bit(c.id, idx) ? 0 : 1;
+        bits[bit_idx]++;
+        // #endif
+      }
+    } // for
+
+    if (bits[0] > 0 && bits[1] > 0) {
       return true;
     }
+
     it = it->next;
-  }
+  } // while
 
   return false;
+}
+
+static void
+re_depth(dht::DHT &self, std::size_t depth) noexcept {
+  RoutingTable *it = self.root;
+  while (it) {
+    RoutingTable *it_next = it;
+
+    while (it_next) {
+      it_next->depth = depth;
+      it_next = it_next->next;
+    } // while
+
+    ++depth;
+    it = it->in_tree;
+  } // while
 }
 
 Node *
@@ -980,8 +1021,6 @@ Lstart:
   RoutingTable *const leaf =
       find_closest(self, contact.id, /*OUT*/ inTree, /*OUT*/ xx);
   if (leaf) {
-    // assertxs(bit_compare(self.id, contact.id.id, leaf->depth), xx,
-    // leaf->depth);
     assertx(self.root);
     auto sp = rank(self.id, contact.id);
     if (sp < self.root->depth) {
@@ -990,14 +1029,14 @@ Lstart:
     }
 
     {
-      /*check if already present*/
+      /* Check if already present */
       Node *const existing = find(*leaf, contact.id);
       if (existing) {
         return existing;
       }
     }
 
-    /* when we are intree meaning we can add another bucket we do not
+    /* When we are intree meaning we can add another bucket we do not
      * necessarily need to evict a node that might be late responding to pings
      */
     bool eager_merge = /*!inTree;*/ false;
@@ -1006,10 +1045,10 @@ Lstart:
     Node *inserted =
         table_insert(self, *leaf, contact, eager_merge, /*OUT*/ replaced);
 
+    // fprintf(stderr, "%s\n", to_hex(contact.id));
     if (inserted) {
       assertxs(bit_compare(self.id, inserted->id.id, leaf->depth), xx,
                leaf->depth);
-      // printf("insert(%s)\n", to_string(contact.id));
       timeout::insert_new(self, inserted);
 
       log::routing::insert(self, *inserted);
@@ -1021,7 +1060,9 @@ Lstart:
     } else {
       assertx(debug_correct_level(self));
       // XXX calc can_split when inserting into bucket
+      // printf("can_split(%zu): ", leaf->depth);
       if (can_split(*leaf, leaf->depth)) {
+        printf("true\n");
         // printf("split[%zu]\n", leaf->depth);
         assertx(!leaf->in_tree);
 
@@ -1034,18 +1075,39 @@ Lstart:
           goto Lstart;
         }
       } else {
+#if 0
+        if (self.root == leaf) {
+          assertx(leaf);
+          auto depth = shared_rank(self, *leaf);
+          assertxs(depth >= leaf->depth, depth, leaf->depth);
+          printf("depth: %zu\n", depth);
+          if (depth > leaf->depth) {
+            re_depth(self, depth);
+            goto Lstart;
+          }
+        }
+#endif
+
+        // printf("false\n");
         assertx(debug_correct_level(self));
         auto next = alloc_RoutingTable(self, leaf->depth, AllocType::PLAIN);
         if (next) {
+          printf("next\n");
           assertx(!debug_find(self, next));
-          for (std::size_t i = 0; i < Bucket::K; ++i) {
-            assertx(!is_valid(next->bucket.contacts[i]));
-          }
 
           // printf("=====next[%zu]\n", leaf->depth);
           enqueue(leaf, next);
           assertx(debug_correct_level(self));
           goto Lstart;
+        } else {
+          if (!leaf->in_tree) {
+            auto depth = rank(self.id, contact.id);
+            if (depth > leaf->depth) {
+              leaf->in_tree =
+                  alloc_RoutingTable(self, leaf->depth + 1, AllocType::REC);
+              goto Lstart;
+            }
+          }
         }
       }
       auto rnk = rank(self.id, contact.id);

@@ -12,6 +12,9 @@ namespace dht {
 void
 debug_for_each(DHT &, void *, void (*)(void *, DHT &, const Node &)) noexcept;
 
+std::size_t
+debug_levels(const DHT &)noexcept;
+
 bool
 is_strict(const Ip &, const NodeId &) noexcept;
 
