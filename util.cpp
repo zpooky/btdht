@@ -335,7 +335,39 @@ NodeId::operator==(const NodeId &o) const noexcept {
 
 bool
 NodeId::operator<(const NodeId &o) const noexcept {
-  return std::memcmp(id, o.id, sizeof(id)) == -1;
+  return std::memcmp(id, o.id, sizeof(id)) < 0;
+}
+
+static std::size_t
+word_index(std::size_t abs_idx) noexcept {
+  constexpr std::size_t bits(sizeof(char) * 8);
+  return abs_idx / bits;
+}
+
+static std::size_t
+bit_index(std::size_t abs_idx) noexcept {
+  constexpr std::size_t bits(sizeof(char) * 8);
+  return abs_idx % bits;
+}
+
+static char
+mask_out(std::size_t idx) noexcept {
+  char result = 0;
+  return (result | 1) << idx;
+}
+
+void
+NodeId::set_bit(std::size_t idx, bool v) noexcept {
+  std::size_t wIdx = word_index(idx);
+  auto &word = id[wIdx];
+  const std::size_t bIdx = bit_index(idx);
+
+  const auto mask = mask_out(bIdx);
+  if (v) {
+    word = word | mask;
+  } else {
+    word = word & (~mask);
+  }
 }
 
 bool

@@ -194,6 +194,9 @@ struct NodeId {
 
   bool
   operator<(const NodeId &o) const noexcept;
+
+  void
+  set_bit(std::size_t, bool) noexcept;
 };
 
 template <std::size_t N>

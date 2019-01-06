@@ -2,7 +2,9 @@
 #include "util.h"
 #include "gtest/gtest.h"
 #include <dht.h>
+#include <hash/fnv.h>
 #include <list>
+#include <map/HashSetOpen.h>
 #include <prng/util.h>
 #include <set>
 #include <util/assert.h>
@@ -634,7 +636,7 @@ TEST(dhtTest, test_first_full) {
   }
   ASSERT_EQ(debug_levels(dht), 1);
 
-  printf("%zu\n", nodes_total(dht));
+  printf("%u\n", nodes_total(dht));
   {
     dht::Node n;
     n.id = dht.id;
@@ -642,6 +644,93 @@ TEST(dhtTest, test_first_full) {
     ASSERT_TRUE(insert(dht, n));
   }
   ASSERT_EQ(debug_levels(dht), 2);
+}
+
+struct RankNodeId {
+  dht::DHT *self;
+  NodeId id;
+  RankNodeId()
+      : self{nullptr}
+      , id{} {
+  }
+
+  RankNodeId(DHT &s, const NodeId &o)
+      : self{&s}
+      , id{o} {
+  }
+
+  static std::size_t
+  rank(const NodeId &id, const Key &o) noexcept {
+    std::size_t i = 0;
+    for (; i < NodeId::bits; ++i) {
+      if (bit(id.id, i) != bit(o, i)) {
+        return i;
+      }
+    }
+
+    return i;
+  }
+
+  bool
+  operator==(const RankNodeId &o) const {
+    return id == o.id;
+  }
+
+  bool
+  operator==(const NodeId &o) const {
+    return id == o;
+  }
+
+  bool
+  operator>(const RankNodeId &o) const noexcept {
+    auto f = rank(self->id, id.id);
+    auto s = rank(self->id, o.id.id);
+    return f > s;
+  }
+};
+
+namespace sp {
+template <>
+struct Hasher<RankNodeId> {
+  std::uint64_t
+  operator()(const NodeId &n) const noexcept {
+    return fnv_1a::encode64(n.id, sizeof(n.id));
+  }
+  std::uint64_t
+  operator()(const RankNodeId &n) const noexcept {
+    return operator()(n.id);
+  }
+};
+} // namespace sp
+
+TEST(dhtTest, test_self_rand) {
+  fd sock(-1);
+  Contact c(0, 0);
+  prng::xorshift32 r(1);
+  dht::DHT dht(sock, c, r);
+  dht::init(dht);
+  heap::StaticMaxBinary<RankNodeId, 1024> heap;
+  sp::HashSetOpen<NodeId> set;
+
+  for (std::size_t i = 0; i < 1024; ++i) {
+
+    for (std::size_t x = 0; x < capacity(heap); ++x) {
+      auto strt = uniform_dist(dht.random, 0, NodeId::bits);
+
+      Node node;
+      node.id = dht.id;
+      for (std::size_t a = strt; a < NodeId::bits; ++a) {
+        node.id.set_bit(a, uniform_bool(dht.random));
+      }
+      printf("%s\n", to_hex(node.id));
+
+      insert(dht, node);
+      if (!lookup(set, node.id)) {
+        insert(set, node.id);
+        insert_eager(heap, RankNodeId(dht, node.id));
+      }
+    }
+  }
 }
 
 // TEST(dhtTest, test2) {
