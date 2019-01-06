@@ -16,14 +16,20 @@ debug_for_each(DHT &self, void *c,
                void (*f)(void *, DHT &, const Node &)) noexcept {
   const RoutingTable *it = self.root;
   while (it) {
+
     const RoutingTable *it_next = it;
     while (it_next) {
+
       for (std::size_t i = 0; i < Bucket::K; ++i) {
         const Node &node = it_next->bucket.contacts[i];
-        f(c, self, node);
+        if (is_valid(node)) {
+          f(c, self, node);
+        }
       } // for
+
       it_next = it_next->next;
     } // while
+
     it = it->in_tree;
   } // while
 }
@@ -67,6 +73,14 @@ rank(const NodeId &id, const NodeId &o) noexcept {
   return rank(id, o.id);
 }
 
+static void
+debug_assert(const RoutingTable *it) {
+  const auto &b = it->bucket;
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    is_valid(b.contacts[i]);
+  }
+}
+
 static bool
 debug_find(const DHT &self, RoutingTable *next) {
   assertx(next);
@@ -86,6 +100,23 @@ debug_find(const DHT &self, RoutingTable *next) {
   return false;
 }
 
+static void
+debug_print(const DHT &self) noexcept {
+#if 0
+  auto it = self.root;
+  while (it) {
+    auto it_next = it;
+    while (it_next) {
+      printf("[%p]->", it_next);
+      it_next = it_next->next;
+    }
+    printf("\n");
+    it = it->in_tree;
+  }
+  printf("\n");
+#endif
+}
+
 static bool
 debug_correct_level(const DHT &self) noexcept {
   auto it = self.root;
@@ -98,13 +129,7 @@ debug_correct_level(const DHT &self) noexcept {
       std::size_t n = 0;
       std::size_t lvl_nodes = 0;
 
-      // printf("in_tree");
       while (it_next) {
-        // printf("[%p]->", it_next);
-        /* it_next->depth=1, depth=2, self.root_prefix=1,
-         * length(self.rt_reuse)=8, capacity(self.rt_reuse)=8 assertion failed:
-         * (it_next->depth == depth) dht.cpp: 39
-         */
         assertxs(it_next->depth == depth, it_next->depth, depth,
                  length(self.rt_reuse), capacity(self.rt_reuse), n);
 
@@ -150,10 +175,11 @@ debug_correct_level(const DHT &self) noexcept {
     }
   }
 
-  // assertxs(table_cnt == length(self.rt_reuse) + extra_cnt, table_cnt,
-  // extra_cnt,
-  //          length(self.rt_reuse), extra_cnt + length(self.rt_reuse),
-  //          self.root_prefix, capacity(self.rt_reuse));
+  debug_print(self);
+
+  assertxs(table_cnt == (length(self.rt_reuse) + extra_cnt), //
+           table_cnt, extra_cnt, length(self.rt_reuse),      //
+           extra_cnt + length(self.rt_reuse), capacity(self.rt_reuse));
 
   assertxs(node_cnt == nodes_total(self), //
            node_cnt, nodes_total(self));
@@ -307,12 +333,16 @@ find_closest(DHT &self, const NodeId &search, //
   return root;
 }
 
-template <typename T>
 static void
-dealloc_RoutingTable(DHT &self, T *recycle) {
+dealloc_RoutingTable(DHT &self, RoutingTable *recycle) {
   assertx(recycle);
   assertx(!recycle->next);
   assertx(!recycle->in_tree);
+
+  auto &bucket = recycle->bucket;
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    assertx(!is_valid(bucket.contacts[i]));
+  }
 
   // TODO this is not correctly impl in heap
   auto fres = find(self.rt_reuse, recycle);
@@ -323,6 +353,7 @@ dealloc_RoutingTable(DHT &self, T *recycle) {
 
     sp::dstack_node<RoutingTable *> *tmp = nullptr;
     if (pop(self.root_extra, tmp)) {
+      assertx(tmp);
       assertxs(tmp->value, length(self.rt_reuse), capacity(self.rt_reuse));
 
       delete recycle;
@@ -330,7 +361,7 @@ dealloc_RoutingTable(DHT &self, T *recycle) {
       *fres = recycle = tmp->value;
       reclaim(self.root_extra, tmp);
     } else {
-      recycle->~T();
+      recycle->~RoutingTable();
       new (recycle) RoutingTable(-1);
     }
 
@@ -376,7 +407,9 @@ dequeue_root(DHT &self, RoutingTable *const subject) noexcept {
 
   if (self.root == subject) {
     self.root = subject->next;
-    if (self.root) {
+    if (self.root == nullptr) {
+      self.root = in_tree;
+    } else {
       self.root->in_tree = in_tree;
     }
   } else {
@@ -398,15 +431,16 @@ dequeue_root(DHT &self, RoutingTable *const subject) noexcept {
   // printf(" total[%zu]", nodes_total(self));
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     auto &contact = bucket.contacts[i];
+    bool valid = is_valid(contact);
+    auto tot = nodes_total(self);
+
     unlink_reset(self, contact);
+    assertx(!is_valid(contact));
+    if (valid) {
+      assertxs(nodes_total(self) == tot - 1, nodes_total(self), tot - 1);
+    }
   }
   // printf(" atotal[%zu]\n", nodes_total(self));
-
-  if (!self.root) {
-    assertxs(in_tree, subject->depth, length(self.rt_reuse),
-             capacity(self.rt_reuse));
-    self.root = in_tree;
-  }
 
   subject->in_tree = nullptr;
   subject->next = nullptr;
@@ -796,7 +830,8 @@ Lstart:
   if (root) {
     auto it = root;
     while (it) {
-      sp::push_back(best, root);
+      sp::push_back(best, it);
+      debug_assert(it);
       it = it->next;
     }
     if (idx++ < max) {
@@ -805,24 +840,20 @@ Lstart:
     }
   }
 
-  std::size_t resIdx = 0;
+  std::size_t res_idx = 0;
   auto merge = [&](RoutingTable &table) -> bool {
     RoutingTable *it = &table;
 
     while (it) {
       auto &b = it->bucket;
 
-      for (std::size_t i = 0; i < res_length; ++i) {
+      // printf("[%p]\n", &table);
+      for (std::size_t i = 0; i < Bucket::K && res_idx < res_length; ++i) {
         Node &contact = b.contacts[i];
         if (is_valid(contact)) {
 
           if (is_good(self, contact)) {
-            result[resIdx++] = &contact;
-
-            if (resIdx == res_length) {
-              /* Full */
-              return true;
-            }
+            result[res_idx++] = &contact;
           }
         }
       } // for
@@ -830,8 +861,7 @@ Lstart:
       it = it->next;
     }
 
-    /* Not Full */
-    return false;
+    return res_idx == res_length;
   };
 
   {
@@ -1010,6 +1040,7 @@ insert(DHT &self, const Node &contact) noexcept {
   if (self.id == contact.id) {
     return nullptr;
   }
+  // printf("==========\n");
 
 Lstart:
   /* inTree means that contact share the same prefix with self, longer than
@@ -1062,7 +1093,7 @@ Lstart:
       // XXX calc can_split when inserting into bucket
       // printf("can_split(%zu): ", leaf->depth);
       if (can_split(*leaf, leaf->depth)) {
-        printf("true\n");
+        printf("split[depth:%zu]\n", leaf->depth);
         // printf("split[%zu]\n", leaf->depth);
         assertx(!leaf->in_tree);
 
@@ -1090,9 +1121,12 @@ Lstart:
 
         // printf("false\n");
         assertx(debug_correct_level(self));
-        auto next = alloc_RoutingTable(self, leaf->depth, AllocType::PLAIN);
+        auto nxt_depth = leaf->depth;
+        auto next = alloc_RoutingTable(self, nxt_depth, AllocType::PLAIN);
         if (next) {
-          printf("next\n");
+          debug_print(self);
+          assertx(next != leaf);
+          printf("next[depth: %zu]\n", nxt_depth);
           assertx(!debug_find(self, next));
 
           // printf("=====next[%zu]\n", leaf->depth);
@@ -1105,6 +1139,7 @@ Lstart:
             if (depth > leaf->depth) {
               leaf->in_tree =
                   alloc_RoutingTable(self, leaf->depth + 1, AllocType::REC);
+              assertx(leaf->in_tree);
               goto Lstart;
             }
           }

@@ -612,7 +612,7 @@ TEST(dhtTest, test_full) {
     do {
       // printf("%d\n", n.id.id[19]);
       n.id.id[19]++;
-      ASSERT_TRUE(insert(dht, n));
+      insert(dht, n);
     } while (n.id.id[19] != dht.id.id[19]);
   }
 }
