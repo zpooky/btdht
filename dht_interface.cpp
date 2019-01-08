@@ -805,7 +805,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       }
       // }
 
-      /* sender returns the its closest contacts for search */
+      /* Sender returns the its closest contacts for search */
       dht::Node ins(contact, dht.now);
       auto res = dht::insert(dht, ins);
       if (!res) {

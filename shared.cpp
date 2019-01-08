@@ -386,9 +386,10 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     //}}}
     // routing-table {{{
     , root(nullptr)
+    , root_limit(4)
     // TODO
-    , rt_reuse_raw{new RoutingTable *[4] { nullptr }}
-    , rt_reuse(rt_reuse_raw, 4)
+    , rt_reuse_raw{new RoutingTable *[1024] { nullptr }}
+    , rt_reuse(rt_reuse_raw, 1024)
     , root_extra()
     //}}}
     // timeout{{{

@@ -499,6 +499,7 @@ struct DHT {
 
   // routing-table {{{
   RoutingTable *root;
+  std::size_t root_limit;
   RoutingTable **rt_reuse_raw;
   heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
   sp::dstack<RoutingTable *> root_extra;

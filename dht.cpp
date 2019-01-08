@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <hash/crc.h>
+#include <heap/binary.h>
 #include <new>
 #include <prng/util.h>
 #include <util/assert.h>
@@ -101,20 +102,23 @@ debug_find(const DHT &self, RoutingTable *next) {
 }
 
 static void
-debug_print(const DHT &self) noexcept {
-#if 0
+debug_print(const char *ctx, const DHT &self) noexcept {
+  // #if 0
+  if (ctx) {
+    printf("%s, length(heap): %zu\n", ctx, length(self.rt_reuse));
+  }
   auto it = self.root;
   while (it) {
     auto it_next = it;
     while (it_next) {
-      printf("[%p]->", it_next);
+      printf("%p[%zd]->", (void *)it_next, it_next->depth);
       it_next = it_next->next;
     }
     printf("\n");
     it = it->in_tree;
   }
   printf("\n");
-#endif
+  // #endif
 }
 
 static bool
@@ -485,7 +489,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
       return h;
     }
 
-    if (!is_full(self.rt_reuse)) {
+    if (length(self.rt_reuse) < self.root_limit) {
       goto Lbah;
     }
 
@@ -494,10 +498,15 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
       if (aType == AllocType::REC && (h->depth + 1) == depth) {
         auto result = new RoutingTable(depth);
         if (result) {
-          if (!push(self.root_extra, result)) {
-            delete result;
-            result = nullptr;
-          }
+          auto res = insert(self.rt_reuse, result);
+          assertx(res);
+          assertx(*res == result);
+          /*
+           * if (!push(self.root_extra, result)) {
+           *   delete result;
+           *   result = nullptr;
+           * }
+           */
         }
         return result;
       }
@@ -527,7 +536,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
   }
 
 Lbah:
-  if (!is_full(self.rt_reuse)) {
+  if (length(self.rt_reuse) < self.root_limit) {
     auto result = new RoutingTable(depth);
     if (result) {
       auto r = insert(self.rt_reuse, result);
@@ -680,7 +689,6 @@ split_transfer(DHT &self, RoutingTable *better, //
     if (is_valid(contact)) {
       // printf("- :%s", to_string(contact.id));
       if (should_transfer(contact)) {
-        // printf("=split[%zu]\n", level);
 
         if (!better_it) {
           better_it = alloc_RoutingTable(self, level + 1, AllocType::REC);
@@ -886,13 +894,13 @@ Lstart:
 
 //============================================================
 bool
-is_blacklisted(DHT &, const Contact &) noexcept {
+is_blacklisted(const DHT &, const Contact &) noexcept {
   // XXX
   return false;
 }
 
 bool
-should_mark_bad(DHT &self, Node &contact) noexcept {
+should_mark_bad(const DHT &self, Node &contact) noexcept {
   // XXX
   return !is_good(self, contact);
 }
@@ -1040,6 +1048,9 @@ insert(DHT &self, const Node &contact) noexcept {
   if (self.id == contact.id) {
     return nullptr;
   }
+  // fprintf(stderr, "%s\n", to_hex(contact.id));
+
+  bool will_ins = false;
   // printf("==========\n");
 
 Lstart:
@@ -1076,7 +1087,6 @@ Lstart:
     Node *inserted =
         table_insert(self, *leaf, contact, eager_merge, /*OUT*/ replaced);
 
-    // fprintf(stderr, "%s\n", to_hex(contact.id));
     if (inserted) {
       assertxs(bit_compare(self.id, inserted->id.id, leaf->depth), xx,
                leaf->depth);
@@ -1089,6 +1099,7 @@ Lstart:
       assertx(debug_correct_level(self));
       assertx(rank(self.id, inserted->id) >= self.root->depth);
     } else {
+      // assertx(!will_ins);
       assertx(debug_correct_level(self));
       // XXX calc can_split when inserting into bucket
       // printf("can_split(%zu): ", leaf->depth);
@@ -1103,6 +1114,7 @@ Lstart:
           assertx(leaf->in_tree);
           assertx(debug_correct_level(self));
           // XXX make better
+          will_ins = true;
           goto Lstart;
         }
       } else {
@@ -1124,7 +1136,6 @@ Lstart:
         auto nxt_depth = leaf->depth;
         auto next = alloc_RoutingTable(self, nxt_depth, AllocType::PLAIN);
         if (next) {
-          debug_print(self);
           assertx(next != leaf);
           printf("next[depth: %zu]\n", nxt_depth);
           assertx(!debug_find(self, next));
@@ -1132,6 +1143,7 @@ Lstart:
           // printf("=====next[%zu]\n", leaf->depth);
           enqueue(leaf, next);
           assertx(debug_correct_level(self));
+          will_ins = true;
           goto Lstart;
         } else {
           if (!leaf->in_tree) {
@@ -1140,6 +1152,7 @@ Lstart:
               leaf->in_tree =
                   alloc_RoutingTable(self, leaf->depth + 1, AllocType::REC);
               assertx(leaf->in_tree);
+              will_ins = true;
               goto Lstart;
             }
           }
@@ -1167,7 +1180,7 @@ Lstart:
 } // dht::insert()
 
 std::uint32_t
-max_routing_nodes(DHT &) noexcept {
+max_routing_nodes(const DHT &) noexcept {
   return std::uint32_t(Bucket::K) * std::uint32_t(sizeof(Key) * 8);
 }
 
