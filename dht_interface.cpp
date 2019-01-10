@@ -222,9 +222,6 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   // XXX how to handle the same bucket will be reselected to send find_nodes
   // multiple times in a row
 
-  // TODO How to avoid flooding the same nodes with request especially when we
-  // only have a few nodes in routing table?
-
   // XXX if no good node is available try bad/questionable nodes
 
   while (missing_contacts > 0) {
@@ -255,7 +252,6 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     /* Bootstrap contacts */
     if (!bs_sent) {
       const dht::NodeId &self = dht.id;
-      // TODO prune non good bootstrap nodes
       // XXX shuffle bootstrap list just before sending
       sp::dstack_node<Contact> *cur = nullptr;
       while (pop(dht.bootstrap, cur)) {
@@ -628,7 +624,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     bool b_t = false;
 
     dht::NodeId id;
-    dht::Token token; // TODO
+    dht::Token token;
 
     auto &nodes = dht.recycle_contact_list;
     sp::clear(nodes);
@@ -693,7 +689,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     if (is_empty(nodes)) {
       if (cap_ptr) {
         if (nodes_good(dht) < 100) {
-          // only remove bootstrap node if we have gotten some nodes from it
+          /* Only remove bootstrap node if we have gotten some nodes from it */
           bootstrap_insert_force(dht, *cap_ptr);
         }
       }
@@ -750,8 +746,6 @@ setup(dht::Module &module) noexcept {
 // get_peers
 //===========================================================
 namespace get_peers {
-/* hang 2018-12-13 19:39:42|receive request get_peers
- */
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search) noexcept {
@@ -764,7 +758,6 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
     db::mint_token(dht, from, ctx.remote, token);
 
     const krpc::Transaction &t = ctx.transaction;
-    // TODO infinite loop at 20% wtf?
     const dht::KeyValue *result = db::lookup(dht, search);
     if (result) {
       krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
@@ -778,6 +771,17 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
     }
   });
 } // get_peers::handle_request
+
+static void
+search_insert(dht::Search &search, const dht::Node &contact) noexcept {
+  /*test bloomfilter*/
+  if (!test(search.searched, contact.id)) {
+    /*insert into bloomfilter*/
+    bool ires = insert(search.searched, contact.id);
+    assertx(ires);
+    insert_eager(search.queue, dht::K(contact, search.search.id));
+  }
+}
 
 template <typename ResultType, typename ContactType>
 static void
@@ -793,27 +797,20 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 
   log::receive::res::get_peers(ctx);
   dht::DHT &dht = ctx.dht;
-  dht_request(ctx, sender, [&](auto &) {
-    for_each(contacts, [&](const auto &contact) {
-      // search(NodeId) {
-      /*test bloomfilter*/
-      if (!test(search.searched, contact.id)) {
-        /*insert into bloomfilter*/
-        auto ires = insert(search.searched, contact.id);
-        assertx(ires);
-        insert_eager(search.queue, dht::K(contact, search.search.id));
-      }
-      // }
 
-      /* Sender returns the its closest contacts for search */
+  dht_request(ctx, sender, [&](auto &) {
+    /* Sender returns the its closest contacts for search */
+    for_each(contacts, [&](const auto &contact) {
+      search_insert(search, contact);
+
       dht::Node ins(contact, dht.now);
       auto res = dht::insert(dht, ins);
       if (!res) {
         bootstrap_insert(dht, ins.contact);
       }
-    }); // for_each
+    });
 
-    /* sender returns matching values for search query */
+    /* Sender returns matching values for search query */
     for_each(result, [&search](const Contact &c) {
       /**/
       insert(search.result, c);

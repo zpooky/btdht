@@ -1024,20 +1024,24 @@ can_split(const RoutingTable &table, std::size_t idx) {
 }
 
 static void
-re_depth(dht::DHT &self, std::size_t depth) noexcept {
-  RoutingTable *it = self.root;
-  while (it) {
-    RoutingTable *it_next = it;
+compact_RoutingTable(dht::DHT &self) {
+  while (self.root && length(self.rt_reuse) > self.root_limit &&
+         is_empty(*self.root)) {
+    assertx(false);
+    auto root = self.root;
+    RoutingTable *const in_tree = root->in_tree;
+    self.root = root->next;
+    if (self.root) {
+      self.root->in_tree = in_tree;
+    } else {
+      self.root = in_tree;
+    }
 
-    while (it_next) {
-      it_next->depth = depth;
-      it_next = it_next->next;
-    } // while
-
-    ++depth;
-    it = it->in_tree;
-  } // while
-}
+    root->next = nullptr;
+    root->in_tree = nullptr;
+    dealloc_RoutingTable(self, root);
+  }
+} // namespace dht
 
 Node *
 insert(DHT &self, const Node &contact) noexcept {
@@ -1099,7 +1103,7 @@ Lstart:
       assertx(debug_correct_level(self));
       assertx(rank(self.id, inserted->id) >= self.root->depth);
     } else {
-      // assertx(!will_ins);
+      assertx(!will_ins);
       assertx(debug_correct_level(self));
       // XXX calc can_split when inserting into bucket
       // printf("can_split(%zu): ", leaf->depth);
@@ -1118,20 +1122,6 @@ Lstart:
           goto Lstart;
         }
       } else {
-#if 0
-        if (self.root == leaf) {
-          assertx(leaf);
-          auto depth = shared_rank(self, *leaf);
-          assertxs(depth >= leaf->depth, depth, leaf->depth);
-          printf("depth: %zu\n", depth);
-          if (depth > leaf->depth) {
-            re_depth(self, depth);
-            goto Lstart;
-          }
-        }
-#endif
-
-        // printf("false\n");
         assertx(debug_correct_level(self));
         auto nxt_depth = leaf->depth;
         auto next = alloc_RoutingTable(self, nxt_depth, AllocType::PLAIN);
@@ -1163,6 +1153,8 @@ Lstart:
 
       log::routing::can_not_insert(self, contact);
     }
+
+    compact_RoutingTable(self);
 
     return inserted;
   } else {

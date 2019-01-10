@@ -232,6 +232,17 @@ RoutingTable::~RoutingTable() noexcept {
   }
 }
 
+bool
+is_empty(const RoutingTable &root) noexcept {
+  for (std::size_t i = 0; i < Bucket::K; ++i) {
+    const auto &current = root.bucket.contacts[i];
+    if (is_valid(current)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 #if 0
 bool
 operator<(const RoutingTable &f, std::size_t depth) noexcept {

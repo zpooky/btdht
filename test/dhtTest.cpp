@@ -646,6 +646,18 @@ TEST(dhtTest, test_first_full) {
   ASSERT_EQ(debug_levels(dht), 2);
 }
 
+static std::size_t
+rank(const NodeId &id, const Key &o) noexcept {
+  std::size_t i = 0;
+  for (; i < NodeId::bits; ++i) {
+    if (bit(id.id, i) != bit(o, i)) {
+      return i;
+    }
+  }
+
+  return i;
+}
+
 struct RankNodeId {
   dht::DHT *self;
   NodeId id;
@@ -657,18 +669,6 @@ struct RankNodeId {
   RankNodeId(DHT &s, const NodeId &o)
       : self{&s}
       , id{o} {
-  }
-
-  static std::size_t
-  rank(const NodeId &id, const Key &o) noexcept {
-    std::size_t i = 0;
-    for (; i < NodeId::bits; ++i) {
-      if (bit(id.id, i) != bit(o, i)) {
-        return i;
-      }
-    }
-
-    return i;
   }
 
   bool
@@ -696,10 +696,6 @@ struct Hasher<RankNodeId> {
   operator()(const NodeId &n) const noexcept {
     return fnv_1a::encode64(n.id, sizeof(n.id));
   }
-  std::uint64_t
-  operator()(const RankNodeId &n) const noexcept {
-    return operator()(n.id);
-  }
 };
 } // namespace sp
 
@@ -710,14 +706,16 @@ TEST(dhtTest, test_self_rand) {
   dht::DHT dht(sock, c, r);
   dht::init(dht);
   heap::StaticMaxBinary<RankNodeId, 1024> heap;
-  sp::HashSetProbing<NodeId> set;
 
   std::size_t count = 0;
 
-  for (std::size_t i = 0; i < 1024; ++i) {
+  for (std::size_t i = 1; i < 1024; ++i) {
+    sp::HashSetProbing<NodeId> set;
+    std::size_t routing_capacity =
+        std::max(dht.root_limit * Bucket::K, length(dht.rt_reuse) * Bucket::K);
 
-    for (std::size_t x = 0; x < capacity(heap); ++x) {
-      auto strt = uniform_dist(dht.random, 0, NodeId::bits);
+    for (std::size_t x = 0; x < routing_capacity; ++x) {
+      auto strt = uniform_dist(dht.random, 0, std::min(i, NodeId::bits));
 
       Node node;
       node.id = dht.id;
@@ -731,8 +729,22 @@ TEST(dhtTest, test_self_rand) {
         insert(set, node.id);
         insert_eager(heap, RankNodeId(dht, node.id));
       }
+    } // for
+
+    std::size_t kx = 0;
+    RankNodeId out;
+    while (take_head(heap, out)) {
+      auto r4nk = rank(dht.id, out.id.id);
+      if (kx < routing_capacity) {
+        printf("%zu .%zu, [%zu]\n", i, kx, r4nk);
+        ++kx;
+        Node *fres = find_contact(dht, out.id);
+        assertx(fres);
+        assertx(fres->id == out.id);
+      }
     }
-  }
+
+  } // for
 }
 
 TEST(dhtTest, test_assert_fail) {

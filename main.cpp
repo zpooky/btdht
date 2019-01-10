@@ -25,28 +25,12 @@
 // TODO getopt: repeating bootstrap nodes
 
 // TODO
-// dht.c:
-// MinHeap of buckets
-// unallocated is of prio:0
-// each level of allocated buckets has id of level first id: 1
-// - if a node does not fit in a bucket and can not replace a existing and the
-//   bucket can not be split into two buckets:
-//   1. try take from top of MinHeap if MinHeap.peek.id != current_bucket.id
-//   2. if already allocated bucket: then do a controlled remove of member
-//      contacts
-//   3. stick new bucket as a linked list onto current_bucket
-//   4. insert new allocated bucket into MinHeap with id of current level
-//
-// ...
-// - MinHeap should be sized based on seek_precent_config?
-// - There should be a prefix length which represent the number of buckets
-//   which does not have a bucket since it has been recycled and used to hold
-//   more precise contacts. the prefix length is used to denote the start of
-//   self.id...
-
-// TODO
 // - cache tx raw sent and print when parse error response to file
 // - find_respons & others should be able to handle error response
+//
+// TODO 2019 bootstrap nodes to heap? to only keep the best candidates, to limit
+// the size of bootstrap cache BS{rank(id),contact}, if timeout and we have to
+// readd to bootstrap = dec rank
 static void
 die(const char *s) {
   perror(s);
@@ -365,8 +349,6 @@ main(int argc, char **argv) {
     assertx(bs.ip.ipv4 > 0);
     assertx(bs.port > 0);
 
-    // TODO bootstrap should  include a sent date and a outstanding request
-    // counter for each entry
     bootstrap_insert(*mdht, bs);
   });
 

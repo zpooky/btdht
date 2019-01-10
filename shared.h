@@ -290,6 +290,9 @@ struct RoutingTable {
   ~RoutingTable() noexcept;
 };
 
+bool
+is_empty(const RoutingTable &) noexcept;
+
 #if 0
 bool
 operator<(const RoutingTable &, std::size_t) noexcept;
