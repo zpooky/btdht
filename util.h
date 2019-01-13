@@ -199,6 +199,15 @@ struct NodeId {
   set_bit(std::size_t, bool) noexcept;
 };
 
+std::size_t
+rank(const Key &, const Key &) noexcept;
+
+std::size_t
+rank(const NodeId &, const Key &) noexcept;
+
+std::size_t
+rank(const NodeId &id, const NodeId &o) noexcept;
+
 template <std::size_t N>
 bool
 from_hex(NodeId &id, const char (&b)[N]) noexcept;
@@ -232,9 +241,6 @@ bit(const Key &key, std::size_t idx) noexcept;
 
 bool
 bit(const NodeId &key, std::size_t idx) noexcept;
-
-std::size_t
-common_bits(const Key &a, const Key &b) noexcept;
 
 void
 print_id(const NodeId &, std::size_t color = 0, const char *c = "") noexcept;

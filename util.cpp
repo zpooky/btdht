@@ -338,6 +338,28 @@ NodeId::operator<(const NodeId &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) < 0;
 }
 
+std::size_t
+rank(const Key &id, const Key &o) noexcept {
+  std::size_t i = 0;
+  for (; i < NodeId::bits; ++i) {
+    if (bit(id, i) != bit(o, i)) {
+      return i;
+    }
+  }
+
+  return i;
+}
+
+std::size_t
+rank(const NodeId &id, const Key &o) noexcept {
+  return rank(id.id, o);
+}
+
+std::size_t
+rank(const NodeId &id, const NodeId &o) noexcept {
+  return rank(id, o.id);
+}
+
 static std::size_t
 word_index(std::size_t abs_idx) noexcept {
   constexpr std::size_t bits(sizeof(char) * 8);
@@ -463,20 +485,6 @@ bit(const Key &key, std::size_t idx) noexcept {
 bool
 bit(const NodeId &key, std::size_t idx) noexcept {
   return bit(key.id, idx);
-}
-
-std::size_t
-common_bits(const Key &a, const Key &b) noexcept {
-  std::size_t common = 0;
-  constexpr std::size_t bits(sizeof(Key) * 8);
-  for (std::size_t i = 0; i < bits; ++i) {
-    if (bit(a, i) == bit(b, i)) {
-      ++common;
-    } else {
-      break;
-    }
-  }
-  return common;
 }
 
 bool

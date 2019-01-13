@@ -1,5 +1,6 @@
 #include "dslbencode.h"
 #include <arpa/inet.h>
+#include <heap/binary.h>
 #include <util/assert.h>
 
 //=BEncode==================================================================
@@ -33,6 +34,11 @@ serialize(sp::Buffer &b, const Contact &p) noexcept {
 
   return true;
 } // bencode::e::serialize()
+
+static bool
+serialize(sp::Buffer &b, const dht::KContact &p) noexcept {
+  return serialize(b, p.contact);
+}
 
 bool
 value(sp::Buffer &b, const Contact &p) noexcept {
@@ -71,6 +77,11 @@ size(const Contact &p) noexcept {
   // TODO ipv4
   assertx(p.ip.type == IpType::IPV4);
   return sizeof(p.ip.ipv4) + sizeof(p.port);
+}
+
+static std::size_t
+size(const dht::KContact &p) noexcept {
+  return size(p.contact);
 }
 
 static std::size_t
@@ -136,6 +147,17 @@ size(const sp::dstack<T> &list) noexcept {
   return result;
 }
 
+template <typename T>
+static std::size_t
+size(const heap::MaxBinary<T> &list) noexcept {
+  std::size_t result = 0;
+  for_each(list, [&result](const auto &ls) {
+    //
+    result += size(ls);
+  });
+  return result;
+}
+
 bool
 pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
   if (!bencode::e::value(buf, key)) {
@@ -165,10 +187,8 @@ sp_list(sp::Buffer &buf, const List &list) noexcept {
     const List *l = (List *)a;
     assertx(l);
     return for_all(*l, [&b](const auto &value) {
-      if (!serialize(b, value)) {
-        return false;
-      }
-      return true;
+      //
+      return serialize(b, value);
     });
   });
 }
@@ -418,6 +438,12 @@ value(sp::Buffer &buf, const sp::dstack<Contact> &t) noexcept {
 } // bencode::e::value()
 
 bool
+value(sp::Buffer &buf, const heap::MaxBinary<dht::KContact> &t) noexcept {
+  // used by dump
+  return sp_list(buf, t);
+} // bencode::e::value()
+
+bool
 pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept {
   // used by dump
   if (!bencode::e::value(buf, key)) {
@@ -429,6 +455,17 @@ pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept {
 
 bool
 pair(sp::Buffer &buf, const char *key, const sp::dstack<Contact> &t) noexcept {
+  // used by dump
+  if (!bencode::e::value(buf, key)) {
+    return false;
+  }
+
+  return value(buf, t);
+}
+
+bool
+pair(sp::Buffer &buf, const char *key,
+     const heap::MaxBinary<dht::KContact> &t) noexcept {
   // used by dump
   if (!bencode::e::value(buf, key)) {
     return false;

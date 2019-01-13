@@ -1,16 +1,16 @@
 #ifndef SP_MAINLINE_DHT_TEST_BENCODE_PRINT_H
 #define SP_MAINLINE_DHT_TEST_BENCODE_PRINT_H
 
-#include "bencode.h"
+#include <cstdint>
+#include "util.h"
 
-namespace sp {
+template <typename Buffer>
 void
-bencode_print(sp::Buffer &) noexcept;
+bencode_print(Buffer &) noexcept;
 
+template <typename Buffer>
 bool
-find_entry(Buffer &, const char *key, /*OUT*/ byte *val,
+find_entry(Buffer &, const char *key, /*OUT*/ sp::byte *val,
            /*IN/OUT*/ std::size_t &) noexcept;
-
-} // namespace sp
 
 #endif

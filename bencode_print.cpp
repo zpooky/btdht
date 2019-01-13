@@ -1,11 +1,15 @@
 #include "bencode_print.h"
+#include "decode_bencode.h"
+#include <buffer/Thing.h>
+#include <cstddef>
 #include <cstdio>
 #include <string/ascii.h>
 
 namespace internal {
 
+template <typename Buffer>
 static bool
-dict_wildcard(sp::Buffer &d, std::size_t tabs) noexcept;
+dict_wildcard(Buffer &d, std::size_t tabs) noexcept;
 
 static void
 print_tabs(std::size_t tabs) noexcept {
@@ -35,36 +39,53 @@ print_raw(const char *val, std::size_t len) noexcept {
   }
 }
 
+template <typename Buffer>
 static bool
-int_wildcard(sp::Buffer &d, std::size_t tabs) noexcept {
+int_wildcard(Buffer &d, std::size_t tabs) noexcept {
+  auto m = mark(d);
   std::uint64_t val = 0;
-  if (bencode::d::value(d, val)) {
+  if (sp::bencode::d<Buffer>::value(d, val)) {
     print_tabs(tabs);
     printf("i%lue\n", val);
     return true;
   }
+  m.rollback = true;
   return false;
 }
 
+template <typename Buffer>
 static bool
-string_wildcard(sp::Buffer &d, std::size_t tabs) noexcept {
-  const char *val = nullptr;
-  std::size_t len = 0;
-  if (bencode::d::value_ref(d, val, len)) {
-    print_tabs(tabs);
-    printf("%zu:", len);
-    print_raw(val, len);
-    printf("\n");
-    return true;
+string_wildcard(Buffer &d, std::size_t tabs) noexcept {
+  auto m = mark(d);
+  std::size_t len = 1024;
+  char *val = new char[len];
+  // TODO
+  // if (sp::bencode::d<Buffer>::value(d, val, len)) {
+  //   print_tabs(tabs);
+  //   printf("%zu:", len);
+  //   print_raw(val, len);
+  //   printf("\n");
+  //   delete val;
+  //   return true;
+  // }
+
+  m.rollback = true;
+  delete val;
+  return false;
+}
+
+template <typename Buffer>
+static bool
+list_wildcard(Buffer &d, std::size_t tabs) noexcept {
+  auto m = mark(d);
+  unsigned char cur = 0;
+
+  if (pop_front(d, cur) != 1) {
+    m.rollback = true;
+    return false;
   }
-  return false;
-}
-
-static bool
-list_wildcard(sp::Buffer &d, std::size_t tabs) noexcept {
-  const std::size_t pos = d.pos;
-  if (d.raw[d.pos++] != 'l') {
-    d.pos = pos;
+  if (cur != 'l') {
+    m.rollback = true;
     return false;
   }
   print_tabs(tabs);
@@ -82,8 +103,13 @@ Lretry:
   if (dict_wildcard(d, tabs + 1)) {
     goto Lretry;
   }
-  if (d.raw[d.pos++] != 'e') {
-    d.pos = pos;
+
+  if (pop_front(d, cur) != 1) {
+    m.rollback = true;
+    return false;
+  }
+  if (cur != 'e') {
+    m.rollback = true;
     return false;
   }
   print_tabs(tabs);
@@ -92,11 +118,17 @@ Lretry:
   return true;
 }
 
+template <typename Buffer>
 static bool
-dict_wildcard(sp::Buffer &d, std::size_t tabs) noexcept {
-  const std::size_t pos = d.pos;
-  if (d.raw[d.pos++] != 'd') {
-    d.pos = pos;
+dict_wildcard(Buffer &d, std::size_t tabs) noexcept {
+  auto m = mark(d);
+  unsigned char cur = 0;
+  if (pop_front(d, cur) != 1) {
+    m.rollback = true;
+    return false;
+  }
+  if (cur != 'd') {
+    m.rollback = true;
     return false;
   }
   print_tabs(tabs);
@@ -114,8 +146,12 @@ Lretry:
   if (dict_wildcard(d, tabs + 1)) {
     goto Lretry;
   }
-  if (d.raw[d.pos++] != 'e') {
-    d.pos = pos;
+  if (pop_front(d, cur) != 1) {
+    m.rollback = true;
+    return false;
+  }
+  if (cur != 'e') {
+    m.rollback = true;
     return false;
   }
   print_tabs(tabs);
@@ -125,16 +161,22 @@ Lretry:
 }
 } // namespace internal
 
-namespace sp {
+template <>
 void
 bencode_print(sp::Buffer &d) noexcept {
   internal::dict_wildcard(d, 0);
 }
 
+template <>
+void
+bencode_print(sp::Thing &d) noexcept {
+  internal::dict_wildcard(d, 0);
+}
+
+template <typename Buffer>
 bool
-find_entry(Buffer &, const char *key, /*OUT*/ byte *val,
+find_entry(Buffer &, const char *key, /*OUT*/ sp::byte *val,
            /*IN/OUT*/ std::size_t &) noexcept {
-  // TODO
+  // XXX
   return true;
 }
-} // namespace sp

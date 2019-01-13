@@ -2,6 +2,7 @@
 #include "udp.h"
 #include <cstdio>
 
+#include "bootstrap.h"
 #include "dht_interface.h"
 #include "dump.h"
 #include "private_interface.h"
@@ -26,11 +27,11 @@
 
 // TODO
 // - cache tx raw sent and print when parse error response to file
-// - find_respons & others should be able to handle error response
-//
-// TODO 2019 bootstrap nodes to heap? to only keep the best candidates, to limit
-// the size of bootstrap cache BS{rank(id),contact}, if timeout and we have to
-// readd to bootstrap = dec rank
+// - find_response & others should be able to handle error response
+// TODO benocode_print
+// TODO BytesView implement mark
+// TODO bootstrap reclaim double free
+// TODO publish extra/sputil
 static void
 die(const char *s) {
   perror(s);
@@ -276,14 +277,13 @@ main(int argc, char **argv) {
     die("failed to init dht");
   }
 
-  printf("node id: %s\n", to_hex(mdht->id));
-
   if (!sp::restore(*mdht, options.dump_file)) {
     die("restore failed\n");
   }
 
-  printf("bootstrap from db(%zu)\n", sp::length(mdht->bootstrap));
+  printf("node id: %s\n", to_hex(mdht->id));
 
+  printf("bootstrap from db(%zu)\n", length(mdht->bootstrap));
   {
     Contact local = udp::local(udp);
     char str[256] = {0};
@@ -341,7 +341,7 @@ main(int argc, char **argv) {
   };
 
   for_each(bss, [&mdht](const char *ip) {
-    Contact bs(0, 0);
+    Contact bs;
     if (!convert(ip, bs)) {
       die("parse bootstrap ip failed");
     }
@@ -349,10 +349,11 @@ main(int argc, char **argv) {
     assertx(bs.ip.ipv4 > 0);
     assertx(bs.port > 0);
 
-    bootstrap_insert(*mdht, bs);
+    ;
+    bootstrap_insert(*mdht, dht::KContact(0, bs));
   });
 
-  printf("total bootstrap(%zu)\n", sp::length(mdht->bootstrap));
+  printf("total bootstrap(%zu)\n", length(mdht->bootstrap));
 
   fd poll = setup_epoll(udp, sfd);
 

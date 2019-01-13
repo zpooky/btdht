@@ -47,5 +47,5 @@ TEST(dumpTest, test) {
 
   ASSERT_EQ(dht.id, restore_dht.id);
   const auto K = dht::Bucket::K;
-  ASSERT_EQ(K, sp::length(restore_dht.bootstrap));
+  ASSERT_EQ(K, length(restore_dht.bootstrap));
 }

@@ -1073,7 +1073,7 @@ TEST(krpcTest, print_error_debug3) {
     {
       {
         sp::Buffer copy(buffer);
-        sp::bencode_print(copy);
+        bencode_print(copy);
       }
     }
   }
@@ -1680,7 +1680,7 @@ TEST(krpcTest, print_error_debug2) {
   {
     {
       sp::Buffer copy(buffer);
-      sp::bencode_print(copy);
+      bencode_print(copy);
     }
   }
 }
@@ -1737,7 +1737,7 @@ TEST(krpcTest, print_error_debug) {
   {
     {
       sp::Buffer copy(buffer);
-      sp::bencode_print(copy);
+      bencode_print(copy);
     }
   }
 }
@@ -2061,7 +2061,7 @@ TEST(krpcTest, print_find_node_debug) {
     {
       {
         sp::Buffer copy(buffer);
-        sp::bencode_print(copy);
+        bencode_print(copy);
       }
 
       sp::Buffer copy(buffer);

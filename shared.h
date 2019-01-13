@@ -414,28 +414,43 @@ struct SearchContext {
   SearchContext() noexcept;
 };
 
-struct K {
+struct KContact {
   /* number of common prefix bits */
-  int common;
+  std::size_t common;
   Contact contact;
-  K()
-      : common(-1)
+
+  KContact() noexcept
+      : common(~std::size_t(0))
       , contact() {
   }
 
-  explicit K(const Node &in, const Key &ref)
-      : common(int(common_bits(in.id.id, ref)))
+  KContact(std::size_t c, Contact con) noexcept
+      : common(c)
+      , contact(con) {
+  }
+
+  KContact(const Key &in, const Contact &c, const Key &search) noexcept
+      : common(rank(in, search))
+      , contact(c) {
+  }
+
+  KContact(const Node &in, const Key &search) noexcept
+      : common(rank(in.id, search))
       , contact(in.contact) {
   }
 
+  KContact(const Node &in, const NodeId &search) noexcept
+      : KContact(in, search.id) {
+  }
+
   explicit operator bool() const noexcept {
-    return common != -1;
+    return common != ~std::size_t(0);
   }
 
   bool
-  operator>(const K &o) const noexcept {
-    assertx(o.common != -1);
-    assertx(common != -1);
+  operator>(const KContact &o) const noexcept {
+    assertx(o.common != ~std::size_t(0));
+    assertx(common != ~std::size_t(0));
     return common > o.common;
   }
 };
@@ -449,7 +464,7 @@ struct Search {
   sp::BloomFilter<NodeId, 8 * 1024 * 1024> searched;
   sp::Timestamp timeout;
 
-  heap::StaticMaxBinary<K, 1024> queue;
+  heap::StaticMaxBinary<KContact, 1024> queue;
   sp::LinkedList<Contact> result;
 
   Search(const Infohash &, const Contact &) noexcept;
@@ -495,7 +510,6 @@ struct DHT {
 
   // peer-lookup db {{{
   avl::Tree<KeyValue> lookup_table;
-  // KeyValue* lookup_table;
   Peer *timeout_peer;
   Timestamp timeout_peer_next;
   //}}}
@@ -530,7 +544,7 @@ struct DHT {
   Timestamp bootstrap_last_reset;
   sp::StaticArray<sp::hasher<Contact>, 2> bootstrap_hashers;
   sp::BloomFilter<Contact, 8 * 1024> bootstrap_filter;
-  sp::dstack<Contact> bootstrap;
+  heap::StaticMaxBinary<KContact, 128> bootstrap;
   std::uint32_t active_searches;
   // }}}
 

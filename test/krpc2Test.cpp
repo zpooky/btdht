@@ -56,7 +56,7 @@ TEST(krpc2Test, get_peers) {
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
     {
       sp::Buffer copy(in);
-      sp::bencode_print(copy);
+      bencode_print(copy);
     }
   }
 
@@ -118,7 +118,7 @@ TEST(krpc2Test, find_node) {
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
     {
       sp::Buffer copy(in);
-      sp::bencode_print(copy);
+      bencode_print(copy);
     }
   }
 
@@ -167,7 +167,7 @@ TEST(krpc2Test, find_node2) {
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
     {
       sp::Buffer copy(in);
-      sp::bencode_print(copy);
+      bencode_print(copy);
     }
   }
 
@@ -209,7 +209,7 @@ TEST(krpc2Test, ping) {
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
     {
       sp::Buffer copy(in);
-      sp::bencode_print(copy);
+      bencode_print(copy);
     }
   }
 
@@ -258,7 +258,7 @@ TEST(krpc2Test, xxx) {
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
     {
       sp::Buffer copy(in);
-      sp::bencode_print(copy);
+      bencode_print(copy);
     }
   }
 
@@ -362,7 +362,7 @@ TEST(krpc2Test, get_peers3) {
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
     {
       sp::Buffer copy(in);
-      sp::bencode_print(copy);
+      bencode_print(copy);
     }
   }
 

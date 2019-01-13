@@ -57,23 +57,6 @@ bit_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
   return true;
 }
 
-static std::size_t
-rank(const NodeId &id, const Key &o) noexcept {
-  std::size_t i = 0;
-  for (; i < NodeId::bits; ++i) {
-    if (bit(id.id, i) != bit(o, i)) {
-      return i;
-    }
-  }
-
-  return i;
-}
-
-static std::size_t
-rank(const NodeId &id, const NodeId &o) noexcept {
-  return rank(id, o.id);
-}
-
 static void
 debug_assert(const RoutingTable *it) {
   const auto &b = it->bucket;
@@ -723,8 +706,6 @@ Lreset:
     }
   }
 
-  // level=0, self.root_prefix=0, length(self.rt_reuse)=32,
-  // capacity(self.rt_reuse)=32
   assertxs(false, level, length(self.rt_reuse), capacity(self.rt_reuse));
   return better_it;
 }
@@ -760,13 +741,11 @@ split(DHT &self, RoutingTable *target_root, std::size_t level) noexcept {
     /*compact with $target_priv if present*/
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
-      // #if 0
       if (is_valid(contact)) {
         if (target_priv) {
           node_reseat(self, contact, target_priv->bucket);
         }
       }
-      // #endif
 
       if (is_valid(contact)) {
         ++present_cnt;
@@ -1191,46 +1170,5 @@ nodes_bad(const DHT &self) noexcept {
   return self.bad_nodes;
 }
 
-void
-bootstrap_insert(DHT &self, const Contact &remote) noexcept {
-  if (!test(self.bootstrap_filter, remote)) {
-    if (push(self.bootstrap, remote)) {
-      insert(self.bootstrap_filter, remote);
-    }
-  }
-}
-
-void
-bootstrap_insert(DHT &self, sp::dstack_node<Contact> *in) noexcept {
-  assertx(in);
-  if (!test(self.bootstrap_filter, in->value)) {
-    push(self.bootstrap, in);
-
-    insert(self.bootstrap_filter, in->value);
-  }
-}
-
-void
-bootstrap_insert_force(DHT &self, const Contact &remote) noexcept {
-  if (push(self.bootstrap, remote)) {
-    insert(self.bootstrap_filter, remote);
-  }
-}
-
-void
-bootstrap_insert_force(DHT &self, sp::dstack_node<Contact> *in) noexcept {
-  assertx(in);
-  if (in) {
-    push(self.bootstrap, in);
-    insert(self.bootstrap_filter, in->value);
-  }
-}
-
-void
-bootstrap_reset(DHT &self) noexcept {
-  auto &filter = self.bootstrap_filter;
-  auto &set = filter.bitset;
-  std::memset(set.raw, 0, sizeof(set.raw));
-}
 
 } // namespace dht

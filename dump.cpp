@@ -1,4 +1,5 @@
-#include "priv_bencode.h"
+#include "encode_bencode.h"
+#include "decode_bencode.h"
 
 #include "dump.h"
 #include <arpa/inet.h>
@@ -37,7 +38,7 @@ do_dump(Buffer &sink, const dht::DHT &dht, dht::RoutingTable *t) noexcept {
           return for_all(table, [&b](auto &current) {
             /**/
             return for_all(current.bucket, [&b](auto &node) {
-              return bencode::e<Buffer>::value(b, node.contact);
+              return bencode::e<Buffer>::value(b, node);
             });
           });
         });
@@ -84,9 +85,20 @@ dump(const dht::DHT &dht, const char *path) noexcept {
 //========================
 template <typename Buffer>
 static bool
-restore_contact(Buffer &b, Contact &out) {
+restore_node(Buffer &b, dht::Node &out) {
   assertx(!is_marked(b));
   return bencode::d<Buffer>::dict(b, [&out](Buffer &buffer) {
+    {
+      assertx(!is_marked(buffer));
+      if (!bencode::d<Buffer>::value(buffer, "id")) {
+        return false;
+      }
+
+      if (!bencode::d<Buffer>::value(buffer, out.id)) {
+        return false;
+      }
+    }
+    auto &contact = out.contact;
     {
       assertx(!is_marked(buffer));
       if (!bencode::d<Buffer>::value(buffer, "ip")) {
@@ -98,7 +110,7 @@ restore_contact(Buffer &b, Contact &out) {
       if (!bencode::d<Buffer>::value(buffer, ip)) {
         return false;
       }
-      out.ip = ntohl(ip);
+      contact.ip = ntohl(ip);
     }
 
     {
@@ -107,10 +119,10 @@ restore_contact(Buffer &b, Contact &out) {
         return false;
       }
       assertx(!is_marked(buffer));
-      if (!bencode::d<Buffer>::value(buffer, out.port)) {
+      if (!bencode::d<Buffer>::value(buffer, contact.port)) {
         return false;
       }
-      out.port = ntohs(out.port);
+      contact.port = ntohs(contact.port);
     }
 
     assertx(!is_marked(buffer));
@@ -146,13 +158,13 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
     }
 
     assertx(!is_marked(buffer));
-    return bencode::d<Buffer>::list(buffer, [&bs](Buffer &b) {
-      Contact contact;
-      if (!restore_contact(b, contact)) {
+    return bencode::d<Buffer>::list(buffer, [&bs, &dht](Buffer &b) {
+      dht::Node contact;
+      if (!restore_node(b, contact)) {
         return false;
       }
 
-      if (!push(bs, contact)) {
+      if (!insert_eager(bs, dht::KContact(contact, dht.id))) {
         assertx(false);
         return false;
       }

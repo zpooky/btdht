@@ -140,7 +140,7 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
     ins->timeout = dht.now + timeout;
 
     for_all_node(dht.root, [&dht, &search, &ins](const dht::Node &n) {
-      insert_eager(ins->queue, dht::K(n, search.id));
+      insert_eager(ins->queue, dht::KContact(n, search.id));
       return true;
     });
   }

@@ -2,6 +2,7 @@
 #define SP_MAINLINE_DHT_DSL_BENCODE_H
 
 #include "bencode.h"
+#include "dstack.h"
 #include "shared.h"
 
 namespace bencode {
@@ -52,6 +53,10 @@ pair(sp::Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept;
 
 bool
 pair(sp::Buffer &buf, const char *key, const sp::dstack<Contact> &) noexcept;
+
+bool
+pair(sp::Buffer &buf, const char *key,
+     const heap::MaxBinary<dht::KContact> &) noexcept;
 } // namespace priv
 
 } // namespace e

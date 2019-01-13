@@ -646,18 +646,6 @@ TEST(dhtTest, test_first_full) {
   ASSERT_EQ(debug_levels(dht), 2);
 }
 
-static std::size_t
-rank(const NodeId &id, const Key &o) noexcept {
-  std::size_t i = 0;
-  for (; i < NodeId::bits; ++i) {
-    if (bit(id.id, i) != bit(o, i)) {
-      return i;
-    }
-  }
-
-  return i;
-}
-
 struct RankNodeId {
   dht::DHT *self;
   NodeId id;

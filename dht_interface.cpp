@@ -2,6 +2,7 @@
 
 #include "Log.h"
 #include "bencode.h"
+#include "bootstrap.h"
 #include "client.h"
 #include "db.h"
 #include "dht.h"
@@ -214,13 +215,7 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
   Config &cfg = dht.config;
   bool bs_sent = false;
   // TODO verify bad_nodes works...
-  // TODO bootstrap should be last. Tag bucket with bootstrap generation only
-  // use bootstrap if we get the same bucket and we haven't sent any to
-  // bootstrap this generation.
-
   // XXX self should not be in bootstrap list
-  // XXX how to handle the same bucket will be reselected to send find_nodes
-  // multiple times in a row
 
   // XXX if no good node is available try bad/questionable nodes
 
@@ -252,21 +247,20 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     /* Bootstrap contacts */
     if (!bs_sent) {
       const dht::NodeId &self = dht.id;
-      // XXX shuffle bootstrap list just before sending
-      sp::dstack_node<Contact> *cur = nullptr;
-      while (pop(dht.bootstrap, cur)) {
-
-        result = client::find_node(dht, out, cur->value, /*search*/ self, cur);
+      dht::KContact cur;
+      while (take_head(dht.bootstrap, cur)) {
+        dht::KContact *closure = bootstrap_alloc(dht, cur);
+        result =
+            client::find_node(dht, out, cur.contact, /*search*/ self, closure);
         if (result == client::Res::OK) {
+          bs_sent = true;
           inc_active_searches();
-          cur = nullptr;
         } else {
-          push(dht.bootstrap, cur);
+          insert_eager(dht.bootstrap, cur);
+          bootstrap_reclaim(dht, closure);
           break;
         }
       } // while
-
-      bs_sent = true;
     }
 
     if (result == client::Res::ERR_TOKEN) {
@@ -310,18 +304,14 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
          dht.config.percentage_seek, "%",                  //
          cur, "%", all, dht.root ? dht.root->depth : 0, length(dht.bootstrap));
 
-#if 0
   if (cur < dht.config.percentage_seek) {
-#endif
-  // TODO if we can't mint new tx then next should be calculated base on when
-  // soonest next tx timesout is so we can directly reuse it. (it should not
-  // be the config.refresh_interval of 15min if we are under conf.p_seek)
-  auto awake_next = awake_look_for_nodes(dht, out, look_for);
-  result = std::min(result, awake_next);
-  log::awake::contact_scan(dht);
-#if 0
+    // TODO if we can't mint new tx then next should be calculated base on when
+    // soonest next tx timesout is so we can directly reuse it. (it should not
+    // be the config.refresh_interval of 15min if we are under conf.p_seek)
+    auto awake_next = awake_look_for_nodes(dht, out, look_for);
+    result = std::min(result, awake_next);
+    log::awake::contact_scan(dht);
   }
-#endif
 
   return result;
 }
@@ -568,7 +558,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 
       auto res = dht::insert(dht, node);
       if (!res) {
-        bootstrap_insert(dht, node.contact);
+        bootstrap_insert(dht, node);
       }
     });
   });
@@ -578,7 +568,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 static void
 handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
   if (closure) {
-    reclaim(dht.bootstrap, (sp::dstack_node<Contact> *)closure);
+    bootstrap_reclaim(dht, (dht::KContact *)closure);
   }
 
   assertx(dht.active_searches > 0);
@@ -591,11 +581,9 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
   log::transmit::error::find_node_response_timeout(dht, tx, sent);
   if (closure) {
     // arbitrary?
-    if (nodes_good(dht) < 100) {
-      auto *bs = (sp::dstack_node<Contact> *)closure;
-      bootstrap_insert_force(dht, bs);
-      closure = nullptr;
-    }
+    auto *bs = (dht::KContact *)closure;
+    bootstrap_insert_force(dht, *bs);
+    delete bs;
   }
 
   handle_response_timeout(dht, closure);
@@ -605,13 +593,13 @@ static bool
 on_response(dht::MessageContext &ctx, void *closure) noexcept {
   dht::DHT &dht = ctx.dht;
 
-  Contact cap_copy;
-  Contact *cap_ptr = nullptr;
+  dht::KContact cap_copy;
+  dht::KContact *cap_ptr = nullptr;
   if (closure) {
-    auto *bs = (sp::dstack_node<Contact> *)closure;
+    auto *bs = (dht::KContact *)closure;
 
     // make a copy of the capture so we can delete it
-    cap_copy = bs->value;
+    cap_copy = *bs;
     cap_ptr = &cap_copy;
   }
   handle_response_timeout(ctx.dht, closure);
@@ -779,7 +767,7 @@ search_insert(dht::Search &search, const dht::Node &contact) noexcept {
     /*insert into bloomfilter*/
     bool ires = insert(search.searched, contact.id);
     assertx(ires);
-    insert_eager(search.queue, dht::K(contact, search.search.id));
+    insert_eager(search.queue, dht::KContact(contact, search.search.id));
   }
 }
 
@@ -806,7 +794,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       dht::Node ins(contact, dht.now);
       auto res = dht::insert(dht, ins);
       if (!res) {
-        bootstrap_insert(dht, ins.contact);
+        bootstrap_insert(dht, ins);
       }
     });
 
@@ -888,7 +876,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       assertx(pos == p.pos);
     }
 
-    std::uint64_t p_out = 0; // TODO what is this?
+    std::uint64_t p_out = 0; // XXX what is this?
     if (!b_p && bencode::d::pair(p, "p", p_out)) {
       b_p = true;
       goto Lstart;
