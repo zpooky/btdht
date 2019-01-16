@@ -61,33 +61,61 @@ setup(dht::Modules &modules) noexcept {
 namespace timeout {
 template <typename F>
 bool
-for_all_node(dht::DHT &ctx, sp::Milliseconds timeout, F f) {
-// TODO make ping have a timeout and find_node has another
-Lstart:
-
-  dht::Node *const node = timeout::take_node(ctx, timeout);
+for_all_node(dht::DHT &self, sp::Milliseconds timeout, F f) {
+  const dht::Node *start = nullptr;
+  assertx(debug_assert_all(self));
+  bool result = true;
+Lstart : {
+  dht::Node *const node = timeout::take_node(self, timeout);
   if (node) {
+    if (node == start) {
+      assertx(!timeout::debug_find_node(self, node));
+      timeout::prepend(self, node);
+      assertx(node->timeout_next);
+      assertx(node->timeout_priv);
+      assertx(timeout::debug_find_node(self, node) == node);
+      assertx(debug_assert_all(self));
+      return true;
+    }
+
+    if (!start) {
+      start = node;
+    }
+    assertx(!timeout::debug_find_node(self, node));
+
+    printf("node: %s\n", to_hex(node->id));
+
     assertx(!node->timeout_next);
     assertx(!node->timeout_priv);
 
     if (node->good) {
-      if (dht::should_mark_bad(ctx, *node)) {
+      if (dht::should_mark_bad(self, *node)) {
         node->good = false;
-        ctx.bad_nodes++;
+        self.bad_nodes++;
       }
     }
 
-    if (f(ctx, *node)) {
-      timeout::append_all(ctx, node);
+    if (f(self, *node)) {
+      timeout::append_all(self, node);
+      assertx(node->timeout_next);
+      assertx(node->timeout_priv);
+      assertx(timeout::debug_find_node(self, node) == node);
+      assertx(debug_assert_all(self));
+
       goto Lstart;
     } else {
+      timeout::prepend(self, node);
+      assertx(node->timeout_next);
+      assertx(node->timeout_priv);
+      assertx(timeout::debug_find_node(self, node) == node);
+      assertx(debug_assert_all(self));
 
-      timeout::prepend(ctx, node);
-      return false;
+      result = false;
     }
   }
+}
 
-  return true;
+  return result;
 }
 
 static void
@@ -112,8 +140,8 @@ for_each(Node *node, F f) noexcept {
 static void
 inc_outstanding(Node &node) noexcept {
   const std::uint8_t max = ~0;
-  if (node.ping_outstanding != max) {
-    ++node.ping_outstanding;
+  if (node.outstanding != max) {
+    ++node.outstanding;
   }
 }
 
@@ -137,7 +165,6 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
            * immediately awake and send ping  to the same 3 nodes
            */
           node.req_sent = dht.now;
-          assertx(node.timeout_next == nullptr);
         }
 
         return result;
@@ -231,6 +258,7 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
 
             result = client::find_node(ctx, out, c, /*search*/ self, nullptr);
             if (result == client::Res::OK) {
+              inc_outstanding(remote);
               ++sent_count;
               inc_active_searches();
               remote.req_sent = dht.now;
@@ -489,7 +517,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   log::receive::res::ping(ctx);
 
   dht_response(ctx, sender, [](auto &node) { //
-    node.ping_outstanding = 0;
+    node.outstanding = 0;
   });
 
   return true;

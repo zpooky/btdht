@@ -507,7 +507,7 @@ Node::Node() noexcept
     , req_sent(0)
     //}}}
     //{{{
-    , ping_outstanding(0)
+    , outstanding(0)
     , valid_id(NodeIdValid::NOT_YET)
     , good(true)
 //}}}
@@ -530,7 +530,7 @@ Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
     , req_sent(act) // TODO??
     //}}}
     //{{{
-    , ping_outstanding(0)
+    , outstanding(0)
     , valid_id(NodeIdValid::NOT_YET)
     , good(true)
 //}}}
@@ -545,8 +545,8 @@ bool
 is_valid(const Node &n) noexcept {
   bool res = is_valid(n.id);
   if (res) {
-    assertxs(n.timeout_next, n.timeout_next, n.timeout_priv);
-    assertxs(n.timeout_priv, n.timeout_priv, n.timeout_next);
+    assertxs(n.timeout_next, n.timeout_next, n.timeout_priv, to_hex(n.id));
+    assertxs(n.timeout_priv, n.timeout_priv, n.timeout_next, to_hex(n.id));
   } else {
     assertx(!n.timeout_next);
     assertx(!n.timeout_priv);

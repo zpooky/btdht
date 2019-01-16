@@ -9,6 +9,10 @@ std::size_t
 debug_count_nodes(const dht::DHT &) noexcept;
 
 //=====================================
+const dht::Node *
+debug_find_node(const dht::DHT &, const dht::Node *) noexcept;
+
+//=====================================
 void
 unlink(dht::Node *&head, dht::Node *) noexcept;
 

@@ -20,14 +20,32 @@ debug_count_nodes(const dht::DHT &self) noexcept {
 }
 
 //=====================================
+const dht::Node *
+debug_find_node(const dht::DHT &self, const dht::Node *needle) noexcept {
+  dht::Node *it = self.timeout_node;
+  dht::Node *const head = it;
+  while (it) {
+    if (it == needle) {
+      return it;
+    }
+    it = it->timeout_next;
+
+    if (it == head) {
+      break;
+    }
+  }
+  return nullptr;
+}
+
+//=====================================
 template <typename T>
 static bool
 debug_is_cycle(T *const head) noexcept {
-  if (head) {
-    T *it = head;
+  T *it = head;
 
+  if (it) {
   Lit:
-    if (head) {
+    if (it) {
       T *const next = it->timeout_next;
       assertx(next);
       assertx(it == next->timeout_priv);
@@ -194,39 +212,20 @@ insert_new(dht::DHT &dht, dht::Node *ret) noexcept {
 //=====================================
 template <typename T>
 static T *
-internal_take(Timestamp now, sp::Milliseconds timeout, T *&the_head) noexcept {
+internal_take(Timestamp now, sp::Milliseconds timeout, T *&head) noexcept {
   auto is_expired = [now, timeout](auto &node) { //
     return (node.req_sent + timeout) > now;
   };
 
   T *result = nullptr;
-  T *const head = the_head;
-  T *current = head;
-  std::size_t cnt = 0;
 
-  const std::size_t max = 1;
-
-Lstart:
-  if (current && cnt < max) {
-
+  if (head) {
+    T *current = head;
     if (is_expired(*current)) {
-      T *const next = current->timeout_next;
-      unlink(the_head, current);
-
-      if (!result) {
-        result = current;
-      } else {
-        current->timeout_next = result;
-        result = current;
-      }
-      ++cnt;
-
-      if (next != head) {
-        current = next;
-        goto Lstart;
-      } else {
-        the_head = nullptr;
-      }
+      unlink(head, current);
+      result = current;
+      assertx(!result->timeout_next);
+      assertx(!result->timeout_priv);
     }
   }
 

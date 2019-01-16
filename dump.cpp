@@ -1,5 +1,5 @@
-#include "encode_bencode.h"
 #include "decode_bencode.h"
+#include "encode_bencode.h"
 
 #include "dump.h"
 #include <arpa/inet.h>
@@ -165,8 +165,7 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
       }
 
       if (!insert_eager(bs, dht::KContact(contact, dht.id))) {
-        assertx(false);
-        return false;
+        assertxs(is_full(bs), length(bs), capacity(bs));
       }
 
       return true;

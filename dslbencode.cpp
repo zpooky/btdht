@@ -251,7 +251,7 @@ value(sp::Buffer &buf, const dht::Node &node) noexcept {
       return false;
     }
 
-    if (!bencode::e::pair(b, "ping_outstanding", node.ping_outstanding)) {
+    if (!bencode::e::pair(b, "outstanding", node.outstanding)) {
       return false;
     }
 

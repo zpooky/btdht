@@ -16,6 +16,9 @@ std::size_t
 debug_levels(const DHT &) noexcept;
 
 bool
+debug_assert_all(const DHT &);
+
+bool
 is_strict(const Ip &, const NodeId &) noexcept;
 
 void
@@ -75,7 +78,6 @@ nodes_total(const DHT &) noexcept;
 
 std::uint32_t
 nodes_bad(const DHT &) noexcept;
-
 
 //==========================================
 } // namespace dht

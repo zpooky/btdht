@@ -32,6 +32,11 @@
 // TODO BytesView implement mark
 // TODO bootstrap reclaim double free
 // TODO publish extra/sputil
+// TODO actively timeout transactions so that they return back into $bootstrap
+// heap so that we do not starve for and dead lock ourself. Since now we only
+// time out transaction lazily when we issue new requests and if there is no
+// nodes to send request to we do not timeout existing transaction and never
+// gets back bootstrap nodes and we starve forever.
 static void
 die(const char *s) {
   perror(s);

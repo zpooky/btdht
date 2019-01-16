@@ -273,7 +273,7 @@ struct Node {
   //}}}
 
   //{{{
-  std::uint8_t ping_outstanding;
+  std::uint8_t outstanding;
   NodeIdValid valid_id;
   bool good;
   // }}}

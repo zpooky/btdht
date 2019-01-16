@@ -57,12 +57,27 @@ bit_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
   return true;
 }
 
-static void
+static bool
 debug_assert(const RoutingTable *it) {
   const auto &b = it->bucket;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     is_valid(b.contacts[i]);
   }
+  return true;
+}
+
+bool
+debug_assert_all(const DHT &self) {
+  auto it = self.root;
+  while (it) {
+    auto it_next = it;
+    while (it_next) {
+      assertx(debug_assert(it_next));
+      it_next = it_next->next;
+    }
+    it = it->in_tree;
+  }
+  return true;
 }
 
 static bool
@@ -799,6 +814,7 @@ TokenPair::operator bool() const noexcept {
 static void
 multiple_closest_nodes(DHT &self, const Key &search, Node **result,
                        std::size_t res_length) noexcept {
+  assertx(debug_assert_all(self));
   for (std::size_t i = 0; i < res_length; ++i) {
     assertx(result[i] == nullptr);
   }
@@ -888,7 +904,7 @@ bool
 is_good(const DHT &dht, const Node &contact) noexcept {
   const Config &config = dht.config;
   // XXX configurable non arbitrary limit?
-  if (contact.ping_outstanding > 2) {
+  if (contact.outstanding > 2) {
 
     /* Using dht.last_activty to better handle a general outage of network
      * connectivity
@@ -935,14 +951,14 @@ multiple_closest(DHT &dht, const Infohash &id, Node **result,
 } // dht::multiple_closest()
 
 Node *
-find_contact(DHT &dht, const NodeId &search) noexcept {
+find_contact(DHT &self, const NodeId &search) noexcept {
+  assertx(debug_assert_all(self));
+
   bool inTree = false;
   std::size_t idx = 0;
 
-  RoutingTable *leaf = find_closest(dht, search, inTree, idx);
+  RoutingTable *leaf = find_closest(self, search, inTree, idx);
   if (leaf) {
-    // XXX how to ensure leaf is a bucket?
-
     return find(*leaf, search);
   }
 
@@ -1031,6 +1047,8 @@ insert(DHT &self, const Node &contact) noexcept {
   if (self.id == contact.id) {
     return nullptr;
   }
+
+  assertx(debug_assert_all(self));
   // fprintf(stderr, "%s\n", to_hex(contact.id));
 
   bool will_ins = false;
@@ -1082,8 +1100,11 @@ Lstart:
       assertx(debug_correct_level(self));
       assertx(rank(self.id, inserted->id) >= self.root->depth);
     } else {
-      assertx(!will_ins);
       assertx(debug_correct_level(self));
+      if (!will_ins) {
+        debug_print("", self);
+        assertx(!will_ins);
+      }
       // XXX calc can_split when inserting into bucket
       // printf("can_split(%zu): ", leaf->depth);
       if (can_split(*leaf, leaf->depth)) {
@@ -1098,6 +1119,7 @@ Lstart:
           assertx(debug_correct_level(self));
           // XXX make better
           will_ins = true;
+          assertx(debug_assert_all(self));
           goto Lstart;
         }
       } else {
@@ -1122,6 +1144,7 @@ Lstart:
                   alloc_RoutingTable(self, leaf->depth + 1, AllocType::REC);
               assertx(leaf->in_tree);
               will_ins = true;
+              assertx(debug_assert_all(self));
               goto Lstart;
             }
           }
@@ -1133,8 +1156,10 @@ Lstart:
       log::routing::can_not_insert(self, contact);
     }
 
+    assertx(debug_assert_all(self));
     compact_RoutingTable(self);
 
+    assertx(debug_assert_all(self));
     return inserted;
   } else {
     /* Empty tree */
