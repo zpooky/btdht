@@ -94,10 +94,7 @@ parse_string(Buffer &b, /*OUT*/ T *str, std::size_t N,
     return false;
   }
 
-  if (!pop_front(b, str, len)) {
-    return false;
-  }
-
+  len = pop_front(b, (unsigned char *)str, len);
   return true;
 }
 
@@ -143,12 +140,14 @@ bencode::d<Buffer>::value(Buffer &buf, byte *value, std::size_t &len) noexcept {
     m.rollback = true;
     return false;
   }
+  len = out_len;
 
   return true;
 }
 
-static bool
-value(Buffer &buf, char *value, std::size_t &len) noexcept {
+template <typename Buffer>
+bool
+bencode::d<Buffer>::value(Buffer &buf, char *value, std::size_t &len) noexcept {
   auto m = mark(buf);
 
   std::size_t out_len = 0;
@@ -156,6 +155,7 @@ value(Buffer &buf, char *value, std::size_t &len) noexcept {
     m.rollback = true;
     return false;
   }
+  len = out_len;
 
   return true;
 }

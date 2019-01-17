@@ -22,7 +22,7 @@ generic_receive(fd &u, sp::Buffer &b) noexcept {
   printf("contact: %s\n", str);
   // assertx(b.length > 0);
 
-  sp::bencode_print(b);
+  bencode_print(b);
 }
 
 template <typename R>
@@ -182,7 +182,7 @@ receive_get_peers(fd &u, sp::Buffer &b) noexcept {
   printf("\n\n");
 
   dht::Token t;
-  assertx(find_entry(b, "token", t.id, t.length));
+  // assertx(find_entry(b, "token", t.id, t.length));
   return t;
 }
 

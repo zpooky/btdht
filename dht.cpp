@@ -1195,5 +1195,4 @@ nodes_bad(const DHT &self) noexcept {
   return self.bad_nodes;
 }
 
-
 } // namespace dht

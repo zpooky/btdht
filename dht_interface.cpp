@@ -117,14 +117,6 @@ Lstart : {
 
   return result;
 }
-
-static void
-update_receive(dht::DHT &, dht::Node *) noexcept {
-  // TODO rename response_activity to receive_activity?
-  // node->response_activity = dht.now;
-  // return update(ctx, contact, now);
-} // timeout::update()
-
 } // namespace timeout
 
 namespace dht {
@@ -151,24 +143,24 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
   Config &cfg = ctx.config;
 
   /* Send ping to nodes */
-  timeout::for_all_node(
-      ctx, cfg.refresh_interval, [&out](auto &dht, auto &node) {
-        bool result = client::ping(dht, out, node) == client::Res::OK;
-        if (result) {
-          inc_outstanding(node);
-          // timeout::update_send(dht, node);
+  auto f = [&out](auto &dht, auto &node) {
+    bool result = client::ping(dht, out, node) == client::Res::OK;
+    if (result) {
+      inc_outstanding(node);
+      // timeout::update_send(dht, node);
 
-          /* Fake update activity otherwise if all nodes have to
-           * same timeout we will spam out pings, ex: 3 nodes timed
-           * out, send ping, append, get the next timeout date,
-           * since there is only 3 in the queue and we will
-           * immediately awake and send ping  to the same 3 nodes
-           */
-          node.req_sent = dht.now;
-        }
+      /* Fake update activity otherwise if all nodes have to
+       * same timeout we will spam out pings, ex: 3 nodes timed
+       * out, send ping, append, get the next timeout date,
+       * since there is only 3 in the queue and we will
+       * immediately awake and send ping  to the same 3 nodes
+       */
+      node.req_sent = dht.now;
+    }
 
-        return result;
-      });
+    return result;
+  };
+  timeout::for_all_node(ctx, cfg.refresh_interval, f);
 
   /* Calculate next timeout based on the head if the timeout list which is in
    * sorted order where to oldest node is first in the list.
@@ -250,23 +242,23 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     auto result = client::Res::OK;
     std::size_t sent_count = 0;
 
-    timeout::for_all_node(
-        dht, cfg.refresh_interval, [&](auto &ctx, Node &remote) {
-          if (dht::is_good(ctx, remote)) {
-            const Contact &c = remote.contact;
-            dht::NodeId &self = dht.id;
+    auto f = [&](auto &ctx, Node &remote) {
+      // if (dht::is_good(ctx, remote)) {
+      const Contact &c = remote.contact;
+      dht::NodeId &self = dht.id;
 
-            result = client::find_node(ctx, out, c, /*search*/ self, nullptr);
-            if (result == client::Res::OK) {
-              inc_outstanding(remote);
-              ++sent_count;
-              inc_active_searches();
-              remote.req_sent = dht.now;
-            }
-          }
+      result = client::find_node(ctx, out, c, /*search*/ self, nullptr);
+      if (result == client::Res::OK) {
+        inc_outstanding(remote);
+        ++sent_count;
+        inc_active_searches();
+        remote.req_sent = dht.now;
+      }
+      // }
 
-          return result == client::Res::OK;
-        });
+      return result == client::Res::OK;
+    };
+    timeout::for_all_node(dht, cfg.refresh_interval, f);
 
     if (result == client::Res::ERR_TOKEN) {
       break;
@@ -363,10 +355,9 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
   Node *result = find_contact(dht, sender);
   if (result) {
-    timeout::update_receive(dht, result);
-
     if (!result->good) {
       result->good = true;
+      result->outstanding = 0; // XXX
       assertx(dht.bad_nodes > 0);
       dht.bad_nodes--;
     }

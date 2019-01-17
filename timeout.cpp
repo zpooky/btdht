@@ -214,7 +214,7 @@ template <typename T>
 static T *
 internal_take(Timestamp now, sp::Milliseconds timeout, T *&head) noexcept {
   auto is_expired = [now, timeout](auto &node) { //
-    return (node.req_sent + timeout) > now;
+    return (node.req_sent + timeout) < now;
   };
 
   T *result = nullptr;

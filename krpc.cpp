@@ -366,7 +366,10 @@ namespace event {
 template <typename F>
 static bool
 event(sp::Buffer &buf, F f) noexcept {
-  const Transaction t;
+  Transaction t;
+  t.length = 4;
+  std::memcpy(t.id, "12ab", t.length);
+
   return message(buf, t, "e", "found", [&f](auto &b) { //
     if (!bencode::e::value(b, "e")) {
       return false;

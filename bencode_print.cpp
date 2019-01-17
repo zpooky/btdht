@@ -59,15 +59,14 @@ string_wildcard(Buffer &d, std::size_t tabs) noexcept {
   auto m = mark(d);
   std::size_t len = 1024;
   char *val = new char[len];
-  // TODO
-  // if (sp::bencode::d<Buffer>::value(d, val, len)) {
-  //   print_tabs(tabs);
-  //   printf("%zu:", len);
-  //   print_raw(val, len);
-  //   printf("\n");
-  //   delete val;
-  //   return true;
-  // }
+  if (sp::bencode::d<Buffer>::value(d, val, len)) {
+    print_tabs(tabs);
+    printf("%zu:", len);
+    print_raw(val, len);
+    printf("\n");
+    delete val;
+    return true;
+  }
 
   m.rollback = true;
   delete val;
@@ -175,8 +174,7 @@ bencode_print(sp::Thing &d) noexcept {
 
 template <typename Buffer>
 bool
-find_entry(Buffer &, const char *key, /*OUT*/ sp::byte *val,
-           /*IN/OUT*/ std::size_t &) noexcept {
+find_entry(Buffer &, const char *key, /*OUT*/ sp::byte *val, /*IN/OUT*/ std::size_t &) noexcept {
   // XXX
   return true;
 }
