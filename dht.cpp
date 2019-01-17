@@ -177,21 +177,13 @@ debug_correct_level(const DHT &self) noexcept {
     }
   }
 
-  debug_print(self);
-
-  assertxs(table_cnt == (length(self.rt_reuse) + extra_cnt), //
-           table_cnt, extra_cnt, length(self.rt_reuse),      //
-           extra_cnt + length(self.rt_reuse), capacity(self.rt_reuse));
-
   assertxs(node_cnt == nodes_total(self), //
            node_cnt, nodes_total(self));
   assertxs(node_cnt == timeout::debug_count_nodes(self), //
            node_cnt, timeout::debug_count_nodes(self));
-  // printf("node_cnt[%zu]\n", node_cnt);
   assertxs(nodes_good(self) <= nodes_total(self), //
            nodes_good(self), nodes_total(self));
 
-  // printf("\n");
   return true;
 }
 
