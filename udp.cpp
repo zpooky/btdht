@@ -9,7 +9,7 @@
 #include <sys/socket.h> //socket
 
 namespace udp {
-
+//=====================================
 static void
 die(const char *s) {
   perror(s);
@@ -48,8 +48,9 @@ to_peer(const ::sockaddr_in &src, Contact &dest) noexcept {
 //     die("recvfrom()");
 //   }
 // }
-Contact
-local(fd &listen) noexcept {
+//=====================================
+bool
+local(fd &listen, Contact &out) noexcept {
   sockaddr_in addr;
   std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);
@@ -57,19 +58,25 @@ local(fd &listen) noexcept {
 
   int ret = ::getsockname(int(listen), saddr, &slen);
   if (ret < 0) {
-    die("getsockname()");
+    return false;
   }
 
   if (saddr->sa_family == AF_INET6) {
+    assertx(false);
     // TODO
-    return Contact(0, 0);
-  } else {
-    Ipv4 ip = ntohl(addr.sin_addr.s_addr);
-
-    return Contact(ip, ntohs(addr.sin_port));
+    out = Contact(0, 0);
+    return true;
   }
+
+  assertxs(saddr->sa_family == AF_INET, saddr->sa_family);
+  Ipv4 ip = ntohl(addr.sin_addr.s_addr);
+  Port port = ntohs(addr.sin_port);
+
+  out = Contact(ip, port);
+  return true;
 }
 
+//=====================================
 fd
 bind(Ipv4 ip, Port port, Mode mode) noexcept {
   int type = SOCK_DGRAM;
@@ -101,6 +108,7 @@ bind(Port port, Mode m) noexcept {
   return bind(INADDR_ANY, port, m);
 }
 
+//=====================================
 static int
 receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   int flag = 0;
@@ -139,6 +147,7 @@ receive(fd &udp, /*OUT*/ Contact &c, /*OUT*/ sp::Buffer &b) noexcept {
   return receive(int(udp), c, b);
 }
 
+//=====================================
 static bool
 send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
   assertx(buf.length > 0);
@@ -178,6 +187,7 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
   return true;
 } // udp::send()
 
+//=====================================
 bool
 send(int fd, const Contact &dest, sp::Buffer &buf) noexcept {
   ::sockaddr_in d;
@@ -190,4 +200,5 @@ send(fd &fd, const Contact &dest, sp::Buffer &buf) noexcept {
   return send(int(fd), dest, buf);
 } // udp::send()
 
+//=====================================
 } // namespace udp

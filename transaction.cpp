@@ -4,7 +4,7 @@
 #include <util/assert.h>
 
 namespace tx {
-
+//=====================================
 using dht::Client;
 using dht::Config;
 using dht::DHT;
@@ -150,6 +150,7 @@ init(Client &client) noexcept {
   return true;
 }
 
+//=====================================
 static Tx *
 unlink(Client &client, Tx *t) noexcept {
   assertx(client.timeout_head);
@@ -179,7 +180,6 @@ is_sent(const Tx &tx) noexcept {
   return tx.sent != Timestamp(0);
 }
 
-//=====================================
 static Tx *
 search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
   Tx *const result = (Tx *)find(tree, needle);

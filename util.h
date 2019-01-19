@@ -105,6 +105,9 @@ bool
 to_ipv4(const char *, Ipv4 &) noexcept;
 
 bool
+to_string(const Ip&, char *, std::size_t) noexcept;
+
+bool
 to_string(const Contact &, char *msg, std::size_t) noexcept;
 
 template <std::size_t SIZE>

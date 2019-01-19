@@ -223,8 +223,8 @@ to_ipv4(const char *str, Ipv4 &result) noexcept {
 }
 
 bool
-to_string(const Contact &c, char *str, std::size_t length) noexcept {
-  if (c.ip.type == IpType::IPV6) {
+to_string(const Ip& ip, char *str, std::size_t length) noexcept {
+  if (ip.type == IpType::IPV6) {
     if (length < (INET6_ADDRSTRLEN + 1 + 5 + 1)) {
       return false;
     }
@@ -232,11 +232,10 @@ to_string(const Contact &c, char *str, std::size_t length) noexcept {
     sockaddr_in6 addr;
     memset(&addr, 0, sizeof(sockaddr_in6));
     addr.sin6_family = AF_INET6;
-    addr.sin6_port = htons(c.port);
+    // addr.sin6_port = htons(c.port);
     // TODO copy over ip
 
-    if (inet_ntop(AF_INET6, &addr.sin6_addr, str, socklen_t(length)) ==
-        nullptr) {
+    if (!inet_ntop(AF_INET6, &addr.sin6_addr, str, socklen_t(length))) {
       return false;
     }
   } else {
@@ -247,16 +246,25 @@ to_string(const Contact &c, char *str, std::size_t length) noexcept {
     sockaddr_in addr;
     memset(&addr, 0, sizeof(sockaddr_in));
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(c.ip.ipv4);
+    addr.sin_addr.s_addr = htonl(ip.ipv4);
 
-    if (inet_ntop(AF_INET, &addr.sin_addr, str, socklen_t(length)) == nullptr) {
+    if (!inet_ntop(AF_INET, &addr.sin_addr, str, socklen_t(length))) {
       return false;
     }
-    std::strcat(str, ":");
-    char pstr[6] = {0};
-    sprintf(pstr, "%d", c.port);
-    std::strcat(str, pstr);
   }
+  return true;
+}
+
+bool
+to_string(const Contact &c, char *str, std::size_t length) noexcept {
+  if (!to_string(c.ip, str, length)) {
+    return false;
+  }
+
+  std::strcat(str, ":");
+  char pstr[6] = {0};
+  sprintf(pstr, "%d", c.port);
+  std::strcat(str, pstr);
   return true;
 }
 

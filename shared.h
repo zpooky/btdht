@@ -490,9 +490,6 @@ struct Search {
   }
 };
 
-Search *
-find_search(dht::DHT &, SearchContext *) noexcept;
-
 // dht::DHT
 struct DHT {
   static const std::size_t token_table = 64;

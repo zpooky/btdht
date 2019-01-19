@@ -4,14 +4,16 @@
 #include "shared.h"
 
 namespace tx {
-
+//=====================================
 bool
 init(dht::Client &) noexcept;
 
+//=====================================
 bool
 consume(dht::Client &, const krpc::Transaction &,
         /*OUT*/ TxContext &) noexcept;
 
+//=====================================
 /* keep tracks of active outgoing transactions and what module should handle the
  * response for an eventual response. Client maintains a tree of active
  * transactions together with function pointer for the module which should
@@ -20,12 +22,15 @@ consume(dht::Client &, const krpc::Transaction &,
 bool
 mint(dht::DHT &, /*OUT*/ krpc::Transaction &, TxContext &) noexcept;
 
+//=====================================
 bool
 is_valid(dht::DHT &, const krpc::Transaction &) noexcept;
 
+//=====================================
 Timestamp
 next_available(const dht::DHT &) noexcept;
 
+//=====================================
 } // namespace tx
 
 #endif

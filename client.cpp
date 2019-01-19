@@ -9,7 +9,7 @@
 #include <util/assert.h>
 
 namespace client {
-
+//=====================================
 template <typename F>
 static Res
 send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
@@ -43,6 +43,7 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
   return result;
 }
 
+//=====================================
 Res
 ping(dht::DHT &dht, sp::Buffer &buf, const dht::Node &node) noexcept {
   dht::Module ping;
@@ -57,6 +58,7 @@ ping(dht::DHT &dht, sp::Buffer &buf, const dht::Node &node) noexcept {
   return result;
 }
 
+//=====================================
 Res
 find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
           const dht::NodeId &search, void *closure) noexcept {
@@ -72,6 +74,7 @@ find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
   return result;
 }
 
+//=====================================
 Res
 get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
           const dht::Infohash &search, void *closure) noexcept {
@@ -88,6 +91,7 @@ get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
 }
 
 namespace priv {
+//=====================================
 template <typename Contacts>
 Res
 found(dht::DHT &dht, sp::Buffer &out, const dht::Infohash &search,
@@ -117,4 +121,5 @@ found<sp::LinkedList<Contact>>(dht::DHT &, sp::Buffer &, const dht::Infohash &,
 
 } // namespace priv
 
+//=====================================
 } // namespace client

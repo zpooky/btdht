@@ -28,10 +28,8 @@
 // TODO
 // - cache tx raw sent and print when parse error response to file
 // - find_response & others should be able to handle error response
-// TODO benocode_print
 // TODO BytesView implement mark
-// TODO bootstrap reclaim double free
-// TODO publish extra/sputil
+// TODO double free
 // TODO actively timeout transactions so that they return back into $bootstrap
 // heap so that we do not starve for and dead lock ourself. Since now we only
 // time out transaction lazily when we issue new requests and if there is no
@@ -55,12 +53,14 @@ setup_signal() {
   /* Block signals so that they aren't handled
    * according to their default dispositions
    */
-  // sigaddset(&sigset, SIGINT);
-  // sigaddset(&sigset, SIGQUIT);
-  // sigaddset(&sigset, SIGTERM);
-  // sigaddset(&sigset, SIGHUP);
-
+#if 0
+  sigaddset(&sigset, SIGINT);
+  sigaddset(&sigset, SIGQUIT);
+  sigaddset(&sigset, SIGTERM);
+  sigaddset(&sigset, SIGHUP);
+#endif
   sigfillset(&sigset);
+
   /*job control*/
   sigdelset(&sigset, SIGCONT);
   sigdelset(&sigset, SIGTSTP);
@@ -121,7 +121,7 @@ setup_epoll(fd &udp, fd &signal) noexcept {
 
 template <typename Handle, typename Awake, typename Interrupt>
 static int
-loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
+main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
      Interrupt on_int) noexcept {
   Timestamp previous(0);
 
@@ -257,52 +257,8 @@ for_each(T (&arr)[SIZE], F f) noexcept {
   }
 }
 
-// transmission-daemon -er--dht
-// echo "asd" | netcat --udp 127.0.0.1 45058
-int
-main(int argc, char **argv) {
-  printf("sizeof(DHT): %zuB %zuKB\n", sizeof(dht::DHT),
-         sizeof(dht::DHT) / 1024);
-  dht::Options options;
-  if (!dht::parse(options, argc, argv)) {
-    //   die("TODO");
-    return 1;
-  }
-  std::srand((unsigned int)time(nullptr));
-
-  fd sfd = setup_signal();
-  fd udp = udp::bind(options.port, udp::Mode::NONBLOCKING);
-  // fd udp = udp::bind(INADDR_ANY, 0);
-
-  prng::xorshift32 r(14);
-
-  Contact self = udp::local(udp);
-  auto mdht = std::make_unique<dht::DHT>(udp, self, r);
-  if (!dht::init(*mdht)) {
-    die("failed to init dht");
-  }
-
-  if (!sp::restore(*mdht, options.dump_file)) {
-    die("restore failed\n");
-  }
-
-  printf("node id: %s\n", to_hex(mdht->id));
-
-  printf("bootstrap from db(%zu)\n", length(mdht->bootstrap));
-  {
-    Contact local = udp::local(udp);
-    char str[256] = {0};
-    assertx(to_string(local, str, sizeof(str)));
-    printf("bind(%s)\n", str);
-  }
-  {
-    char str[256] = {0};
-    assertx(to_string(mdht->ip, str, sizeof(str)));
-    printf("remote(%s)\n", str);
-  }
-
-  mdht->now = sp::now();
-
+bool
+setup_bootstrap(dht::DHT &self) noexcept {
   /*boostrap*/
   // Contact bs_node(INADDR_ANY, local.port); // TODO
   const char *bss[] = {
@@ -345,7 +301,7 @@ main(int argc, char **argv) {
       // "127.0.0.1:51413", "213.65.130.80:51413",
   };
 
-  for_each(bss, [&mdht](const char *ip) {
+  for_each(bss, [&self](const char *ip) {
     Contact bs;
     if (!convert(ip, bs)) {
       die("parse bootstrap ip failed");
@@ -354,11 +310,60 @@ main(int argc, char **argv) {
     assertx(bs.ip.ipv4 > 0);
     assertx(bs.port > 0);
 
-    ;
-    bootstrap_insert(*mdht, dht::KContact(0, bs));
+    bootstrap_insert(self, dht::KContact(0, bs));
   });
 
-  printf("total bootstrap(%zu)\n", length(mdht->bootstrap));
+  printf("total bootstrap(%zu)\n", length(self.bootstrap));
+  return true;
+}
+
+// transmission-daemon -er--dht
+// echo "asd" | netcat --udp 127.0.0.1 45058
+int
+main(int argc, char **argv) {
+  printf("sizeof(DHT): %zuB %zuKB\n", sizeof(dht::DHT),
+         sizeof(dht::DHT) / 1024);
+  dht::Options options;
+  if (!dht::parse(options, argc, argv)) {
+    //   die("TODO");
+    return 1;
+  }
+  std::srand((unsigned int)time(nullptr));
+
+  fd sfd = setup_signal();
+  fd udp = udp::bind(options.port, udp::Mode::NONBLOCKING);
+  // fd udp = udp::bind(INADDR_ANY, 0);
+
+  prng::xorshift32 r(14);
+
+  Contact listen;
+  if (!udp::local(udp, listen)) {
+    return false;
+  }
+
+  auto mdht = std::make_unique<dht::DHT>(udp, listen, r);
+  if (!dht::init(*mdht)) {
+    die("failed to init dht");
+  }
+
+  if (!sp::restore(*mdht, options.dump_file)) {
+    die("restore failed\n");
+  }
+
+  printf("node id: %s\n", to_hex(mdht->id));
+
+  printf("bootstrap from db(%zu)\n", length(mdht->bootstrap));
+  {
+    char str[256] = {0};
+    assertx(to_string(mdht->ip, str, sizeof(str)));
+    printf("remote(%s)\n", str);
+    assertx(to_string(listen, str, sizeof(str)));
+    printf("bind(%s)\n", str);
+  }
+
+  mdht->now = sp::now();
+
+  setup_bootstrap(*mdht);
 
   fd poll = setup_epoll(udp, sfd);
 
@@ -416,5 +421,5 @@ main(int argc, char **argv) {
     return 1;
   };
 
-  return loop(poll, sfd, handle_cb, awake_cb, interrupt_cb);
+  return main_loop(poll, sfd, handle_cb, awake_cb, interrupt_cb);
 }

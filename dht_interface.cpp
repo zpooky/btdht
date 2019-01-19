@@ -7,6 +7,7 @@
 #include "db.h"
 #include "dht.h"
 #include "krpc.h"
+#include "search.h"
 #include "timeout.h"
 #include "transaction.h"
 
@@ -266,12 +267,12 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
 
     /* Bootstrap contacts */
     if (!bs_sent) {
-      const dht::NodeId &self = dht.id;
+      const dht::NodeId &sid = dht.id;
       dht::KContact cur;
       while (take_head(dht.bootstrap, cur)) {
         dht::KContact *closure = bootstrap_alloc(dht, cur);
         result =
-            client::find_node(dht, out, cur.contact, /*search*/ self, closure);
+            client::find_node(dht, out, cur.contact, /*search*/ sid, closure);
         if (result == client::Res::OK) {
           bs_sent = true;
           inc_active_searches();
@@ -585,9 +586,10 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 } // find_node::handle_response()
 
 static void
-handle_response_timeout(dht::DHT &dht, void *closure) noexcept {
+handle_response_timeout(dht::DHT &dht, void *&closure) noexcept {
   if (closure) {
     bootstrap_reclaim(dht, (dht::KContact *)closure);
+    closure = nullptr;
   }
 
   assertx(dht.active_searches > 0);
@@ -599,10 +601,8 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *closure) noexcept {
   log::transmit::error::find_node_response_timeout(dht, tx, sent);
   if (closure) {
-    // arbitrary?
     auto *bs = (dht::KContact *)closure;
     bootstrap_insert_force(dht, *bs);
-    delete bs;
   }
 
   handle_response_timeout(dht, closure);
@@ -779,17 +779,6 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
   });
 } // get_peers::handle_request
 
-static void
-search_insert(dht::Search &search, const dht::Node &contact) noexcept {
-  /*test bloomfilter*/
-  if (!test(search.searched, contact.id)) {
-    /*insert into bloomfilter*/
-    bool ires = insert(search.searched, contact.id);
-    assertx(ires);
-    insert_eager(search.queue, dht::KContact(contact, search.search.id));
-  }
-}
-
 template <typename ResultType, typename ContactType>
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
@@ -826,22 +815,12 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 } // get_peers::handle_response
 
 static void
-dec(dht::SearchContext *ctx) noexcept {
-  ctx->ref_cnt--;
-  if (ctx->is_dead) {
-    if (ctx->ref_cnt == 0) {
-      delete ctx;
-    }
-  }
-}
-
-static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *ctx) noexcept {
   log::transmit::error::get_peers_response_timeout(dht, tx, sent);
   auto search = (dht::SearchContext *)ctx;
   if (search) {
-    dec(search);
+    search_decrement(search);
   }
 } // get_peers::on_timeout
 
@@ -853,8 +832,8 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
   }
 
   auto search_ctx = (dht::SearchContext *)searchCtx;
-  dht::Search *search = find_search(ctx.dht, search_ctx);
-  dec(search_ctx);
+  dht::Search *search = search_find(ctx.dht, search_ctx);
+  search_decrement(search_ctx);
 
   // assertx(search);
   if (!search) {

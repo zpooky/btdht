@@ -367,16 +367,6 @@ Search::Search(Search &&o) noexcept
 }
 #endif
 
-Search *
-find_search(dht::DHT &dht, SearchContext *needle) noexcept {
-  sp::LinkedList<Search> &ctx = dht.searches;
-  assertx(needle);
-  return find_first(ctx, [&](const Search &current) {
-    /**/
-    return current.ctx == needle;
-  });
-}
-
 // dht::DHT
 DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     // self {{{
