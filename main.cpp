@@ -29,7 +29,6 @@
 // - cache tx raw sent and print when parse error response to file
 // - find_response & others should be able to handle error response
 // TODO BytesView implement mark
-// TODO double free
 // TODO actively timeout transactions so that they return back into $bootstrap
 // heap so that we do not starve for and dead lock ourself. Since now we only
 // time out transaction lazily when we issue new requests and if there is no

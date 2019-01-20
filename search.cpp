@@ -3,7 +3,8 @@
 namespace dht {
 //=====================================
 Search *
-search_find(dht::DHT &dht, SearchContext *needle) noexcept {
+search_find(DHT &dht, SearchContext *needle) noexcept {
+  assertx(needle);
   sp::LinkedList<Search> &ctx = dht.searches;
   assertx(needle);
   return find_first(ctx, [&](const Search &current) {
@@ -25,14 +26,20 @@ search_decrement(SearchContext *ctx) noexcept {
 
 //=====================================
 void
-search_insert(Search &search, const dht::Node &contact) noexcept {
+search_insert(Search &self, const Node &contact) noexcept {
   /*test bloomfilter*/
-  if (!test(search.searched, contact.id)) {
+  if (!test(self.searched, contact.id)) {
     /*insert into bloomfilter*/
-    bool ires = insert(search.searched, contact.id);
+    bool ires = insert(self.searched, contact.id);
     assertx(ires);
-    insert_eager(search.queue, dht::KContact(contact, search.search.id));
+    insert_eager(self.queue, KContact(contact, self.search.id));
   }
+}
+
+//=====================================
+void
+search_insert_result(Search &self, const Contact &peer) noexcept {
+  insert(self.result, peer);
 }
 
 //=====================================

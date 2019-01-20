@@ -339,33 +339,19 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
 
 static Node *
 dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  if (!dht::is_valid(sender)) {
-    return nullptr;
-  }
+  DHT &self = ctx.dht;
 
-  DHT &dht = ctx.dht;
-
-  /*request from self*/
-  if (dht.id == sender.id) {
-    return nullptr;
-  }
-
-  if (dht::is_blacklisted(dht, ctx.remote)) {
-    return nullptr;
-  }
-
-  Node *result = find_contact(dht, sender);
+  Node *result = find_contact(self, sender);
   if (result) {
     if (!result->good) {
       result->good = true;
       result->outstanding = 0; // XXX
-      assertx(dht.bad_nodes > 0);
-      dht.bad_nodes--;
+      assertx(self.bad_nodes > 0);
+      self.bad_nodes--;
     }
   } else {
-
-    Node contact(sender, ctx.remote, dht.now);
-    result = dht::insert(dht, contact);
+    Node contact(sender, ctx.remote, self.now);
+    result = dht::insert(self, contact);
   }
 
   return result;
@@ -388,13 +374,28 @@ handle_ip_election(dht::MessageContext &ctx, const dht::NodeId &) noexcept {
 }
 
 template <typename F>
-static dht::Node *
-dht_request(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
+static void
+message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
+  dht::DHT &self = ctx.dht;
+
+  if (!dht::is_valid(sender)) {
+    return;
+  }
+
+  /*request from self*/
+  if (self.id == sender.id) {
+    return;
+  }
+
+  if (dht::is_blacklisted(self, ctx.remote)) {
+    return;
+  }
+
   dht::Node *contact = dht_activity(ctx, sender);
 
   handle_ip_election(ctx, sender);
   if (contact) {
-    contact->remote_activity = ctx.dht.now;
+    contact->remote_activity = self.now;
     f(*contact);
   } else {
     dht::Node n;
@@ -402,28 +403,7 @@ dht_request(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
     f(n);
   }
 
-  return contact;
-}
-
-template <typename F>
-static dht::Node *
-dht_response(dht::MessageContext &ctx, const dht::NodeId &sender,
-             F f) noexcept {
-  dht::Node *contact = dht_activity(ctx, sender);
-
-  handle_ip_election(ctx, sender);
-  if (contact) {
-
-    contact->remote_activity = ctx.dht.now;
-    f(*contact);
-  } else {
-    /* phony */
-    dht::Node n;
-    n.id = sender;
-    f(n);
-  }
-
-  return contact;
+  return;
 }
 
 static void
@@ -495,7 +475,7 @@ static bool
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   log::receive::req::ping(ctx);
 
-  dht_request(ctx, sender, [&ctx](auto &) {
+  message(ctx, sender, [&ctx](auto &) {
     dht::DHT &dht = ctx.dht;
     krpc::response::ping(ctx.out, ctx.transaction, dht.id);
   });
@@ -508,7 +488,7 @@ static bool
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   log::receive::res::ping(ctx);
 
-  dht_response(ctx, sender, [](auto &node) { //
+  message(ctx, sender, [](auto &node) { //
     node.outstanding = 0;
   });
 
@@ -550,7 +530,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search) noexcept {
   log::receive::req::find_node(ctx);
 
-  dht_request(ctx, sender, [&](auto &) {
+  message(ctx, sender, [&](auto &) {
     dht::DHT &dht = ctx.dht;
     constexpr std::size_t capacity = 8;
 
@@ -571,7 +551,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       std::is_same<dht::Node, typename ContactType::value_type>::value, "");
   log::receive::res::find_node(ctx);
 
-  dht_response(ctx, sender, [&](auto &) {
+  message(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const dht::Node &contact) {
       dht::DHT &dht = ctx.dht;
       dht::Node node(contact, dht.now);
@@ -758,7 +738,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search) noexcept {
   log::receive::req::get_peers(ctx);
 
-  dht_request(ctx, id, [&](auto &from) {
+  message(ctx, id, [&](auto &from) {
     dht::Token token;
     dht::DHT &dht = ctx.dht;
     // TODO ip
@@ -770,7 +750,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
       krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
     } else {
       constexpr std::size_t capacity = 8;
-      dht::Node *closest[8] = {nullptr};
+      dht::Node *closest[capacity] = {nullptr};
       dht::multiple_closest(dht, search, closest);
       const dht::Node **r = (const dht::Node **)&closest;
 
@@ -794,7 +774,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::res::get_peers(ctx);
   dht::DHT &dht = ctx.dht;
 
-  dht_request(ctx, sender, [&](auto &) {
+  message(ctx, sender, [&](auto &) {
     /* Sender returns the its closest contacts for search */
     for_each(contacts, [&](const auto &contact) {
       search_insert(search, contact);
@@ -809,7 +789,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
     /* Sender returns matching values for search query */
     for_each(result, [&search](const Contact &c) {
       /**/
-      insert(search.result, c);
+      search_insert_result(search, c);
     });
   });
 } // get_peers::handle_response
@@ -981,7 +961,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
   log::receive::req::announce_peer(ctx);
 
   dht::DHT &dht = ctx.dht;
-  dht_request(ctx, sender, [&](auto &from) {
+  message(ctx, sender, [&](auto &from) {
     if (db::valid(dht, from, token)) {
       Contact peer(ctx.remote);
       if (implied_port) {
@@ -1004,7 +984,7 @@ static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   log::receive::res::announce_peer(ctx);
 
-  dht_response(ctx, sender, [](auto &) { //
+  message(ctx, sender, [](auto &) { //
 
   });
 }

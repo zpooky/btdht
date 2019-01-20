@@ -6,15 +6,19 @@
 namespace dht {
 //=====================================
 Search *
-search_find(dht::DHT &, SearchContext *) noexcept;
+search_find(DHT &, SearchContext *) noexcept;
 
 //=====================================
 void
-search_decrement(SearchContext *ctx) noexcept;
+search_decrement(SearchContext *) noexcept;
 
 //=====================================
 void
-search_insert(Search &search, const dht::Node &contact) noexcept;
+search_insert(Search &, const Node &) noexcept;
+
+//=====================================
+void
+search_insert_result(Search &, const Contact &) noexcept;
 
 //=====================================
 } // namespace dht
