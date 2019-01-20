@@ -398,6 +398,7 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
     contact->remote_activity = self.now;
     f(*contact);
   } else {
+    bootstrap_insert(self, dht::KContact(sender.id, ctx.remote, self.id.id));
     dht::Node n;
     n.id = sender;
     f(n);

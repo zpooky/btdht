@@ -1,6 +1,7 @@
 #include "bootstrap.h"
 
 namespace dht {
+//==========================================
 void
 bootstrap_insert(DHT &self, const KContact &remote) noexcept {
   if (!test(self.bootstrap_filter, remote.contact)) {
@@ -15,6 +16,7 @@ bootstrap_insert(DHT &self, const Node &node) noexcept {
   bootstrap_insert(self, dht::KContact(node, self.id));
 }
 
+//==========================================
 void
 bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
 
@@ -26,6 +28,7 @@ bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
   }
 }
 
+//==========================================
 void
 bootstrap_reset(DHT &self) noexcept {
   auto &filter = self.bootstrap_filter;
@@ -33,14 +36,18 @@ bootstrap_reset(DHT &self) noexcept {
   std::memset(set.raw, 0, sizeof(set.raw));
 }
 
+//==========================================
 void
 bootstrap_reclaim(DHT &self, dht::KContact *in) noexcept {
   assertx(in);
   delete in;
 }
 
+//==========================================
 dht::KContact *
 bootstrap_alloc(DHT &, const dht::KContact &cur) noexcept {
   return new dht::KContact(cur);
 }
+
+//==========================================
 } // namespace dht
