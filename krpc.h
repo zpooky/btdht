@@ -17,6 +17,7 @@ enum class Error {
   method_unknown = 204
 };
 
+//=====================================
 namespace request {
 /*krpc::request*/
 /* DHT interface */
@@ -26,20 +27,20 @@ ping(sp::Buffer &, const Transaction &, //
      const dht::NodeId &sender) noexcept;
 
 bool
-find_node(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &self, const dht::NodeId &search) noexcept;
+find_node(sp::Buffer &, const Transaction &, const dht::NodeId &,
+          const dht::NodeId &) noexcept;
 
 bool
-get_peers(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &self, const dht::Infohash &search) noexcept;
+get_peers(sp::Buffer &, const Transaction &, const dht::NodeId &,
+          const dht::Infohash &) noexcept;
 
 bool
-announce_peer(sp::Buffer &, const Transaction &, //
-              const dht::NodeId &self, bool implied_port,
-              const dht::Infohash &search, Port port,
+announce_peer(sp::Buffer &, const Transaction &, const dht::NodeId &self,
+              bool implied_port, const dht::Infohash &, Port port,
               const dht::Token &) noexcept;
 //}
 
+//=====================================
 /*private interface*/
 //{
 bool
@@ -54,6 +55,7 @@ search(sp::Buffer &b, const Transaction &, const dht::Infohash &,
 //}
 } // namespace request
 
+//=====================================
 namespace response {
 /*krpc::response*/
 /* DHT interface */
@@ -84,6 +86,7 @@ bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
 //}
 
+//=====================================
 /*private interface*/
 //{
 bool
@@ -94,13 +97,16 @@ statistics(sp::Buffer &b, const Transaction &t, const dht::Stat &) noexcept;
 
 bool
 search(sp::Buffer &b, const Transaction &t) noexcept;
+
+bool
+search_stop(sp::Buffer &b, const Transaction &t) noexcept;
 //}
 
 } // namespace response
 
+//=====================================
 namespace priv {
 namespace event {
-
 template <typename Contacts>
 bool
 found(sp::Buffer &, const dht::Infohash &, const Contacts &) noexcept;
@@ -108,8 +114,8 @@ found(sp::Buffer &, const dht::Infohash &, const Contacts &) noexcept;
 } // namespace event
 } // namespace priv
 
+//=====================================
 namespace d {
-
 template <typename F>
 bool
 krpc(ParseContext &pctx, F handle) {
@@ -230,7 +236,7 @@ krpc(ParseContext &pctx, F handle) {
 }
 
 namespace response {
-
+//=====================================
 /*f: MessageContext -> NodeId -> bool*/
 template <typename Ctx, typename F>
 bool
@@ -271,10 +277,10 @@ ping(Ctx &ctx, F f) noexcept {
     return false;
   });
 }
-
 } // namespace response
 
 namespace request {
+//=====================================
 /*f: MessageContext -> NodeId -> bool*/
 template <typename Ctx, typename F>
 bool
@@ -309,6 +315,7 @@ ping(Ctx &ctx, F f) noexcept {
   });
 }
 
+//=====================================
 template <typename Ctx, typename F>
 bool
 search(Ctx &ctx, F f) noexcept {
@@ -325,8 +332,23 @@ search(Ctx &ctx, F f) noexcept {
     return f(ctx, search, sp::Seconds(sec));
   });
 }
-} // namespace request
 
+//=====================================
+template <typename Ctx, typename F>
+bool
+search_stop(Ctx &ctx, F f) noexcept {
+  return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
+    dht::Infohash search;
+    if (!bencode::d::pair(p, "search", search.id)) {
+      return false;
+    }
+
+    return f(ctx, search);
+  });
+}
+
+//=====================================
+} // namespace request
 } // namespace d
 } // namespace krpc
 

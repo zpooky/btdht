@@ -29,11 +29,19 @@
 // - cache tx raw sent and print when parse error response to file
 // - find_response & others should be able to handle error response
 // TODO BytesView implement mark
+// TODO log explicit error response (error module)
 // TODO actively timeout transactions so that they return back into $bootstrap
 // heap so that we do not starve for and dead lock ourself. Since now we only
 // time out transaction lazily when we issue new requests and if there is no
 // nodes to send request to we do not timeout existing transaction and never
 // gets back bootstrap nodes and we starve forever.
+// TODO enumrate interface bound to (0.0.0.0) -> find default gateways -> send upnp port mapping
+// TODO implement peer db timeout logic
+// XXX ipv6
+// TODO cleint: multiple receiver for the same search
+// TODO client: debug search result message is valid/bencode_print list works correcly
+// TODO bencode_print hex id does not works? only print len(39) where len(40) is epexcted.
+// TODO client: on server shutdown send to search clients that we are shuting down
 static void
 die(const char *s) {
   perror(s);

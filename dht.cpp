@@ -125,7 +125,7 @@ debug_correct_level(const DHT &self) noexcept {
   std::size_t table_cnt = 0;
   std::size_t node_cnt = 0;
   if (it) {
-    std::size_t depth = it->depth;
+    auto depth = it->depth;
     while (it) {
       auto it_next = it;
       std::size_t n = 0;
@@ -513,7 +513,6 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
       const auto h_depth = h->depth;
 
       h->~RoutingTable();
-      memset(h, 0, sizeof(*h));
       new (h) RoutingTable(depth);
 
       auto res = update_key(self.rt_reuse, head);
@@ -718,13 +717,14 @@ Lreset:
 }
 
 static bool
-split(DHT &self, RoutingTable *target_root, std::size_t level) noexcept {
+split(DHT &self, RoutingTable *target_root) noexcept {
+  debug_print("split-before", self);
   assertx(target_root);
   /* If there already is a target_root->in_tree node then we already have
    * performed the split and should not get here again.
    */
   // assertxs(target_root->depth == (level + 1), target_root->depth, level);
-  const std::size_t target_depth = target_root->depth;
+  const auto target_depth = target_root->depth;
 
   RoutingTable *better_root = nullptr;
   RoutingTable *better_it = nullptr;
@@ -966,24 +966,6 @@ bucket_for(DHT &dht, const NodeId &id) noexcept {
   return leaf ? &leaf->bucket : nullptr;
 }
 
-static std::size_t
-shared_rank(const dht::DHT &self, const RoutingTable &table) {
-  std::size_t result = 0;
-  const RoutingTable *it = &table;
-  while (it) {
-    for (std::size_t i = 0; i < Bucket::K; ++i) {
-      const Node &c = it->bucket.contacts[i];
-      if (is_valid(c)) {
-        result = std::min(rank(self.id, c.id), result);
-      }
-    } // for
-
-    it = it->next;
-  } // while
-
-  return result;
-}
-
 static bool
 can_split(const RoutingTable &table, std::size_t idx) {
   const RoutingTable *it = &table;
@@ -1106,7 +1088,7 @@ Lstart:
 
         // 0: any
         // 1: match
-        if (split(self, /*parent*/ leaf, leaf->depth)) {
+        if (split(self, /*parent*/ leaf)) {
           assertx(leaf->in_tree);
           assertx(debug_correct_level(self));
           // XXX make better

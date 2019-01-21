@@ -1,3 +1,4 @@
+#include "search.h"
 #include "shared.h"
 #include <algorithm>
 #include <cstring>
@@ -323,7 +324,7 @@ Stat::Stat() noexcept
 }
 
 SearchContext::SearchContext() noexcept
-    : ref_cnt(0)
+    : ref_cnt(1)
     , is_dead(false) {
 }
 
@@ -346,6 +347,13 @@ Search::Search(const Infohash &s, const Contact &r) noexcept
 
   assertx_n(insert(hashers, djb_f));
   assertx_n(insert(hashers, fnv_f));
+}
+
+Search::~Search() noexcept {
+  if (ctx) {
+    ctx->is_dead = true;
+    search_decrement(ctx);
+  }
 }
 
 #if 0

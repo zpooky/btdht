@@ -27,7 +27,7 @@ print_raw(const char *val, std::size_t len) noexcept {
     for (std::size_t i = 0; i < len; ++i) {
       printf("%hhX", (unsigned char)val[i]);
     }
-    printf("](");
+    printf("]: %zu(", len);
     for (std::size_t i = 0; i < len; ++i) {
       if (ascii::is_printable(val[i])) {
         printf("%c", val[i]);
@@ -174,7 +174,8 @@ bencode_print(sp::Thing &d) noexcept {
 
 template <typename Buffer>
 bool
-find_entry(Buffer &, const char *key, /*OUT*/ sp::byte *val, /*IN/OUT*/ std::size_t &) noexcept {
+find_entry(Buffer &, const char *key, /*OUT*/ sp::byte *val,
+           /*IN/OUT*/ std::size_t &) noexcept {
   // XXX
   return true;
 }

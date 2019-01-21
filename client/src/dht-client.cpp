@@ -220,7 +220,11 @@ main(int argc, char **args) {
     return 1;
   }
 
-  Contact local = udp::local(udp);
+  Contact local;
+  if (!udp::local(udp, local)) {
+    printf("failed local\n");
+    return 1;
+  }
   prng::xorshift32 r(1337);
   randomize(r, self);
 

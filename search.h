@@ -14,6 +14,10 @@ search_decrement(SearchContext *) noexcept;
 
 //=====================================
 void
+search_increment(SearchContext *) noexcept;
+
+//=====================================
+void
 search_insert(Search &, const Node &) noexcept;
 
 //=====================================

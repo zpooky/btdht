@@ -478,16 +478,7 @@ struct Search {
   Search &
   operator=(const Search &&) = delete;
 
-  ~Search() {
-    if (ctx) {
-      // printf("~Search()\n");
-      ctx->is_dead = true;
-      if (ctx->ref_cnt == 0) {
-        delete ctx;
-        ctx = nullptr;
-      }
-    }
-  }
+  ~Search() noexcept;
 };
 
 // dht::DHT

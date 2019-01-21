@@ -26,6 +26,13 @@ search_decrement(SearchContext *ctx) noexcept {
 
 //=====================================
 void
+search_increment(SearchContext *ctx) noexcept {
+  assertx(ctx->ref_cnt > 0);
+  ctx->ref_cnt++;
+}
+
+//=====================================
+void
 search_insert(Search &self, const Node &contact) noexcept {
   /*test bloomfilter*/
   if (!test(self.searched, contact.id)) {

@@ -173,6 +173,7 @@ dump(sp::Buffer &b, const Transaction &t) noexcept {
   });
 } // request::dump()
 
+//=====================================
 bool
 statistics(sp::Buffer &b, const Transaction &t) noexcept {
   return req(b, t, "sp_statistics", [](sp::Buffer &) { //
@@ -180,6 +181,7 @@ statistics(sp::Buffer &b, const Transaction &t) noexcept {
   });
 }
 
+//=====================================
 bool
 search(sp::Buffer &b, const Transaction &t, const dht::Infohash &search,
        std::size_t timeout) noexcept {
@@ -194,10 +196,10 @@ search(sp::Buffer &b, const Transaction &t, const dht::Infohash &search,
     return true;
   });
 }
-
 } // namespace request
 
 namespace response {
+//=====================================
 /*krpc::response*/
 bool
 ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
@@ -210,6 +212,7 @@ ping(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id) noexcept {
   });
 } // response::ping()
 
+//=====================================
 bool
 find_node(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const dht::Node **target,
@@ -223,6 +226,7 @@ find_node(sp::Buffer &buf, const Transaction &t, //
   });
 } // response::find_node()
 
+//=====================================
 bool
 get_peers(sp::Buffer &buf, const Transaction &t, //
           const dht::NodeId &id, const dht::Token &token,
@@ -240,6 +244,7 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
   });
 } // response::get_peers()
 
+//=====================================
 bool
 get_peers(sp::Buffer &buf,
           const Transaction &t, //
@@ -258,6 +263,7 @@ get_peers(sp::Buffer &buf,
   });
 } // response::get_peers()
 
+//=====================================
 bool
 announce_peer(sp::Buffer &buf, const Transaction &t,
               const dht::NodeId &id) noexcept {
@@ -270,6 +276,7 @@ announce_peer(sp::Buffer &buf, const Transaction &t,
   });
 } // response::announce_peer()
 
+//=====================================
 bool
 error(sp::Buffer &buf, const Transaction &t, Error e,
       const char *msg) noexcept {
@@ -295,6 +302,7 @@ error(sp::Buffer &buf, const Transaction &t, Error e,
   });
 } // response::error()
 
+//=====================================
 bool
 dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
   return resp(buf, t, [&dht](auto &b) {
@@ -331,6 +339,7 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
   });
 } // response::dump()
 
+//=====================================
 bool
 statistics(sp::Buffer &buf, const Transaction &t,
            const dht::Stat &stat) noexcept {
@@ -351,8 +360,16 @@ statistics(sp::Buffer &buf, const Transaction &t,
   });
 }
 
+//=====================================
 bool
 search(sp::Buffer &b, const Transaction &t) noexcept {
+  return resp(b, t, [](auto &) { //
+    return true;
+  });
+}
+
+bool
+search_stop(sp::Buffer &b, const Transaction &t) noexcept {
   return resp(b, t, [](auto &) { //
     return true;
   });
@@ -361,8 +378,8 @@ search(sp::Buffer &b, const Transaction &t) noexcept {
 } // namespace response
 
 namespace priv {
+//=====================================
 namespace event {
-
 template <typename F>
 static bool
 event(sp::Buffer &buf, F f) noexcept {
@@ -407,8 +424,8 @@ found(sp::Buffer &buf, const dht::Infohash &search,
 template bool
 found<sp::LinkedList<Contact>>(sp::Buffer &, const dht::Infohash &,
                                const sp::LinkedList<Contact> &) noexcept;
-
 } // namespace event
+//=====================================
 } // namespace priv
 
 } // namespace krpc

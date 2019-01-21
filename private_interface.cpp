@@ -2,6 +2,7 @@
 #include "client.h"
 #include "krpc.h"
 #include "private_interface.h"
+#include "search.h"
 #include <util/assert.h>
 
 namespace interface_priv {
@@ -35,7 +36,7 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scrtch) noexcept {
       }
     }
 
-    bool res = dht.now >= current.timeout;
+    bool res = dht.now > current.timeout;
     if (res) {
       log::search::retire(dht, current);
     }
@@ -52,7 +53,7 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scrtch) noexcept {
       reset(scrtch);
       auto res = client::get_peers(dht, scrtch, head->contact, s.search, s.ctx);
       if (res == client::Res::OK) {
-        ++s.ctx->ref_cnt;
+        search_increment(s.ctx);
         drop_head(s.queue);
         goto Lit;
       }
@@ -70,6 +71,7 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scrtch) noexcept {
 
     return acum;
   });
+
   if (!is_empty(dht.searches)) {
     result = std::min(result, Timeout(config.transaction_timeout));
   }
@@ -83,16 +85,12 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scrtch) noexcept {
 // dump
 //===========================================================
 namespace dump {
-
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
   log::receive::req::dump(ctx);
 
   dht::DHT &dht = ctx.dht;
-  bool r = krpc::response::dump(ctx.out, ctx.transaction, dht);
-  assertx(r);
-
-  return true;
+  return krpc::response::dump(ctx.out, ctx.transaction, dht);
 }
 
 void
@@ -101,7 +99,6 @@ setup(dht::Module &module) noexcept {
   module.request = on_request;
   module.response = nullptr;
 }
-
 } // namespace dump
 
 //===========================================================
@@ -132,7 +129,6 @@ static bool
 handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
                sp::Seconds timeout) {
   auto &dht = ctx.dht;
-
   dht::Search *ins = emplace(dht.searches, search, ctx.remote);
   assertx(ins);
 
@@ -159,18 +155,33 @@ setup(dht::Module &module) noexcept {
   module.request = on_request;
   module.response = nullptr;
 }
-
 } // namespace search
 
 //===========================================================
 // search stop
 //===========================================================
 namespace search_stop {
+static bool
+handle_request(dht::MessageContext &ctx, const dht::Infohash &search) noexcept {
+  auto &dht = ctx.dht;
+  // XXX stop by searchid. if multiple receivers just remove sender as a
+  // receiver
+  auto f = [&search](dht::Search &current) { //
+    return current.search == search;
+  };
+
+  dht::Search *const result = find_first(dht.searches, f);
+  if (result) {
+    bool res = remove_first(dht.searches, f);
+    assertx(res);
+  }
+
+  return krpc::response::search_stop(ctx.out, ctx.transaction);
+}
 
 static bool
-on_request(dht::MessageContext &) noexcept {
-  // TODO
-  return true;
+on_request(dht::MessageContext &ctx) noexcept {
+  return krpc::d::request::search_stop(ctx, handle_request);
 }
 
 void
@@ -179,4 +190,6 @@ setup(dht::Module &module) noexcept {
   module.request = on_request;
   module.response = nullptr;
 }
+
+//===========================================================
 } // namespace search_stop
