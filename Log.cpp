@@ -29,7 +29,7 @@ print_time(Timestamp now) noexcept {
   char buff[32] = {0};
 
   sp::Seconds sec(now, sp::RoundMode::UP);
-  time_t tim = time_t(sec);
+  time_t tim(sec);
 
   strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", localtime(&tim));
   printf("%s|", buff);
@@ -263,7 +263,7 @@ namespace awake {
 void
 timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
-  printf("awake next timeout[%" PRIu64 "ms] ", std::uint64_t(time_t(timeout)));
+  printf("awake next timeout[%" PRIu64 "ms] ", std::uint64_t(timeout));
   print_time(ctx.now + timeout);
   printf("\n");
 }
@@ -273,7 +273,7 @@ contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
   // TODO fix better print
   printf("awake contact_ping vote timeout[%" PRIu64 "ms] next date:",
-         std::uint64_t(time_t(timeout)));
+         std::uint64_t(timeout));
   print_time(ctx.timeout_next);
   printf("\n");
 }
@@ -283,7 +283,7 @@ peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
   // TODO fix better print
   printf("awake peer_db vote timeout[%" PRIu64 "ms] next date:",
-         std::uint64_t(time_t(timeout)));
+         std::uint64_t(timeout));
   print_time(ctx.timeout_peer_next);
   printf("\n");
 }

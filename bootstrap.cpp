@@ -38,7 +38,7 @@ bootstrap_reset(DHT &self) noexcept {
 
 //==========================================
 void
-bootstrap_reclaim(DHT &self, dht::KContact *in) noexcept {
+bootstrap_reclaim(DHT &, dht::KContact *in) noexcept {
   assertx(in);
   delete in;
 }
