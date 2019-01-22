@@ -1,4 +1,5 @@
 #include "dht_interface.h"
+#include <inttypes.h>
 
 #include "Log.h"
 #include "bencode.h"
@@ -474,7 +475,7 @@ bencode_any(sp::Buffer &p, const char *ctx) noexcept {
     if (bencode::d::pair_ref(p, kit, klen, value)) {
       printf("%s any[", ctx);
       print_raw(kit, klen);
-      printf(", %lu]\n", value);
+      printf(", %" PRIu64 "]\n", value);
       return true;
     }
   }

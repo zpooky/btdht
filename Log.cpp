@@ -2,6 +2,7 @@
 #include "cstdio"
 #include <cstring>
 #include <encode/hex.h>
+#include <inttypes.h>
 #include <io/file.h>
 #include <string/ascii.h>
 
@@ -262,7 +263,7 @@ namespace awake {
 void
 timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
-  printf("awake next timeout[%lums] ", std::uint64_t(time_t(timeout)));
+  printf("awake next timeout[%" PRIu64 "ms] ", std::uint64_t(time_t(timeout)));
   print_time(ctx.now + timeout);
   printf("\n");
 }
@@ -271,7 +272,7 @@ void
 contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
   // TODO fix better print
-  printf("awake contact_ping vote timeout[%lusec] next date:",
+  printf("awake contact_ping vote timeout[%" PRIu64 "ms] next date:",
          std::uint64_t(time_t(timeout)));
   print_time(ctx.timeout_next);
   printf("\n");
@@ -281,7 +282,7 @@ void
 peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
   // TODO fix better print
-  printf("awake peer_db vote timeout[%lusec] next date:",
+  printf("awake peer_db vote timeout[%" PRIu64 "ms] next date:",
          std::uint64_t(time_t(timeout)));
   print_time(ctx.timeout_peer_next);
   printf("\n");
