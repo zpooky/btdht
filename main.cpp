@@ -42,6 +42,7 @@
 // TODO client: debug search result message is valid/bencode_print list works correcly
 // TODO bencode_print hex id does not works? only print len(39) where len(40) is epexcted.
 // TODO client: on server shutdown send to search clients that we are shuting down
+// TODO replace bad node
 static void
 die(const char *s) {
   perror(s);

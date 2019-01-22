@@ -31,6 +31,9 @@ on_awake_peer_db(DHT &, sp::Buffer &) noexcept;
 
 static Timeout
 on_awake_bootstrap_reset(DHT &, sp::Buffer &) noexcept;
+
+static Timeout
+on_awake_eager_tx_timeout(DHT &, sp::Buffer &) noexcept;
 } // namespace dht
 
 namespace interface_dht {
@@ -53,6 +56,7 @@ setup(dht::Modules &modules) noexcept {
   insert(modules.on_awake, &dht::on_awake_ping);
   insert(modules.on_awake, &dht::on_awake_peer_db);
   insert(modules.on_awake, &dht::on_awake_bootstrap_reset);
+  insert(modules.on_awake, &dht::on_awake_eager_tx_timeout);
 
   return true;
 }
@@ -204,39 +208,53 @@ on_awake_peer_db(DHT &dht, sp::Buffer &) noexcept {
 }
 
 static Timeout
-on_awake_bootstrap_reset(DHT &dht, sp::Buffer &) noexcept {
-  Timestamp timeout = dht.bootstrap_last_reset + dht.config.bootstrap_reset;
+on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
+  Timestamp timeout = self.bootstrap_last_reset + self.config.bootstrap_reset;
   /* Only reset if there is a small amount of nodes in self.bootstrap since we
    * are starved for potential contacts
    */
-  if (dht.now >= timeout) {
+  if (self.now >= timeout) {
     // XXX arbitrary
-    if (length(dht.bootstrap) < 100 || nodes_good(dht) < 100) {
-      bootstrap_reset(dht);
+    if (is_empty(self.bootstrap) || nodes_good(self) < 100) {
+      bootstrap_reset(self);
     }
-    dht.bootstrap_last_reset = dht.now;
-    timeout = dht.bootstrap_last_reset + dht.config.bootstrap_reset;
+    self.bootstrap_last_reset = self.now;
+    timeout = self.bootstrap_last_reset + self.config.bootstrap_reset;
   }
 
-  return timeout - dht.now;
+  return timeout - self.now;
 }
 
 static Timeout
-awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
+on_awake_eager_tx_timeout(DHT &self, sp::Buffer &) noexcept {
+  Config &cfg = self.config;
+  auto timeout = cfg.refresh_interval;
+
+  tx::eager_tx_timeout(self, timeout);
+  auto head = tx::next_timeout(self.client);
+  if (!head) {
+    return timeout;
+  }
+
+  auto result = std::max(head->sent + timeout, self.now) - self.now;
+  assertx(result > sp::Milliseconds(0));
+  return result;
+}
+
+static Timeout
+awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
   std::size_t now_sent = 0;
 
-  auto inc_active_searches = [&dht, &missing_contacts, &now_sent]() {
+  auto inc_active_searches = [&self, &missing_contacts, &now_sent]() {
     std::size_t K = dht::Bucket::K;
     missing_contacts -= std::min(missing_contacts, K);
-    dht.active_searches++;
+    self.active_searches++;
     now_sent++;
   };
 
-  Config &cfg = dht.config;
+  Config &cfg = self.config;
   bool bs_sent = false;
-  // TODO verify bad_nodes works...
   // XXX self should not be in bootstrap list
-
   // XXX if no good node is available try bad/questionable nodes
 
   while (missing_contacts > 0) {
@@ -246,20 +264,20 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
     auto f = [&](auto &ctx, Node &remote) {
       // if (dht::is_good(ctx, remote)) {
       const Contact &c = remote.contact;
-      dht::NodeId &self = dht.id;
+      dht::NodeId &sid = self.id;
 
-      result = client::find_node(ctx, out, c, /*search*/ self, nullptr);
+      result = client::find_node(ctx, out, c, /*search*/ sid, nullptr);
       if (result == client::Res::OK) {
         inc_outstanding(remote);
         ++sent_count;
         inc_active_searches();
-        remote.req_sent = dht.now;
+        remote.req_sent = self.now;
       }
       // }
 
       return result == client::Res::OK;
     };
-    timeout::for_all_node(dht, cfg.refresh_interval, f);
+    timeout::for_all_node(self, cfg.refresh_interval, f);
 
     if (result == client::Res::ERR_TOKEN) {
       break;
@@ -267,18 +285,18 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
 
     /* Bootstrap contacts */
     if (!bs_sent) {
-      const dht::NodeId &sid = dht.id;
+      const dht::NodeId &sid = self.id;
       dht::KContact cur;
-      while (take_head(dht.bootstrap, cur)) {
-        dht::KContact *closure = bootstrap_alloc(dht, cur);
+      while (take_head(self.bootstrap, cur)) {
+        dht::KContact *closure = bootstrap_alloc(self, cur);
         result =
-            client::find_node(dht, out, cur.contact, /*search*/ sid, closure);
+            client::find_node(self, out, cur.contact, /*search*/ sid, closure);
         if (result == client::Res::OK) {
           bs_sent = true;
           inc_active_searches();
         } else {
-          insert_eager(dht.bootstrap, cur);
-          bootstrap_reclaim(dht, closure);
+          insert_eager(self.bootstrap, cur);
+          bootstrap_reclaim(self, closure);
           break;
         }
       } // while
@@ -295,8 +313,8 @@ awake_look_for_nodes(DHT &dht, sp::Buffer &out, std::size_t missing_contacts) {
 
   if (missing_contacts > 0) {
     if (now_sent > 0) {
-      auto next_timestamp = tx::next_available(dht);
-      return next_timestamp - dht.now;
+      auto next_timestamp = tx::next_available(self);
+      return next_timestamp - self.now;
     } else {
       // arbritary?
       return sp::Timestamp(cfg.transaction_timeout);

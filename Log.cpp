@@ -262,7 +262,7 @@ namespace awake {
 void
 timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
-  printf("awake next timeout[%lums] ", std::uint64_t(timeout));
+  printf("awake next timeout[%lums] ", std::uint64_t(time_t(timeout)));
   print_time(ctx.now + timeout);
   printf("\n");
 }
@@ -270,8 +270,9 @@ timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
 void
 contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
+  // TODO fix better print
   printf("awake contact_ping vote timeout[%lusec] next date:",
-         std::uint64_t(timeout)); // TODO fix better print
+         std::uint64_t(time_t(timeout)));
   print_time(ctx.timeout_next);
   printf("\n");
 }
@@ -279,8 +280,9 @@ contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
 void
 peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
+  // TODO fix better print
   printf("awake peer_db vote timeout[%lusec] next date:",
-         std::uint64_t(timeout)); // TODO fix better print
+         std::uint64_t(time_t(timeout)));
   print_time(ctx.timeout_peer_next);
   printf("\n");
 }

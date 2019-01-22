@@ -319,7 +319,7 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
     if (!bencode::e::pair(b, "routing", dht.root)) {
       return false;
     }
-    std::uint64_t la = dht.last_activity;
+    std::uint64_t la = time_t(dht.last_activity);
     if (!bencode::e::pair(b, "last_activity", la)) {
       return false;
     }

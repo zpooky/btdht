@@ -14,7 +14,7 @@ consume(dht::Client &, const krpc::Transaction &,
         /*OUT*/ TxContext &) noexcept;
 
 //=====================================
-/* keep tracks of active outgoing transactions and what module should handle the
+/* Keep tracks of active outgoing transactions and what module should handle the
  * response for an eventual response. Client maintains a tree of active
  * transactions together with function pointer for the module which should
  * handle the response.
@@ -31,6 +31,12 @@ Timestamp
 next_available(const dht::DHT &) noexcept;
 
 //=====================================
+void
+eager_tx_timeout(dht::DHT &, sp::Milliseconds) noexcept;
+
+//=====================================
+const Tx *
+next_timeout(const dht::Client &) noexcept;
 } // namespace tx
 
 #endif
