@@ -379,6 +379,8 @@ next_available(const dht::DHT &self) noexcept {
 //=====================================
 void
 eager_tx_timeout(dht::DHT &self, sp::Milliseconds timeout) noexcept {
+  assertx(debug_count(self) == Client::tree_capacity);
+
   dht::Client &client = self.client;
   Config config;
 

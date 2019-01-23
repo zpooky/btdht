@@ -7,6 +7,7 @@
 // #include <exception>
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
+#include <unistd.h>     //close
 
 namespace udp {
 //=====================================
@@ -86,7 +87,7 @@ bind(Ipv4 ip, Port port, Mode mode) noexcept {
 
   int udp = ::socket(AF_INET, type, IPPROTO_UDP);
   if (udp < 0) {
-    die("socket()");
+    return fd{-1};
   }
 
   ::sockaddr_in me;
@@ -98,16 +99,68 @@ bind(Ipv4 ip, Port port, Mode mode) noexcept {
 
   int ret = ::bind(udp, meaddr, sizeof(me));
   if (ret < 0) {
-    die("bind");
+    ::close(udp);
+    return fd{-1};
   }
+
   return fd{udp};
 }
 
 fd
-bind(Port port, Mode m) noexcept {
+bind_v4(Port port, Mode m) noexcept {
   return bind(INADDR_ANY, port, m);
 }
 
+fd
+bind_v4(Mode m) noexcept {
+  return bind_v4(Port(0), m);
+}
+
+fd
+bind(Ipv6 ip, Port port, Mode mode) noexcept {
+  int type = SOCK_DGRAM;
+  int ret;
+  if (mode == Mode::NONBLOCKING) {
+    type |= SOCK_NONBLOCK;
+  }
+
+  int udp = ::socket(AF_INET6, type, IPPROTO_UDP);
+  if (udp < 0) {
+    return fd{-1};
+  }
+
+  int one = 1;
+  ret = ::setsockopt(udp, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof(one));
+  if (ret < 0) {
+    ::close(udp);
+    return fd{-1};
+  }
+
+  ::sockaddr_in6 me;
+  std::memset(&me, 0, sizeof(me));
+  me.sin6_family = AF_INET6;
+  me.sin6_port = htons(port);
+  memcpy(&me.sin6_addr, ip.raw, sizeof(ip.raw));
+  ::sockaddr *meaddr = (::sockaddr *)&me;
+
+  ret = ::bind(udp, meaddr, sizeof(me));
+  if (ret < 0) {
+    ::close(udp);
+    return fd{-1};
+  }
+
+  return fd{udp};
+}
+
+// fd
+// bind_v6(Port p, Mode m) noexcept {
+//   return bind(INADDR6_ANY, p, m);
+// }
+//
+// fd
+// bind_v6(Mode m) noexcept {
+//   return bind_v6(Port(0), m);
+// }
 //=====================================
 static int
 receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {

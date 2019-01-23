@@ -13,7 +13,15 @@ enum class Mode { BLOCKING, NONBLOCKING };
 
 fd bind(Ipv4, Port, Mode) noexcept;
 
-fd bind(Port, Mode) noexcept;
+fd bind_v4(Port, Mode) noexcept;
+
+fd bind_v4(Mode) noexcept;
+
+fd bind(Ipv6, Port, Mode) noexcept;
+
+fd bind_v6(Port, Mode) noexcept;
+
+fd bind_v6(Mode) noexcept;
 
 //=====================================
 int

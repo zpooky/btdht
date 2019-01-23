@@ -35,13 +35,17 @@
 // time out transaction lazily when we issue new requests and if there is no
 // nodes to send request to we do not timeout existing transaction and never
 // gets back bootstrap nodes and we starve forever.
-// TODO enumrate interface bound to (0.0.0.0) -> find default gateways -> send upnp port mapping
+// TODO enumrate interface bound to (0.0.0.0) -> find default gateways -> send
+// upnp port mapping
 // TODO implement peer db timeout logic
 // XXX ipv6
 // TODO cleint: multiple receiver for the same search
-// TODO client: debug search result message is valid/bencode_print list works correcly
-// TODO bencode_print hex id does not works? only print len(39) where len(40) is epexcted.
-// TODO client: on server shutdown send to search clients that we are shuting down
+// TODO client: debug search result message is valid/bencode_print list works
+// correcly
+// TODO bencode_print hex id does not works? only print len(39) where len(40) is
+// epexcted.
+// TODO client: on server shutdown send to search clients that we are shuting
+// down
 // TODO replace bad node
 static void
 die(const char *s) {
@@ -130,7 +134,7 @@ setup_epoll(fd &udp, fd &signal) noexcept {
 template <typename Handle, typename Awake, typename Interrupt>
 static int
 main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
-     Interrupt on_int) noexcept {
+          Interrupt on_int) noexcept {
   Timestamp previous(0);
 
   constexpr std::size_t size = 10 * 1024 * 1024;
@@ -339,16 +343,18 @@ main(int argc, char **argv) {
   std::srand((unsigned int)time(nullptr));
 
   fd sfd = setup_signal();
-  fd udp = udp::bind(options.port, udp::Mode::NONBLOCKING);
-  // fd udp = udp::bind(INADDR_ANY, 0);
 
-  prng::xorshift32 r(14);
+  fd udp = udp::bind_v4(options.port, udp::Mode::NONBLOCKING);
+  if (!udp) {
+    return 1;
+  }
 
   Contact listen;
   if (!udp::local(udp, listen)) {
-    return false;
+    return 2;
   }
 
+  prng::xorshift32 r(14);
   auto mdht = std::make_unique<dht::DHT>(udp, listen, r);
   if (!dht::init(*mdht)) {
     die("failed to init dht");
@@ -371,7 +377,9 @@ main(int argc, char **argv) {
 
   mdht->now = sp::now();
 
-  setup_bootstrap(*mdht);
+  if (!setup_bootstrap(*mdht)) {
+    return 1;
+  }
 
   fd poll = setup_epoll(udp, sfd);
 

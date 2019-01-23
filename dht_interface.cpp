@@ -47,11 +47,6 @@ setup(dht::Modules &modules) noexcept {
   get_peers::setup(modules.module[i++]);
   announce_peer::setup(modules.module[i++]);
   error::setup(modules.module[i++]);
-  // TODO binary-insert with prio
-  // 1. search
-  // 2. find_node
-  // 3. ping
-  // 4. bookkeep peer db
 
   insert(modules.on_awake, &dht::on_awake);
   insert(modules.on_awake, &dht::on_awake_ping);
@@ -220,7 +215,7 @@ on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
       bootstrap_reset(self);
     }
     self.bootstrap_last_reset = self.now;
-    timeout = self.bootstrap_last_reset + self.config.bootstrap_reset;
+    timeout = self.now + self.config.bootstrap_reset;
   }
 
   return timeout - self.now;
@@ -229,7 +224,7 @@ on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
 static Timeout
 on_awake_eager_tx_timeout(DHT &self, sp::Buffer &) noexcept {
   Config &cfg = self.config;
-  auto timeout = cfg.refresh_interval;
+  const auto timeout = cfg.refresh_interval;
 
   tx::eager_tx_timeout(self, timeout);
   auto head = tx::next_timeout(self.client);
