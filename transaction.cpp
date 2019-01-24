@@ -71,6 +71,7 @@ Lit:
      * previous.
      */
     if (!(it->sent >= t)) {
+      assertxs(false, std::uint64_t(it->sent), std::uint64_t(t));
       return false;
     }
 
@@ -389,7 +390,7 @@ Lit:
   if (head) {
     if (is_sent(*head)) {
       auto max = head->sent + timeout;
-      if (self.now > max) {
+      if (self.now >= max) {
         assertx(client.active > 0);
         --client.active;
 
@@ -402,6 +403,8 @@ Lit:
       }
     }
   }
+
+  assertx(debug_count(self) == Client::tree_capacity);
 }
 
 //=====================================

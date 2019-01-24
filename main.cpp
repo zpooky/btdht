@@ -337,12 +337,14 @@ main(int argc, char **argv) {
          sizeof(dht::DHT) / 1024);
   dht::Options options;
   if (!dht::parse(options, argc, argv)) {
-    //   die("TODO");
     return 1;
   }
   std::srand((unsigned int)time(nullptr));
 
   fd sfd = setup_signal();
+  if (!sfd) {
+    return 1;
+  }
 
   fd udp = udp::bind_v4(options.port, udp::Mode::NONBLOCKING);
   if (!udp) {
@@ -358,6 +360,7 @@ main(int argc, char **argv) {
   auto mdht = std::make_unique<dht::DHT>(udp, listen, r);
   if (!dht::init(*mdht)) {
     die("failed to init dht");
+    return 3;
   }
 
   if (!sp::restore(*mdht, options.dump_file)) {
@@ -382,6 +385,9 @@ main(int argc, char **argv) {
   }
 
   fd poll = setup_epoll(udp, sfd);
+  if (!poll) {
+    return 4;
+  }
 
   dht::Modules modules;
   if (!interface_priv::setup(modules)) {

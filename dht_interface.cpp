@@ -210,6 +210,7 @@ on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
    * are starved for potential contacts
    */
   if (self.now >= timeout) {
+    // XXX if_empty(bootstrap) try to fetch more nodes from dump.file
     // XXX arbitrary
     if (is_empty(self.bootstrap) || nodes_good(self) < 100) {
       bootstrap_reset(self);

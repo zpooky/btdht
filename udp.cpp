@@ -19,6 +19,7 @@ die(const char *s) {
 
 static void
 to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
+  assertx(src.ip.type == IpType::IPV4);
   // TODO ipv4
   dest.sin_family = AF_INET;
   dest.sin_addr.s_addr = htonl(src.ip.ipv4);
@@ -29,6 +30,7 @@ static void
 to_peer(const ::sockaddr_in &src, Contact &dest) noexcept {
   // TODO ipv4
   dest.ip.ipv4 = ntohl(src.sin_addr.s_addr);
+  dest.ip.type = IpType::IPV4;
   dest.port = ntohs(src.sin_port);
 }
 
@@ -227,7 +229,7 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
     const std::size_t raw_len = remaining_read(buf);
     char dstr[128] = {0};
     socklen_t s_len(sizeof(dstr));
-    const char *res = ::inet_ntop(AF_INET6, &dest, dstr, s_len);
+    const char *res = ::inet_ntop(AF_INET, &dest, dstr, s_len);
     assertx(res);
 
     printf("sent[%zd] = "
