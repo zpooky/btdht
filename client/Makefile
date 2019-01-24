@@ -44,7 +44,7 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
 	mkdir -p $(BUILD_DIR)
 # -c means to create an intermediary object file, rather than an executable
 # -MMD means to create *object*.d depend file with its depending cpp & h files
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS_DEBUG) $(LDFLAGS) -MMD -c $< -o $@
 # }}}
 
 # clean {{{

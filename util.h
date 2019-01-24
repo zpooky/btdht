@@ -105,7 +105,7 @@ bool
 to_ipv4(const char *, Ipv4 &) noexcept;
 
 bool
-to_string(const Ip&, char *, std::size_t) noexcept;
+to_string(const Ip &, char *, std::size_t) noexcept;
 
 bool
 to_string(const Contact &, char *msg, std::size_t) noexcept;
@@ -182,6 +182,20 @@ namespace dht {
 // dht::Key
 using Key = sp::byte[20];
 
+/* dht::Infohash */
+struct Infohash {
+  Key id;
+
+  Infohash() noexcept;
+
+  bool
+  operator==(const Infohash &) const noexcept;
+
+  bool
+  operator>(const Key &) const noexcept;
+};
+
+
 /*dht::NodeId*/
 struct NodeId {
   Key id;
@@ -217,6 +231,9 @@ from_hex(NodeId &id, const char (&b)[N]) noexcept;
 
 bool
 from_hex(NodeId &id, const char *b) noexcept;
+
+bool
+from_hex(dht::Infohash &, const char *) noexcept;
 
 const char *
 to_hex(const NodeId &id) noexcept;

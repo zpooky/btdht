@@ -186,7 +186,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
 } // udp::receive()
 
 int
-receive(int fd, Contact &other, sp::Buffer &buf) noexcept {
+receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
   ::sockaddr_in o;
 
   int res = receive(fd, o, buf);

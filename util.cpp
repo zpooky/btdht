@@ -223,7 +223,7 @@ to_ipv4(const char *str, Ipv4 &result) noexcept {
 }
 
 bool
-to_string(const Ip& ip, char *str, std::size_t length) noexcept {
+to_string(const Ip &ip, char *str, std::size_t length) noexcept {
   if (ip.type == IpType::IPV6) {
     if (length < (INET6_ADDRSTRLEN + 1 + 5 + 1)) {
       return false;
@@ -326,6 +326,21 @@ Transaction::operator=(const Transaction &o) noexcept {
 
 //---------------------------
 namespace dht {
+// dht::Infohash
+Infohash::Infohash() noexcept
+    : id{0} {
+}
+
+bool
+Infohash::operator==(const Infohash &o) const noexcept {
+  return std::memcmp(id, o.id, sizeof(id)) == 0;
+}
+
+bool
+Infohash::operator>(const Key &o) const noexcept {
+  return std::memcmp(id, o, sizeof(id)) > 0;
+}
+
 /*NodeId*/
 NodeId::NodeId()
     : id{0} {
@@ -400,15 +415,31 @@ NodeId::set_bit(std::size_t idx, bool v) noexcept {
   }
 }
 
+static bool
+from_hex(Key &id, const char *b) noexcept {
+  assertx(b);
+
+  bool res = false;
+  const auto b_len = std::strlen(b);
+
+  if ((2 * sizeof(id)) == b_len) {
+    std::size_t id_len = sizeof(id);
+    res = hex::decode(b, id, id_len);
+    assertx(res);
+    assertxs(id_len == sizeof(id), id_len, sizeof(id));
+  }
+
+  return res;
+}
+
 bool
 from_hex(NodeId &id, const char *b) noexcept {
-  assertxs(std::strlen(b) == (2 * sizeof(id.id)), std::strlen(b),
-           (2 * sizeof(id.id)));
-  std::size_t id_len = sizeof(id.id);
-  bool res = hex::decode(b, id.id, id_len);
-  assertx(res);
-  assertxs(id_len == sizeof(id.id), id_len, sizeof(id.id));
-  return res;
+  return from_hex(id.id, b);
+}
+
+bool
+from_hex(dht::Infohash &id, const char *b) noexcept {
+  return from_hex(id.id, b);
 }
 
 const char *

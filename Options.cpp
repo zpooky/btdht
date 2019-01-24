@@ -38,7 +38,7 @@ parse(Options &self, int argc, char **argv) noexcept {
 
   while (true) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "b:o:f:h:d", long_options, &option_index);
+    int c = getopt_long(argc, argv, "b:o:f:hd", long_options, &option_index);
     if (c == -1) {
       break;
     }

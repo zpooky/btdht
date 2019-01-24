@@ -149,20 +149,6 @@ Config::Config() noexcept
 {
 }
 
-// dht::Infohash
-Infohash::Infohash() noexcept
-    : id{0} {
-}
-
-bool
-Infohash::operator==(const Infohash &o) const noexcept {
-  return std::memcmp(id, o.id, sizeof(id)) == 0;
-}
-
-bool
-Infohash::operator>(const Key &o) const noexcept {
-  return std::memcmp(id, o, sizeof(id)) > 0;
-}
 
 /*dht::Peer*/
 Peer::Peer(Ipv4 i, Port p, Timestamp n) noexcept

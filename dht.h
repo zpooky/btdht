@@ -21,9 +21,6 @@ debug_assert_all(const DHT &);
 bool
 is_strict(const Ip &, const NodeId &) noexcept;
 
-void
-randomize(prng::xorshift32 &, NodeId &) noexcept;
-
 bool
 should_mark_bad(const DHT &, Node &) noexcept;
 

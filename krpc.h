@@ -27,8 +27,8 @@ ping(sp::Buffer &, const Transaction &, //
      const dht::NodeId &sender) noexcept;
 
 bool
-find_node(sp::Buffer &, const Transaction &, const dht::NodeId &,
-          const dht::NodeId &) noexcept;
+find_node(sp::Buffer &, const Transaction &, const dht::NodeId &self,
+          const dht::NodeId &search) noexcept;
 
 bool
 get_peers(sp::Buffer &, const Transaction &, const dht::NodeId &,

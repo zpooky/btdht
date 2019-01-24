@@ -165,19 +165,6 @@ struct Config {
   Config() noexcept;
 };
 
-// dht::Infohash
-struct Infohash {
-  Key id;
-
-  Infohash() noexcept;
-
-  bool
-  operator==(const Infohash &) const noexcept;
-
-  bool
-  operator>(const Key &) const noexcept;
-};
-
 // dht::Peer
 struct Peer {
   Contact contact;
