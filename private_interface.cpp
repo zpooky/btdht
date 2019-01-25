@@ -44,8 +44,8 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scrtch) noexcept {
     return res;
   });
 
-  for_each(dht.searches, [&dht, &scrtch](dht::Search &s) {
-    /**/
+  for_all(dht.searches, [&dht, &scrtch](dht::Search &s) {
+    bool result = true;
   Lit:
     auto head = peek_head(s.queue);
     if (head) {
@@ -57,9 +57,10 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scrtch) noexcept {
         drop_head(s.queue);
         goto Lit;
       }
+      result = false;
     }
 
-    //
+    return result;
   });
 
   dht::Config config;
@@ -105,7 +106,6 @@ setup(dht::Module &module) noexcept {
 // statistics
 //===========================================================
 namespace statistics {
-
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
   dht::DHT &dht = ctx.dht;

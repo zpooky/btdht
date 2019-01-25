@@ -52,6 +52,9 @@ statistics(sp::Buffer &b, const Transaction &t) noexcept;
 bool
 search(sp::Buffer &b, const Transaction &, const dht::Infohash &,
        std::size_t) noexcept;
+
+bool
+stop_search(sp::Buffer &b, const Transaction &, const dht::Infohash &) noexcept;
 //}
 } // namespace request
 

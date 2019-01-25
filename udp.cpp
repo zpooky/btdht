@@ -12,12 +12,6 @@
 namespace udp {
 //=====================================
 static void
-die(const char *s) {
-  perror(s);
-  std::terminate();
-}
-
-static void
 to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
   assertx(src.ip.type == IpType::IPV4);
   // TODO ipv4
@@ -87,8 +81,8 @@ bind(Ipv4 ip, Port port, Mode mode) noexcept {
     type |= SOCK_NONBLOCK;
   }
 
-  int udp = ::socket(AF_INET, type, IPPROTO_UDP);
-  if (udp < 0) {
+  fd udp{::socket(AF_INET, type, IPPROTO_UDP)};
+  if (!udp) {
     return fd{-1};
   }
 
@@ -99,13 +93,12 @@ bind(Ipv4 ip, Port port, Mode mode) noexcept {
   me.sin_addr.s_addr = htonl(ip);
   ::sockaddr *meaddr = (::sockaddr *)&me;
 
-  int ret = ::bind(udp, meaddr, sizeof(me));
+  int ret = ::bind(int(udp), meaddr, sizeof(me));
   if (ret < 0) {
-    ::close(udp);
     return fd{-1};
   }
 
-  return fd{udp};
+  return udp;
 }
 
 fd
@@ -126,15 +119,14 @@ bind(Ipv6 ip, Port port, Mode mode) noexcept {
     type |= SOCK_NONBLOCK;
   }
 
-  int udp = ::socket(AF_INET6, type, IPPROTO_UDP);
-  if (udp < 0) {
-    return fd{-1};
+  fd udp(::socket(AF_INET6, type, IPPROTO_UDP));
+  if (!udp) {
+    return udp;
   }
 
   int one = 1;
-  ret = ::setsockopt(udp, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof(one));
+  ret = ::setsockopt(int(udp), IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof(one));
   if (ret < 0) {
-    ::close(udp);
     return fd{-1};
   }
 
@@ -145,13 +137,12 @@ bind(Ipv6 ip, Port port, Mode mode) noexcept {
   memcpy(&me.sin6_addr, ip.raw, sizeof(ip.raw));
   ::sockaddr *meaddr = (::sockaddr *)&me;
 
-  ret = ::bind(udp, meaddr, sizeof(me));
+  ret = ::bind(int(udp), meaddr, sizeof(me));
   if (ret < 0) {
-    ::close(udp);
     return fd{-1};
   }
 
-  return fd{udp};
+  return udp;
 }
 
 // fd
@@ -222,7 +213,6 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
     if (sent > 0) {
       buf.pos += sent;
     }
-
   } while ((sent < 0 && error == EAGAIN) && remaining_read(buf) > 0);
 
   if (sent < 0) {
@@ -236,7 +226,8 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
            "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),destaddr[%s]): %s\n", //
            sent,                                                           //
            int(fd), raw_len, flag, dstr, strerror(error));
-    die("sendto()");
+    assertx(false);
+    return false;
   }
 
   return true;

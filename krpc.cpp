@@ -196,6 +196,19 @@ search(sp::Buffer &b, const Transaction &t, const dht::Infohash &search,
     return true;
   });
 }
+
+bool
+stop_search(sp::Buffer &b, const Transaction &t,
+            const dht::Infohash &search) noexcept {
+  return req(b, t, "sp_search_stop", [&search](sp::Buffer &buffer) {
+    /**/
+    if (!bencode::e::pair(buffer, "search", search.id)) {
+      return false;
+    }
+    return true;
+  });
+}
+
 } // namespace request
 
 namespace response {

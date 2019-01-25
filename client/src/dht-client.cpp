@@ -5,7 +5,10 @@
 #include <krpc.h>
 #include <prng/URandom.h>
 #include <prng/util.h>
+#include <signal.h>
 #include <stdio.h>
+#include <sys/epoll.h>    //epoll
+#include <sys/signalfd.h> //signalfd
 #include <udp.h>
 
 struct DHTClient {
@@ -37,6 +40,48 @@ randomize(prng::URandom &r, dht::NodeId &id) noexcept {
     assertxs(pre <= 9, pre);
     id.id[i] = sp::byte(pre);
   }
+}
+
+static fd
+setup_signal() {
+  /* Fetch current signal mask */
+  sigset_t sigset;
+  if (sigprocmask(SIG_SETMASK, NULL, &sigset) < 0) {
+    return fd{-1};
+  }
+
+  /* Block signals so that they aren't handled
+   * according to their default dispositions
+   */
+  sigfillset(&sigset);
+
+  /*job control*/
+  sigdelset(&sigset, SIGCONT);
+  sigdelset(&sigset, SIGTSTP);
+
+  /* Modify signal mask */
+  if (sigprocmask(SIG_SETMASK, &sigset, NULL) < 0) {
+    return fd{-1};
+  }
+
+  /* Setup signal to read */
+  sigemptyset(&sigset);
+  sigaddset(&sigset, SIGINT);
+  sigaddset(&sigset, SIGQUIT);
+  sigaddset(&sigset, SIGTERM);
+  sigaddset(&sigset, SIGTERM);
+  sigaddset(&sigset, SIGHUP);
+
+  // sigfillset(&sigset);
+  // sigdelset(&sigset, SIGWINCH);
+
+  int flags = SFD_NONBLOCK | SFD_CLOEXEC;
+  int sfd = signalfd(/*new fd*/ -1, &sigset, flags);
+  if (sfd < 0) {
+    return fd{-1};
+  }
+
+  return fd{sfd};
 }
 
 static bool
@@ -150,9 +195,8 @@ receive_dump(fd &u, sp::Buffer &b) noexcept {
   generic_receive(u, b);
   printf("\n\n");
 }
-/*
- * # Search
- */
+
+//====================================================
 static bool
 send_search(DHTClient &client, const Contact &to,
             const dht::Infohash &search) noexcept {
@@ -161,6 +205,19 @@ send_search(DHTClient &client, const Contact &to,
   make_tx(client.rand, tx);
 
   krpc::request::search(client.out, tx, search, 6000000);
+  flip(client.out);
+
+  return udp::send(client.udp, to, client.out);
+}
+
+static bool
+send_stop_seach(DHTClient &client, const Contact &to,
+                const dht::Infohash &search) noexcept {
+  reset(client.out);
+  krpc::Transaction tx;
+  make_tx(client.rand, tx);
+
+  krpc::request::stop_search(client.out, tx, search);
   flip(client.out);
 
   return udp::send(client.udp, to, client.out);
@@ -400,14 +457,68 @@ handle_search(DHTClient &client) {
     }
   }
 
+  if (!has) {
+    fprintf(stderr, "dht-client search ip:port search [--self=hex]\n");
+    return EXIT_FAILURE;
+  }
+
   if (!send_search(client, to, search)) {
     return EXIT_FAILURE;
   }
 
+  fd pfd{::epoll_create1(0)};
+  if (!pfd) {
+    return EXIT_FAILURE;
+  }
+
+  ::epoll_event ev;
+
+  ev.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+  ev.data.fd = int(client.udp);
+  if (::epoll_ctl(int(pfd), EPOLL_CTL_ADD, int(client.udp), &ev) < 0) {
+    return EXIT_FAILURE;
+  }
+
+  fd sig_fd{setup_signal()};
+  if (!sig_fd) {
+    return EXIT_FAILURE;
+  }
+
+  ev.events = EPOLLIN;
+  ev.data.fd = int(sig_fd);
+  if (::epoll_ctl(int(pfd), EPOLL_CTL_ADD, int(sig_fd), &ev) < 0) {
+    return EXIT_FAILURE;
+  }
+
   while (true) {
-    if (!generic_receive(client.udp, client.in)) {
-      return EXIT_FAILURE;
+    ::epoll_event events;
+
+    int timeout = -1;
+    int no_events = ::epoll_wait(int(pfd), &events, 1, timeout);
+    if (no_events <= 0) {
+      if (errno == EAGAIN) {
+        continue;
+      } else {
+        printf("break[%d] [%s]\n", no_events, strerror(errno));
+        break;
+      }
     }
+
+    if (events.data.fd == int(client.udp)) {
+      if (!generic_receive(client.udp, client.in)) {
+        return EXIT_FAILURE;
+      }
+    } else if (events.data.fd == int(sig_fd)) {
+      break;
+    } else {
+      printf("unknown\n");
+      break;
+    }
+  } // while
+
+  printf("send_stop_seach()\n");
+  if (!send_stop_seach(client, to, search)) {
+    return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
