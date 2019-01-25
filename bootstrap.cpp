@@ -4,9 +4,9 @@ namespace dht {
 //==========================================
 void
 bootstrap_insert(DHT &self, const KContact &remote) noexcept {
-  if (!test(self.bootstrap_filter, remote.contact)) {
+  if (!test(self.bootstrap_filter, remote.contact.ip)) {
     if (insert_eager(self.bootstrap, remote)) {
-      insert(self.bootstrap_filter, remote.contact);
+      insert(self.bootstrap_filter, remote.contact.ip);
     }
   }
 }
@@ -23,8 +23,9 @@ bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
   if (remote.common > 0) {
     remote.common--;
   }
+
   if (insert_eager(self.bootstrap, remote)) {
-    insert(self.bootstrap_filter, remote.contact);
+    insert(self.bootstrap_filter, remote.contact.ip);
   }
 }
 

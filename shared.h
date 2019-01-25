@@ -517,8 +517,8 @@ struct DHT {
 
   // boostrap {{{
   Timestamp bootstrap_last_reset;
-  sp::StaticArray<sp::hasher<Contact>, 2> bootstrap_hashers;
-  sp::BloomFilter<Contact, 8 * 1024> bootstrap_filter;
+  sp::StaticArray<sp::hasher<Ip>, 2> bootstrap_hashers;
+  sp::BloomFilter<Ip, 8 * 1024> bootstrap_filter;
   heap::StaticMaxBinary<KContact, 128> bootstrap;
   std::uint32_t active_searches;
   // }}}

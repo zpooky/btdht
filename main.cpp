@@ -356,7 +356,7 @@ main(int argc, char **argv) {
     return 2;
   }
 
-  prng::xorshift32 r(14);
+  auto r = prng::seed<prng::xorshift32>();
   auto mdht = std::make_unique<dht::DHT>(udp, listen, r);
   if (!dht::init(*mdht)) {
     die("failed to init dht");

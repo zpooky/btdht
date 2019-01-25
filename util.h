@@ -93,6 +93,12 @@ struct Contact {
 };
 
 std::size_t
+fnv_ip(const Ip &);
+
+std::size_t
+djb_ip(const Ip &);
+
+std::size_t
 fnv_contact(const Contact &contact) noexcept;
 
 std::size_t
@@ -194,7 +200,6 @@ struct Infohash {
   bool
   operator>(const Key &) const noexcept;
 };
-
 
 /*dht::NodeId*/
 struct NodeId {

@@ -416,8 +416,8 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
 //}}}
 {
 
-  assertx_n(insert(bootstrap_hashers, djb_contact));
-  assertx_n(insert(bootstrap_hashers, fnv_contact));
+  assertx_n(insert(bootstrap_hashers, djb_ip));
+  assertx_n(insert(bootstrap_hashers, fnv_ip));
 }
 
 DHT::~DHT() {

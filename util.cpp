@@ -141,7 +141,7 @@ fnv_ipv6(const Ipv6 &c) {
   return fnv_1a::encode64(c.raw, sizeof(c.raw));
 }
 
-static std::uint64_t
+std::size_t
 fnv_ip(const Ip &c) {
   if (c.type == IpType::IPV4) {
     return fnv_ipv4(c.ipv4);
@@ -163,7 +163,7 @@ djb_ipv6(const Ipv6 &c) {
   return djb2::encode32(c.raw, sizeof(c.raw));
 }
 
-static std::uint32_t
+std::size_t
 djb_ip(const Ip &c) {
   if (c.type == IpType::IPV4) {
     return djb_ipv4(c.ipv4);
@@ -177,13 +177,13 @@ djb_ip(const Ip &c) {
 
 std::size_t
 fnv_contact(const Contact &contact) noexcept {
-  std::uint64_t result = fnv_ip(contact.ip);
+  std::size_t result = fnv_ip(contact.ip);
   return fnv_1a::encode(&contact.port, sizeof(contact.port), result);
 }
 
 std::size_t
 djb_contact(const Contact &contact) noexcept {
-  std::uint32_t result = djb_ip(contact.ip);
+  std::size_t result = djb_ip(contact.ip);
   return djb2::encode(&contact.port, sizeof(contact.port), result);
 }
 
