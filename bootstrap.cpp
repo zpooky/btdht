@@ -19,7 +19,6 @@ bootstrap_insert(DHT &self, const Node &node) noexcept {
 //==========================================
 void
 bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
-
   if (remote.common > 0) {
     remote.common--;
   }

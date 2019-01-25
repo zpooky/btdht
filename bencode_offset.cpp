@@ -2,6 +2,7 @@
 #include "bencode_offset.h"
 #include <arpa/inet.h>
 #include <cstdio>
+#include "bencode_print.h"
 #include <cstring>
 #include <util/assert.h>
 
@@ -179,13 +180,22 @@ value_contact(sp::Buffer &b, Contact &result) noexcept {
     return false;
   }
 
+  assertxs(str, len);
+
   sp::Buffer bx((unsigned char *)str, len);
   bx.length = len;
   if (!bencode::d::parse_convert(bx, result)) {
     b.pos = pos;
     return false;
   }
-  assertx(remaining_read(bx) == 0);
+
+  if (remaining_read(bx) > 0) {
+    printf("len[%zu], str[%.*s]\n", len, len, str);
+
+    bx.pos = 0;
+    bencode_print(bx);
+    assertxs(false, remaining_read(bx));
+  }
 
   return true;
 }

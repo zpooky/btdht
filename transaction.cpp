@@ -59,10 +59,10 @@ debug_count(const DHT &dht) noexcept {
 }
 
 static bool
-debug_is_ordered(DHT &dht) noexcept {
-  Client &client = dht.client;
-  Tx *const head = client.timeout_head;
-  Tx *it = head;
+debug_is_ordered(const DHT &dht) noexcept {
+  const Client &client = dht.client;
+  const Tx *const head = client.timeout_head;
+  const Tx *it = head;
 
   Timestamp t = it ? it->sent : Timestamp(0);
 Lit:
@@ -293,6 +293,8 @@ unlink_free(DHT &dht, Timestamp now) noexcept {
     assertx(false);
   }
 
+  assertx(debug_is_ordered(dht));
+
   return result;
 }
 
@@ -320,6 +322,7 @@ add_back(Client &client, Tx *t) noexcept {
 bool
 mint(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
   assertx(debug_count(dht) == Client::tree_capacity);
+  assertx(debug_is_ordered(dht));
 
   Client &client = dht.client;
 
@@ -334,21 +337,27 @@ mint(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
     tx->sent = dht.now;
     add_back(client, tx);
 
+    assertx(debug_is_ordered(dht));
+
     return true;
   }
+
+  assertx(debug_count(dht) == Client::tree_capacity);
+  assertx(debug_is_ordered(dht));
 
   return false;
 } // dht::min_transaction()
 
 //=====================================
 bool
-is_valid(DHT &dht, const krpc::Transaction &needle) noexcept {
-  assertx(debug_count(dht) == Client::tree_capacity);
+is_valid(DHT &self, const krpc::Transaction &needle) noexcept {
+  assertx(debug_count(self) == Client::tree_capacity);
+  assertx(debug_is_ordered(self));
 
-  Client &client = dht.client;
+  Client &client = self.client;
   Tx *const tx = search(client.tree, needle);
   if (tx) {
-    if (!is_expired(*tx, dht.now)) {
+    if (!is_expired(*tx, self.now)) {
       return true;
     }
   }
@@ -360,6 +369,7 @@ is_valid(DHT &dht, const krpc::Transaction &needle) noexcept {
 Timestamp
 next_available(const dht::DHT &self) noexcept {
   assertx(debug_count(self) == Client::tree_capacity);
+  assertx(debug_is_ordered(self));
 
   const Client &client = self.client;
   const Tx *const head = client.timeout_head;
@@ -381,6 +391,7 @@ next_available(const dht::DHT &self) noexcept {
 void
 eager_tx_timeout(dht::DHT &self, sp::Milliseconds timeout) noexcept {
   assertx(debug_count(self) == Client::tree_capacity);
+  assertx(debug_is_ordered(self));
 
   dht::Client &client = self.client;
   Config config;
@@ -405,6 +416,7 @@ Lit:
   }
 
   assertx(debug_count(self) == Client::tree_capacity);
+  assertx(debug_is_ordered(self));
 }
 
 //=====================================
