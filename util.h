@@ -3,12 +3,12 @@
 
 #include <buffer/BytesView.h>
 #include <cstddef>
-#include <netinet/in.h>
 #include <cstdint>
 #include <ctime>
 #include <hash/standard.h>
 #include <io/fd.h>
 #include <list/FixedList.h>
+#include <netinet/in.h>
 #include <util/timeout.h>
 
 using sp::fd;
@@ -119,6 +119,12 @@ to_ipv4(const char *, Ipv4 &) noexcept;
 
 bool
 to_string(const Ip &, char *, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+bool
+to_string(const Ip &ip, char (&msg)[SIZE]) noexcept {
+  return to_string(ip, msg, SIZE);
+}
 
 bool
 to_string(const Contact &, char *msg, std::size_t) noexcept;

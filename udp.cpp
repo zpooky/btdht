@@ -177,14 +177,15 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
     // sp::bencode_print(buf);
     sp::byte *const raw = offset(buf);
     const std::size_t raw_len = remaining_read(buf);
-    assertx(raw_len > 0);
 
-    sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
-    error = errno;
-    if (sent > 0) {
-      buf.pos += sent;
+    if (raw_len > 0) {
+      sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
+      error = errno;
+      if (sent > 0) {
+        buf.pos += sent;
+      }
     }
-  } while ((sent < 0 && error == EAGAIN) && remaining_read(buf) > 0);
+  } while (sent < 0 && error == EAGAIN);
 
   if (sent < 0) {
     const std::size_t raw_len = remaining_read(buf);

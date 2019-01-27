@@ -9,7 +9,9 @@
 #include <stdio.h>
 #include <sys/epoll.h>    //epoll
 #include <sys/signalfd.h> //signalfd
+#include <tcp.h>
 #include <udp.h>
+#include <upnp.h>
 
 struct DHTClient {
   int argc;
@@ -88,7 +90,7 @@ static bool
 parse_contact(DHTClient &client, Contact &c) noexcept {
   if (client.argc >= 1) {
     const char *p = client.argv[0];
-    if (convert(p, c)) {
+    if (to_contact(p, c)) {
       client.argc--;
       client.argv++;
       return true;
@@ -532,8 +534,8 @@ handle_dump(DHTClient &client) {
 typedef int (*exe_cb)(DHTClient &);
 static int
 bind_exe(int argc, char **argv, exe_cb cb) noexcept {
-  fd udp = udp::bind_v4(Port(0), udp::Mode::BLOCKING);
-  if (!bool(udp)) {
+  fd udp = udp::bind_v4(udp::Mode::BLOCKING);
+  if (!udp) {
     fprintf(stderr, "failed bind\n");
     return 1;
   }
@@ -565,6 +567,41 @@ bind_exe(int argc, char **argv, exe_cb cb) noexcept {
 }
 
 static int
+handle_upnp(int, char **) noexcept {
+  Contact gateway;
+  if (!to_contact("192.168.1.1:80", gateway)) {
+    return 1;
+  }
+
+  upnp::upnp in;
+  in.protocol = "udp";
+  in.local = 12340;
+  in.external = in.local;
+  if (!to_ipv4("192.168.1.49", in.ip.ipv4)) {
+    return 5;
+  }
+  in.ip.type = IpType::IPV4;
+
+  fd tcp = tcp::connect(gateway, tcp::Mode::BLOCKING);
+  if (!tcp) {
+    return 2;
+  }
+
+  if (!upnp::http_add_port(tcp, in)) {
+    return 4;
+  }
+
+  sp::StaticBytesView<1024 * 2> buf;
+  if (tcp::read(tcp, buf) != 0) {
+    return 3;
+  }
+  flip(buf);
+  printf("'%.*s': %zu\n", buf.length, buf.raw, buf.length);
+
+  return 0;
+}
+
+static int
 parse_command(int argc, char **argv) {
   if (argc >= 2) {
     const char *subcommand = argv[1];
@@ -586,6 +623,8 @@ parse_command(int argc, char **argv) {
       return bind_exe(subc, subv, handle_search);
     } else if (std::strcmp(subcommand, "dump") == 0) {
       return bind_exe(subc, subv, handle_dump);
+    } else if (std::strcmp(subcommand, "upnp") == 0) {
+      return handle_upnp(subc, subv);
     } else {
       fprintf(stderr, "unknown subcommand '%s'\n", subcommand);
       return EXIT_FAILURE;

@@ -9,6 +9,20 @@ bool
 local(fd &, Contact &) noexcept;
 
 //=====================================
-}
+enum class Mode { BLOCKING, NONBLOCKING };
+
+fd
+connect(const Contact &, Mode) noexcept;
+
+//=====================================
+int
+send(fd &, /*OUT*/ sp::Buffer &) noexcept;
+
+//=====================================
+int
+read(fd &, /*OUT*/ sp::Buffer &) noexcept;
+
+//=====================================
+} // namespace tcp
 
 #endif
