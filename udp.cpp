@@ -11,23 +11,6 @@
 
 namespace udp {
 //=====================================
-static void
-to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
-  assertx(src.ip.type == IpType::IPV4);
-  // TODO ipv4
-  dest.sin_family = AF_INET;
-  dest.sin_addr.s_addr = htonl(src.ip.ipv4);
-  dest.sin_port = htons(src.port);
-}
-
-static void
-to_contact(const ::sockaddr_in &src, Contact &dest) noexcept {
-  // TODO ipv4
-  dest.ip.ipv4 = ntohl(src.sin_addr.s_addr);
-  dest.ip.type = IpType::IPV4;
-  dest.port = ntohs(src.sin_port);
-}
-
 // static void
 // recce(fd &udp) noexcept {
 //   sockaddr_in s;
@@ -58,9 +41,7 @@ local(fd &listen, Contact &out) noexcept {
     return false;
   }
 
-  to_contact(addr, out);
-
-  return true;
+  return to_contact(addr, out);
 }
 
 //=====================================

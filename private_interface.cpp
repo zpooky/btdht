@@ -114,13 +114,16 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scratch) noexcept {
 
       auto res = client::priv::found(dht, scratch, search, remote, cx);
       if (res != client::Res::OK) {
+        ++current->fail;
         prepend(current->result, std::move(cx));
         break;
+      } else {
+        current->fail = 0;
       }
     }
 
     if (dht.now > current->timeout) {
-      if (is_empty(current->result)) {
+      if (is_empty(current->result) || current->fail > 2) {
         search_remove(dht, current);
       }
     }

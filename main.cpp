@@ -315,7 +315,7 @@ setup_bootstrap(dht::DHT &self) noexcept {
 
   for_each(bss, [&self](const char *ip) {
     Contact bs;
-    if (!convert(ip, bs)) {
+    if (!to_contact(ip, bs)) {
       die("parse bootstrap ip failed");
     }
 

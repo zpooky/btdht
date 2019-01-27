@@ -250,63 +250,44 @@ awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
   };
 
   Config &cfg = self.config;
-  bool bs_sent = false;
   // XXX self should not be in bootstrap list
   // XXX if no good node is available try bad/questionable nodes
 
-  while (missing_contacts > 0) {
-    auto result = client::Res::OK;
-    std::size_t sent_count = 0;
+  auto result = client::Res::OK;
 
-    auto f = [&](auto &ctx, Node &remote) {
-      // if (dht::is_good(ctx, remote)) {
-      const Contact &c = remote.contact;
-      dht::NodeId &sid = self.id;
+  auto f = [&](auto &ctx, Node &remote) {
+    // if (dht::is_good(ctx, remote)) {
+    const Contact &c = remote.contact;
+    dht::NodeId &sid = self.id;
 
-      result = client::find_node(ctx, out, c, /*search*/ sid, nullptr);
-      if (result == client::Res::OK) {
-        inc_outstanding(remote);
-        ++sent_count;
-        inc_active_searches();
-        remote.req_sent = self.now;
-      }
-      // }
-
-      return result == client::Res::OK;
-    };
-    timeout::for_all_node(self, cfg.refresh_interval, f);
-
-    if (result == client::Res::ERR_TOKEN) {
-      break;
+    result = client::find_node(ctx, out, c, /*search*/ sid, nullptr);
+    if (result == client::Res::OK) {
+      inc_outstanding(remote);
+      inc_active_searches();
+      remote.req_sent = self.now;
     }
+    // }
 
+    return result == client::Res::OK;
+  };
+  timeout::for_all_node(self, cfg.refresh_interval, f);
+
+  if (result != client::Res::ERR_TOKEN) {
     /* Bootstrap contacts */
-    if (!bs_sent) {
-      const dht::NodeId &sid = self.id;
-      dht::KContact cur;
-      while (take_head(self.bootstrap, cur)) {
-        dht::KContact *closure = bootstrap_alloc(self, cur);
-        result =
-            client::find_node(self, out, cur.contact, /*search*/ sid, closure);
-        if (result == client::Res::OK) {
-          bs_sent = true;
-          inc_active_searches();
-        } else {
-          insert_eager(self.bootstrap, cur);
-          bootstrap_reclaim(self, closure);
-          break;
-        }
-      } // while
-    }
-
-    if (result == client::Res::ERR_TOKEN) {
-      break;
-    }
-
-    if (sent_count == 0) {
-      break;
-    }
-  } // while missing_contacts > 0
+    const dht::NodeId &sid = self.id;
+    dht::KContact cur;
+    while (take_head(self.bootstrap, cur)) {
+      dht::KContact *const closure = bootstrap_alloc(self, cur);
+      result = client::find_node(self, out, cur.contact, sid, closure);
+      if (result == client::Res::OK) {
+        inc_active_searches();
+      } else {
+        insert_eager(self.bootstrap, cur);
+        bootstrap_reclaim(self, closure);
+        break;
+      }
+    } // while
+  }
 
   if (missing_contacts > 0) {
     if (now_sent > 0) {
@@ -317,6 +298,7 @@ awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
       return sp::Timestamp(cfg.transaction_timeout);
     }
   }
+
   return cfg.refresh_interval;
 } // awake_look_for_nodes()
 

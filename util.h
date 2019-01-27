@@ -3,6 +3,7 @@
 
 #include <buffer/BytesView.h>
 #include <cstddef>
+#include <netinet/in.h>
 #include <cstdint>
 #include <ctime>
 #include <hash/standard.h>
@@ -105,7 +106,13 @@ std::size_t
 djb_contact(const Contact &contact) noexcept;
 
 bool
-convert(const char *, Contact &) noexcept;
+to_contact(const char *, Contact &) noexcept;
+
+bool
+to_contact(const ::sockaddr_in &, Contact &) noexcept;
+
+bool
+to_sockaddr(const Contact &, ::sockaddr_in &) noexcept;
 
 bool
 to_ipv4(const char *, Ipv4 &) noexcept;
@@ -123,7 +130,7 @@ to_string(const Contact &c, char (&msg)[SIZE]) noexcept {
 }
 
 bool
-convert(const char *, Port &) noexcept;
+to_port(const char *, Port &) noexcept;
 
 using Timeout = sp::Milliseconds;
 using Timestamp = sp::Timestamp;

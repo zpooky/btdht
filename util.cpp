@@ -188,7 +188,7 @@ djb_contact(const Contact &contact) noexcept {
 }
 
 bool
-convert(const char *str, Contact &result) noexcept {
+to_contact(const char *str, Contact &result) noexcept {
   const char *col = std::strchr(str, ':');
   if (!col) {
     return false;
@@ -208,10 +208,29 @@ convert(const char *str, Contact &result) noexcept {
   }
 
   const char *portstr = col + 1;
-  if (!convert(portstr, result.port)) {
+  if (!to_port(portstr, result.port)) {
     return false;
   }
 
+  return true;
+}
+
+bool
+to_contact(const ::sockaddr_in &src, Contact &dest) noexcept {
+  // TODO ipv4
+  dest.ip.ipv4 = ntohl(src.sin_addr.s_addr);
+  dest.ip.type = IpType::IPV4;
+  dest.port = ntohs(src.sin_port);
+  return true;
+}
+
+bool
+to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
+  assertx(src.ip.type == IpType::IPV4);
+  // TODO ipv4
+  dest.sin_family = AF_INET;
+  dest.sin_addr.s_addr = htonl(src.ip.ipv4);
+  dest.sin_port = htons(src.port);
   return true;
 }
 
@@ -269,7 +288,7 @@ to_string(const Contact &c, char *str, std::size_t length) noexcept {
 }
 
 bool
-convert(const char *str, Port &result) noexcept {
+to_port(const char *str, Port &result) noexcept {
   auto p = std::atoll(str);
   if (p < 0) {
     return false;

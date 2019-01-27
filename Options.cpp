@@ -59,7 +59,7 @@ parse(Options &self, int argc, char **argv) noexcept {
       break;
 
     case 'b':
-      if (!convert(optarg, self.port)) {
+      if (!to_port(optarg, self.port)) {
         printf("option -b with value `%s'\n", optarg);
         return false;
       }

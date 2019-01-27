@@ -399,7 +399,7 @@ struct SearchContext {
   const Infohash search;
   bool is_dead;
 
-  SearchContext(const Infohash &) noexcept;
+  explicit SearchContext(const Infohash &) noexcept;
 };
 
 // TODO
@@ -458,6 +458,8 @@ struct Search {
 
   Search *next;
   Search *priv;
+
+  std::size_t fail;
 
   explicit Search(const Infohash &) noexcept;
 

@@ -324,7 +324,8 @@ Search::Search(const Infohash &s) noexcept
     , queue()
     , result()
     , next(nullptr)
-    , priv(nullptr) {
+    , priv(nullptr)
+    , fail(0) {
 
   auto djb_f = [](const NodeId &id) -> std::size_t {
     return djb2::encode32(id.id, sizeof(id.id));
