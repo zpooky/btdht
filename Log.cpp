@@ -325,7 +325,8 @@ ping(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
 
-  printf("transmit ping[%s],res[%s]\n", remote, to_string(result));
+  printf("transmit ping[%s],res[%s],count[%zu]\n", remote, to_string(result),
+         s.sent.request.ping);
 #endif
   (void)contact;
   (void)result;
@@ -344,7 +345,8 @@ find_node(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   // auto &tx = ctx.transaction;
   // print_hex(tx.id, tx.length);
 
-  printf("transmit find_node[%s],res[%s]\n", remote, to_string(result));
+  printf("transmit find_node[%s],res[%s],count[%zu]\n", remote,
+         to_string(result), s.sent.request.find_node);
 #endif
   (void)contact;
   (void)result;
@@ -363,7 +365,8 @@ get_peers(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   // auto &tx = ctx.transaction;
   // print_hex(tx.id, tx.length);
 
-  printf("transmit get_peers[%s],res[%s]\n", remote, to_string(result));
+  printf("transmit get_peers[%s],res[%s],count[%zu]\n", remote,
+         to_string(result), s.sent.request.get_peers);
 #endif
 }
 

@@ -21,7 +21,7 @@ to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
 }
 
 static void
-to_peer(const ::sockaddr_in &src, Contact &dest) noexcept {
+to_contact(const ::sockaddr_in &src, Contact &dest) noexcept {
   // TODO ipv4
   dest.ip.ipv4 = ntohl(src.sin_addr.s_addr);
   dest.ip.type = IpType::IPV4;
@@ -58,18 +58,8 @@ local(fd &listen, Contact &out) noexcept {
     return false;
   }
 
-  if (saddr->sa_family == AF_INET6) {
-    assertx(false);
-    // TODO
-    out = Contact(0, 0);
-    return true;
-  }
+  to_contact(addr, out);
 
-  assertxs(saddr->sa_family == AF_INET, saddr->sa_family);
-  Ipv4 ip = ntohl(addr.sin_addr.s_addr);
-  Port port = ntohs(addr.sin_port);
-
-  out = Contact(ip, port);
   return true;
 }
 
@@ -182,7 +172,7 @@ receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
 
   int res = receive(fd, o, buf);
   if (res == 0) {
-    to_peer(o, other);
+    to_contact(o, other);
   }
 
   return res;

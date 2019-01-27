@@ -149,7 +149,6 @@ Config::Config() noexcept
 {
 }
 
-
 /*dht::Peer*/
 Peer::Peer(Ipv4 i, Port p, Timestamp n) noexcept
     : contact(i, p)
@@ -309,19 +308,23 @@ Stat::Stat() noexcept
     , unknown_tx() {
 }
 
-SearchContext::SearchContext() noexcept
+SearchContext::SearchContext(const Infohash &s) noexcept
     : ref_cnt(1)
+    , search(s)
     , is_dead(false) {
 }
 
-Search::Search(const Infohash &s, const Contact &r) noexcept
-    : ctx(new SearchContext)
+Search::Search(const Infohash &s) noexcept
+    : ctx(new SearchContext(s))
     , search(s)
-    , remote(r)
+    , remote()
     , hashers()
     , searched(hashers)
     , timeout(0)
-    , queue() {
+    , queue()
+    , result()
+    , next(nullptr)
+    , priv(nullptr) {
 
   auto djb_f = [](const NodeId &id) -> std::size_t {
     return djb2::encode32(id.id, sizeof(id.id));
@@ -335,11 +338,51 @@ Search::Search(const Infohash &s, const Contact &r) noexcept
   assertx_n(insert(hashers, fnv_f));
 }
 
+#if 0
+Search::Search(Search &&o) noexcept
+    : ctx(nullptr)
+    , search()
+    , remote()
+    , hashers()
+    , searched()
+    , timeout()
+    , queue()
+    , result()
+    , search_next(nullptr) {
+
+  using std::swap;
+  swap(ctx, o.ctx);
+  swap(search, o.search);
+  swap(remote, o.remote);
+  swap(hashers, o.hashers);
+  swap(searched, o.searched);
+  swap(timeout, o.timeout);
+  swap(queue, o.queue);
+  swap(result, o.result);
+  swap(search_next, o.search_next);
+}
+#endif
+
 Search::~Search() noexcept {
   if (ctx) {
     ctx->is_dead = true;
     search_decrement(ctx);
   }
+}
+
+bool
+operator>(const Infohash &f, const Search &o) noexcept {
+  return f > o.search;
+}
+
+bool
+operator>(const Search &f, const Search &s) noexcept {
+  return f.search > s.search;
+}
+
+bool
+operator>(const Search &f, const Infohash &s) noexcept {
+  return f.search > s;
 }
 
 #if 0
@@ -410,6 +453,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     , active_searches(0)
     // }}}
     // searches{{{
+    , search_root(nullptr)
     , searches()
 //}}}
 

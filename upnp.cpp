@@ -1,6 +1,7 @@
 #include "upnp.h"
 #include "util.h"
 #include <cstddef>
+#include "tcp.h"
 
 struct upnp {
   const char *protocol;
@@ -10,7 +11,7 @@ struct upnp {
 };
 
 static std::size_t
-add_port(char *buffer, size_t length, const upnp &data) noexcept {
+format_body(char *buffer, size_t length, const upnp &data) noexcept {
   const char *desc = "spbtdht";
   static const char *const format = //
       "<?xml version=\"1.0\" ?>"
@@ -61,7 +62,7 @@ add_port(char *buffer, size_t length, const upnp &data) noexcept {
 }
 
 static bool
-http_add_port(const upnp &data, fd &) {
+http_add_port(const upnp &data, fd &fd) {
   constexpr std::size_t header_cap = 1024;
   char header[header_cap] = {0};
 
@@ -76,17 +77,26 @@ http_add_port(const upnp &data, fd &) {
       "SOAPACTION:\"%s#%s\"\r\n"
       "\r\n";
 
-  std::size_t content_length = add_port(content, content_cap, data);
+  std::size_t content_length = format_body(content, content_cap, data);
   if (content_length == 0) {
     return false;
   }
 
-  const char *path = "";
-  Port gateway = 0;
-  const char *gateway_port = "";
+  Contact gateway;
+  if (!tcp::local(fd, gateway)) {
+    return false;
+  }
+
+  char gateway_ip[32] = {0};
+  if (!to_string(gateway, gateway_ip)) {
+    return false;
+  }
+
+  const char *path = "/";
+
   const char *action = "urn:schemas-upnp-org:service:WANIPConnection:1";
   const char *operation = "AddPortMapping";
-  snprintf(header, header_cap, format, path, gateway, gateway_port,
+  snprintf(header, header_cap, format, path, gateway_ip, gateway.port,
            content_length, action, operation);
 
   return true;

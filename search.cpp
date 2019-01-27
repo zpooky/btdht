@@ -5,12 +5,8 @@ namespace dht {
 Search *
 search_find(DHT &dht, SearchContext *needle) noexcept {
   assertx(needle);
-  sp::LinkedList<Search> &ctx = dht.searches;
   assertx(needle);
-  return find_first(ctx, [&](const Search &current) {
-    /**/
-    return current.ctx == needle;
-  });
+  return find(dht.searches, needle->search);
 }
 
 //=====================================

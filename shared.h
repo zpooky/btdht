@@ -396,11 +396,13 @@ struct SearchContext {
   // decremented on receieve & on timeout
   std::size_t ref_cnt;
   // whether this instance should be reclaimd. if ref_cnt is 0
+  const Infohash search;
   bool is_dead;
 
-  SearchContext() noexcept;
+  SearchContext(const Infohash &) noexcept;
 };
 
+// TODO
 struct KContact {
   /* number of common prefix bits */
   std::size_t common;
@@ -454,9 +456,15 @@ struct Search {
   heap::StaticMaxBinary<KContact, 1024> queue;
   sp::LinkedList<Contact> result;
 
-  Search(const Infohash &, const Contact &) noexcept;
+  Search *next;
+  Search *priv;
 
-  // Search(Search &&) noexcept;
+  explicit Search(const Infohash &) noexcept;
+
+#if 0
+  Search(Search &&) noexcept;
+#endif
+
   Search(const Search &&) = delete;
   Search(const Search &) = delete;
 
@@ -467,6 +475,15 @@ struct Search {
 
   ~Search() noexcept;
 };
+
+bool
+operator>(const Infohash &, const Search &) noexcept;
+
+bool
+operator>(const Search &, const Search &) noexcept;
+
+bool
+operator>(const Search &, const Infohash &) noexcept;
 
 // dht::DHT
 struct DHT {
@@ -524,7 +541,8 @@ struct DHT {
   // }}}
 
   // priv interface searches {{{
-  sp::LinkedList<Search> searches;
+  Search *search_root;
+  avl::Tree<Search> searches;
   // }}}
 
   explicit DHT(fd &, const Contact &self, prng::xorshift32 &) noexcept;
