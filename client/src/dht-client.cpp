@@ -569,23 +569,25 @@ bind_exe(int argc, char **argv, exe_cb cb) noexcept {
 static int
 handle_upnp(int, char **) noexcept {
   Contact gateway;
-  if (!to_contact("192.168.1.1:80", gateway)) {
+  // http://192.168.1.1:48353/ctl/IPConn
+  if (!to_contact("192.168.1.1:48353", gateway)) {
     return 1;
   }
-
-  upnp::upnp in;
-  in.protocol = "udp";
-  in.local = 12340;
-  in.external = in.local;
-  if (!to_ipv4("192.168.1.49", in.ip.ipv4)) {
-    return 5;
-  }
-  in.ip.type = IpType::IPV4;
 
   fd tcp = tcp::connect(gateway, tcp::Mode::BLOCKING);
   if (!tcp) {
     return 2;
   }
+
+  Contact local;
+  if (!tcp::local(tcp, local)) {
+    return 5;
+  }
+  upnp::upnp in;
+  in.protocol = "udp";
+  in.local = 12340;
+  in.external = in.local;
+  in.ip = local.ip;
 
   if (!upnp::http_add_port(tcp, in)) {
     return 4;

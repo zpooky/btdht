@@ -9,6 +9,10 @@ bool
 local(fd &, Contact &) noexcept;
 
 //=====================================
+bool
+remote(fd &, Contact &) noexcept;
+
+//=====================================
 enum class Mode { BLOCKING, NONBLOCKING };
 
 fd

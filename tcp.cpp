@@ -7,13 +7,33 @@ namespace tcp {
 //=====================================
 bool
 local(fd &listen, Contact &out) noexcept {
+  assertx(listen);
+
   sockaddr_in addr;
   std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);
   sockaddr *saddr = (sockaddr *)&addr;
 
-  int ret = ::getsockname(int(listen), saddr, &slen);
-  if (ret < 0) {
+  int res = ::getsockname(int(listen), saddr, &slen);
+  if (res < 0) {
+    return false;
+  }
+
+  return to_contact(addr, out);
+}
+
+//=====================================
+bool
+remote(fd &listen, Contact &out) noexcept {
+  assertx(listen);
+
+  sockaddr_in addr;
+  std::memset(&addr, 0, sizeof(addr));
+  socklen_t slen = sizeof(addr);
+  sockaddr *saddr = (sockaddr *)&addr;
+
+  int res = ::getpeername(int(listen), saddr, &slen);
+  if (res < 0) {
     return false;
   }
 

@@ -12,38 +12,33 @@ upnp::upnp() noexcept
 }
 
 static std::size_t
-format_body(char *buffer, size_t length, const upnp &data) noexcept {
+format_body(char *buffer, size_t length, const char *action,
+            const upnp &data) noexcept {
+
+#if 0
+	tpl := `<?xml version="1.0" ?>
+	<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+	<s:Body>%s</s:Body>
+	</s:Envelope>
+`
+#endif
+
   const char *desc = "spbtdht";
   static const char *const format = //
       "<?xml version=\"1.0\" ?>"
       "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" "
       "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">"
       "  <s:Body>"
-      "    <u:AddPortMapping "
-      "xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\">"
+      "    <u:AddPortMapping xmlns:u=\"%s\">"
       "      <NewRemoteHost>"
       "    </NewRemoteHost>"
-      "    <NewExternalPort>"
-      "      %u"
-      "    </NewExternalPort>"
-      "    <NewProtocol>"
-      "      %s"
-      "    </NewProtocol>"
-      "    <NewInternalPort>"
-      "      %u"
-      "    </NewInternalPort>"
-      "    <NewEnabled>"
-      "      1"
-      "    </NewEnabled>"
-      "    <NewInternalClient>"
-      "      %s"
-      "    </NewInternalClient>"
-      "    <NewLeaseDuration>"
-      "      0"
-      "    </NewLeaseDuration>"
-      "    <NewPortMappingDescription>"
-      "      %s"
-      "    </NewPortMappingDescription>"
+      "    <NewExternalPort>%u</NewExternalPort>"
+      "    <NewProtocol>%s</NewProtocol>"
+      "    <NewInternalPort>%u</NewInternalPort>"
+      "    <NewEnabled>1</NewEnabled>"
+      "    <NewInternalClient>%s</NewInternalClient>"
+      "    <NewLeaseDuration>0</NewLeaseDuration>"
+      "    <NewPortMappingDescription>%s</NewPortMappingDescription>"
       "  </u:AddPortMapping>"
       "</s:Body>"
       "</s:Envelope>";
@@ -53,8 +48,8 @@ format_body(char *buffer, size_t length, const upnp &data) noexcept {
     return 0;
   }
 
-  int res = snprintf(buffer, length, format, data.external, data.protocol,
-                     data.local, ip, desc);
+  int res = snprintf(buffer, length, format, action, data.external,
+                     data.protocol, data.local, ip, desc);
   if (res <= 0) {
     return 0;
   }
@@ -69,42 +64,46 @@ format_body(char *buffer, size_t length, const upnp &data) noexcept {
 
 bool
 http_add_port(fd &fd, const upnp &data) noexcept {
-  constexpr std::size_t header_cap = 1024;
-  char header[header_cap] = {0};
+  constexpr std::size_t cheader = 1024;
+  char header[cheader] = {0};
 
-  constexpr std::size_t content_cap = 1024 * 4;
-  char content[content_cap] = {0};
+  constexpr std::size_t cconten = 1024 * 4;
+  char content[cconten] = {0};
 
-  const char *format = //
-      "POST %s HTTP/1.1\r\n"
-      "HOST: %s:%u\r\n"
-      "CONTENT-LENGTH: %zu\r\n"
-      "CONTENT-TYPE: text/xml; charset=\"utf-8\"\r\n"
-      "SOAPACTION:\"%s#%s\"\r\n"
-      "\r\n";
-
-  std::size_t clen = format_body(content, content_cap, data);
+  const char *action = "urn:schemas-upnp-org:service:WANIPConnection:1";
+  std::size_t clen = format_body(content, cconten, action, data);
   if (clen == 0) {
     return false;
   }
 
-  // Contact local;
-  // if (!tcp::local(fd, local)) {
-  //   return false;
-  // }
-
-  char gateway_ip[32] = {0};
-  Port gateway_port = 80;
-  if (!to_string(data.ip, gateway_ip)) {
+  Contact gateway;
+  if (!tcp::remote(fd, gateway)) {
     return false;
   }
 
-  const char *path = "/";
+  char gateway_ip[32] = {0};
+  if (!to_string(gateway.ip, gateway_ip)) {
+    return false;
+  }
 
-  const char *action = "urn:schemas-upnp-org:service:WANIPConnection:1";
+  const char *path = "/ctl/IPConn";
+
+  // http://192.168.2.1:49152/upnp/control/WANIPConn1
+
+  const char *format = //
+      "POST %s HTTP/1.1\r\n"
+      "host: %s:%u\r\n"
+      "Content-Length: %zu\r\n"
+      "Content-Type: text/xml; charset=\"utf-8\"\r\n"
+      "Connection: Close\r\n"
+      "Cache-Control: no-cache\r\n"
+      "Pragma: no-cache\r\n"
+      "SOAPAction: %s#%s\r\n"
+      "\r\n";
+
   const char *operation = "AddPortMapping";
-  int hlen = snprintf(header, header_cap, format, path, gateway_ip,
-                      gateway_port, clen, action, operation);
+  int hlen = snprintf(header, cheader, format, path, gateway_ip, gateway.port,
+                      clen, action, operation);
 
   printf("%s\n", header);
   sp::BytesView hbuf((unsigned char *)header, std::size_t(hlen));
