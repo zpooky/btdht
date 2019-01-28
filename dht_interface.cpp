@@ -554,10 +554,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       dht::DHT &dht = ctx.dht;
       dht::Node node(contact, dht.now);
 
-      auto res = dht::insert(dht, node);
-      if (!res) {
-        bootstrap_insert(dht, node);
-      }
+      bootstrap_insert(dht, node);
     });
   });
 
@@ -778,10 +775,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       search_insert(search, contact);
 
       dht::Node ins(contact, dht.now);
-      auto res = dht::insert(dht, ins);
-      if (!res) {
-        bootstrap_insert(dht, ins);
-      }
+      bootstrap_insert(dht, ins);
     });
 
     /* Sender returns matching values for search query */
@@ -790,7 +784,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       search_insert_result(search, c);
     });
   });
-} // get_peers::handle_response
+} // namespace get_peers
 
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
