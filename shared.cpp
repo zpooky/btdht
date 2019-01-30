@@ -456,6 +456,9 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     // searches{{{
     , search_root(nullptr)
     , searches()
+    //}}}
+    // upnp{{{
+    , upnp_sent(0)
 //}}}
 
 //}}}

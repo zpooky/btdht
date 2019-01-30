@@ -111,6 +111,24 @@ to_contact(const char *, Contact &) noexcept;
 bool
 to_contact(const ::sockaddr_in &, Contact &) noexcept;
 
+const char *
+to_string(const ::sockaddr_in &) noexcept;
+
+bool
+to_contact(const ::in_addr &, Port, Contact &) noexcept;
+
+bool
+to_string(const ::in_addr &, char *, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+bool
+to_string(const ::in_addr &ip, char (&msg)[SIZE]) noexcept {
+  return to_string(ip, msg, SIZE);
+}
+
+const char *
+to_string(const ::in_addr &) noexcept;
+
 bool
 to_sockaddr(const Contact &, ::sockaddr_in &) noexcept;
 
@@ -126,6 +144,9 @@ to_string(const Ip &ip, char (&msg)[SIZE]) noexcept {
   return to_string(ip, msg, SIZE);
 }
 
+const char *
+to_string(const Ip &) noexcept;
+
 bool
 to_string(const Contact &, char *msg, std::size_t) noexcept;
 
@@ -134,6 +155,9 @@ bool
 to_string(const Contact &c, char (&msg)[SIZE]) noexcept {
   return to_string(c, msg, SIZE);
 }
+
+const char *
+to_string(const Contact &) noexcept;
 
 bool
 to_port(const char *, Port &) noexcept;

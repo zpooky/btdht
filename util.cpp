@@ -218,10 +218,48 @@ to_contact(const char *str, Contact &result) noexcept {
 bool
 to_contact(const ::sockaddr_in &src, Contact &dest) noexcept {
   // TODO ipv4
-  dest.ip.ipv4 = ntohl(src.sin_addr.s_addr);
+  auto ipv4 = src.sin_addr;
+  Port port = ntohs(src.sin_port);
+  return to_contact(ipv4, port, dest);
+}
+
+const char *
+to_string(const ::sockaddr_in &in) noexcept {
+  static char buffer[INET6_ADDRSTRLEN + 1 + 5];
+
+  Contact tmp;
+  bool result = to_contact(in, tmp);
+  assertx(result);
+
+  result = to_string(tmp, buffer, sizeof(buffer));
+  assertx(result);
+
+  return buffer;
+}
+
+bool
+to_contact(const ::in_addr &src, Port p, Contact &dest) noexcept {
+  dest.ip.ipv4 = ntohl(src.s_addr);
   dest.ip.type = IpType::IPV4;
-  dest.port = ntohs(src.sin_port);
+  dest.port = p;
   return true;
+}
+
+bool
+to_string(const in_addr &ip, char *str, std::size_t len) noexcept {
+  assertx(len >= INET_ADDRSTRLEN);
+  const char *res = ::inet_ntop(AF_INET, &ip, str, len);
+  return res != nullptr;
+}
+
+const char *
+to_string(const ::in_addr &ip) noexcept {
+  static char buffer[INET6_ADDRSTRLEN];
+
+  bool result = to_string(ip, buffer, sizeof(buffer));
+  assertx(result);
+
+  return buffer;
 }
 
 bool
@@ -274,6 +312,16 @@ to_string(const Ip &ip, char *str, std::size_t length) noexcept {
   return true;
 }
 
+const char *
+to_string(const Ip &c) noexcept {
+  static char buffer[INET6_ADDRSTRLEN];
+
+  bool res = to_string(c, buffer, sizeof(buffer));
+  assertx(res);
+
+  return buffer;
+}
+
 bool
 to_string(const Contact &c, char *str, std::size_t length) noexcept {
   if (!to_string(c.ip, str, length)) {
@@ -285,6 +333,16 @@ to_string(const Contact &c, char *str, std::size_t length) noexcept {
   sprintf(pstr, "%d", c.port);
   std::strcat(str, pstr);
   return true;
+}
+
+const char *
+to_string(const Contact &c) noexcept {
+  static char buffer[INET6_ADDRSTRLEN + 1 + 5];
+
+  bool res = to_string(c, buffer, sizeof(buffer));
+  assertx(res);
+
+  return buffer;
 }
 
 bool

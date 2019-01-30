@@ -4,16 +4,17 @@
 #include <util/assert.h>
 
 namespace upnp {
-upnp::upnp() noexcept
+upnp::upnp(sp::Seconds t) noexcept
     : protocol("")
     , local(0)
     , external(0)
-    , ip(Ipv4(0)) {
+    , ip(Ipv4(0))
+    , timeout(t) {
 }
 
 static std::size_t
-format_body(char *buffer, size_t length, const char *action,
-            const upnp &data) noexcept {
+format_body(char *buffer, size_t length, const char *action, const upnp &data,
+            sp::Seconds tout) noexcept {
 
 #if 0
 	tpl := `<?xml version="1.0" ?>
@@ -30,15 +31,14 @@ format_body(char *buffer, size_t length, const char *action,
       "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">"
       "  <s:Body>"
       "    <u:AddPortMapping xmlns:u=\"%s\">"
-      "      <NewRemoteHost>"
-      "    </NewRemoteHost>"
+      // "      <NewRemoteHost></NewRemoteHost>"
       "    <NewExternalPort>%u</NewExternalPort>"
       "    <NewProtocol>%s</NewProtocol>"
       "    <NewInternalPort>%u</NewInternalPort>"
-      "    <NewEnabled>1</NewEnabled>"
       "    <NewInternalClient>%s</NewInternalClient>"
-      "    <NewLeaseDuration>0</NewLeaseDuration>"
+      "    <NewEnabled>1</NewEnabled>"
       "    <NewPortMappingDescription>%s</NewPortMappingDescription>"
+      "    <NewLeaseDuration>%llu</NewLeaseDuration>"
       "  </u:AddPortMapping>"
       "</s:Body>"
       "</s:Envelope>";
@@ -49,7 +49,7 @@ format_body(char *buffer, size_t length, const char *action,
   }
 
   int res = snprintf(buffer, length, format, action, data.external,
-                     data.protocol, data.local, ip, desc);
+                     data.protocol, data.local, ip, desc, tout.value);
   if (res <= 0) {
     return 0;
   }
@@ -71,7 +71,7 @@ http_add_port(fd &fd, const upnp &data) noexcept {
   char content[cconten] = {0};
 
   const char *action = "urn:schemas-upnp-org:service:WANIPConnection:1";
-  std::size_t clen = format_body(content, cconten, action, data);
+  std::size_t clen = format_body(content, cconten, action, data, data.timeout);
   if (clen == 0) {
     return false;
   }

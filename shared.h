@@ -547,6 +547,10 @@ struct DHT {
   avl::Tree<Search> searches;
   // }}}
 
+  // upnp {{{
+  Timestamp upnp_sent;
+  // }}}
+
   explicit DHT(fd &, const Contact &self, prng::xorshift32 &) noexcept;
 
   DHT(const DHT &) = delete;

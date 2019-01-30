@@ -585,7 +585,7 @@ handle_upnp(int, char **) noexcept {
   }
   upnp::upnp in;
   in.protocol = "udp";
-  in.local = 12340;
+  in.local = 42605;
   in.external = in.local;
   in.ip = local.ip;
 

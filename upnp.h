@@ -9,7 +9,9 @@ struct upnp {
   Port local;
   Port external;
   Ip ip;
-  upnp() noexcept;
+  sp::Seconds timeout;
+
+  explicit upnp(sp::Seconds) noexcept;
 };
 
 bool

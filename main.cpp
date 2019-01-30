@@ -1,5 +1,6 @@
 #include "dht.h"
 #include "udp.h"
+#include "upnp_service.h"
 #include <cstdio>
 
 #include "bootstrap.h"
@@ -395,6 +396,9 @@ main(int argc, char **argv) {
   }
   if (!interface_dht::setup(modules)) {
     die("interface_dht::setup(modules)");
+  }
+  if (!dht_upnp::setup(modules)) {
+    die("dht_upnp::setup(modules)");
   }
 
   auto handle_cb = [&](Contact from, sp::Buffer &in, sp::Buffer &out,
