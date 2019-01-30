@@ -1,6 +1,7 @@
 #include "bencode.h"
 #include <arpa/inet.h>
 #include <cstdio>
+#include <util/conversions.h>
 #include <cstring>
 #include <string>
 #include <type_traits>
@@ -284,8 +285,7 @@ Lloop:
   }
 
   read = p - b.pos;
-  out = std::atoll(str);
-  return true;
+  return sp::parse_int(str + 0, str + it, out);
 } // bencode::d::read_numeric()
 
 template <typename T>
