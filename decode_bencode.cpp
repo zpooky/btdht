@@ -1,8 +1,8 @@
 #include "decode_bencode.h"
-
 #include <buffer/BytesView.h>
 #include <buffer/Thing.h>
 #include <cstring>
+#include <util/conversions.h>
 
 namespace sp {
 //=====================================
@@ -174,7 +174,6 @@ bencode::d<Buffer>::pair(Buffer &buf, const char *key, byte *value,
 }
 
 //=====================================
-
 template <typename Buffer, typename T>
 static bool
 read_numeric(Buffer &b, T &out, char end) noexcept {
@@ -193,6 +192,7 @@ Lloop : {
           goto Lloop;
         }
       }
+
       return false;
     }
   } else {
@@ -205,8 +205,7 @@ Lloop : {
     return false;
   }
 
-  out = std::atoll(str);
-  return true;
+  return parse_int(str + 0, str + it, out);
 }
 
 template <typename Buffer>

@@ -698,8 +698,8 @@ decode_list_pair(sp::Buffer &d, const char *key, sp::list<T> &list) noexcept {
     return false;
   }
 
-  auto f = [](sp::Buffer &d, /*OUT*/ T &out, void *) { //
-    return value(d, out);
+  auto f = [](sp::Buffer &buf, /*OUT*/ T &out, void *) { //
+    return value(buf, out);
   };
 
   if (!bencode::d::list(d, list, nullptr, f)) {
