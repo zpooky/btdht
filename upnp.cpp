@@ -1,4 +1,6 @@
+#define __STDC_FORMAT_MACROS
 #include "tcp.h"
+#include <inttypes.h>
 #include "upnp.h"
 #include <cstddef>
 #include <util/assert.h>
@@ -38,7 +40,7 @@ format_body(char *buffer, size_t length, const char *action, const upnp &data,
       "    <NewInternalClient>%s</NewInternalClient>"
       "    <NewEnabled>1</NewEnabled>"
       "    <NewPortMappingDescription>%s</NewPortMappingDescription>"
-      "    <NewLeaseDuration>%llu</NewLeaseDuration>"
+      "    <NewLeaseDuration>%" PRIu64 "</NewLeaseDuration>"
       "  </u:AddPortMapping>"
       "</s:Body>"
       "</s:Envelope>";
@@ -51,6 +53,7 @@ format_body(char *buffer, size_t length, const char *action, const upnp &data,
   int res = snprintf(buffer, length, format, action, data.external,
                      data.protocol, data.local, ip, desc, tout.value);
   if (res <= 0) {
+    assertxs(false, res);
     return 0;
   }
 
@@ -73,16 +76,19 @@ http_add_port(fd &fd, const upnp &data) noexcept {
   const char *action = "urn:schemas-upnp-org:service:WANIPConnection:1";
   std::size_t clen = format_body(content, cconten, action, data, data.timeout);
   if (clen == 0) {
+    assertx(false);
     return false;
   }
 
   Contact gateway;
   if (!tcp::remote(fd, gateway)) {
+    assertx(false);
     return false;
   }
 
   char gateway_ip[32] = {0};
   if (!to_string(gateway.ip, gateway_ip)) {
+    assertx(false);
     return false;
   }
 
