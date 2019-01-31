@@ -17,7 +17,8 @@ bool
 nodes(sp::Buffer &, const char *, sp::list<dht::Node> &) noexcept;
 
 bool
-nodes(sp::Buffer &, const char *, sp::UinStaticArray<dht::Node, 256> &) noexcept;
+nodes(sp::Buffer &, const char *,
+      sp::UinStaticArray<dht::Node, 256> &) noexcept;
 
 bool
 peers(sp::Buffer &, const char *, sp::list<Contact> &) noexcept;
