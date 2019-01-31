@@ -99,4 +99,4 @@ bear:
 
 .PHONY: dependencies
 dependencies:
-	$(MAKE) -C external/sputil BUILD_DIR=build/dht
+	$(MAKE) -C external/sputil BUILD_DIR=build/dht debug
