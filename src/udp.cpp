@@ -166,7 +166,8 @@ receive(fd &udp, /*OUT*/ Contact &c, /*OUT*/ sp::Buffer &b) noexcept {
 
 //=====================================
 static bool
-send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
+send(int fd, ::sockaddr_in &dest, const Contact &debug_dest,
+     sp::Buffer &buf) noexcept {
   assertx(buf.length > 0);
   int flag = 0;
   ::sockaddr *destaddr = (::sockaddr *)&dest;
@@ -189,15 +190,12 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
 
   if (sent < 0) {
     const std::size_t raw_len = remaining_read(buf);
-    char dstr[128] = {0};
-    socklen_t s_len(sizeof(dstr));
-    const char *res = ::inet_ntop(AF_INET, &dest, dstr, s_len);
-    assertx(res);
-
     printf("sent[%zd] = "
-           "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),destaddr[%s]): %s\n", //
-           sent,                                                           //
-           int(fd), raw_len, flag, dstr, strerror(error));
+           "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),"
+           "debug_dest[%s]): %s\n", //
+           sent,                    //
+           int(fd), raw_len, flag,  //
+           to_string(debug_dest), strerror(error));
     assertx(false);
     return false;
   }
@@ -208,9 +206,10 @@ send(int fd, ::sockaddr_in &dest, sp::Buffer &buf) noexcept {
 //=====================================
 bool
 send(int fd, const Contact &dest, sp::Buffer &buf) noexcept {
+  assertx(dest.port != 0);
   ::sockaddr_in d;
   to_sockaddr(dest, d);
-  return send(fd, d, buf);
+  return send(fd, d, dest, buf);
 } // udp::send()
 
 bool

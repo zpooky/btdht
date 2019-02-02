@@ -583,7 +583,7 @@ handle_upnp(int, char **) noexcept {
   if (!tcp::local(tcp, local)) {
     return 5;
   }
-  upnp::upnp in{sp::Minutes(5)};
+  upnp::upnp in{sp::Seconds(sp::Minutes(5))};
   in.protocol = "udp";
   in.local = 42605;
   in.external = in.local;

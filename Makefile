@@ -2,7 +2,7 @@
 #http://www.puxan.com/web/howto-write-generic-makefiles/
 # Declaration of variables
 CXX = g++
-HEADER_DIRS = -Iexternal -Iexternal/sputil/include
+HEADER_DIRS = -Iexternal -Iexternal/sputil/include -Isrc
 # ovrrides makes it possible to externaly append extra flags
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb -O0
@@ -13,27 +13,37 @@ BUILD_DIR = build/debug
 
 # File names
 EXEC = dht
-LIB = lib$(EXEC)
-SOURCES = $(wildcard *.cpp)
-OBJECTS = $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
-DEPENDS = $(OBJECTS:.o=.d)
+EXEC_CLIENT = dht-client
 
-#TODO dynamic link lib
-#TODO https://kristerw.blogspot.se/2017/09/useful-gcc-warning-options-not-enabled.html
-#TODO build for different optimizations level in dedicated build directories
+LIB = lib$(EXEC)
+
+SOURCES = $(wildcard src/*.cpp)
+OBJECTS = $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
+
+OBJECTS_SERVER = $(OBJECTS)
+OBJECTS_SERVER += $(BUILD_DIR)/dht-server.o
+
+OBJECTS_CLIENT = $(OBJECTS)
+OBJECTS_CLIENT += $(BUILD_DIR)/dht-client.o
+
+# TODO fix proper dependency (mssing client&server)
+DEPENDS = $(OBJECTS:.o=.d)
 
 # all {{{
 # The "all" target. runs by default since it the first target
 .PHONY: all
-all: $(EXEC)
-	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS)
+all: $(EXEC) $(EXEC_CLIENT)
+	$(AR) rcs $(BUILD_DIR)/$(LIB).a $(OBJECTS_SERVER)
 # }}}
 
 # $(EXEC) {{{
 # depends on the targets for all the object files
-$(EXEC): $(OBJECTS) dependencies
-	$(CXX) $(OBJECTS) -o $(EXEC) $(LDLIBS)
+$(EXEC): $(OBJECTS_SERVER) dependencies
+	$(CXX) $(OBJECTS_SERVER) -o $(EXEC) $(LDLIBS)
 # }}}
+
+$(EXEC_CLIENT): $(OBJECTS_CLIENT) dependencies
+	$(CXX) $(OBJECTS_CLIENT) -o $(EXEC_CLIENT) $(LDLIBS)
 
 # object {{{
 
@@ -43,7 +53,7 @@ $(EXEC): $(OBJECTS) dependencies
 # The "object" file target
 # An implicit conversion from a cpp file to a object file?
 $(BUILD_DIR)/%.o: %.cpp
-	@mkdir -p $(BUILD_DIR)
+	mkdir -p $(dir $(@))
 # -c means to create an intermediary object file, rather than an executable
 # -MMD means to create *object*.d depend file with its depending cpp & h files
 	$(CXX) $(CXXFLAGS_DEBUG) $(LDFLAGS) -MMD -c $< -o $@
@@ -54,7 +64,9 @@ $(BUILD_DIR)/%.o: %.cpp
 clean:
 	rm -f $(OBJECTS)
 	rm -f $(DEPENDS)
-	rm -f $(EXEC) $(BUILD_DIR)/$(LIB).a $(BUILD_DIR)/$(LIB).so
+	rm -f $(EXEC)
+	rm -f $(EXEC_CLIENT)
+	rm -f $(BUILD_DIR)/$(LIB).a $(BUILD_DIR)/$(LIB).so
 	$(MAKE) -C test clean
 	$(MAKE) -C external/sputil BUILD_DIR=build/dht clean
 # }}}

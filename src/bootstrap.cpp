@@ -4,7 +4,7 @@ namespace dht {
 //==========================================
 void
 bootstrap_insert(DHT &self, const KContact &remote) noexcept {
-  assertx(remote.contact.ip.ipv4 != 33554432);
+  assertx(remote.contact.port != 0);
 
   if (!test(self.bootstrap_filter, remote.contact.ip)) {
     if (insert_eager(self.bootstrap, remote)) {
@@ -21,7 +21,7 @@ bootstrap_insert(DHT &self, const Node &node) noexcept {
 //==========================================
 void
 bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
-  assertx(remote.contact.ip.ipv4 != 33554432);
+  assertx(remote.contact.port != 0);
   if (remote.common > 0) {
     remote.common--;
   }
@@ -43,14 +43,14 @@ bootstrap_reset(DHT &self) noexcept {
 void
 bootstrap_reclaim(DHT &, dht::KContact *in) noexcept {
   assertx(in);
-  assertx(in->contact.ip.ipv4 != 33554432);
+  assertx(in->contact.port != 0);
   delete in;
 }
 
 //==========================================
 dht::KContact *
 bootstrap_alloc(DHT &, const dht::KContact &cur) noexcept {
-  assertx(cur.contact.ip.ipv4 != 33554432);
+  assertx(cur.contact.port != 0);
   return new dht::KContact(cur);
 }
 

@@ -416,20 +416,25 @@ struct KContact {
   KContact(std::size_t c, Contact con) noexcept
       : common(c)
       , contact(con) {
+
+    assertx(contact.ip.ipv4 != 33554432);
   }
 
   KContact(const Key &in, const Contact &c, const Key &search) noexcept
       : common(rank(in, search))
       , contact(c) {
+    assertx(contact.ip.ipv4 != 33554432);
   }
 
   KContact(const Node &in, const Key &search) noexcept
       : common(rank(in.id, search))
       , contact(in.contact) {
+    assertx(contact.ip.ipv4 != 33554432);
   }
 
   KContact(const Node &in, const NodeId &search) noexcept
       : KContact(in, search.id) {
+    assertx(contact.ip.ipv4 != 33554432);
   }
 
   explicit operator bool() const noexcept {

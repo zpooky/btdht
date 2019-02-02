@@ -285,7 +285,13 @@ Lloop:
   }
 
   read = p - b.pos;
-  return sp::parse_int(str + 0, str + it, out);
+  bool result = sp::parse_int(str + 0, str + it, out);
+  if (!result) {
+    printf("sp::parse_int('%.*s': %zu, out[%lld]): %s \n", int(it), str, it,
+           out, result ? "true" : "false");
+    result = sp::parse_int(str + 0, str + it, out);
+  }
+  return result;
 } // bencode::d::read_numeric()
 
 template <typename T>
