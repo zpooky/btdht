@@ -148,7 +148,7 @@ main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
 
     int no_events = ::epoll_wait(int(pfd), events, max_events, int(timeout));
     if (no_events < 0) {
-      if (errno == EAGAIN) {
+      if (errno == EAGAIN || errno == EINTR) {
       } else {
         die("epoll_wait");
       }
