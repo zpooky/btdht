@@ -31,7 +31,7 @@ namespace udp {
 //=====================================
 bool
 local(fd &listen, Contact &out) noexcept {
-  sockaddr_in addr;
+  sockaddr_in addr{};
   std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);
   sockaddr *saddr = (sockaddr *)&addr;
@@ -57,7 +57,7 @@ bind(Ipv4 ip, Port port, Mode mode) noexcept {
     return fd{-1};
   }
 
-  ::sockaddr_in me;
+  ::sockaddr_in me{};
   std::memset(&me, 0, sizeof(me));
   me.sin_family = AF_INET;
   me.sin_port = htons(port);
@@ -101,7 +101,7 @@ bind(Ipv6 ip, Port port, Mode mode) noexcept {
     return fd{-1};
   }
 
-  ::sockaddr_in6 me;
+  ::sockaddr_in6 me{};
   std::memset(&me, 0, sizeof(me));
   me.sin6_family = AF_INET6;
   me.sin6_port = htons(port);
@@ -139,7 +139,8 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   len = ::recvfrom(fd, raw, raw_len, flag, /*OUT*/ o, &slen);
   int err = errno;
 
-  if (len <= 0) {
+  if (len < 0) {
+    assertxs(err != 0, err);
     return err;
   }
 
@@ -149,11 +150,11 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
 
 int
 receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
-  ::sockaddr_in o;
+  ::sockaddr_in remote{};
 
-  int res = receive(fd, o, buf);
+  int res = receive(fd, remote, buf);
   if (res == 0) {
-    to_contact(o, other);
+    to_contact(remote, other);
   }
 
   return res;
@@ -207,7 +208,7 @@ send(int fd, ::sockaddr_in &dest, const Contact &debug_dest,
 bool
 send(int fd, const Contact &dest, sp::Buffer &buf) noexcept {
   assertx(dest.port != 0);
-  ::sockaddr_in d;
+  ::sockaddr_in d{};
   to_sockaddr(dest, d);
   return send(fd, d, dest, buf);
 } // udp::send()

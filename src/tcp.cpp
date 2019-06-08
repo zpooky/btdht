@@ -9,7 +9,7 @@ bool
 local(fd &listen, Contact &out) noexcept {
   assertx(listen);
 
-  sockaddr_in addr;
+  sockaddr_in addr{};
   std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);
   sockaddr *saddr = (sockaddr *)&addr;
@@ -27,7 +27,7 @@ bool
 remote(fd &listen, Contact &out) noexcept {
   assertx(listen);
 
-  sockaddr_in addr;
+  sockaddr_in addr{};
   std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);
   sockaddr *saddr = (sockaddr *)&addr;
@@ -53,13 +53,13 @@ connect(const Contact &dest, Mode mode) noexcept {
     return fd{-1};
   }
 
-  ::sockaddr_in me;
+  ::sockaddr_in me{};
   std::memset(&me, 0, sizeof(me));
   me.sin_family = AF_INET;
   me.sin_port = htons(0);
 
-  ::sockaddr_in remote;
-  std::memset(&me, 0, sizeof(me));
+  ::sockaddr_in remote{};
+  std::memset(&remote, 0, sizeof(remote));
   if (!to_sockaddr(dest, remote)) {
     return fd{-1};
   }

@@ -15,12 +15,12 @@ static Res
 send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
      void *closure, F request) noexcept {
   sp::reset(out);
-  dht::Client &client = dht.client;
 
   krpc::Transaction tx;
   tx::TxContext ctx{module.response, module.response_timeout, closure};
   Res result = tx::mint(dht, tx, ctx) ? Res::OK : Res::ERR_TOKEN;
   if (result == Res::OK) {
+    dht::Client &client = dht.client;
 
     result = request(out, tx) ? Res::OK : Res::ERR;
     if (result == Res::OK) {
