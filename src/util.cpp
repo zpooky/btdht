@@ -7,6 +7,7 @@
 #include <memory>
 #include <util/assert.h>
 
+//=====================================
 /*Ip*/
 Ip::Ip(Ipv4 v4)
     : ipv4(v4)
@@ -76,11 +77,6 @@ Ip::operator>(const Ip &o) const noexcept {
 
 namespace sp {
 std::size_t
-Hasher<Ipv6>::operator()(const ::Ipv6 &ip) const noexcept {
-  return fnv_1a::encode64(&ip.raw, sizeof(ip.raw));
-}
-
-std::size_t
 Hasher<Ip>::operator()(const Ip &c) const noexcept {
   if (c.type == IpType::IPV4) {
     Hasher<Ipv4> h;
@@ -93,9 +89,61 @@ Hasher<Ip>::operator()(const Ip &c) const noexcept {
   assertxs(false, (uint8_t)c.type);
   return 0;
 }
-
 } // namespace sp
 
+static std::uint64_t
+fnv_ipv4(const Ipv4 &c) noexcept {
+  return fnv_1a::encode64(&c, sizeof(c));
+}
+
+static std::uint64_t
+fnv_ipv6(const Ipv6 &c) noexcept {
+  return fnv_1a::encode64(c.raw, sizeof(c.raw));
+}
+
+std::size_t
+fnv_ip(const Ip &c) noexcept {
+  if (c.type == IpType::IPV4) {
+    return fnv_ipv4(c.ipv4);
+  } else if (c.type == IpType::IPV6) {
+    return fnv_ipv6(c.ipv6);
+  }
+
+  assertxs(false, (uint8_t)c.type);
+  return 0;
+}
+
+static std::uint32_t
+djb_ipv4(const Ipv4 &c) noexcept {
+  return djb2::encode32(&c, sizeof(c));
+}
+
+static std::uint32_t
+djb_ipv6(const Ipv6 &c) noexcept {
+  return djb2::encode32(c.raw, sizeof(c.raw));
+}
+
+std::size_t
+djb_ip(const Ip &c) noexcept {
+  if (c.type == IpType::IPV4) {
+    return djb_ipv4(c.ipv4);
+  } else if (c.type == IpType::IPV6) {
+    return djb_ipv6(c.ipv6);
+  }
+
+  assertxs(false, (uint8_t)c.type);
+  return 0;
+}
+
+//=====================================
+namespace sp {
+std::size_t
+Hasher<Ipv6>::operator()(const ::Ipv6 &ip) const noexcept {
+  return fnv_1a::encode64(&ip.raw, sizeof(ip.raw));
+}
+} // namespace sp
+
+//=====================================
 /*Contact*/
 Contact::Contact(Ipv4 v4, Port p) noexcept
     : ip(v4)
@@ -129,50 +177,6 @@ Contact::operator<(const Contact &o) const noexcept {
 bool
 Contact::operator>(const Contact &o) const noexcept {
   return ip > o.ip;
-}
-
-static std::uint64_t
-fnv_ipv4(const Ipv4 &c) {
-  return fnv_1a::encode64(&c, sizeof(c));
-}
-
-static std::uint64_t
-fnv_ipv6(const Ipv6 &c) {
-  return fnv_1a::encode64(c.raw, sizeof(c.raw));
-}
-
-std::size_t
-fnv_ip(const Ip &c) {
-  if (c.type == IpType::IPV4) {
-    return fnv_ipv4(c.ipv4);
-  } else if (c.type == IpType::IPV6) {
-    return fnv_ipv6(c.ipv6);
-  }
-
-  assertxs(false, (uint8_t)c.type);
-  return 0;
-}
-
-static std::uint32_t
-djb_ipv4(const Ipv4 &c) {
-  return djb2::encode32(&c, sizeof(c));
-}
-
-static std::uint32_t
-djb_ipv6(const Ipv6 &c) {
-  return djb2::encode32(c.raw, sizeof(c.raw));
-}
-
-std::size_t
-djb_ip(const Ip &c) {
-  if (c.type == IpType::IPV4) {
-    return djb_ipv4(c.ipv4);
-  } else if (c.type == IpType::IPV6) {
-    return djb_ipv6(c.ipv6);
-  }
-
-  assertxs(false, (uint8_t)c.type);
-  return 0;
 }
 
 std::size_t
@@ -276,6 +280,7 @@ to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
   return true;
 }
 
+//=====================================
 bool
 to_ipv4(const char *str, Ipv4 &result) noexcept {
   bool ret = inet_pton(AF_INET, str, &result) == 1;
@@ -365,6 +370,7 @@ to_port(const char *str, Port &result) noexcept {
   return true;
 }
 
+//=====================================
 namespace dht {
 // dht::Token
 Token::Token() noexcept
@@ -388,7 +394,7 @@ is_valid(const Token &o) noexcept {
 
 } // namespace dht
 
-//---------------------------
+//=====================================
 namespace krpc {
 /*krpc::Transaction*/
 Transaction::Transaction() noexcept
@@ -405,7 +411,33 @@ Transaction::operator=(const Transaction &o) noexcept {
 
 } // namespace krpc
 
-//---------------------------
+//=====================================
+namespace dht {
+std::size_t
+rank(const Key &id, const Key &o) noexcept {
+  std::size_t i = 0;
+  for (; i < NodeId::bits; ++i) {
+    if (bit(id, i) != bit(o, i)) {
+      return i;
+    }
+  }
+
+  return i;
+}
+
+bool
+bit(const Key &key, std::size_t idx) noexcept {
+  assertxs(idx < NodeId::bits, idx, NodeId::bits);
+
+  std::size_t byte = idx / 8;
+  std::uint8_t bit = idx % 8;
+  std::uint8_t high_bit(1 << 7);
+  std::uint8_t bitMask = std::uint8_t(high_bit >> bit);
+  return key[byte] & bitMask;
+}
+} // namespace dht
+
+//=====================================
 namespace dht {
 // dht::Infohash
 Infohash::Infohash() noexcept
@@ -422,6 +454,31 @@ Infohash::operator>(const Key &o) const noexcept {
   return std::memcmp(id, o, sizeof(id)) > 0;
 }
 
+static bool
+from_hex(Key &id, const char *b) noexcept {
+  assertx(b);
+
+  bool res = false;
+  const auto b_len = std::strlen(b);
+
+  if ((2 * sizeof(id)) == b_len) {
+    std::size_t id_len = sizeof(id);
+    res = hex::decode(b, id, id_len);
+    assertx(res);
+    assertxs(id_len == sizeof(id), id_len, sizeof(id));
+  }
+
+  return res;
+}
+
+bool
+from_hex(dht::Infohash &id, const char *b) noexcept {
+  return from_hex(id.id, b);
+}
+} // namespace dht
+
+//=====================================
+namespace dht {
 /*NodeId*/
 NodeId::NodeId()
     : id{0} {
@@ -440,18 +497,6 @@ NodeId::operator==(const NodeId &o) const noexcept {
 bool
 NodeId::operator<(const NodeId &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) < 0;
-}
-
-std::size_t
-rank(const Key &id, const Key &o) noexcept {
-  std::size_t i = 0;
-  for (; i < NodeId::bits; ++i) {
-    if (bit(id, i) != bit(o, i)) {
-      return i;
-    }
-  }
-
-  return i;
 }
 
 std::size_t
@@ -496,30 +541,8 @@ NodeId::set_bit(std::size_t idx, bool v) noexcept {
   }
 }
 
-static bool
-from_hex(Key &id, const char *b) noexcept {
-  assertx(b);
-
-  bool res = false;
-  const auto b_len = std::strlen(b);
-
-  if ((2 * sizeof(id)) == b_len) {
-    std::size_t id_len = sizeof(id);
-    res = hex::decode(b, id, id_len);
-    assertx(res);
-    assertxs(id_len == sizeof(id), id_len, sizeof(id));
-  }
-
-  return res;
-}
-
 bool
 from_hex(NodeId &id, const char *b) noexcept {
-  return from_hex(id.id, b);
-}
-
-bool
-from_hex(dht::Infohash &id, const char *b) noexcept {
   return from_hex(id.id, b);
 }
 
@@ -592,17 +615,6 @@ print_hex(const NodeId &id) noexcept {
 }
 
 bool
-bit(const Key &key, std::size_t idx) noexcept {
-  assertxs(idx < NodeId::bits, idx, NodeId::bits);
-
-  std::size_t byte = idx / 8;
-  std::uint8_t bit = idx % 8;
-  std::uint8_t high_bit(1 << 7);
-  std::uint8_t bitMask = std::uint8_t(high_bit >> bit);
-  return key[byte] & bitMask;
-}
-
-bool
 bit(const NodeId &key, std::size_t idx) noexcept {
   return bit(key.id, idx);
 }
@@ -612,7 +624,10 @@ is_valid(const NodeId &id) noexcept {
   constexpr Key allzeros = {0};
   return !(id == allzeros);
 }
+} // namespace dht
 
+//=====================================
+namespace dht {
 /*Node*/
 Node::Node() noexcept
     // timeout{{{
@@ -676,3 +691,4 @@ is_valid(const Node &n) noexcept {
 }
 
 } // namespace dht
+  //=====================================

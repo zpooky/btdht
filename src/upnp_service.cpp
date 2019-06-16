@@ -1,3 +1,4 @@
+#include "net_util.h"
 #include "tcp.h"
 #include "udp.h"
 #include "upnp.h"
@@ -60,80 +61,16 @@ struct sockaddr_in6 {
 };
 #endif
 
-static ::in_addr
-network_for(::in_addr address, ::in_addr mask) {
-  ::in_addr result{};
-  result.s_addr = address.s_addr & mask.s_addr;
-  return result;
-}
-
 static bool
 guess_default_gateway(const sockaddr_in &ip, const sockaddr_in &netmask,
                       in_addr &result) noexcept {
-  ::in_addr network = network_for(ip.sin_addr, netmask.sin_addr);
+  ::in_addr network = sp::network_for(ip.sin_addr, netmask.sin_addr);
 
   ::in_addr first{};
   first.s_addr = 1 << (3 * 8);
 
   result.s_addr = network.s_addr | first.s_addr;
   return true;
-}
-
-static bool
-is_class_a(::in_addr ip, ::in_addr mask) noexcept {
-  ::in_addr network = network_for(ip, mask);
-
-  Contact a_netmask;
-  assertx_n(to_contact("255.0.0.0", a_netmask));
-  ::sockaddr_in a_netmask_addr;
-  assertx_n(to_sockaddr(a_netmask, a_netmask_addr));
-
-  Contact a_network;
-  assertx_n(to_contact("10.0.0.0", a_network));
-  ::sockaddr_in a_network_addr;
-  assertx_n(to_sockaddr(a_network, a_network_addr));
-
-  if (a_netmask_addr.sin_addr.s_addr == mask.s_addr) {
-    if (a_netmask_addr.sin_addr.s_addr == network.s_addr) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-static bool
-is_class_b(::in_addr ip, ::in_addr mask) {
-  // TODO
-  return false;
-}
-
-static bool
-is_class_c(::in_addr ip, ::in_addr mask) {
-  ::in_addr network = network_for(ip, mask);
-
-  Contact a_netmask;
-  assertx_n(to_contact("255.255.0.0", a_netmask));
-  ::sockaddr_in a_netmask_addr;
-  assertx_n(to_sockaddr(a_netmask, a_netmask_addr));
-
-  Contact a_network;
-  assertx_n(to_contact("192.168.0.0", a_network));
-  ::sockaddr_in a_network_addr;
-  assertx_n(to_sockaddr(a_network, a_network_addr));
-
-  if (a_netmask_addr.sin_addr.s_addr == mask.s_addr) {
-    if (a_netmask_addr.sin_addr.s_addr == network.s_addr) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-static bool
-is_private_address(::in_addr ip, ::in_addr mask) noexcept {
-  return is_class_a(ip, mask) || is_class_b(ip, mask) || is_class_c(ip, mask);
 }
 
 static bool
@@ -162,7 +99,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
       auto me = (sockaddr_in *)it->ifa_addr;
       auto netmask = (sockaddr_in *)it->ifa_netmask;
 
-      if (!is_private_address(me->sin_addr, netmask->sin_addr)) {
+      if (!sp::is_private_address(me->sin_addr, netmask->sin_addr)) {
         goto Lnext;
       }
 

@@ -13,10 +13,12 @@
 
 using sp::fd;
 
+//=====================================
 namespace client {
 enum class Res { ERR, ERR_TOKEN, OK };
 }
 
+//=====================================
 namespace sp {
 /*sp::byte*/
 using byte = unsigned char;
@@ -24,6 +26,7 @@ using byte = unsigned char;
 using ByteBuffer = BytesView;
 } // namespace sp
 
+//=====================================
 using Port = std::uint16_t;
 using Ipv4 = std::uint32_t;
 
@@ -31,6 +34,15 @@ struct Ipv6 {
   sp::byte raw[16];
 };
 
+namespace sp {
+template <>
+struct Hasher<Ipv6> {
+  std::size_t
+  operator()(const Ipv6 &) const noexcept;
+};
+} // namespace sp
+
+//=====================================
 enum class IpType : uint8_t { IPV4, IPV6 };
 
 struct Ip {
@@ -60,19 +72,19 @@ struct Ip {
 
 namespace sp {
 template <>
-struct Hasher<Ipv6> {
-  std::size_t
-  operator()(const Ipv6 &) const noexcept;
-};
-
-template <>
 struct Hasher<Ip> {
   std::size_t
   operator()(const Ip &) const noexcept;
 };
 } // namespace sp
 
-// Contact
+std::size_t
+fnv_ip(const Ip &) noexcept;
+
+std::size_t
+djb_ip(const Ip &) noexcept;
+
+//=====================================
 struct Contact {
   Ip ip;
   Port port;
@@ -94,16 +106,10 @@ struct Contact {
 };
 
 std::size_t
-fnv_ip(const Ip &);
+fnv_contact(const Contact &) noexcept;
 
 std::size_t
-djb_ip(const Ip &);
-
-std::size_t
-fnv_contact(const Contact &contact) noexcept;
-
-std::size_t
-djb_contact(const Contact &contact) noexcept;
+djb_contact(const Contact &) noexcept;
 
 bool
 to_contact(const char *, Contact &) noexcept;
@@ -220,12 +226,17 @@ struct Transaction {
 };
 } // namespace krpc
 
-//---------------------------
 namespace dht {
-// dht::Key
+//=====================================
 using Key = sp::byte[20];
 
-/* dht::Infohash */
+std::size_t
+rank(const Key &, const Key &) noexcept;
+
+bool
+bit(const Key &key, std::size_t idx) noexcept;
+
+//=====================================
 struct Infohash {
   Key id;
 
@@ -238,7 +249,10 @@ struct Infohash {
   operator>(const Key &) const noexcept;
 };
 
-/*dht::NodeId*/
+bool
+from_hex(dht::Infohash &, const char *) noexcept;
+
+//=====================================
 struct NodeId {
   Key id;
   NodeId();
@@ -259,9 +273,6 @@ struct NodeId {
 };
 
 std::size_t
-rank(const Key &, const Key &) noexcept;
-
-std::size_t
 rank(const NodeId &, const Key &) noexcept;
 
 std::size_t
@@ -274,14 +285,23 @@ from_hex(NodeId &id, const char (&b)[N]) noexcept;
 bool
 from_hex(NodeId &id, const char *b) noexcept;
 
-bool
-from_hex(dht::Infohash &, const char *) noexcept;
-
 const char *
 to_hex(const NodeId &id) noexcept;
 
 const char *
 to_string(const NodeId &) noexcept;
+
+bool
+is_valid(const NodeId &) noexcept;
+
+bool
+bit(const NodeId &key, std::size_t idx) noexcept;
+
+void
+print_id(const NodeId &, std::size_t color = 0, const char *c = "") noexcept;
+
+void
+print_hex(const NodeId &) noexcept;
 
 } // namespace dht
 
@@ -293,28 +313,13 @@ struct Hasher<dht::NodeId> {
 };
 } // namespace sp
 
+//=====================================
 namespace dht {
-
-bool
-is_valid(const NodeId &) noexcept;
-
-bool
-bit(const Key &key, std::size_t idx) noexcept;
-
-bool
-bit(const NodeId &key, std::size_t idx) noexcept;
-
-void
-print_id(const NodeId &, std::size_t color = 0, const char *c = "") noexcept;
-
-void
-print_hex(const NodeId &) noexcept;
-
 /*valid BEP42 conforming NodeId*/
-// TODO
+// XXX
 enum class NodeIdValid : std::uint8_t { VALID, NOT_VALID, NOT_YET };
 
-// dht::Node
+//=====================================
 struct Node {
   // timeout {{{
   Node *timeout_next;
@@ -356,5 +361,6 @@ from_hex(NodeId &id, const char (&b)[N]) noexcept {
 }
 
 } // namespace dht
+//=====================================
 
 #endif
