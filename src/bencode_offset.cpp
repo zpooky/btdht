@@ -1,8 +1,8 @@
-#include "bencode.h"
 #include "bencode_offset.h"
+#include "bencode.h"
+#include "bencode_print.h"
 #include <arpa/inet.h>
 #include <cstdio>
-#include "bencode_print.h"
 #include <cstring>
 #include <util/assert.h>
 
@@ -103,6 +103,14 @@ value_to_peer(sp::Buffer &buf, Contact &peer) noexcept {
   buf.pos += sizeof(peer.port);
   peer.port = ntohs(peer.port);
 
+  if (peer.port == 0 || peer.ip.ipv4 == 0) {
+    // buf.pos = 0;
+    // bencode_print(buf);
+    // assertxs(peer.port != 0, peer.port, peer.ip.ipv4);
+    // assertxs(peer.ip.ipv4 != 0, peer.port, peer.ip.ipv4);
+    return false;
+  }
+
   return true;
 } // bencode::d::value_to_peer()
 
@@ -135,7 +143,7 @@ compact_list(sp::Buffer &d, ListType &l) noexcept {
 
   const sp::byte *val = nullptr;
   std::size_t length = 0;
-  if (!bencode::d::value_ref(d, val, length)) {
+  if (!bencode::d::value_ref(d, /*OUT*/ val, /*OUT*/ length)) {
     d.pos = pos;
     return false;
   }
@@ -152,6 +160,9 @@ compact_list(sp::Buffer &d, ListType &l) noexcept {
       typename ListType::value_type n;
       std::size_t pls = val_buf.pos;
       if (!value(val_buf, n)) {
+        d.pos = 0;
+        bencode_print(d);
+        assertx(false);
         d.pos = pos;
         return false;
       }
@@ -190,7 +201,7 @@ value_contact(sp::Buffer &b, Contact &result) noexcept {
   }
 
   if (remaining_read(bx) > 0) {
-    printf("len[%zu], str[%.*s]\n", len, len, str);
+    printf("len[%zu], str[%.*s]\n", len, int(len), str);
 
     bx.pos = 0;
     bencode_print(bx);

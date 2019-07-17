@@ -457,7 +457,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
 
     if (h->depth < 0) {
       h->~RoutingTable();
-      new (h) RoutingTable(depth);
+      new (h) RoutingTable((ssize_t)depth);
       auto res = update_key(self.rt_reuse, head);
       assertxs(res, depth);
       assertxs(*res == h, depth);
@@ -498,7 +498,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
       const auto h_depth = h->depth;
 
       h->~RoutingTable();
-      new (h) RoutingTable(depth);
+      new (h) RoutingTable((ssize_t)depth);
 
       auto res = update_key(self.rt_reuse, head);
       assertxs(res, h_depth, depth);
@@ -511,7 +511,7 @@ alloc_RoutingTable(DHT &self, std::size_t depth, AllocType aType) noexcept {
 
 Lbah:
   if (length(self.rt_reuse) < self.root_limit) {
-    auto result = new RoutingTable(depth);
+    auto result = new RoutingTable((ssize_t)depth);
     if (result) {
       auto r = insert(self.rt_reuse, result);
       assertx(r);
@@ -1057,7 +1057,7 @@ Lstart:
         ++self.total_nodes;
       }
       assertx(debug_correct_level(self));
-      assertx(rank(self.id, inserted->id) >= self.root->depth);
+      assertx((ssize_t)rank(self.id, inserted->id) >= self.root->depth);
     } else {
       assertx(debug_correct_level(self));
       if (!will_ins) {
@@ -1110,7 +1110,7 @@ Lstart:
         }
       }
       auto rnk = rank(self.id, contact.id);
-      assertxs(rnk <= self.root->depth, rnk, self.root->depth);
+      assertxs((ssize_t)rnk <= self.root->depth, rnk, self.root->depth);
 
       log::routing::can_not_insert(self, contact);
     }

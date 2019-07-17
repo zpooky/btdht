@@ -269,7 +269,7 @@ Lloop:
 
       if (b[p] >= '0' && b[p] <= '9') {
         if (it < sizeof(str)) {
-          str[it++] = b[p++];
+          str[it++] = (char)b[p++];
           goto Lloop;
         }
       }
@@ -287,8 +287,8 @@ Lloop:
   read = p - b.pos;
   bool result = sp::parse_int(str + 0, str + it, out);
   if (!result) {
-    printf("sp::parse_int('%.*s': %zu, out[%lld]): %s \n", int(it), str, it,
-           out, result ? "true" : "false");
+    printf("sp::parse_int('%.*s': %zu, out[%lu]): %s \n", int(it), str, it, out,
+           result ? "true" : "false");
     result = sp::parse_int(str + 0, str + it, out);
   }
   return result;
@@ -641,6 +641,9 @@ value_to_peer(const char *str, Contact &peer) noexcept {
 
   std::memcpy(&peer.port, str, sizeof(peer.port));
   peer.port = ntohs(peer.port);
+
+  assertxs(peer.ip.ipv4 != 0, peer.ip.ipv4, peer.port);
+  assertxs(peer.port != 0, peer.ip.ipv4, peer.port);
 } // bencode::d::value_to_peer()
 
 static bool
@@ -732,7 +735,8 @@ value(sp::Buffer &d, const char *key) noexcept {
 } // bencode::d::value()
 
 bool
-value_ref(sp::Buffer &d, const char *&key, std::size_t &key_len) noexcept {
+value_ref(sp::Buffer &d, /*OUT*/ const char *&key,
+          /*OUT*/ std::size_t &key_len) noexcept {
   const std::size_t p = d.pos;
   if (!parse_string(d, key, key_len)) {
     d.pos = p;

@@ -248,7 +248,7 @@ template <typename F>
 void
 for_each(Bucket &b, F f) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    if (b.contacts[i]) {
+    if (is_valid(b.contacts[i])) {
       f(b.contacts[i]);
     }
   }
@@ -259,7 +259,7 @@ void
 for_each(const Bucket &b, F f) noexcept {
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     const auto &current = b.contacts[i];
-    if (current) {
+    if (is_valid(current)) {
       f(current);
     }
   }
@@ -272,7 +272,7 @@ struct RoutingTable {
   Bucket bucket;
   RoutingTable *next;
 
-  RoutingTable(ssize_t) noexcept;
+  explicit RoutingTable(ssize_t) noexcept;
 
   ~RoutingTable() noexcept;
 };

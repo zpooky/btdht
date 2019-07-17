@@ -34,18 +34,23 @@
 // time out transaction lazily when we issue new requests and if there is no
 // nodes to send request to we do not timeout existing transaction and never
 // gets back bootstrap nodes and we starve forever.
-// TODO enumrate interface bound to (0.0.0.0) -> find default gateways -> send
-// upnp port mapping
 // TODO implement peer db timeout logic
 // XXX ipv6
-// TODO cleint: multiple receiver for the same search
+// TODO client: multiple receiver for the same search
 // TODO client: debug search result message is valid/bencode_print list works
-// correcly
+// correctly
 // TODO bencode_print hex id does not works? only print len(39) where len(40) is
-// epexcted.
-// TODO client: on server shutdown send to search clients that we are shuting
-// down
+// expected.
+// TODO client: on server shutdown send to search clients that we are shutting down
 // TODO replace bad node
+// TODO db file
+//      - incremental save
+//      - save to multiple db files
+//      - load from multiple db files
+//      - naming scheme
+// TODO interrupt
+//    - SIGHUP ^C QUIT, ...
+//      - save db file and quit
 static void
 die(const char *s) {
   perror(s);
@@ -83,11 +88,11 @@ setup_signal() {
 
   /* Setup signal to read */
   sigemptyset(&sigset);
+  // ^C
   sigaddset(&sigset, SIGINT);
   sigaddset(&sigset, SIGQUIT);
   sigaddset(&sigset, SIGTERM);
-  sigaddset(&sigset, SIGTERM);
-  sigaddset(&sigset, SIGHUP);
+  // sigaddset(&sigset, SIGHUP);
 
   // sigfillset(&sigset);
   // sigdelset(&sigset, SIGWINCH);

@@ -4,7 +4,7 @@
 #include <getopt.h>
 #include <io/file.h>
 
-static const char *def_dump_path = "/tmp/dht_db.dump2";
+static const char *def_dump_path = "./dht_db.dump";
 
 namespace dht {
 Options::Options()

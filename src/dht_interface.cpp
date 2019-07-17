@@ -609,7 +609,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     dht::Token token;
 
     auto &nodes = dht.recycle_contact_list;
-    sp::clear(nodes);
+    clear(nodes);
 
     std::uint64_t p_param = 0;
 
@@ -624,7 +624,9 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
 
     // optional
     if (!b_n) {
-      sp::clear(nodes);
+      clear(nodes);
+      // TODO we parse a node which get 0 as port
+      // - ipv4 = 1148492139,
       if (bencode::d::nodes(p, "nodes", nodes)) {
         b_n = true;
         goto Lstart;
@@ -632,6 +634,10 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
         assertx(p.pos == pos);
       }
     }
+
+    //TODO
+    // find_node resp any['nodes6': 6,
+    // hex[1BEEA0B6DD5E6E38D832E72D185127D239FB417E2447A8643076091635DD5F39AB6C35196011C413409E5BE7980F17FE865F4A42BBB2498A1E28C09360C0E287DB927FA44B47AA](_____^n8_2_-_Q'_9_A~$_z_C_v___5__9___Q_`____@___y____e__+_$___(__`_______KG_)]
 
     if (!b_t && bencode::d::pair(p, "token", token)) {
       b_t = true;
