@@ -7,7 +7,13 @@ HEADER_DIRS = -Iexternal -Iexternal/sputil/include -Isrc
 override CXXFLAGS += $(HEADER_DIRS) -enable-frame-pointers -std=c++17 -Wall -Wextra -Wpedantic -Wpointer-arith -Wconversion -Wshadow
 CXXFLAGS_DEBUG = $(CXXFLAGS) -ggdb -O0
 LDFLAGS = -fno-omit-frame-pointer
-LDLIBS = -Lexternal/sputil/build/dht -lsputil -lbfd -ldl
+
+LDLIBS = -Lexternal/sputil/build/dht -lsputil
+ifeq ($(OS),Windows_NT)
+else
+	LDLIBS += -lbfd -ldl
+endif
+
 PREFIX = /usr/local
 BUILD_DIR = build/debug
 
