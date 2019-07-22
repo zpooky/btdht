@@ -1,7 +1,7 @@
+#include "private_interface.h"
 #include "Log.h"
 #include "client.h"
 #include "krpc.h"
-#include "private_interface.h"
 #include "search.h"
 #include <util/assert.h>
 
@@ -231,7 +231,7 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
 
     /* Bootstrap search with content of routing table */
     for_all_node(dht.root, [&](const dht::Node &n) {
-      insert_eager(ins->queue, dht::KContact(n, search.id));
+      insert_eager(ins->queue, dht::KContact(n.id.id, n.contact, search.id));
       return true;
     });
   }

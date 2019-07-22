@@ -14,8 +14,8 @@ bootstrap_insert(DHT &self, const KContact &remote) noexcept {
 }
 
 void
-bootstrap_insert(DHT &self, const Node &node) noexcept {
-  bootstrap_insert(self, dht::KContact(node, self.id));
+bootstrap_insert(DHT &self, const IdContact &contact) noexcept {
+  bootstrap_insert(self, dht::KContact(contact, self.id));
 }
 
 //==========================================

@@ -85,7 +85,7 @@ dump(const dht::DHT &dht, const char *path) noexcept {
 //========================
 template <typename Buffer>
 static bool
-restore_node(Buffer &b, dht::Node &out) {
+restore_node(Buffer &b, dht::IdContact &out) {
   assertx(!is_marked(b));
   return bencode::d<Buffer>::dict(b, [&out](Buffer &buffer) {
     {
@@ -159,7 +159,7 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
 
     assertx(!is_marked(buffer));
     return bencode::d<Buffer>::list(buffer, [&bs, &dht](Buffer &b) {
-      dht::Node contact;
+      dht::IdContact contact;
       if (!restore_node(b, contact)) {
         return false;
       }

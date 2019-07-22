@@ -29,7 +29,7 @@ search_increment(SearchContext *ctx) noexcept {
 
 //=====================================
 void
-search_insert(Search &self, const Node &contact) noexcept {
+search_insert(Search &self, const IdContact &contact) noexcept {
   /*test bloomfilter*/
   if (!test(self.searched, contact.id)) {
     /*insert into bloomfilter*/

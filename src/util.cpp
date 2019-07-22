@@ -626,6 +626,17 @@ is_valid(const NodeId &id) noexcept {
 }
 } // namespace dht
 
+namespace dht {
+IdContact::IdContact() noexcept
+    : contact{}
+    , id{} {
+}
+IdContact::IdContact(const NodeId &iid, const Contact &icon) noexcept
+    : contact(icon)
+    , id{iid} {
+}
+} // namespace dht
+
 //=====================================
 namespace dht {
 /*Node*/
@@ -672,7 +683,7 @@ Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
 {
 }
 
-Node::Node(const Node &node, Timestamp now) noexcept
+Node::Node(const IdContact &node, Timestamp now) noexcept
     : Node(node.id, node.contact, now) {
 }
 

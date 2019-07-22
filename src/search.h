@@ -18,7 +18,7 @@ search_increment(SearchContext *) noexcept;
 
 //=====================================
 void
-search_insert(Search &, const Node &) noexcept;
+search_insert(Search &, const IdContact &) noexcept;
 
 //=====================================
 void

@@ -84,7 +84,7 @@ Lretry:
 }
 
 static bool
-value_to_peer(sp::Buffer &buf, Contact &peer) noexcept {
+compact_value(sp::Buffer &buf, Contact &peer) noexcept {
   const std::size_t pos = buf.pos;
 
   // TODO ipv4
@@ -112,10 +112,10 @@ value_to_peer(sp::Buffer &buf, Contact &peer) noexcept {
   }
 
   return true;
-} // bencode::d::value_to_peer()
+} // bencode::d::compact_value()
 
 static bool
-value(sp::Buffer &buf, dht::Node &value) noexcept {
+compact_value(sp::Buffer &buf, dht::IdContact &value) noexcept {
   Contact &contact = value.contact;
   const std::size_t pos = buf.pos;
 
@@ -128,7 +128,7 @@ value(sp::Buffer &buf, dht::Node &value) noexcept {
   std::memcpy(value.id.id, buf.raw + buf.pos, sizeof(value.id.id));
   buf.pos += sizeof(value.id.id);
 
-  if (!value_to_peer(buf, contact)) {
+  if (!compact_value(buf, contact)) {
     buf.pos = pos;
     return false;
   }
@@ -138,7 +138,7 @@ value(sp::Buffer &buf, dht::Node &value) noexcept {
 
 template <typename ListType>
 static bool
-compact_list(sp::Buffer &d, ListType &l) noexcept {
+contact_comact_list(sp::Buffer &d, ListType &result) noexcept {
   const std::size_t pos = d.pos;
 
   const sp::byte *val = nullptr;
@@ -148,7 +148,7 @@ compact_list(sp::Buffer &d, ListType &l) noexcept {
     return false;
   }
 
-  // assertx(l.length == 0);
+  // assertx(result.length == 0);
 
   if (length > 0) {
     assertx(val);
@@ -159,7 +159,7 @@ compact_list(sp::Buffer &d, ListType &l) noexcept {
     if (sp::remaining_read(val_buf) > 0) {
       typename ListType::value_type n;
       std::size_t pls = val_buf.pos;
-      if (!value(val_buf, n)) {
+      if (!compact_value(val_buf, n)) {
         d.pos = 0;
         fprintf(stderr, "bo: \n");
         bencode_print_out(stderr);
@@ -171,10 +171,7 @@ compact_list(sp::Buffer &d, ListType &l) noexcept {
       }
       assertx(val_buf.pos > pls);
 
-      if (!insert(l, n)) {
-        d.pos = pos;
-        return false;
-      }
+      insert(result, n);
 
       goto Lcontinue;
     }
@@ -253,14 +250,14 @@ list_contact(sp::Buffer &d, const char *key, ListType &l) noexcept {
 }
 
 bool
-nodes(sp::Buffer &d, const char *key, sp::list<dht::Node> &l) noexcept {
+nodes(sp::Buffer &d, const char *key, sp::list<dht::IdContact> &l) noexcept {
   const std::size_t pos = d.pos;
   if (!bencode::d::value(d, key)) {
     d.pos = pos;
     return false;
   }
 
-  if (!compact_list(d, l)) {
+  if (!contact_comact_list(d, l)) {
     d.pos = pos;
     return false;
   }
@@ -269,17 +266,18 @@ nodes(sp::Buffer &d, const char *key, sp::list<dht::Node> &l) noexcept {
 
 bool
 nodes(sp::Buffer &d, const char *key,
-      sp::UinStaticArray<dht::Node, 256> &l) noexcept {
+      sp::UinStaticArray<dht::IdContact, 256> &l) noexcept {
   const std::size_t pos = d.pos;
   if (!bencode::d::value(d, key)) {
     d.pos = pos;
     return false;
   }
 
-  if (!compact_list(d, l)) {
+  if (!contact_comact_list(d, l)) {
     d.pos = pos;
     return false;
   }
+
   return true;
 }
 

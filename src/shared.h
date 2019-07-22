@@ -428,13 +428,13 @@ struct KContact {
     assertx(contact.ip.ipv4 != 33554432);
   }
 
-  KContact(const Node &in, const Key &search) noexcept
+  KContact(const dht::IdContact &in, const Key &search) noexcept
       : common(rank(in.id, search))
       , contact(in.contact) {
     assertx(contact.ip.ipv4 != 33554432);
   }
 
-  KContact(const Node &in, const NodeId &search) noexcept
+  KContact(const dht::IdContact &in, const NodeId &search) noexcept
       : KContact(in, search.id) {
     assertx(contact.ip.ipv4 != 33554432);
   }
@@ -529,8 +529,9 @@ struct DHT {
   //}}}
 
   // recycle contact list {{{
-  sp::UinStaticArray<Node, 256> recycle_contact_list;
-  sp::UinStaticArray<Contact, 256> recycle_value_list;
+  // sp::UinStaticArray<Node, 256> recycle_node_list;
+  sp::UinStaticArray<Contact, 256> recycle_contact_list;
+  sp::UinStaticArray<IdContact, 256> recycle_id_contact_list;
   // }}}
 
   // stuff {{{

@@ -9,7 +9,7 @@ void
 bootstrap_insert(DHT &, const KContact &) noexcept;
 
 void
-bootstrap_insert(DHT &, const Node &) noexcept;
+bootstrap_insert(DHT &, const IdContact &) noexcept;
 
 //==========================================
 void

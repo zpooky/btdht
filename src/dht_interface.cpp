@@ -535,12 +535,72 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
-  return krpc::d::response::ping(ctx, handle_response);
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
+    bool b_id = false;
+    bool b_ip = false;
+
+    dht::NodeId sender;
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", sender.id)) {
+      b_id = true;
+      goto Lstart;
+    }
+
+    {
+      Contact ip;
+      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+        ctx.ip_vote = ip;
+        assertx(bool(ctx.ip_vote));
+        b_ip = true;
+        goto Lstart;
+      }
+    }
+
+    if (bencode_any(p, "ping resp")) {
+      goto Lstart;
+    }
+
+    if (b_id) {
+      return handle_response(ctx, sender);
+    }
+
+    log::receive::parse::error(ctx.dht, p, "'ping' response missing 'id'");
+    return false;
+  });
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return krpc::d::request::ping(ctx, handle_request);
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
+    bool b_id = false;
+    bool b_ip = false;
+
+    dht::NodeId sender;
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", sender.id)) {
+      b_id = true;
+      goto Lstart;
+    }
+
+    {
+      Contact ip;
+      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+        ctx.ip_vote = ip;
+        assertx(bool(ctx.ip_vote));
+        b_ip = true;
+        goto Lstart;
+      }
+    }
+
+    if (b_id) {
+      return handle_request(ctx, sender);
+    }
+
+    log::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
+    return false;
+  });
 }
 
 static void
@@ -586,15 +646,15 @@ static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 /*const sp::list<dht::Node>*/ ContactType &contacts) noexcept {
   static_assert(
-      std::is_same<dht::Node, typename ContactType::value_type>::value, "");
+      std::is_same<dht::IdContact, typename ContactType::value_type>::value,
+      "");
   log::receive::res::find_node(ctx);
 
   message(ctx, sender, [&](auto &) {
-    for_each(contacts, [&](const dht::Node &contact) {
+    for_each(contacts, [&](const auto &contact) {
       dht::DHT &dht = ctx.dht;
-      dht::Node node(contact, dht.now);
 
-      bootstrap_insert(dht, node);
+      bootstrap_insert(dht, contact);
     });
   });
 
@@ -648,7 +708,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     dht::NodeId id;
     dht::Token token;
 
-    auto &nodes = dht.recycle_contact_list;
+    auto &nodes = dht.recycle_id_contact_list;
     clear(nodes);
 
     std::uint64_t p_param = 0;
@@ -674,10 +734,6 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
         assertx(p.pos == pos);
       }
     }
-
-    // TODO
-    // find_node resp any['nodes6': 6,
-    // hex[1BEEA0B6DD5E6E38D832E72D185127D239FB417E2447A8643076091635DD5F39AB6C35196011C413409E5BE7980F17FE865F4A42BBB2498A1E28C09360C0E287DB927FA44B47AA](_____^n8_2_-_Q'_9_A~$_z_C_v___5__9___Q_`____@___y____e__+_$___(__`_______KG_)]
 
     if (!b_t && bencode::d::pair(p, "token", token)) {
       b_t = true;
@@ -810,7 +866,8 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   static_assert(std::is_same<Contact, typename ResultType::value_type>::value,
                 "");
   static_assert(
-      std::is_same<dht::Node, typename ContactType::value_type>::value, "");
+      std::is_same<dht::IdContact, typename ContactType::value_type>::value,
+      "");
 
   log::receive::res::get_peers(ctx);
   dht::DHT &dht = ctx.dht;
@@ -820,8 +877,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
     for_each(contacts, [&](const auto &contact) {
       search_insert(search, contact);
 
-      dht::Node ins(contact, dht.now);
-      bootstrap_insert(dht, ins);
+      bootstrap_insert(dht, contact);
     });
 
     /* Sender returns matching values for search query */
@@ -864,16 +920,15 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     bool b_n = false;
     bool b_v = false;
     bool b_ip = false;
-    bool b_p = false;
 
     dht::NodeId id;
     dht::Token token;
 
     dht::DHT &dht = ctx.dht;
-    auto &nodes = dht.recycle_contact_list;
+    auto &nodes = dht.recycle_id_contact_list;
     clear(nodes);
 
-    auto &values = dht.recycle_value_list;
+    auto &values = dht.recycle_contact_list;
     clear(values);
 
   Lstart:
@@ -892,25 +947,18 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       assertx(pos == p.pos);
     }
 
-    std::uint64_t p_out = 0; // XXX what is this?
-    if (!b_p && bencode::d::pair(p, "p", p_out)) {
-      b_p = true;
-      goto Lstart;
-    } else {
-      assertx(pos == p.pos);
-    }
-
-    {
-      Contact ip;
-      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-        ctx.ip_vote = ip;
-        assertx(bool(ctx.ip_vote));
-        b_ip = true;
-        goto Lstart;
-      } else {
-        assertx(pos == p.pos);
-      }
-    }
+    // XXX
+    // {
+    //   Contact ip;
+    //   if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+    //     ctx.ip_vote = ip;
+    //     assertx(bool(ctx.ip_vote));
+    //     b_ip = true;
+    //     goto Lstart;
+    //   } else {
+    //     assertx(pos == p.pos);
+    //   }
+    // }
 
     /*closes K nodes*/
     if (!b_n) {
@@ -925,7 +973,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
 
     if (!b_v) {
       clear(values);
-      if (bencode::d::peers(p, "values", values)) { // last
+      if (bencode::d::peers(p, "values", values)) {
         b_v = true;
         goto Lstart;
       } else {

@@ -17,11 +17,11 @@ bool
 dict_wildcard(sp::Buffer &) noexcept;
 
 bool
-nodes(sp::Buffer &, const char *, sp::list<dht::Node> &) noexcept;
+nodes(sp::Buffer &, const char *, sp::list<dht::IdContact> &) noexcept;
 
 bool
 nodes(sp::Buffer &, const char *,
-      sp::UinStaticArray<dht::Node, 256> &) noexcept;
+      sp::UinStaticArray<dht::IdContact, 256> &) noexcept;
 
 bool
 peers(sp::Buffer &, const char *, sp::list<Contact> &) noexcept;

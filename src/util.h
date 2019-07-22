@@ -313,6 +313,16 @@ struct Hasher<dht::NodeId> {
 };
 } // namespace sp
 
+namespace dht {
+//=====================================
+struct IdContact {
+  Contact contact;
+  NodeId id;
+  IdContact() noexcept;
+  IdContact(const NodeId &id, const Contact &contact) noexcept;
+};
+} // namespace dht
+
 //=====================================
 namespace dht {
 /*valid BEP42 conforming NodeId*/
@@ -347,7 +357,7 @@ struct Node {
 
   Node() noexcept;
   Node(const NodeId &, const Contact &, Timestamp) noexcept;
-  Node(const Node &, Timestamp) noexcept;
+  Node(const IdContact &, Timestamp) noexcept;
 };
 
 bool

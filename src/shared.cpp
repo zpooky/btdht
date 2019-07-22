@@ -439,7 +439,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     //}}}
     // recycle contact list {{{
     , recycle_contact_list()
-    , recycle_value_list()
+    , recycle_id_contact_list()
     // }}}
     // {{{
     /*timestamp of received request&response*/
