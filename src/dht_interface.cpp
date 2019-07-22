@@ -767,6 +767,8 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
     }
 
     if (!(b_id)) {
+      const char *msg = "'find_node' response missing 'id'";
+      log::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -808,6 +810,8 @@ on_request(dht::MessageContext &ctx) noexcept {
     }
 
     if (!(b_id && b_t)) {
+      const char *msg = "'find_node' request missing 'id' or 'target'";
+      log::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -990,6 +994,9 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
       return true;
     }
 
+    const char *msg = "'get_peers' response missing 'id' and 'token' or "
+                      "('nodes' or 'values')";
+    log::receive::parse::error(ctx.dht, p, msg);
     return false;
   });
 } // get_peers::on_response
@@ -1019,6 +1026,8 @@ on_request(dht::MessageContext &ctx) noexcept {
     }
 
     if (!(b_id && b_ih)) {
+      const char *msg = "'get_peers' request missing 'id' or 'info_hash'";
+      log::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -1092,6 +1101,8 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
     }
 
     if (!(b_id)) {
+      const char *msg = "'announce_peer' response missing 'id'";
+      log::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -1143,6 +1154,9 @@ on_request(dht::MessageContext &ctx) noexcept {
     }
 
     if (!(b_id && b_ih && b_p && b_t)) {
+      const char *msg = "'announce_peer' request missing 'id' or 'info_hash' "
+                        "or 'port' or 'token'";
+      log::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
