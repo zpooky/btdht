@@ -1,5 +1,6 @@
 #include "Log.h"
 #include "cstdio"
+#include <bencode_print.h>
 #include <cstring>
 #include <encode/hex.h>
 #include <inttypes.h>
@@ -25,19 +26,19 @@
 namespace log {
 /*log*/
 static void
-print_time(Timestamp now) noexcept {
+print_time(FILE *f, Timestamp now) noexcept {
   char buff[32] = {0};
 
   sp::Seconds sec(now, sp::RoundMode::UP);
   time_t tim(sec);
 
   strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", localtime(&tim));
-  printf("%s|", buff);
+  fprintf(f, "%s|", buff);
 }
 
 static void
 print_time(const dht::DHT &dht) noexcept {
-  return print_time(dht.now);
+  return print_time(stdout, dht.now);
 }
 
 static void
@@ -249,9 +250,13 @@ error(dht::DHT &ctx, const sp::Buffer &buffer) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.received.parse_error;
 
-  print_time(ctx);
+  print_time(stderr, ctx.now);
   printf("parse error|");
-  print_hex(buffer.raw + buffer.pos, buffer.length);
+  // print_hex(buffer.raw + buffer.pos, buffer.length);
+  bencode_print_out(stderr);
+  bencode_print(buffer);
+  bencode_print_out(stdout);
+
   printf("\n");
 }
 } // namespace parse
@@ -264,7 +269,7 @@ void
 timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
   printf("awake next timeout[%" PRIu64 "ms] ", std::uint64_t(timeout));
-  print_time(ctx.now + timeout);
+  print_time(stdout, ctx.now + timeout);
   printf("\n");
 }
 
@@ -274,7 +279,7 @@ contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
   // TODO fix better print
   printf("awake contact_ping vote timeout[%" PRIu64 "ms] next date:",
          std::uint64_t(timeout));
-  print_time(ctx.timeout_next);
+  print_time(stdout, ctx.timeout_next);
   printf("\n");
 }
 
@@ -284,7 +289,7 @@ peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
   // TODO fix better print
   printf("awake peer_db vote timeout[%" PRIu64 "ms] next date:",
          std::uint64_t(timeout));
-  print_time(ctx.timeout_peer_next);
+  print_time(stdout, ctx.timeout_peer_next);
   printf("\n");
 }
 
@@ -400,7 +405,7 @@ ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   printf("\033[91mping response timeout\033[0m transaction[");
   print_hex(tx);
   printf("] sent: ");
-  print_time(sent);
+  print_time(stdout, sent);
   printf("seq[%zu]\n", tout++);
 }
 
@@ -414,7 +419,7 @@ find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   printf("\033[91mfind_node response timeout\033[0m transaction[");
   print_hex(tx);
   printf("] sent: ");
-  print_time(sent);
+  print_time(stdout, sent);
   printf("seq[%zu]\n", tout++);
 }
 
@@ -428,7 +433,7 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   printf("\033[91mget_peers response timeout\033[0m transaction[");
   print_hex(tx);
   printf("] sent: ");
-  print_time(sent);
+  print_time(stdout, sent);
   printf("seq[%zu]\n", tout++);
 }
 

@@ -5,8 +5,9 @@
 #include <cstdio>
 #include <string/ascii.h>
 
-namespace internal {
+static FILE *_f = stdout;
 
+namespace internal {
 template <typename Buffer>
 static bool
 dict_wildcard(Buffer &d, std::size_t tabs) noexcept;
@@ -14,28 +15,28 @@ dict_wildcard(Buffer &d, std::size_t tabs) noexcept;
 static void
 print_tabs(std::size_t tabs) noexcept {
   for (std::size_t i = 0; i < tabs; ++i) {
-    printf(" ");
+    fprintf(_f, " ");
   }
 }
 
 static void
 print_raw(const char *val, std::size_t len) noexcept {
   if (ascii::is_printable(val, len)) {
-    printf("%.*s", int(len), val);
+    fprintf(_f, "%.*s", int(len), val);
   } else {
-    printf("hex[");
+    fprintf(_f, "hex[");
     for (std::size_t i = 0; i < len; ++i) {
-      printf("%hhX", (unsigned char)val[i]);
+      fprintf(_f, "%hhX", (unsigned char)val[i]);
     }
-    printf("]: %zu(", len);
+    fprintf(_f, "]: %zu(", len);
     for (std::size_t i = 0; i < len; ++i) {
       if (ascii::is_printable(val[i])) {
-        printf("%c", val[i]);
+        fprintf(_f, "%c", val[i]);
       } else {
-        printf("_");
+        fprintf(_f, "_");
       }
     }
-    printf(")");
+    fprintf(_f, ")");
   }
 }
 
@@ -46,7 +47,7 @@ int_wildcard(Buffer &d, std::size_t tabs) noexcept {
   std::uint64_t val = 0;
   if (sp::bencode::d<Buffer>::value(d, val)) {
     print_tabs(tabs);
-    printf("i%lue\n", val);
+    fprintf(_f, "i%lue\n", val);
     return true;
   }
   m.rollback = true;
@@ -61,15 +62,15 @@ string_wildcard(Buffer &d, std::size_t tabs) noexcept {
   char *val = new char[len];
   if (sp::bencode::d<Buffer>::value(d, val, len)) {
     print_tabs(tabs);
-    printf("%zu:", len);
+    fprintf(_f, "%zu:", len);
     print_raw(val, len);
-    printf("\n");
-    delete val;
+    fprintf(_f, "\n");
+    delete[] val;
     return true;
   }
 
   m.rollback = true;
-  delete val;
+  delete[] val;
   return false;
 }
 
@@ -88,7 +89,7 @@ list_wildcard(Buffer &d, std::size_t tabs) noexcept {
     return false;
   }
   print_tabs(tabs);
-  printf("l\n");
+  fprintf(_f, "l\n");
 Lretry:
   if (list_wildcard(d, tabs + 1)) {
     goto Lretry;
@@ -112,7 +113,7 @@ Lretry:
     return false;
   }
   print_tabs(tabs);
-  printf("e\n");
+  fprintf(_f, "e\n");
 
   return true;
 }
@@ -131,7 +132,7 @@ dict_wildcard(Buffer &d, std::size_t tabs) noexcept {
     return false;
   }
   print_tabs(tabs);
-  printf("d\n");
+  fprintf(_f, "d\n");
 Lretry:
   if (list_wildcard(d, tabs + 1)) {
     goto Lretry;
@@ -154,16 +155,30 @@ Lretry:
     return false;
   }
   print_tabs(tabs);
-  printf("e\n");
+  fprintf(_f, "e\n");
 
   return true;
 }
 } // namespace internal
 
+void
+bencode_print_out(FILE *f) noexcept {
+  _f = f;
+}
+
 template <>
 void
 bencode_print(sp::Buffer &d) noexcept {
   internal::dict_wildcard(d, 0);
+}
+
+template <>
+void
+bencode_print(const sp::Buffer &d) noexcept {
+  sp::Buffer copy(d.raw, d.capacity);
+  copy.length = d.length;
+
+  internal::dict_wildcard(copy, 0);
 }
 
 template <>

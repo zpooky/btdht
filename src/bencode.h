@@ -112,7 +112,7 @@ is(sp::Buffer &buf, const char (&exact)[SIZE]) {
 template <typename F>
 bool
 dict(sp::Buffer &d, F body) noexcept {
-  std::size_t pos = d.pos;
+  const std::size_t pos = d.pos;
   if (!internal::is(d, "d", 1)) {
     d.pos = pos;
     return false;
@@ -130,6 +130,28 @@ dict(sp::Buffer &d, F body) noexcept {
 
   return true;
 } // bencode::d::dict
+
+template <typename F>
+bool
+list(sp::Buffer &d, F body) noexcept {
+  const std::size_t pos = d.pos;
+  if (!internal::is(d, "l", 1)) {
+    d.pos = pos;
+    return false;
+  }
+
+  if (!body(d)) {
+    d.pos = pos;
+    return false;
+  }
+
+  if (!internal::is(d, "e", 1)) {
+    d.pos = pos;
+    return false;
+  }
+
+  return true;
+}
 
 // template <typename F>
 // bool

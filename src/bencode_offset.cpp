@@ -161,7 +161,10 @@ compact_list(sp::Buffer &d, ListType &l) noexcept {
       std::size_t pls = val_buf.pos;
       if (!value(val_buf, n)) {
         d.pos = 0;
+        fprintf(stderr, "bo: \n");
+        bencode_print_out(stderr);
         bencode_print(d);
+        bencode_print_out(stdout);
         assertx(false);
         d.pos = pos;
         return false;

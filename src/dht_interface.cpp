@@ -405,28 +405,29 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
 }
 
 static void
-print_raw(const char *val, std::size_t len) noexcept {
+print_raw(FILE *f, const char *val, std::size_t len) noexcept {
   if (ascii::is_printable(val, len)) {
-    printf("'%.*s': %zu", int(len), val, len);
+    fprintf(f, "'%.*s': %zu", int(len), val, len);
   } else {
-    printf("hex[");
+    fprintf(f, "hex[");
     for (std::size_t i = 0; i < len; ++i) {
-      printf("%hhX", (unsigned char)val[i]);
+      fprintf(f, "%hhX", (unsigned char)val[i]);
     }
-    printf("](");
+    fprintf(f, "](");
     for (std::size_t i = 0; i < len; ++i) {
       if (ascii::is_printable(val[i])) {
-        printf("%c", val[i]);
+        fprintf(f, "%c", val[i]);
       } else {
-        printf("_");
+        fprintf(f, "_");
       }
     }
-    printf(")");
+    fprintf(f, ")");
   }
 }
 
 static bool
 bencode_any(sp::Buffer &p, const char *ctx) noexcept {
+  FILE *f = stderr;
   /*any str*/ {
     const char *kit = nullptr;
     std::size_t klen = 0;
@@ -435,11 +436,11 @@ bencode_any(sp::Buffer &p, const char *ctx) noexcept {
     std::size_t vlen = 0;
 
     if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
-      printf("%s any[", ctx);
-      print_raw(kit, klen);
-      printf(", ");
-      print_raw((const char *)vit, vlen);
-      printf("] \n");
+      fprintf(f, "%s str[", ctx);
+      print_raw(f, kit, klen);
+      fprintf(f, ", ");
+      print_raw(f, (const char *)vit, vlen);
+      fprintf(f, "] \n");
       return true;
     }
   }
@@ -451,15 +452,54 @@ bencode_any(sp::Buffer &p, const char *ctx) noexcept {
     std::uint64_t value = 0;
 
     if (bencode::d::pair_ref(p, kit, klen, value)) {
-      printf("%s any[", ctx);
-      print_raw(kit, klen);
-      printf(", %" PRIu64 "]\n", value);
+      fprintf(f, "%s int[", ctx);
+      print_raw(f, kit, klen);
+      fprintf(f, ", %" PRIu64 "]\n", value);
       return true;
     }
   }
 
   /*any list*/ {
-    // TODO
+    const size_t pos = p.pos;
+    const char *kit = nullptr;
+    std::size_t klen = 0;
+
+    if (bencode::d::value_ref(p, kit, klen)) {
+      bool first = true;
+      auto cb = [&](sp::Buffer &p2) { //
+        fprintf(f, "%s list[", ctx);
+        print_raw(f, kit, klen);
+        fprintf(f, "\n");
+        first = false;
+
+        while (true) {
+          const char *vit = nullptr;
+          std::size_t vlen = 0;
+          std::uint64_t value = 0;
+
+          if (bencode::d::value_ref(p2, vit, vlen)) {
+            fprintf(f, "- ");
+            print_raw(f, (const char *)vit, vlen);
+            fprintf(f, "\n");
+          } else if (bencode::d::value(p2, value)) {
+            fprintf(f, "- ");
+            fprintf(f, ", %" PRIu64 "]\n", value);
+          } else {
+            break;
+          }
+        }
+
+        return true;
+      };
+
+      if (bencode::d::list(p, cb)) {
+        fprintf(f, "]\n");
+        return true;
+      }
+
+      fprintf(f, "spooky[error]\n");
+      p.pos = pos;
+    }
   }
 
   return false;
@@ -635,7 +675,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       }
     }
 
-    //TODO
+    // TODO
     // find_node resp any['nodes6': 6,
     // hex[1BEEA0B6DD5E6E38D832E72D185127D239FB417E2447A8643076091635DD5F39AB6C35196011C413409E5BE7980F17FE865F4A42BBB2498A1E28C09360C0E287DB927FA44B47AA](_____^n8_2_-_Q'_9_A~$_z_C_v___5__9___Q_`____@___y____e__+_$___(__`_______KG_)]
 

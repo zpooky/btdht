@@ -1,8 +1,12 @@
 #ifndef SP_MAINLINE_DHT_TEST_BENCODE_PRINT_H
 #define SP_MAINLINE_DHT_TEST_BENCODE_PRINT_H
 
-#include <cstdint>
 #include "util.h"
+#include <cstdint>
+#include <cstdio>
+
+void
+bencode_print_out(FILE *) noexcept;
 
 template <typename Buffer>
 void
