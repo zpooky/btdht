@@ -27,7 +27,7 @@ string_wildcard(sp::Buffer &d) noexcept {
   return bencode::d::value_ref(d, val, len);
 }
 
-static bool
+bool
 list_wildcard(sp::Buffer &d) noexcept {
   const std::size_t pos = d.pos;
   if (d.raw[d.pos++] != 'l') {

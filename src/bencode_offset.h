@@ -11,6 +11,9 @@ namespace d {
  * bencode.
  */
 bool
+list_wildcard(sp::Buffer &) noexcept;
+
+bool
 dict_wildcard(sp::Buffer &) noexcept;
 
 bool

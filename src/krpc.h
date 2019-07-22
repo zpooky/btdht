@@ -1,6 +1,7 @@
 #ifndef SP_MAINLINE_DHT_KRPC_H
 #define SP_MAINLINE_DHT_KRPC_H
 
+#include "Log.h"
 #include "bencode_offset.h"
 #include "bencode_print.h"
 #include "shared.h"
@@ -123,6 +124,7 @@ template <typename F>
 bool
 krpc(ParseContext &pctx, F handle) {
   return bencode::d::dict(pctx.decoder, [&](auto &p) { //
+    bool do_mark_dict = false;
     bool t = false;
     bool y = false;
     bool q = false;
@@ -135,6 +137,8 @@ krpc(ParseContext &pctx, F handle) {
     char wkey[128] = {0};
     sp::byte wvalue[128] = {0};
   Lstart:
+    do_mark_dict = false;
+
     // TODO length compare for all raw indexing everywhere!!
     if (p.raw[p.pos] != 'e') {
       const std::size_t before = p.pos;
@@ -180,12 +184,32 @@ krpc(ParseContext &pctx, F handle) {
       }
 
       // the application layer dict[request argument:a, reply: r]
-      if (bencode::d::peek(p, "a") || bencode::d::peek(p, "r")) {
+      if (bencode::d::peek(p, "a")) {
+        bencode::d::value(p, "a");
         mark = p.pos;
-        assertx(bencode::d::value(p, "a") || bencode::d::value(p, "r"));
+        do_mark_dict = true;
+      } else if (bencode::d::peek(p, "r")) {
+        bencode::d::value(p, "r");
+        mark = p.pos;
+        do_mark_dict = true;
+      } else if (bencode::d::peek(p, "e")) {
+        bencode::d::value(p, "e");
+        mark = p.pos;
 
-        // TODO document this, just verifys valid bencoded?
+        if (!bencode::d::list_wildcard(p)) {
+          log::receive::parse::error(pctx.ctx, p, "Invalid krpc");
+          return false;
+        }
+        mark_end = p.pos;
+
+        goto Lstart;
+      }
+
+      if (do_mark_dict) {
+        // since filds can be located in random order we store the the location
+        // of the 'a'/'r' dict for later processing
         if (!bencode::d::dict_wildcard(p)) {
+          log::receive::parse::error(pctx.ctx, p, "Invalid krpc");
           return false;
         }
         mark_end = p.pos;
@@ -194,7 +218,10 @@ krpc(ParseContext &pctx, F handle) {
       } else {
         // parse and ignore unknown attributes for future compatability
         if (!bencode::d::pair_any(p, wkey, wvalue)) {
+          log::receive::parse::error(pctx.ctx, p, "Invalid krpc 2");
           return false;
+        } else {
+          fprintf(stderr, "krpc any[%s, %s]\n", wkey, wvalue);
         }
         goto Lstart;
       }
@@ -213,21 +240,28 @@ krpc(ParseContext &pctx, F handle) {
     /* Verify that required fields are present */
     if (is_error()) {
       if (!(t)) {
+        log::receive::parse::error(pctx.ctx, p, "'error' missing 't'");
         return false;
       }
     } else if (is_query()) {
       if (!(t && y && q)) {
+        log::receive::parse::error(pctx.ctx, p, "'query' missing 't' or 'q'");
         return false;
       }
     } else if (is_reply()) {
       if (!(t && y)) {
+        log::receive::parse::error(pctx.ctx, p, "'reply' missing 't' or 'y'");
         return false;
       }
     } else {
+      char msg[128];
+      sprintf(msg, "Unknown message type '%s'", pctx.msg_type);
+      log::receive::parse::error(pctx.ctx, p, msg);
       return false;
     }
 
     if (mark < 0) {
+      log::receive::parse::error(pctx.ctx, p, "missing 'r'/'a' dict body");
       return false;
     }
 

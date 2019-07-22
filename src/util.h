@@ -205,7 +205,7 @@ using node = impl::LinkedListNode<T>;
 namespace krpc {
 // krpc::Transaction
 struct Transaction {
-  sp::byte id[16];
+  sp::byte id[32];
   std::size_t length;
 
   Transaction() noexcept;

@@ -97,7 +97,6 @@ pair(sp::Buffer &b, const char *key, const sp::byte (&value)[N]) noexcept {
 
 //===============================================
 namespace d {
-
 namespace internal {
 bool
 is(sp::Buffer &, const char *, std::size_t) noexcept;

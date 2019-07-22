@@ -231,7 +231,7 @@ known_tx(dht::MessageContext &ctx) noexcept {
 }
 
 void
-unknown_tx(dht::MessageContext &ctx) noexcept {
+unknown_tx(dht::MessageContext &ctx, const sp::Buffer &) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.unknown_tx;
 
@@ -246,18 +246,19 @@ unknown_tx(dht::MessageContext &ctx) noexcept {
 namespace parse {
 /*log::receive::parse*/
 void
-error(dht::DHT &ctx, const sp::Buffer &buffer) noexcept {
+error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
+  sp::Buffer copy(buffer);
+  copy.pos = 0;
+
   dht::Stat &s = ctx.statistics;
   ++s.received.parse_error;
 
   print_time(stderr, ctx.now);
-  printf("parse error|");
-  // print_hex(buffer.raw + buffer.pos, buffer.length);
+  fprintf(stderr, "parse error|%s|\n", msg);
+  // print_hex(copy.raw + copy.pos, copy.length);
   bencode_print_out(stderr);
-  bencode_print(buffer);
+  bencode_print(copy);
   bencode_print_out(stdout);
-
-  printf("\n");
 }
 } // namespace parse
 

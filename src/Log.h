@@ -51,14 +51,14 @@ void
 known_tx(dht::MessageContext &) noexcept;
 
 void
-unknown_tx(dht::MessageContext &) noexcept;
+unknown_tx(dht::MessageContext &, const sp::Buffer &) noexcept;
 
 } // namespace res
 
 namespace parse {
 /* log::receive::parse */
 void
-error(dht::DHT &, const sp::Buffer &) noexcept;
+error(dht::DHT &, const sp::Buffer &, const char *msg) noexcept;
 
 } // namespace parse
 } // namespace receive

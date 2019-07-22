@@ -21,10 +21,18 @@
 #include <tree/avl.h>
 #include <util/maybe.h>
 
+namespace dht {
+
+struct MessageContext;
+struct DHT;
+} // namespace dht
+
 //---------------------------
 namespace krpc {
 // krpc::ParseContext
 struct ParseContext {
+  dht::DHT &ctx;
+
   sp::Buffer &decoder;
   Transaction tx;
 
@@ -34,7 +42,7 @@ struct ParseContext {
 
   sp::maybe<Contact> ip_vote;
 
-  explicit ParseContext(sp::Buffer &) noexcept;
+  explicit ParseContext(dht::DHT &ctx, sp::Buffer &) noexcept;
 
   ParseContext(ParseContext &, sp::Buffer &) noexcept;
 };
@@ -42,12 +50,6 @@ struct ParseContext {
 } // namespace krpc
 
 //---------------------------
-namespace dht {
-
-struct MessageContext;
-struct DHT;
-} // namespace dht
-
 namespace tx {
 struct Tx;
 

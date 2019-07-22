@@ -41,7 +41,8 @@
 // correctly
 // TODO bencode_print hex id does not works? only print len(39) where len(40) is
 // expected.
-// TODO client: on server shutdown send to search clients that we are shutting down
+// TODO client: on server shutdown send to search clients that we are shutting
+// down
 // TODO replace bad node
 // TODO db file
 //      - incremental save
@@ -232,36 +233,33 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
     dht::MessageContext mctx{dht, pctx, out, peer};
     if (std::strcmp(pctx.msg_type, "q") == 0) {
       /*query*/
-      if (!bencode::d::value(pctx.decoder, "a")) {
-        return false;
-      }
 
       dht::Module &m = module_for(modules, pctx.query, /*default*/ unknown);
 
       return m.request(mctx);
     } else if (std::strcmp(pctx.msg_type, "r") == 0) {
       /*response*/
-      if (!bencode::d::value(pctx.decoder, "r")) {
-        return false;
-      }
 
       tx::TxContext tctx;
       std::size_t cnt = dht.client.active;
       if (tx::consume(dht.client, pctx.tx, tctx)) {
         assertx((cnt - 1) == dht.client.active);
         log::receive::res::known_tx(mctx);
-        bool res = tctx.handle(mctx);
-        return res;
+        return tctx.handle(mctx);
       } else {
-        log::receive::res::unknown_tx(mctx);
+        log::receive::res::unknown_tx(mctx, in);
         // assertx(false);
       }
+    } else if (std::strcmp(pctx.msg_type, "e") == 0) {
+      // TODO
+    } else {
+      assertx(false);
     }
 
     return false;
   };
 
-  krpc::ParseContext pctx(in);
+  krpc::ParseContext pctx(dht, in);
   return krpc::d::krpc(pctx, handle);
 }
 
@@ -412,7 +410,6 @@ main(int argc, char **argv) {
 
     const sp::Buffer in_view(in);
     if (!parse(*mdht, modules, from, in, out)) {
-      log::receive::parse::error(*mdht, in_view);
       return false;
     }
 

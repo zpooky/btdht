@@ -1,5 +1,5 @@
-#include "search.h"
 #include "shared.h"
+#include "search.h"
 #include <algorithm>
 #include <cstring>
 #include <util/assert.h>
@@ -11,8 +11,9 @@
 //---------------------------
 namespace krpc {
 // krpc::ParseContext
-ParseContext::ParseContext(sp::Buffer &d) noexcept
-    : decoder(d)
+ParseContext::ParseContext(dht::DHT &ictx, sp::Buffer &d) noexcept
+    : ctx{ictx}
+    , decoder(d)
     , tx()
     , msg_type{0}
     , query{0}
@@ -21,7 +22,8 @@ ParseContext::ParseContext(sp::Buffer &d) noexcept
 }
 
 ParseContext::ParseContext(ParseContext &ctx, sp::Buffer &d) noexcept
-    : decoder(d)
+    : ctx{ctx.ctx}
+    , decoder(d)
     , tx(ctx.tx)
     , msg_type{0}
     , query{0}
