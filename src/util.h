@@ -247,6 +247,9 @@ struct Infohash {
 
   bool
   operator>(const Key &) const noexcept;
+
+  bool
+  operator>(const Infohash &) const noexcept;
 };
 
 bool
@@ -303,6 +306,11 @@ print_id(const NodeId &, std::size_t color = 0, const char *c = "") noexcept;
 void
 print_hex(const NodeId &) noexcept;
 
+void
+print_hex(const krpc::Transaction &tx);
+
+void
+print_hex(const sp::byte *arr, std::size_t length);
 } // namespace dht
 
 namespace sp {

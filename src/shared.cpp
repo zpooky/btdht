@@ -7,8 +7,8 @@
 
 #include <hash/djb2.h>
 #include <hash/fnv.h>
-//
-//---------------------------
+
+//=====================================
 namespace krpc {
 // krpc::ParseContext
 ParseContext::ParseContext(dht::DHT &ictx, sp::Buffer &d) noexcept
@@ -21,24 +21,23 @@ ParseContext::ParseContext(dht::DHT &ictx, sp::Buffer &d) noexcept
     , ip_vote{} {
 }
 
-ParseContext::ParseContext(ParseContext &ctx, sp::Buffer &d) noexcept
-    : ctx{ctx.ctx}
+ParseContext::ParseContext(ParseContext &ictx, sp::Buffer &d) noexcept
+    : ctx{ictx.ctx}
     , decoder(d)
-    , tx(ctx.tx)
+    , tx(ictx.tx)
     , msg_type{0}
     , query{0}
     , remote_version{0}
     , ip_vote{} {
 
-  std::memcpy(msg_type, ctx.msg_type, sizeof(msg_type));
-  std::memcpy(query, ctx.query, sizeof(query));
-  std::memcpy(remote_version, ctx.remote_version, sizeof(remote_version));
+  std::memcpy(msg_type, ictx.msg_type, sizeof(msg_type));
+  std::memcpy(query, ictx.query, sizeof(query));
+  std::memcpy(remote_version, ictx.remote_version, sizeof(remote_version));
 }
 } // namespace krpc
 
-//---------------------------
+//=====================================
 namespace tx {
-
 void
 TxContext::cancel(dht::DHT &dht, Tx *tx) noexcept {
   assertx(tx);
@@ -117,6 +116,7 @@ operator>(const Tx &self, const Tx &tx) noexcept {
 }
 } // namespace tx
 
+//=====================================
 namespace dht {
 /*dht::Client*/
 Client::Client(fd &fd) noexcept
@@ -129,7 +129,7 @@ Client::Client(fd &fd) noexcept
 
 } // namespace dht
 
-//---------------------------
+//=====================================
 namespace dht {
 /*dht::Config*/
 Config::Config() noexcept
@@ -156,21 +156,15 @@ Peer::Peer(Ipv4 i, Port p, Timestamp n) noexcept
     : contact(i, p)
     , activity(n)
     //{
-    , next(nullptr)
-    //}
-    //{
     , timeout_priv(nullptr)
     , timeout_next(nullptr)
 //}
 {
 }
 
-Peer::Peer(const Contact &c, Timestamp a, Peer *nxt) noexcept
+Peer::Peer(const Contact &c, Timestamp a) noexcept
     : contact(c)
     , activity(a)
-    //{
-    , next(nxt)
-    //}
     //{
     , timeout_priv(nullptr)
     , timeout_next(nullptr)
@@ -187,6 +181,21 @@ Peer::operator==(const Contact &c) const noexcept {
   return contact.operator==(c);
 }
 
+bool
+Peer::operator>(const Contact &p) const noexcept {
+  return contact > p;
+}
+
+bool
+Peer::operator>(const Peer &p) const noexcept {
+  return operator>(p.contact);
+}
+
+bool
+operator>(const Contact &f, const Peer &s) noexcept {
+  return f > s.contact;
+}
+
 Timestamp
 activity(const Node &head) noexcept {
   return head.remote_activity;
@@ -197,6 +206,7 @@ activity(const Peer &peer) noexcept {
   return peer.activity;
 }
 
+//=====================================
 /*dht::Bucket*/
 Bucket::Bucket() noexcept
     : contacts() {
@@ -205,6 +215,7 @@ Bucket::Bucket() noexcept
 Bucket::~Bucket() noexcept {
 }
 
+//=====================================
 /*dht::RoutingTable*/
 RoutingTable::RoutingTable(ssize_t d) noexcept
     : depth(d)
@@ -262,10 +273,11 @@ RoutingTableLess::operator()(const RoutingTable *f, const RoutingTable *s) const
   return f->depth < s->depth;
 }
 
+//=====================================
 // dht::KeyValue
 KeyValue::KeyValue(const Infohash &pid) noexcept
-    : peers(nullptr)
-    , id(pid) {
+    : id(pid)
+    , peers{} {
 }
 
 bool
@@ -283,6 +295,7 @@ operator>(const Infohash &f, const KeyValue &s) noexcept {
   return f.operator>(s.id.id);
 }
 
+//=====================================
 // dht::Log
 Log::Log() noexcept
     : id{0} {
@@ -316,6 +329,7 @@ SearchContext::SearchContext(const Infohash &s) noexcept
     , is_dead(false) {
 }
 
+//=====================================
 Search::Search(const Infohash &s) noexcept
     : ctx(new SearchContext(s))
     , search(s)
@@ -388,6 +402,7 @@ operator>(const Search &f, const Infohash &s) noexcept {
   return f.search > s;
 }
 
+//=====================================
 #if 0
 Search::Search(Search &&o) noexcept
     : ctx(nullptr)
@@ -423,7 +438,6 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     // peer-lookup db {{{
     , lookup_table()
     , timeout_peer(nullptr)
-    , timeout_peer_next(0)
     //}}}
     // routing-table {{{
     , root(nullptr)
@@ -471,9 +485,10 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
 }
 
 DHT::~DHT() {
-  // TOD reclaim
+  // TODO reclaim
 }
 
+//=====================================
 /*dht::MessageContext*/
 MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
                                sp::Buffer &p_out, Contact p_remote) noexcept
@@ -488,3 +503,4 @@ MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
 }
 
 } // namespace dht
+  //=====================================

@@ -31,17 +31,18 @@ do_dump(Buffer &sink, const dht::DHT &dht, dht::RoutingTable *t) noexcept {
       return false;
     }
 
-    return bencode::e<Buffer>::list(
-        buffer, /*ARG*/ t, [](Buffer &b, /*ARG*/ void *a) {
-          auto *table = (dht::RoutingTable *)a;
-          /**/
-          return for_all(table, [&b](auto &current) {
-            /**/
-            return for_all(current.bucket, [&b](auto &node) {
-              return bencode::e<Buffer>::value(b, node);
-            });
-          });
+    auto cb = [](Buffer &b, /*ARG*/ void *a) {
+      auto *table = (dht::RoutingTable *)a;
+
+      return for_all(table, [&b](auto &current) {
+        /**/
+        return for_all(current.bucket, [&b](auto &node) {
+          return bencode::priv::e<Buffer>::value(b, node);
         });
+      });
+    };
+
+    return bencode::e<Buffer>::list(buffer, /*ARG*/ t, cb);
 
     // TODO bootstrap
   });
@@ -98,10 +99,9 @@ restore_node(Buffer &b, dht::IdContact &out) {
         return false;
       }
     }
-    auto &contact = out.contact;
     {
       assertx(!is_marked(buffer));
-      if (!bencode::d<Buffer>::value(buffer, "ip")) {
+      if (!bencode::d<Buffer>::value(buffer, "ipv4")) {
         return false;
       }
 
@@ -110,7 +110,7 @@ restore_node(Buffer &b, dht::IdContact &out) {
       if (!bencode::d<Buffer>::value(buffer, ip)) {
         return false;
       }
-      contact.ip = ntohl(ip);
+      out.contact.ip = ntohl(ip);
     }
 
     {
@@ -119,10 +119,10 @@ restore_node(Buffer &b, dht::IdContact &out) {
         return false;
       }
       assertx(!is_marked(buffer));
-      if (!bencode::d<Buffer>::value(buffer, contact.port)) {
+      if (!bencode::d<Buffer>::value(buffer, out.contact.port)) {
         return false;
       }
-      contact.port = ntohs(contact.port);
+      out.contact.port = ntohs(out.contact.port);
     }
 
     assertx(!is_marked(buffer));

@@ -1,5 +1,6 @@
 #include "bencode_offset.h"
 #include "bencode.h"
+#include "util.h"
 #include "bencode_print.h"
 #include <arpa/inet.h>
 #include <cstdio>
@@ -161,6 +162,8 @@ contact_comact_list(sp::Buffer &d, ListType &result) noexcept {
       std::size_t pls = val_buf.pos;
       if (!compact_value(val_buf, n)) {
         d.pos = 0;
+        dht::print_hex(d.raw, d.length);
+        printf("\n");
         fprintf(stderr, "bo: \n");
         bencode_print_out(stderr);
         bencode_print(d);

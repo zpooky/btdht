@@ -98,37 +98,24 @@ struct e {
     return true;
   }
 
-  //=====================================
-  static bool
-  value(Buffer &, const Contact &) noexcept;
-
-  static bool
-  pair(Buffer &, const char *key, const Contact &p) noexcept;
-
-  static bool
-  value(Buffer &buf, const sp::list<Contact> &t) noexcept;
-
-  static bool
-  pair(Buffer &buf, const char *key, const sp::list<Contact> &t) noexcept;
-
-  //=====================================
-  static bool
-  pair_compact(Buffer &, const char *key, const dht::Peer *list) noexcept;
-
-  //=====================================
-  static bool
-  value_compact(Buffer &, const dht::Node &) noexcept;
-
-  static bool
-  value(Buffer &, const dht::Node &) noexcept;
-
-  static bool
-  pair_compact(Buffer &, const char *, const sp::list<dht::Node> &) noexcept;
-
-  static bool
-  pair_compact(Buffer &, const char *, const dht::Node **,
-               std::size_t) noexcept;
-
+  // //=====================================
+  // static bool
+  // pair_compact(Buffer &, const char *key, const sp::UinArray<dht::Peer> &) noexcept;
+  //
+  // //=====================================
+  // static bool
+  // value_compact(Buffer &, const dht::Node &) noexcept;
+  //
+  // static bool
+  // value(Buffer &, const dht::Node &) noexcept;
+  //
+  // static bool
+  // pair_compact(Buffer &, const char *, const sp::list<dht::Node> &) noexcept;
+  //
+  // static bool
+  // pair_compact(Buffer &, const char *, const dht::Node **,
+  //              std::size_t) noexcept;
+  //
   //=====================================
   static bool
   value(Buffer &, std::size_t, void *, bool (*)(Buffer &, void *)) noexcept;
@@ -170,7 +157,7 @@ struct e {
   value(Buffer &buf, const dht::KeyValue &t) noexcept;
 
   static bool
-  pair(Buffer &buf, const char *key, const dht::KeyValue *t) noexcept;
+  pair(Buffer &buf, const char *key, const dht::KeyValue &t) noexcept;
 
   //=====================================
   static bool
@@ -178,6 +165,13 @@ struct e {
 
   static bool
   pair(Buffer &buf, const char *key, const dht::StatDirection &d) noexcept;
+
+  //=====================================
+  static bool
+  value(Buffer &, const Contact &) noexcept;
+
+  static bool
+  pair(Buffer &, const char *key, const Contact &p) noexcept;
 
   //=====================================
 }; // struct bencode::e

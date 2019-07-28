@@ -156,11 +156,11 @@ bool
 list(sp::Buffer &buffer, void *capture,
      bool (*f)(sp::Buffer &, void *)) noexcept {
   const std::size_t before = buffer.pos;
-  std::size_t &i = buffer.pos;
+
   if (buffer.pos + 1 > buffer.capacity) {
     return false;
   }
-  buffer.raw[i++] = 'l';
+  buffer.raw[buffer.pos++] = 'l';
 
   if (!f(buffer, capture)) {
     buffer.pos = before;
@@ -171,7 +171,7 @@ list(sp::Buffer &buffer, void *capture,
     buffer.pos = before;
     return false;
   }
-  buffer.raw[i++] = 'e';
+  buffer.raw[buffer.pos++] = 'e';
 
   return true;
 } // bencode::e::list()

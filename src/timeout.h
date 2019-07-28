@@ -38,8 +38,15 @@ void
 insert_new(dht::DHT &, dht::Node *) noexcept;
 
 //=====================================
+void
+insert(dht::Peer *priv, dht::Peer *subject, dht::Peer *next) noexcept;
+
+//=====================================
 dht::Node *
 take_node(dht::DHT &, sp::Milliseconds timeout) noexcept;
+
+dht::Peer *
+take_peer(dht::DHT &, sp::Milliseconds timeout) noexcept;
 
 // TODO XXX what is timeout????!?!?! (i want last sent timeout)
 

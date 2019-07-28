@@ -40,19 +40,19 @@ serialize(sp::Buffer &b, const dht::KContact &p) noexcept {
   return serialize(b, p.contact);
 }
 
-bool
-value(sp::Buffer &b, const Contact &p) noexcept {
-  return serialize(b, p);
-} // bencode::e::value()
+// bool
+// value_raw(sp::Buffer &b, const Contact &p) noexcept {
+//   return serialize(b, p);
+// } // bencode::e::value()
 
-bool
-pair(sp::Buffer &buf, const char *key, const Contact &p) noexcept {
-  if (!bencode::e::value(buf, key)) {
-    return false;
-  }
-
-  return bencode::e::value(buf, p);
-} // bencode::e::pair()
+// bool
+// pair(sp::Buffer &buf, const char *key, const Contact &p) noexcept {
+//   if (!bencode::e::value(buf, key)) {
+//     return false;
+//   }
+//
+//   return bencode::e::value(buf, p);
+// } // bencode::e::pair()
 
 static bool
 serialize(sp::Buffer &b, const dht::Node &node) noexcept {
@@ -92,16 +92,6 @@ size(const dht::Peer &p) noexcept {
 static std::size_t
 size(const dht::Node &p) noexcept {
   return sizeof(p.id.id) + size(p.contact);
-}
-
-static std::size_t
-size(const dht::Peer *list) noexcept {
-  std::size_t result = 0;
-  dht::for_all(list, [&result](const dht::Peer &ls) {
-    result += size(ls);
-    return true;
-  });
-  return result;
 }
 
 template <typename F>
@@ -159,30 +149,32 @@ size(const heap::MaxBinary<T> &list) noexcept {
 }
 
 bool
-pair_compact(sp::Buffer &buf, const char *key, const dht::Peer *list) noexcept {
+pair_compact(sp::Buffer &buf, const char *key,
+             const sp::UinArray<dht::Peer> &list) noexcept {
   if (!bencode::e::value(buf, key)) {
     return false;
   }
 
-  std::size_t len = size(list);
-  return bencode::e::value(buf, len, (void *)list,
-                           [](sp::Buffer &b, void *arg) {
-                             const dht::Peer *l = (dht::Peer *)arg;
+  auto cb = [](sp::Buffer &b, void *arg) {
+    auto &l = *((const sp::UinArray<dht::Peer> *)arg);
 
-                             return dht::for_all(l, [&b](const auto &ls) {
-                               if (!serialize(b, ls.contact)) {
-                                 return false;
-                               }
+    return for_all(l, [&b](const auto &head) {
+      if (!serialize(b, head.contact)) {
+        return false;
+      }
 
-                               return true;
-                             });
-                           });
+      return true;
+    });
+  };
+
+  return bencode::e::value(buf, length(list), (void *)&list, cb);
 } // bencode::e::pair_compact()
 
 template <typename List>
 static bool
 sp_list(sp::Buffer &buf, const List &list) noexcept {
-  std::size_t len = size(list);
+  std::size_t len = size(list); // TODO ??
+
   return bencode::e::value(buf, len, (void *)&list, [](sp::Buffer &b, void *a) {
     const List *l = (List *)a;
     assertx(l);
@@ -239,7 +231,21 @@ pair_compact(sp::Buffer &buf, const char *key, const dht::Node **list,
   return xxx(buf, key, list, size);
 } // bencode::e::pair_compact()
 
+//=====================================
 namespace priv {
+bool
+value(sp::Buffer &buf, const Contact &c) noexcept {
+  return bencode::e::dict(buf, [&c](sp::Buffer &b) { //
+    if (!bencode::e::pair(b, "ipv4", c.ip.ipv4)) {
+      return false;
+    }
+    if (!bencode::e::pair(b, "port", c.port)) {
+      return false;
+    }
+    return true;
+  });
+}
+
 bool
 value(sp::Buffer &buf, const dht::Node &node) noexcept {
   return bencode::e::dict(buf, [&node](sp::Buffer &b) { //
@@ -475,6 +481,45 @@ pair(sp::Buffer &buf, const char *key,
 }
 
 } // namespace priv
-
 } // namespace e
+
+//=====================================
+bool
+d::priv::value(sp::Buffer &buf, Contact &res) noexcept {
+  auto cb = [&res](auto &b) { //
+    if (!bencode::d::pair(b, "ipv4", res.ip.ipv4)) {
+      return false;
+    }
+
+    if (!bencode::d::pair(b, "port", res.port)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  if (!bencode::d::dict(buf, cb)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool
+d::priv::value(sp::Buffer &buf, sp::UinArray<Contact> &res) noexcept {
+  return bencode::d::list(buf, [&res](auto &b) {
+    while (sp::remaining_read(b) > 0 && b[b.pos] != 'e') {
+      Contact c;
+      if (!bencode::d::priv::value(b, c)) {
+        return false;
+      }
+
+      insert(res, c);
+
+      return true;
+    }
+  });
+}
+
+//=====================================
 } // namespace bencode

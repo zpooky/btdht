@@ -37,6 +37,8 @@ eager_tx_timeout(dht::DHT &, sp::Milliseconds) noexcept;
 //=====================================
 const Tx *
 next_timeout(const dht::Client &) noexcept;
+
+//=====================================
 } // namespace tx
 
 #endif

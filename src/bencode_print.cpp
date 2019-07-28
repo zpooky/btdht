@@ -58,19 +58,17 @@ template <typename Buffer>
 static bool
 string_wildcard(Buffer &d, std::size_t tabs) noexcept {
   auto m = mark(d);
-  std::size_t len = 1024;
-  char *val = new char[len];
+  char val[1024*4];
+  std::size_t len = sizeof(val);
   if (sp::bencode::d<Buffer>::value(d, val, len)) {
     print_tabs(tabs);
     fprintf(_f, "%zu:", len);
     print_raw(val, len);
     fprintf(_f, "\n");
-    delete[] val;
     return true;
   }
 
   m.rollback = true;
-  delete[] val;
   return false;
 }
 

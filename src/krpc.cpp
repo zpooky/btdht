@@ -1,5 +1,5 @@
-#include "dslbencode.h"
 #include "krpc.h"
+#include "dslbencode.h"
 #include <cstring>
 #include <list/LinkedList.h>
 #include <tuple>
@@ -12,43 +12,43 @@ template <typename F>
 static bool
 message(sp::Buffer &buf, const Transaction &t, const char *mt,
         const char *query, F f) noexcept {
-  return bencode::e::dict(
-      buf, //
-      [&t, &mt, query, &f](sp::Buffer &b) {
-        if (!f(b)) {
-          return false;
-        }
+  auto cb = [&t, &mt, query, &f](sp::Buffer &b) {
+    if (!f(b)) {
+      return false;
+    }
 
-        if (query) {
-          if (!bencode::e::pair(b, "q", query)) {
-            return false;
-          }
-        }
+    if (query) {
+      if (!bencode::e::pair(b, "q", query)) {
+        return false;
+      }
+    }
 
-        // transaction: t
-        assertx(t.length > 0);
-        if (!bencode::e::pair(b, "t", t.id, t.length)) {
-          return false;
-        }
+    // transaction: t
+    assertx(t.length > 0);
+    if (!bencode::e::pair(b, "t", t.id, t.length)) {
+      return false;
+    }
 
-        sp::byte version[4] = {0};
-        {
-          version[0] = 's';
-          version[1] = 'p';
-          version[2] = 0;
-          version[3] = 1;
-        }
-        if (!bencode::e::pair(b, "v", version, sizeof(version))) {
-          return false;
-        }
+    sp::byte version[4] = {0};
+    {
+      version[0] = 's';
+      version[1] = 'p';
+      version[2] = 0;
+      version[3] = 1;
+    }
+    if (!bencode::e::pair(b, "v", version, sizeof(version))) {
+      return false;
+    }
 
-        // message_type[reply: r, query: q]
-        if (!bencode::e::pair(b, "y", mt)) {
-          return false;
-        }
+    // message_type[reply: r, query: q]
+    if (!bencode::e::pair(b, "y", mt)) {
+      return false;
+    }
 
-        return true;
-      });
+    return true;
+  };
+
+  return bencode::e::dict(buf, cb);
 } // krpc::message()
 
 template <typename F>
@@ -262,8 +262,8 @@ bool
 get_peers(sp::Buffer &buf,
           const Transaction &t, //
           const dht::NodeId &id, const dht::Token &token,
-          const dht::Peer *values) noexcept {
-  return resp(buf, t, [&id, &token, values](auto &b) { //
+          const sp::UinArray<dht::Peer> &values) noexcept {
+  return resp(buf, t, [&id, &token, &values](auto &b) { //
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
@@ -388,6 +388,13 @@ search_stop(sp::Buffer &b, const Transaction &t) noexcept {
   });
 }
 
+bool
+announce_this(sp::Buffer &b, const Transaction &t) noexcept {
+  return resp(b, t, [](auto &) { //
+    return true;
+  });
+}
+
 } // namespace response
 
 namespace priv {
@@ -400,8 +407,18 @@ event(sp::Buffer &buf, F f) noexcept {
   t.length = 4;
   std::memcpy(t.id, "12ab", t.length);
 
-  return message(buf, t, "e", "found", [&f](auto &b) { //
-    if (!bencode::e::value(b, "e")) {
+  // return message(buf, t, "q", "found", [&f](auto &b) { //
+  //   if (!bencode::e::value(b, "e")) {
+  //     return false;
+  //   }
+  //
+  //   return bencode::e::dict(b, [&f](auto &b2) { //
+  //     return f(b2);
+  //   });
+  // });
+
+  return message(buf, t, "q", "sp_found", [&f](auto &b) { //
+    if (!bencode::e::value(b, "a")) {
       return false;
     }
 
@@ -415,6 +432,8 @@ template <typename Contacts>
 bool
 found(sp::Buffer &buf, const dht::Infohash &search,
       const Contacts &contacts) noexcept {
+  assertx(!is_empty(contacts));
+
   return event(buf, [&contacts, &search](auto &b) {
     if (!bencode::e::pair(b, "id", search.id, sizeof(search.id))) {
       return false;
@@ -424,13 +443,16 @@ found(sp::Buffer &buf, const dht::Infohash &search,
       return false;
     }
 
-    return bencode::e::list(b, (void *)&contacts, [](auto &b2, void *a) {
+    auto cb = [](sp::Buffer &b2, void *a) {
       Contacts *cx = (Contacts *)a;
+
       return for_all(*cx, [&](auto &c) {
         //
-        return bencode::e::value(b2, c);
+        return bencode::e::priv::value(b2, c);
       });
-    });
+    };
+
+    return bencode::e::list(b, (void *)&contacts, cb);
   });
 }
 

@@ -28,17 +28,14 @@ static Timeout
 on_awake_ping(DHT &, sp::Buffer &) noexcept;
 
 static Timeout
-on_awake_peer_db(DHT &, sp::Buffer &) noexcept;
-
-static Timeout
 on_awake_bootstrap_reset(DHT &, sp::Buffer &) noexcept;
 
 static Timeout
 on_awake_eager_tx_timeout(DHT &, sp::Buffer &) noexcept;
 } // namespace dht
 
+//=====================================
 namespace interface_dht {
-
 bool
 setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
@@ -50,14 +47,15 @@ setup(dht::Modules &modules) noexcept {
 
   insert(modules.on_awake, &dht::on_awake);
   insert(modules.on_awake, &dht::on_awake_ping);
-  insert(modules.on_awake, &dht::on_awake_peer_db);
+  insert(modules.on_awake, &db::on_awake_peer_db);
   insert(modules.on_awake, &dht::on_awake_bootstrap_reset);
   insert(modules.on_awake, &dht::on_awake_eager_tx_timeout);
 
   return true;
 }
-
 } // namespace interface_dht
+
+//=====================================
 
 namespace timeout {
 template <typename F>
@@ -84,13 +82,13 @@ Lstart : {
     }
     assertx(!timeout::debug_find_node(self, node));
 
-    printf("node: %s\n", to_hex(node->id));
+    // printf("node: %s\n", to_hex(node->id));
 
     assertx(!node->timeout_next);
     assertx(!node->timeout_priv);
 
     if (node->good) {
-      if (dht::should_mark_bad(self, *node)) {
+      if (dht::should_mark_bad(self, *node)) {//TODO ??
         node->good = false;
         self.bad_nodes++;
       }
@@ -189,21 +187,6 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 }
 
 static Timeout
-on_awake_peer_db(DHT &dht, sp::Buffer &) noexcept {
-  // {
-  // Lstart:
-  //   Peer *const peer = timeout::take(dht.now, dht.timeout_peer, 1);
-  //   if (peer) {
-  //     assertx(peer->timeout_next == nullptr);
-  //     assertx(peer->timeout_priv == nullptr);
-  //   }
-  // }
-  // TODO
-
-  return dht.config.refresh_interval;
-}
-
-static Timeout
 on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
   Timestamp timeout = self.bootstrap_last_reset + self.config.bootstrap_reset;
   /* Only reset if there is a small amount of nodes in self.bootstrap since we
@@ -211,10 +194,10 @@ on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
    */
   if (self.now >= timeout) {
     // XXX if_empty(bootstrap) try to fetch more nodes from dump.file
-    // XXX arbitrary
     if (is_empty(self.bootstrap) || nodes_good(self) < 100) {
       bootstrap_reset(self);
     }
+
     self.bootstrap_last_reset = self.now;
     timeout = self.now + self.config.bootstrap_reset;
   }
@@ -466,6 +449,7 @@ bencode_any(sp::Buffer &p, const char *ctx) noexcept {
 
     if (bencode::d::value_ref(p, kit, klen)) {
       bool first = true;
+
       auto cb = [&](sp::Buffer &p2) { //
         fprintf(f, "%s list[", ctx);
         print_raw(f, kit, klen);

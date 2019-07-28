@@ -18,8 +18,8 @@ Res
 get_peers(dht::DHT &, sp::Buffer &, const Contact &, const dht::Infohash &,
           void *) noexcept;
 
-namespace priv {
 //=====================================
+namespace priv {
 template <typename Contacts>
 Res
 found(dht::DHT &, sp::Buffer &, const dht::Infohash &, const Contact &,

@@ -176,37 +176,54 @@ append_all(dht::DHT &self, dht::Peer *peer) noexcept {
 } // timeout::append_all()
 
 //=====================================
+template <typename T>
+static void
+internal_insert(T *priv, T *subject, T *next) noexcept {
+  if (priv) {
+    assertx(priv);
+    assertx(next);
+
+    priv->timeout_next = subject;
+    next->timeout_priv = subject;
+
+    subject->timeout_priv = priv;
+    subject->timeout_next = next;
+
+  } else {
+    assertx(!priv);
+    assertx(!next);
+
+    subject->timeout_priv = subject->timeout_next = subject;
+  }
+}
+
 void
-prepend(dht::DHT &self, dht::Node *ret) noexcept {
+prepend(dht::DHT &self, dht::Node *subject) noexcept {
   assertx(debug_is_cycle(self.timeout_node));
 
-  assertx(ret);
-  assertx(ret->timeout_next == nullptr);
-  assertx(ret->timeout_priv == nullptr);
+  assertx(subject);
+  assertx(subject->timeout_next == nullptr);
+  assertx(subject->timeout_priv == nullptr);
 
   dht::Node *const head = self.timeout_node;
-  if (head) {
-    dht::Node *priv = head->timeout_priv;
-    assertx(priv);
-
-    priv->timeout_next = ret;
-    head->timeout_priv = ret;
-
-    ret->timeout_priv = priv;
-    ret->timeout_next = head;
-
-    self.timeout_node = ret;
-  } else {
-    self.timeout_node = ret->timeout_priv = ret->timeout_next = ret;
-  }
+  internal_insert(head ? head->timeout_priv : nullptr, subject, head);
+  self.timeout_node = subject;
 
   assertx(debug_is_cycle(self.timeout_node));
 }
 
 //=====================================
 void
-insert_new(dht::DHT &dht, dht::Node *ret) noexcept {
+insert_new(
+    dht::DHT &dht,
+    dht::Node *ret) noexcept { // TODO why is this inserted into the front?
   return prepend(dht, ret);
+}
+
+//=====================================
+void
+insert(dht::Peer *priv, dht::Peer *subject, dht::Peer *next) noexcept {
+  internal_insert(priv, subject, next);
 }
 
 //=====================================
@@ -241,6 +258,31 @@ take_node(dht::DHT &self, sp::Milliseconds timeout) noexcept {
 
   assertx(debug_is_cycle(self.timeout_node));
   return result;
+}
+
+dht::Peer *
+take_peer(dht::DHT &self, sp::Milliseconds timeout) noexcept {
+  dht::Peer *head = self.timeout_peer;
+
+  Timestamp now = self.now;
+  auto is_expired = [now, timeout](auto &node) { //
+    return (node.activity + timeout) > now;
+  };
+
+  assertx(debug_is_cycle(self.timeout_peer));
+
+  if (head) {
+    if (is_expired(*head)) {
+      unlink(self, head);
+      assertx(!head->timeout_next);
+      assertx(!head->timeout_priv);
+
+      assertx(debug_is_cycle(self.timeout_peer));
+      return head;
+    }
+  }
+
+  return nullptr;
 }
 
 //=====================================

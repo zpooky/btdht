@@ -22,6 +22,21 @@
 #include <unistd.h> //read
 #include <upnp_service.h>
 
+
+// get_peers resp str['value': 5, hex[4E11B720F9F028A457FF5745CF3E5B48BF0917E72FBDE8E914E7EC14EA7C7ADE9EE646DC948FE9A95951BC133B2111104E7EB26E33A2695B516CC73A35EA28C9FB85D6E2EAC4EF2C2104E7B0D6AE529049F1F1BBE9EBB3A6DB3C87CE1C2BA99CA83CF4E7807D4285B498E7D147C9DDED355AFE8E58C030D1AE14E798E3F720AD993A4991767B94336696FC45B34F7E1F17BF694E5BD8B5DE5252DC84BFF34EB2C3A4C5BF792B56795C6BB8A84E4516D11E237509F7875168162D119B744CA5BC8F418FE96B](N___ __(_W_WE_>_____~r____N___________F_____YQ__;!__N__&_:&____s_^____]n._N___N____R_I________<_________N__}______}_|____Z__X_0___N____ __:I_v{_3f__E_O~___iN___]_%-_K_4_,:___y+Vy\k__N_Qm__7P_xu___-__tL___A__k)]
+// 2019-07-28 19:21:25|parse error|'get_peers' response missing 'id' and 'token' or ('nodes' or 'values')|
+// d
+//  2:id
+//  20:hex[4E7AA36D825AD96A5D1AFC8318A738457CDDDC2]: 20(N__6_%______1_s_W___)
+//  5:token
+//  20:hex[4E7AA36D825AD96A5D1AFC8318A738457CDDDC2]: 20(N__6_%______1_s_W___)
+//  5:value
+//  208:hex[4E11B720F9F028A457FF5745CF3E5B48BF0917E72FBDE8E914E7EC14EA7C7ADE9EE646DC948FE9A95951BC133B2111104E7EB26E33A2695B516CC73A35EA28C9FB85D6E2EAC4EF2C2104E7B0D6AE529049F1F1BBE9EBB3A6DB3C87CE1C2BA99CA83CF4E7807D4285B498E7D147C9DDED355AFE8E58C030D1AE14E798E3F720AD993A4991767B94336696FC45B34F7E1F17BF694E5BD8B5DE5252DC84BFF34EB2C3A4C5BF792B56795C6BB8A84E4516D11E237509F7875168162D119B744CA5BC8F418FE96B]: 208(N___ __(_W_WE_>_____~r____N___________F_____YQ__;!__N__&_:&____s_^____]n._N___N____R_I________<_________N__}______}_|____Z__X_0___N____ __:I_v{_3f__E_O~___iN___]_%-_K_4_,:___y+Vy\k__N_Qm__7P_xu___-__tL___A__k)
+// e
+
+// TODO !implement peer db timeout logic
+// TODO fix db read logic
+
 // TODO getopt: repeating bootstrap nodes
 
 // TODO
@@ -29,18 +44,8 @@
 // - find_response & others should be able to handle error response
 // TODO BytesView implement mark
 // TODO log explicit error response (error module)
-// TODO actively timeout transactions so that they return back into $bootstrap
-// heap so that we do not starve for and dead lock ourself. Since now we only
-// time out transaction lazily when we issue new requests and if there is no
-// nodes to send request to we do not timeout existing transaction and never
-// gets back bootstrap nodes and we starve forever.
-// TODO implement peer db timeout logic
 // XXX ipv6
 // TODO client: multiple receiver for the same search
-// TODO client: debug search result message is valid/bencode_print list works
-// correctly
-// TODO bencode_print hex id does not works? only print len(39) where len(40) is
-// expected.
 // TODO client: on server shutdown send to search clients that we are shutting
 // down
 // TODO replace bad node
@@ -52,6 +57,8 @@
 // TODO interrupt
 //    - SIGHUP ^C QUIT, ...
 //      - save db file and quit
+//
+// TODO if both eth0 & wlan0 there is some problem
 static void
 die(const char *s) {
   perror(s);
@@ -218,6 +225,9 @@ main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
 
     previous = now;
   } // for
+
+  delete[] in;
+  delete[] out;
 
   return 0;
 }
@@ -421,11 +431,11 @@ main(int argc, char **argv) {
     mdht->now = now;
 
     Timeout result = mdht->config.refresh_interval;
-    result = reduce(modules.on_awake, result,
-                    [&mdht, &out](auto acum, auto callback) {
-                      Timeout cr = callback(*mdht, out);
-                      return std::min(cr, acum);
-                    });
+    auto cb = [&mdht, &out](auto acum, auto callback) {
+      Timeout cr = callback(*mdht, out);
+      return std::min(cr, acum);
+    };
+    result = reduce(modules.on_awake, result, cb);
 
     log::awake::timeout(*mdht, result);
     mdht->last_activity = now;

@@ -1,5 +1,6 @@
 #include <bencode_print.h>
 #include <dht.h>
+#include <dslbencode.h>
 #include <encode/hex.h>
 #include <getopt.h>
 #include <krpc.h>
@@ -138,6 +139,8 @@ Lretry:
   }
   flip(b);
 
+  dht::print_hex(b.raw, b.length);
+  printf("\n");
   bencode_print(b);
   return true;
 }
@@ -258,10 +261,8 @@ send_find_node(DHTClient &client, const Contact &to,
   return udp::send(client.udp, to, client.out);
 }
 
-//========
-/*
- * # get_peers
- */
+//=====================================
+/* # get_peers */
 static void
 send_get_peers(DHTClient &client, const Contact &to,
                dht::Infohash &search) noexcept {
@@ -285,10 +286,8 @@ receive_get_peers(fd &u, sp::Buffer &b) noexcept {
   return tx;
 }
 
-//========
-/*
- * # announce_peer
- */
+//=====================================
+/* # announce_peer */
 static void
 send_announce_peer(DHTClient &client, const Contact &to, dht::Token &token,
                    dht::Infohash &search) noexcept {
@@ -394,19 +393,74 @@ handle_find_node(DHTClient &client) {
   return EXIT_SUCCESS;
 }
 
+//=====================================
 int
 handle_get_peers(DHTClient &client) {
   return 0;
 }
 
+//=====================================
 int
 handle_announce_peer(DHTClient &client) {
   return 0;
 }
 
+//=====================================
 int
 handle_statistics(DHTClient &client) {
   return 0;
+}
+
+//=====================================
+static bool
+search_event_receive(fd &u, sp::Buffer &b) noexcept {
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, listen, r);
+  Contact remote;
+
+Lretry:
+  reset(b);
+  int res = udp::receive(u, remote, b);
+  if (res != 0) {
+    if (res == EAGAIN) {
+      goto Lretry;
+    }
+    return false;
+  }
+  flip(b);
+
+  krpc::ParseContext pctx(dht, b);
+
+  // dht::print_hex(b.raw, b.length);
+  // printf("\n");
+  return krpc::d::krpc(pctx, [](krpc::ParseContext &ctx) { //
+    dht::Infohash search;
+    sp::UinStaticArray<Contact, 128> contacts;
+
+    return bencode::d::dict(ctx.decoder, [&](sp::Buffer &p) {
+      if (!bencode::d::pair(p, "id", search.id)) {
+        return false;
+      }
+
+      if (!bencode::d::value(p, "contacts")) {
+        return false;
+      } else {
+        if (!bencode::d::priv::value(p, contacts)) {
+          return false;
+        }
+      }
+
+      for_each(contacts, [](auto &c) {
+        char buffer[128] = {'\0'};
+        assertx_n(to_string(c, buffer));
+        printf("%s\n", buffer);
+      });
+
+      return true;
+    });
+  });
 }
 
 int
@@ -492,6 +546,7 @@ handle_search(DHTClient &client) {
     return EXIT_FAILURE;
   }
 
+  bool first = true;
   while (true) {
     ::epoll_event events;
 
@@ -507,8 +562,17 @@ handle_search(DHTClient &client) {
     }
 
     if (events.data.fd == int(client.udp)) {
-      if (!generic_receive(client.udp, client.in)) {
-        return EXIT_FAILURE;
+      if (first) {
+        if (!generic_receive(client.udp, client.in)) {
+          printf("receive failed 1\n");
+          break;
+        }
+        first = false;
+      } else {
+        if (!search_event_receive(client.udp, client.in)) {
+          printf("receive failed 2\n");
+          break;
+        }
       }
     } else if (events.data.fd == int(sig_fd)) {
       break;
@@ -657,3 +721,5 @@ main(int argc, char **args) {
 
   return parse_command(argc, args);
 }
+
+

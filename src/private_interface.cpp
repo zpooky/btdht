@@ -6,6 +6,46 @@
 #include <util/assert.h>
 
 //===========================================================
+// dump
+//===========================================================
+namespace dump {
+void
+setup(dht::Module &) noexcept;
+} // namespace dump
+
+//===========================================================
+// statistics
+//===========================================================
+namespace statistics {
+void
+setup(dht::Module &) noexcept;
+} // namespace statistics
+
+//===========================================================
+// search
+//===========================================================
+namespace search {
+void
+setup(dht::Module &) noexcept;
+} // namespace search
+
+//===========================================================
+// search stop
+//===========================================================
+namespace search_stop {
+void
+setup(dht::Module &) noexcept;
+} // namespace search_stop
+
+//===========================================================
+// Announce
+//===========================================================
+namespace announce_this {
+void
+setup(dht::Module &) noexcept;
+} // namespace announce_this
+
+//===========================================================
 static void
 search_dequeue(dht::DHT &dht, dht::Search *current) noexcept {
   assertx(current);
@@ -70,7 +110,7 @@ Lit:
 }
 
 template <typename K, typename F>
-K *
+static K *
 search_reduce(dht::DHT &dht, K *result, F f) noexcept {
   dht::Search *it = dht.search_root;
 Lit:
@@ -281,6 +321,32 @@ setup(dht::Module &module) noexcept {
   module.request = on_request;
   module.response = nullptr;
 }
+
+//===========================================================
+// Announce
+//===========================================================
+namespace announce_this {
+static bool
+handle_request(dht::MessageContext &ctx, const dht::Infohash &,
+               const sp::UinStaticArray<Contact, 256> &) noexcept {
+  // auto &dht = ctx.dht;
+  //TODO
+
+  return krpc::response::announce_this(ctx.out, ctx.transaction);
+}
+
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  return krpc::d::request::announce_this(ctx, handle_request);
+}
+
+void
+setup(dht::Module &module) noexcept {
+  module.query = "sp_announce";
+  module.request = on_request;
+  module.response = nullptr;
+}
+} // namespace announce_this
 
 //===========================================================
 } // namespace search_stop

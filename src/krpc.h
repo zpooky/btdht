@@ -80,7 +80,7 @@ get_peers(sp::Buffer &, const Transaction &, //
 bool
 get_peers(sp::Buffer &, const Transaction &, //
           const dht::NodeId &id, const dht::Token &,
-          const dht::Peer *) noexcept;
+          const sp::UinArray<dht::Peer> &) noexcept;
 
 bool
 announce_peer(sp::Buffer &, const Transaction &, //
@@ -104,6 +104,9 @@ search(sp::Buffer &b, const Transaction &t) noexcept;
 
 bool
 search_stop(sp::Buffer &b, const Transaction &t) noexcept;
+
+bool
+announce_this(sp::Buffer &b, const Transaction &t) noexcept;
 //}
 
 } // namespace response
@@ -302,6 +305,29 @@ search_stop(Ctx &ctx, F f) noexcept {
     }
 
     return f(ctx, search);
+  });
+}
+
+//=====================================
+template <typename Ctx, typename F>
+bool
+announce_this(Ctx &ctx, F f) noexcept {
+  return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
+    dht::DHT &dht = ctx.dht;
+    auto &contacts = dht.recycle_contact_list;
+
+    dht::Infohash id;
+    if (!bencode::d::pair(p, "id", id.id)) {
+      return false;
+    }
+
+    clear(contacts);
+
+    if (!bencode::d::peers(p, "contacts", contacts)) {
+      return false;
+    }
+
+    return f(ctx, id, contacts);
   });
 }
 

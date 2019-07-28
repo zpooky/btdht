@@ -454,6 +454,11 @@ Infohash::operator>(const Key &o) const noexcept {
   return std::memcmp(id, o, sizeof(id)) > 0;
 }
 
+bool
+Infohash::operator>(const Infohash &o) const noexcept {
+  return operator>(o.id);
+}
+
 static bool
 from_hex(Key &id, const char *b) noexcept {
   assertx(b);
@@ -607,11 +612,47 @@ print_id(const NodeId &id, std::size_t color, const char *c) noexcept {
 
 void
 print_hex(const NodeId &id) noexcept {
-  for (std::size_t i = 0; i < sizeof(id.id); ++i) {
-    printf("%hhX", id.id[i]);
+  char out[41] = {0};
+  assertx_n(hex::encode(id.id, sizeof(id.id), out));
+  printf("%s\n", out);
+}
+
+void
+print_hex(const sp::byte *arr, std::size_t length) {
+  const sp::byte *it = arr;
+  const sp::byte *const end = it + length;
+  char buf[257] = {'\0'};
+  while (it != end) {
+    size_t buf_len = sizeof(buf) - 1;
+    it = hex::encode_inc(it, end, buf, buf_len);
+    buf[buf_len] = '\0';
+    printf("%s", buf);
   }
-  // TODO
-  printf("\n");
+
+  // /* TODO convert to use hex::encode */
+  // const std::size_t hex_cap = 4096;
+  // char hexed[hex_cap + 1] = {0};
+  //
+  // std::size_t hex_length = 0;
+  // std::size_t i = 0;
+  // while (i < length && hex_length < hex_cap) {
+  //   char buff[128];
+  //   std::size_t buffLength = sprintf(buff, "%02x", arr[i++]);
+  //   std::memcpy(hexed + hex_length, buff, buffLength);
+  //
+  //   hex_length += buffLength;
+  // }
+  //
+  // if (i == length) {
+  //   printf("%s", hexed);
+  // } else {
+  //   printf("abbriged[%zu],hex[%zu]:%s", length, i, hexed);
+  // }
+}
+
+void
+print_hex(const krpc::Transaction &tx) {
+  print_hex(tx.id, tx.length);
 }
 
 bool

@@ -1,5 +1,5 @@
-#include "Log.h"
 #include "dht.h"
+#include "Log.h"
 #include "timeout.h"
 #include <algorithm>
 #include <buffer/CircularBuffer.h>
@@ -525,8 +525,8 @@ Lbah:
 }
 
 static Node *
-bucket_insert(DHT &dht, Bucket &bucket, const Node &c, //
-              bool eager, /*OUT*/ bool &replaced) noexcept {
+bucket_insert(DHT &self, Bucket &bucket, const Node &c, bool eager,
+              /*OUT*/ bool &replaced) noexcept {
   replaced = false;
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
@@ -542,9 +542,9 @@ bucket_insert(DHT &dht, Bucket &bucket, const Node &c, //
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
       assertx(is_valid(contact));
-      if (!is_good(dht, contact)) {
-        timeout::unlink(dht, &contact);
-        reset(dht, contact);
+      if (!is_good(self, contact)) {
+        timeout::unlink(self, &contact);
+        reset(self, contact);
         assertx(!is_valid(contact));
 
         contact = c;
@@ -559,8 +559,8 @@ bucket_insert(DHT &dht, Bucket &bucket, const Node &c, //
 }
 
 static Node *
-table_insert(DHT &self, RoutingTable &table, const Node &c, //
-             bool eager, /*OUT*/ bool &replaced) noexcept {
+table_insert(DHT &self, RoutingTable &table, const Node &c, bool eager,
+             /*OUT*/ bool &replaced) noexcept {
   RoutingTable *it = &table;
   while (it) {
     Node *result = bucket_insert(self, it->bucket, c, eager, replaced);
@@ -1067,7 +1067,7 @@ Lstart:
       // XXX calc can_split when inserting into bucket
       // printf("can_split(%zu): ", leaf->depth);
       if (can_split(*leaf, leaf->depth)) {
-        printf("split[depth:%zu]\n", leaf->depth);
+        printf("split[depth:%zd]\n", leaf->depth);
         // printf("split[%zu]\n", leaf->depth);
         assertx(!leaf->in_tree);
 

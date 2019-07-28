@@ -1,5 +1,5 @@
 #include "Log.h"
-#include "cstdio"
+#include <util.h>
 #include <bencode_print.h>
 #include <cstring>
 #include <encode/hex.h>
@@ -46,33 +46,7 @@ print_time(const dht::MessageContext &ctx) noexcept {
   return print_time(ctx.dht);
 }
 
-static void
-print_hex(const sp::byte *arr, std::size_t length) {
-  /* TODO convert to use hex::encode */
-  const std::size_t hex_cap = 4096;
-  char hexed[hex_cap + 1] = {0};
 
-  std::size_t hex_length = 0;
-  std::size_t i = 0;
-  while (i < length && hex_length < hex_cap) {
-    char buff[128];
-    std::size_t buffLength = sprintf(buff, "%02x", arr[i++]);
-    std::memcpy(hexed + hex_length, buff, buffLength);
-
-    hex_length += buffLength;
-  }
-
-  if (i == length) {
-    printf("%s", hexed);
-  } else {
-    printf("abbriged[%zu],hex[%zu]:%s", length, i, hexed);
-  }
-}
-
-static void
-print_hex(const krpc::Transaction &tx) {
-  print_hex(tx.id, tx.length);
-}
 
 namespace receive {
 /*log::receive*/
@@ -225,7 +199,7 @@ known_tx(dht::MessageContext &ctx) noexcept {
   print_time(ctx);
   printf("known transaction[");
   auto &tx = ctx.transaction;
-  print_hex(tx.id, tx.length);
+  dht::print_hex(tx.id, tx.length);
   printf("]\n");
 #endif
 }
@@ -238,7 +212,7 @@ unknown_tx(dht::MessageContext &ctx, const sp::Buffer &) noexcept {
   print_time(ctx);
   printf("unknow transaction[");
   auto &tx = ctx.transaction;
-  print_hex(tx.id, tx.length);
+  dht::print_hex(tx.id, tx.length);
   printf("]\n");
 }
 } // namespace res
@@ -255,7 +229,7 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
 
   print_time(stderr, ctx.now);
   fprintf(stderr, "parse error|%s|\n", msg);
-  // print_hex(copy.raw + copy.pos, copy.length);
+  // dht::print_hex(copy.raw + copy.pos, copy.length);
   bencode_print_out(stderr);
   bencode_print(copy);
   bencode_print_out(stdout);
@@ -288,9 +262,9 @@ void
 peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
   // TODO fix better print
-  printf("awake peer_db vote timeout[%" PRIu64 "ms] next date:",
-         std::uint64_t(timeout));
-  print_time(stdout, ctx.timeout_peer_next);
+  // printf("awake peer_db vote timeout[%" PRIu64 "ms] next date:",
+  //        std::uint64_t(timeout));
+  // print_time(stdout, ctx.timeout_peer_next);
   printf("\n");
 }
 
@@ -349,7 +323,7 @@ find_node(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   to_string(contact, remote, sizeof(remote));
 
   // auto &tx = ctx.transaction;
-  // print_hex(tx.id, tx.length);
+  // dht::print_hex(tx.id, tx.length);
 
   printf("transmit find_node[%s],res[%s],count[%zu]\n", remote,
          to_string(result), s.sent.request.find_node);
@@ -369,7 +343,7 @@ get_peers(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   to_string(contact, remote, sizeof(remote));
 
   // auto &tx = ctx.transaction;
-  // print_hex(tx.id, tx.length);
+  // dht::print_hex(tx.id, tx.length);
 
   printf("transmit get_peers[%s],res[%s],count[%zu]\n", remote,
          to_string(result), s.sent.request.get_peers);
@@ -404,7 +378,7 @@ ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
   print_time(ctx);
   printf("\033[91mping response timeout\033[0m transaction[");
-  print_hex(tx);
+  dht::print_hex(tx);
   printf("] sent: ");
   print_time(stdout, sent);
   printf("seq[%zu]\n", tout++);
@@ -418,7 +392,7 @@ find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
   print_time(ctx);
   printf("\033[91mfind_node response timeout\033[0m transaction[");
-  print_hex(tx);
+  dht::print_hex(tx);
   printf("] sent: ");
   print_time(stdout, sent);
   printf("seq[%zu]\n", tout++);
@@ -432,7 +406,7 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
   print_time(ctx);
   printf("\033[91mget_peers response timeout\033[0m transaction[");
-  print_hex(tx);
+  dht::print_hex(tx);
   printf("] sent: ");
   print_time(stdout, sent);
   printf("seq[%zu]\n", tout++);
@@ -459,7 +433,7 @@ insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
 #ifdef LOG_ROUTING_INSERT
   print_time(ctx);
   printf("routing table insert nodeId[");
-  print_hex(d.id.id, sizeof(d.id.id));
+  dht::print_hex(d.id.id, sizeof(d.id.id));
   printf("]\n");
 #endif
   (void)ctx;
@@ -471,7 +445,7 @@ can_not_insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
 #ifdef LOG_ROUTING_CAN_NOT_INSERT
   print_time(ctx);
   printf("routing table can not insert nodeId[");
-  print_hex(d.id.id, sizeof(d.id.id));
+  dht::print_hex(d.id.id, sizeof(d.id.id));
   printf("]\n");
 #endif
   (void)ctx;
@@ -486,7 +460,7 @@ void
 insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
   print_time(ctx);
   printf("peer db insert infohash[");
-  print_hex(h.id, sizeof(h.id));
+  dht::print_hex(h.id, sizeof(h.id));
   printf("]\n");
 }
 
@@ -498,7 +472,7 @@ void
 retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
   print_time(ctx);
   printf("retire search[");
-  print_hex(current.search.id, sizeof(current.search.id));
+  dht::print_hex(current.search.id, sizeof(current.search.id));
   printf("]\n");
 }
 

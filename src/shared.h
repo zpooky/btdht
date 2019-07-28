@@ -27,7 +27,7 @@ struct MessageContext;
 struct DHT;
 } // namespace dht
 
-//---------------------------
+//=====================================
 namespace krpc {
 // krpc::ParseContext
 struct ParseContext {
@@ -49,7 +49,7 @@ struct ParseContext {
 
 } // namespace krpc
 
-//---------------------------
+//=====================================
 namespace tx {
 struct Tx;
 
@@ -106,6 +106,7 @@ operator>(const Tx &, const Tx &) noexcept;
 
 } // namespace tx
 
+//=====================================
 namespace dht {
 // dht::Client
 struct Client {
@@ -123,7 +124,7 @@ struct Client {
 
 } // namespace dht
 
-//---------------------------
+//=====================================
 namespace dht {
 // dht::Config
 struct Config {
@@ -133,6 +134,7 @@ struct Config {
   /* Node refresh interval
    */
   Timeout refresh_interval;
+  /* the max age of a peer db entry before it gets evicted */
   sp::Minutes peer_age_refresh;
   sp::Minutes token_max_age;
   /* Max age of transaction created for outgoing request. Used when reclaiming
@@ -167,36 +169,34 @@ struct Config {
   Config() noexcept;
 };
 
+//=====================================
 // dht::Peer
 struct Peer {
   Contact contact;
   Timestamp activity;
-  // {
-  Peer *next;
-  // }
+  // // {
+  // Peer *next;
+  // // }
   // {
   Peer *timeout_priv;
   Peer *timeout_next;
   // }
   Peer(Ipv4, Port, Timestamp) noexcept;
-  Peer(const Contact &, Timestamp, Peer *next) noexcept;
+  Peer(const Contact &, Timestamp) noexcept;
   Peer() noexcept;
 
   bool
   operator==(const Contact &) const noexcept;
+
+  bool
+  operator>(const Contact &) const noexcept;
+
+  bool
+  operator>(const Peer &) const noexcept;
 };
 
-template <typename F>
-static bool
-for_all(const dht::Peer *l, F f) noexcept {
-  while (l) {
-    if (!f(*l)) {
-      return false;
-    }
-    l = l->next;
-  }
-  return true;
-}
+bool
+operator>(const Contact &, const Peer &) noexcept;
 
 Timestamp
 activity(const Node &) noexcept;
@@ -204,6 +204,7 @@ activity(const Node &) noexcept;
 Timestamp
 activity(const Peer &) noexcept;
 
+//=====================================
 /*dht::Bucket*/
 struct Bucket {
   static constexpr std::size_t K = 32;
@@ -267,6 +268,7 @@ for_each(const Bucket &b, F f) noexcept {
   }
 }
 
+//=====================================
 // dht::RoutingTable
 struct RoutingTable {
   ssize_t depth;
@@ -328,12 +330,13 @@ for_all_node(const RoutingTable *it, F f) noexcept {
   });
 }
 
+//=====================================
 // dht::KeyValue
 struct KeyValue {
-  Peer *peers;
   Infohash id;
+  sp::UinArray<Peer> peers;
   //
-  KeyValue(const Infohash &) noexcept;
+  explicit KeyValue(const Infohash &) noexcept;
 
   bool
   operator>(const Infohash &) const noexcept;
@@ -345,22 +348,14 @@ struct KeyValue {
 bool
 operator>(const Infohash &, const KeyValue &) noexcept;
 
-template <typename F>
-bool
-for_all(const dht::KeyValue *it, F f) noexcept {
-  bool ret = true;
-  while (it && ret) {
-    ret = f(*it);
-  }
-  return ret;
-} // bencode::e::for_all()
-
+//=====================================
 // dht::log
 struct Log {
   sp::byte id[4];
   Log() noexcept;
 };
 
+//=====================================
 struct StatTrafic {
   std::size_t ping;
   std::size_t find_node;
@@ -392,6 +387,7 @@ struct Stat {
   Stat() noexcept;
 };
 
+//=====================================
 struct SearchContext {
   // ref_cnt is ok since we are in a single threaded ctx
   // incremented for each successfull client::get_peers
@@ -494,6 +490,7 @@ operator>(const Search &, const Search &) noexcept;
 bool
 operator>(const Search &, const Infohash &) noexcept;
 
+//=====================================
 // dht::DHT
 struct DHT {
   static const std::size_t token_table = 64;
@@ -512,7 +509,7 @@ struct DHT {
   // peer-lookup db {{{
   avl::Tree<KeyValue> lookup_table;
   Peer *timeout_peer;
-  Timestamp timeout_peer_next;
+  // Timestamp timeout_peer_next;
   //}}}
 
   // routing-table {{{
@@ -572,6 +569,7 @@ struct DHT {
   ~DHT();
 };
 
+//=====================================
 // dht::MessageContext
 struct MessageContext {
   const char *query;
@@ -588,6 +586,8 @@ struct MessageContext {
   MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &,
                  Contact) noexcept;
 };
+
+//=====================================
 } // namespace dht
 
 #endif

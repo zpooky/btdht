@@ -237,11 +237,6 @@ size(const Contact &p) noexcept {
 }
 
 static std::size_t
-size(const dht::Peer &p) noexcept {
-  return size(p.contact);
-}
-
-static std::size_t
 size(const dht::Node &p) noexcept {
   return sizeof(p.id.id) + size(p.contact);
 }
@@ -257,16 +252,6 @@ for_all(const dht::Node **list, std::size_t length, F f) noexcept {
     }
   }
   return true;
-}
-
-static std::size_t
-size(const dht::Peer *list) noexcept {
-  std::size_t result = 0;
-  dht::for_all(list, [&result](const dht::Peer &ls) {
-    result += size(ls);
-    return true;
-  });
-  return result;
 }
 
 static std::size_t
@@ -289,210 +274,143 @@ size(const sp::list<T> &list) noexcept {
   return result;
 }
 
-template <typename Buffer>
-static bool
-value_contact(Buffer &buffer, const Contact &p) noexcept {
-  Ipv4 ip = htonl(p.ip.ipv4);
-  Port port = htons(p.port);
-  if (!bencode::e<Buffer>::value(buffer, "ip")) {
-    return false;
-  }
-  if (!bencode::e<Buffer>::value(buffer, ip)) {
-    return false;
-  }
+//=====================================
+// template <typename Buffer>
+// bool
+// bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
+//                                  const sp::UinArray<dht::Peer> &list)
+//                                  noexcept {
+//   if (!bencode::e<Buffer>::value(buf, key)) {
+//     return false;
+//   }
+//
+//   auto cb = [](Buffer &b, void *arg) {
+//     auto &l = *((const sp::UinArray<dht::Peer> *)arg);
+//
+//     return for_all(l, [&b](const auto &ls) {
+//       if (!value(b, ls.contact)) {
+//         return false;
+//       }
+//
+//       return true;
+//     });
+//   };
+//
+//   return bencode::e<Buffer>::value(buf, length(list), (void *)&list, cb);
+// } // bencode::e::pair_compact()
+//
+// template <typename Buffer>
+// bool
+// bencode::e<Buffer>::value(Buffer &b, std::size_t length, void *closure,
+//                           bool (*f)(Buffer &, void *)) noexcept {
+//   if (!raw_numeric(b, "%zu", length)) {
+//     return false;
+//   }
+//
+//   if (!write(b, ':')) {
+//     return false;
+//   }
+//
+//   if (!f(b, closure)) {
+//     return false;
+//   }
+//
+//   return true;
+// }
+//
+// //=====================================
+// template <typename Buffer>
+// static bool
+// write(Buffer &b, const Contact &) noexcept {
+//   //TODO
+// }
+//
+// template <typename Buffer>
+// bool
+// bencode::e<Buffer>::value_compact(Buffer &b, const dht::Node &node) noexcept
+// {
+//   if (!write(b, node.id.id, sizeof(node.id.id))) {
+//     return false;
+//   }
+//
+//   if (!write(b, node.contact)) {
+//     return false;
+//   }
+//
+//   return true;
+// }
+//
+// template <typename Buffer>
+// bool
+// bencode::e<Buffer>::value(Buffer &b, const dht::Node &value) noexcept {
+//   return bencode::e<Buffer>::dict(b, [&value](Buffer &buffer) {
+//     if (!bencode::e<Buffer>::value(buffer, "id")) {
+//       return false;
+//     }
+//     if (!bencode::e<Buffer>::value(buffer, value.id.id, sizeof(value.id.id)))
+//     {
+//       return false;
+//     }
+//
+//     if (!value_contact(buffer, value.contact)) {
+//       return false;
+//     }
+//
+//     return true;
+//   });
+// }
 
-  if (!bencode::e<Buffer>::value(buffer, "port")) {
-    return false;
-  }
-  if (!bencode::e<Buffer>::value(buffer, port)) {
-    return false;
-  }
-
-  return true;
-}
-
-template <typename Buffer>
-bool
-bencode::e<Buffer>::value(Buffer &b, const Contact &p) noexcept {
-  // TODO
-  assertx(p.ip.type == IpType::IPV4);
-
-  return bencode::e<Buffer>::dict(b, [&p](Buffer &buffer) {
-    //
-    return value_contact(buffer, p);
-  });
-} // bencode::e::value()
-
-template <typename Buffer>
-bool
-bencode::e<Buffer>::pair(Buffer &buf, const char *key,
-                         const Contact &p) noexcept {
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  return value(buf, p);
-} // bencode::e::pair()
-
-template <typename Buffer>
-bool
-bencode::e<Buffer>::value(Buffer &buf, const sp::list<Contact> &list) noexcept {
-  // used by dump
-  std::size_t len = size(list);
-
-  auto f = [](Buffer &b, void *a) {
-    const auto *l = (sp::list<Contact> *)a;
-
-    return for_all(*l, [&b](const auto &value) {
-      if (!bencode::e<Buffer>::value(b, value)) {
-        return false;
-      }
-      return true;
-    });
-  };
-
-  return bencode::e<Buffer>::value(buf, len, (void *)&list, f);
-} // bencode::e::value()
-
-template <typename Buffer>
-bool
-bencode::e<Buffer>::pair(Buffer &buf, const char *key,
-                         const sp::list<Contact> &t) noexcept {
-  // used by dump
-  if (!value(buf, key)) {
-    return false;
-  }
-
-  return value(buf, t);
-} // bencode::e::pair()
+// template <typename Buffer>
+// bool
+// bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
+//                                  const sp::list<dht::Node> &list) noexcept {
+//   if (!bencode::e<Buffer>::value(buf, key)) {
+//     return false;
+//   }
+//   /*
+//    * id +contact
+//    */
+//   std::size_t len = size(list);
+//
+//   auto f = [](Buffer &b, void *a) {
+//     const auto *l = (sp::list<dht::Node> *)a;
+//
+//     return for_all(*l,
+//                    [&b](const auto &value) { //
+//                      return value_compact(b, value);
+//                    });
+//   };
+//
+//   return bencode::e<Buffer>::value(buf, len, (void *)&list, f);
+// } // bencode::e::pair()
 
 //=====================================
-
-template <typename Buffer>
-bool
-bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
-                                 const dht::Peer *list) noexcept {
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  std::size_t len = size(list);
-  return bencode::e<Buffer>::value(
-      buf, len, (void *)list, [](Buffer &b, void *arg) {
-        const dht::Peer *l = (dht::Peer *)arg;
-
-        return dht::for_all(l, [&b](const auto &ls) {
-          if (!value(b, ls.contact)) {
-            return false;
-          }
-
-          return true;
-        });
-      });
-} // bencode::e::pair_compact()
-
-template <typename Buffer>
-bool
-bencode::e<Buffer>::value(Buffer &b, std::size_t length, void *closure,
-                          bool (*f)(Buffer &, void *)) noexcept {
-  if (!raw_numeric(b, "%zu", length)) {
-    return false;
-  }
-
-  if (!write(b, ':')) {
-    return false;
-  }
-
-  if (!f(b, closure)) {
-    return false;
-  }
-
-  return true;
-}
-
-//=====================================
-template <typename Buffer>
-bool
-bencode::e<Buffer>::value_compact(Buffer &b, const dht::Node &node) noexcept {
-  if (!write(b, node.id.id, sizeof(node.id.id))) {
-    return false;
-  }
-
-  if (!value(b, node.contact)) {
-    return false;
-  }
-
-  return true;
-}
-
-template <typename Buffer>
-bool
-bencode::e<Buffer>::value(Buffer &b, const dht::Node &value) noexcept {
-  return bencode::e<Buffer>::dict(b, [&value](Buffer &buffer) {
-    if (!bencode::e<Buffer>::value(buffer, "id")) {
-      return false;
-    }
-    if (!bencode::e<Buffer>::value(buffer, value.id.id, sizeof(value.id.id))) {
-      return false;
-    }
-
-    if (!value_contact(buffer, value.contact)) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
-template <typename Buffer>
-bool
-bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
-                                 const sp::list<dht::Node> &list) noexcept {
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-  /*
-   * id +contact
-   */
-  std::size_t len = size(list);
-
-  auto f = [](Buffer &b, void *a) {
-    const auto *l = (sp::list<dht::Node> *)a;
-
-    return for_all(*l,
-                   [&b](const auto &value) { return value_compact(b, value); });
-  };
-
-  return bencode::e<Buffer>::value(buf, len, (void *)&list, f);
-} // bencode::e::pair()
-
-//=====================================
-template <typename Buffer>
-bool
-bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
-                                 const dht::Node **list,
-                                 std::size_t sz) noexcept {
-
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  std::size_t len = size(list, sz);
-  std::tuple<const dht::Node **, std::size_t> arg(list, sz);
-
-  return bencode::e<Buffer>::value(buf, len, &arg, [](auto &b, void *a) {
-    auto targ = (std::tuple<const dht::Node **, std::size_t> *)a;
-
-    auto f = [&b](const auto &value) {
-      if (!bencode::e<Buffer>::value(b, value)) {
-        return false;
-      }
-      return true;
-    };
-
-    return for_all(std::get<0>(*targ), std::get<1>(*targ), f);
-  });
-} // bencode::e::pair_compact()
+// template <typename Buffer>
+// bool
+// bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
+//                                  const dht::Node **list,
+//                                  std::size_t sz) noexcept {
+//
+//   if (!bencode::e<Buffer>::value(buf, key)) {
+//     return false;
+//   }
+//
+//   std::size_t len = size(list, sz);
+//   std::tuple<const dht::Node **, std::size_t> arg(list, sz);
+//
+//   return bencode::e<Buffer>::value(buf, len, &arg, [](auto &b, void *a) {
+//     auto targ = (std::tuple<const dht::Node **, std::size_t> *)a;
+//
+//     auto f = [&b](const auto &value) {
+//       if (!bencode::e<Buffer>::value(b, value)) {
+//         return false;
+//       }
+//       return true;
+//     };
+//
+//     return for_all(std::get<0>(*targ), std::get<1>(*targ), f);
+//   });
+// } // bencode::e::pair_compact()
 
 //=====================================
 //====Private==========================
@@ -601,7 +519,7 @@ priv::e<Buffer>::value(Buffer &buf, const dht::Peer &t) noexcept {
     if (!bencode::e<Buffer>::value(b, "contact")) {
       return false;
     }
-    if (!bencode::e<Buffer>::value(b, t.contact)) {
+    if (!bencode::priv::e<Buffer>::value(b, t.contact)) {
       return false;
     }
 
@@ -638,22 +556,21 @@ priv::e<Buffer>::value(Buffer &buf, const dht::KeyValue &t) noexcept {
   });
 } // bencode::priv::e::value()
 
-template <typename Buffer>
-bool
-priv::e<Buffer>::pair(Buffer &buf, const char *key,
-                      const dht::KeyValue *t) noexcept {
-  // used by dump
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  return bencode::e<Buffer>::list(buf, (void *)t, [](Buffer &b, void *arg) {
-    const auto *a = (const dht::KeyValue *)arg;
-    return for_all(a, [&b](const dht::KeyValue &it) { //
-      return value(b, it);
-    });
-  });
-} // bencode::priv::e::pair()
+// template <typename Buffer>
+// bool
+// priv::e<Buffer>::pair(Buffer &buf, const char *key,
+//                       const dht::KeyValue &t) noexcept {
+//   // used by dump
+//   if (!bencode::e<Buffer>::value(buf, key)) {
+//     return false;
+//   }
+//
+//   if (!bencode::e<Buffer>::value(buf, t)) {
+//     return false;
+//   }
+//
+//   return true;
+// } // bencode::priv::e::pair()
 
 //=====================================
 template <typename Buffer>
@@ -716,6 +633,52 @@ priv::e<Buffer>::pair(Buffer &buf, const char *key,
     return true;
   });
 }
+
+//=====================================
+template <typename Buffer>
+static bool
+value_contact(Buffer &buffer, const Contact &p) noexcept {
+  Ipv4 ip = htonl(p.ip.ipv4);
+  Port port = htons(p.port);
+  if (!bencode::e<Buffer>::value(buffer, "ipv4")) {
+    return false;
+  }
+  if (!bencode::e<Buffer>::value(buffer, ip)) {
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::value(buffer, "port")) {
+    return false;
+  }
+  if (!bencode::e<Buffer>::value(buffer, port)) {
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
+priv::e<Buffer>::value(Buffer &b, const Contact &p) noexcept {
+  // TODO
+  assertx(p.ip.type == IpType::IPV4);
+
+  return bencode::e<Buffer>::dict(b, [&p](Buffer &buffer) {
+    //
+    return value_contact(buffer, p);
+  });
+} // bencode::e::value()
+
+template <typename Buffer>
+bool
+priv::e<Buffer>::pair(Buffer &buf, const char *key, const Contact &p) noexcept {
+  if (!bencode::e<Buffer>::value(buf, key)) {
+    return false;
+  }
+
+  return value(buf, p);
+} // bencode::e::pair()
+
 } // namespace bencode
 
 //=====================================
