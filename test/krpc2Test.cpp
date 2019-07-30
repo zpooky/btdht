@@ -19,7 +19,6 @@ TEST(krpc2Test, get_peers) {
   assertx(std::get<1>(sctx_t));
   auto sctx = std::get<0>(sctx_t);
 
-
   unsigned char raw[1024];
   sp::Buffer out(raw);
   Contact peer;
@@ -76,7 +75,7 @@ TEST(krpc2Test, get_peers) {
     // return true;
   };
 
-  krpc::ParseContext pctx(in);
+  krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -138,7 +137,7 @@ TEST(krpc2Test, find_node) {
   };
   dht.active_searches++;
 
-  krpc::ParseContext pctx(in);
+  krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -187,7 +186,7 @@ TEST(krpc2Test, find_node2) {
   };
   dht.active_searches++;
 
-  krpc::ParseContext pctx(in);
+  krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -229,7 +228,7 @@ TEST(krpc2Test, ping) {
   };
   dht.active_searches++;
 
-  krpc::ParseContext pctx(in);
+  krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -278,7 +277,7 @@ TEST(krpc2Test, xxx) {
   };
   dht.active_searches++;
 
-  krpc::ParseContext pctx(in);
+  krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -382,6 +381,6 @@ TEST(krpc2Test, get_peers3) {
   };
   dht.active_searches++;
 
-  krpc::ParseContext pctx(in);
+  krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }

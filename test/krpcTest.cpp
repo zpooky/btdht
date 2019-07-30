@@ -41,12 +41,17 @@ TEST(krpcTest, test_ping) {
   krpc::Transaction t;
   transaction(t);
 
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, listen, r);
+
   {
     sp::Buffer buff{b};
     ASSERT_TRUE(krpc::request::ping(buff, t, id));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(buff);
+    krpc::ParseContext ctx(dht, buff);
     test_request(ctx, [&id](sp::Buffer &d) {
       dht::NodeId sender;
       if (!bencode::d::pair(d, "id", sender.id)) {
@@ -66,7 +71,7 @@ TEST(krpcTest, test_ping) {
     ASSERT_TRUE(krpc::response::ping(buff, t, id));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(buff);
+    krpc::ParseContext ctx(dht, buff);
     test_response(ctx, [&id](sp::Buffer &d) {
       dht::NodeId sender;
       if (!bencode::d::pair(d, "id", sender.id)) {
@@ -92,12 +97,17 @@ TEST(krpcTest, test_find_node) {
   krpc::Transaction t;
   transaction(t);
 
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, listen, r);
+
   { //
     sp::Buffer buff{b};
     ASSERT_TRUE(krpc::request::find_node(buff, t, id, id));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(buff);
+    krpc::ParseContext ctx(dht, buff);
     test_request(ctx, [&id](sp::Buffer &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
@@ -136,7 +146,7 @@ TEST(krpcTest, test_find_node) {
     sp::flip(buff);
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
 
-    krpc::ParseContext ctx(buff);
+    krpc::ParseContext ctx(dht, buff);
     test_response(ctx, [&id, &in](sp::Buffer &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
@@ -144,8 +154,7 @@ TEST(krpcTest, test_find_node) {
       }
       assert_eq(sender.id, id.id);
       //
-      sp::list<dht::Node> outList;
-      sp::init(outList, 8);
+      sp::UinStaticArray<dht::IdContact, 256> outList;
       if (!bencode::d::nodes(p, "target", outList)) {
         return false;
       }
@@ -163,6 +172,11 @@ TEST(krpcTest, test_get_peers) {
   sp::byte b[2048] = {0};
   dht::NodeId id;
   nodeId(id);
+
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, listen, r);
 
   krpc::Transaction t;
   transaction(t);
@@ -202,7 +216,7 @@ TEST(krpcTest, test_get_peers) {
 
     // bencode_print(p);
     // printf("asd\n\n\n\n\n");
-    krpc::ParseContext ctx(buff);
+    krpc::ParseContext ctx(dht, buff);
     test_response(ctx, [&id, &in, &token](auto &p) { //
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
@@ -219,8 +233,8 @@ TEST(krpcTest, test_get_peers) {
       assert_eq(oToken, token);
 
       /*closes K nodes*/
-      sp::list<dht::Node> outNodes;
-      sp::init(outNodes, 8);
+      sp::UinStaticArray<dht::IdContact, 256> outNodes;
+
       if (!bencode::d::nodes(p, "nodes", outNodes)) {
         return false;
       }
@@ -238,7 +252,8 @@ TEST(krpcTest, test_get_peers) {
     sp::Buffer buff{b};
 
     dht::Token token; // TODO
-    dht::Peer peer[16];
+    // dht:: *peer[16] = {nullptr};
+    sp::UinStaticArray<dht::Peer, 256> peer;
 
     ASSERT_TRUE(krpc::response::get_peers(buff, t, id, token, peer));
     sp::flip(buff);
@@ -254,6 +269,11 @@ TEST(krpcTest, test_anounce_peer) {
   krpc::Transaction t;
   transaction(t);
 
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, listen, r);
+
   {
     dht::Infohash infohash;
     Port port = 64123;
@@ -267,7 +287,7 @@ TEST(krpcTest, test_anounce_peer) {
                                              infohash, port, token));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(buff);
+    krpc::ParseContext ctx(dht, buff);
     test_request(ctx,
                  [&id, implied_port, infohash, port, token](sp::Buffer &p) {
                    dht::NodeId sender;
@@ -313,7 +333,7 @@ TEST(krpcTest, test_anounce_peer) {
     ASSERT_TRUE(krpc::response::announce_peer(buff, t, id));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(buff);
+    krpc::ParseContext ctx(dht, buff);
     test_response(ctx, [&id](sp::Buffer &p) { //
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
@@ -1743,6 +1763,10 @@ TEST(krpcTest, print_error_debug) {
 }
 
 TEST(krpcTest, print_find_node_debug) {
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, listen, r);
   // const char hex[] =
   //     "64313a656c693230336531383a496e76616c696420606964272076616"
   //     "c756565313a74343a6569d4a3313a76343a6c740d60313a79313a6565";
@@ -2065,7 +2089,7 @@ TEST(krpcTest, print_find_node_debug) {
       }
 
       sp::Buffer copy(buffer);
-      krpc::ParseContext ctx(copy);
+      krpc::ParseContext ctx(dht, copy);
       test_response(ctx, [](auto &p) {
         bool b_id = false;
         bool b_n = false;
@@ -2076,8 +2100,7 @@ TEST(krpcTest, print_find_node_debug) {
         dht::NodeId id;
         dht::Token token;
 
-        sp::list<dht::Node> nodes;
-        init(nodes, 20);
+        sp::UinStaticArray<dht::IdContact, 256> nodes;
 
         std::uint64_t p_param = 0;
 
@@ -2094,7 +2117,7 @@ TEST(krpcTest, print_find_node_debug) {
 
         // optional
         if (!b_n) {
-          sp::clear(nodes);
+          clear(nodes);
           if (bencode::d::nodes(p, "nodes", nodes)) {
             b_n = true;
             goto Lstart;
@@ -2127,6 +2150,10 @@ TEST(krpcTest, print_find_node_debug) {
 }
 
 TEST(krpcTest, debug) {
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, listen, r);
   // const char hex[] =
   // "64313a7264323a696432303a17323a78dac46ada7f7b6d886fb28da"
   //                    "0cd4ae253323a6970"
@@ -2499,9 +2526,7 @@ TEST(krpcTest, debug) {
 
         dht::NodeId id;
 
-        sp::list<dht::Node> nodes;
-        init(nodes, 18);
-        sp::clear(nodes);
+        sp::UinStaticArray<dht::IdContact, 256> nodes;
 
         std::uint64_t p_param = 0;
 
@@ -2551,6 +2576,6 @@ TEST(krpcTest, debug) {
   sp::Buffer in(b);
   in.length = l;
 
-  krpc::ParseContext pctx(in);
+  krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }

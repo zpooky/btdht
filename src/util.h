@@ -329,6 +329,9 @@ struct IdContact {
   IdContact() noexcept;
   IdContact(const NodeId &id, const Contact &contact) noexcept;
 };
+
+const char *
+to_string(const IdContact &) noexcept;
 } // namespace dht
 
 //=====================================

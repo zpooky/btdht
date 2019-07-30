@@ -100,7 +100,8 @@ struct e {
 
   // //=====================================
   // static bool
-  // pair_compact(Buffer &, const char *key, const sp::UinArray<dht::Peer> &) noexcept;
+  // pair_compact(Buffer &, const char *key, const sp::UinArray<dht::Peer> &)
+  // noexcept;
   //
   // //=====================================
   // static bool

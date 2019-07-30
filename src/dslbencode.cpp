@@ -515,9 +515,8 @@ d::priv::value(sp::Buffer &buf, sp::UinArray<Contact> &res) noexcept {
       }
 
       insert(res, c);
-
-      return true;
     }
+    return true;
   });
 }
 

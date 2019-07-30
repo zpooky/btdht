@@ -533,7 +533,7 @@ pair(sp::Buffer &p, const char *key, dht::Token &token) noexcept {
 } // bencode::d::pair()
 
 bool
-parse_convert(sp::Buffer &b, Contact &result) noexcept {
+raw_ip_or_ip_port(sp::Buffer &b, Contact &result) noexcept {
   if (remaining_read(b) >= (sizeof(Ipv4) + sizeof(Port))) {
     Ipv4 ip = 0;
     Port port = 0;
@@ -581,7 +581,7 @@ pair(sp::Buffer &d, const char *key, Contact &result) noexcept {
 
   sp::Buffer b(val, length);
   b.length = length;
-  if (!parse_convert(b, result)) {
+  if (!raw_ip_or_ip_port(b, result)) {
     d.pos = p;
     printf("%s: %zu\n", val, length);
     return false;

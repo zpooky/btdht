@@ -1,6 +1,6 @@
+#include "dslbencode.h"
 #include "util.h"
 #include "gtest/gtest.h"
-#include "dslbencode.h"
 
 using namespace bencode::e;
 
@@ -132,6 +132,7 @@ TEST(BEncodeTest, list) {
   sp::list<dht::Node> list;
   const std::size_t nodes = 8;
   sp::init(list, nodes);
+
   for (std::size_t i = 0; i < nodes; ++i) {
     dht::Node node;
     nodeId(node.id);
@@ -147,8 +148,7 @@ TEST(BEncodeTest, list) {
     sp::flip(b);
     // print("list    ", b.raw + b.pos, b.length);
 
-    sp::list<dht::Node> outList;
-    sp::init(outList, 16);
+    sp::UinStaticArray<dht::IdContact, 256> outList;
     ASSERT_TRUE(bencode::d::nodes(b, "target", outList));
     assert_eq(list, outList);
   }

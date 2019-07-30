@@ -239,10 +239,7 @@ bool
 pair(sp::Buffer &p, const char *key, dht::Token &) noexcept;
 
 bool
-parse_convert(sp::Buffer &p, Contact &) noexcept;
-
-bool
-pair(sp::Buffer &p, const char *key, Contact &) noexcept;
+raw_ip_or_ip_port(sp::Buffer &p, Contact &) noexcept;
 
 bool
 pair(sp::Buffer &p, const char *key, Contact &) noexcept;

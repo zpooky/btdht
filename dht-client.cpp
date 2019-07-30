@@ -704,22 +704,5 @@ parse_command(int argc, char **argv) {
 //===================================================
 int
 main(int argc, char **args) {
-  // sp::byte in[2048];
-  // sp::byte out[2048];
-
-  // send_dump(r, udp, to, outBuffer);
-  // receive_dump(udp, inBuffer);
-  //
-  // send_ping(r, udp, to, outBuffer);
-  // receive_ping(udp, inBuffer);
-  //
-  // send_get_peers(r, udp, to, outBuffer, search);
-  // dht::Token token = receive_get_peers(udp, inBuffer);
-  //
-  // send_announce_peer(r, udp, to, outBuffer, token, search);
-  // receive_announce_peer(udp, inBuffer);
-
   return parse_command(argc, args);
 }
-
-

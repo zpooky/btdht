@@ -667,6 +667,7 @@ is_valid(const NodeId &id) noexcept {
 }
 } // namespace dht
 
+//=====================================
 namespace dht {
 IdContact::IdContact() noexcept
     : contact{}
@@ -675,6 +676,18 @@ IdContact::IdContact() noexcept
 IdContact::IdContact(const NodeId &iid, const Contact &icon) noexcept
     : contact(icon)
     , id{iid} {
+}
+
+const char *
+to_string(const IdContact &c) noexcept {
+  static char buffer[sizeof(c.id.id) + 1 + INET6_ADDRSTRLEN + 1 + 5];
+  size_t len = sizeof(buffer);
+  hex::encode(c.id.id, sizeof(c.id.id), buffer, len);
+  strcat(buffer, "#");
+  len++;
+  to_string(c.contact, buffer + len, sizeof(buffer) - len);
+
+  return buffer;
 }
 } // namespace dht
 

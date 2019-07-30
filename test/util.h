@@ -95,11 +95,30 @@ assert_eq(const T &first, const T &second) {
   ASSERT_EQ(first, second);
 }
 
-template <typename T>
+// template <typename T>
+// inline static void
+// assert_eq(const sp::list<T> &first, const sp::list<T> &second) {
+//   ASSERT_EQ(length(first), length(second));
+//   // TODO
+// }
+
 inline static void
-assert_eq(const sp::list<T> &first, const sp::list<T> &second) {
+assert_eq(const dht::Node &first, const dht::IdContact &second) {
+  assert_eq(first.id.id, second.id.id);
+  ASSERT_EQ(first.contact.ip, second.contact.ip);
+  ASSERT_EQ(first.contact.port, second.contact.port);
+}
+
+inline static void
+assert_eq(const sp::list<dht::Node> &first,
+          const sp::UinArray<dht::IdContact> &second) {
   ASSERT_EQ(length(first), length(second));
-  // TODO
+
+  size_t idx = 0;
+  for_each(first, [&](auto &node) { //
+    assert_eq(node, second[idx]);
+    ++idx;
+  });
 }
 
 inline static void
@@ -110,13 +129,15 @@ assert_eq2(const dht::Node &first, const dht::Node &second) {
 
 template <std::size_t SIZE>
 inline static void
-assert_eq(const dht::Node *(&first)[SIZE], const sp::list<dht::Node> &second) {
+assert_eq(const dht::Node *(&first)[SIZE],
+          const sp::UinArray<dht::IdContact> &second) {
   ASSERT_EQ(SIZE, length(second));
+
   for (std::size_t i = 0; i < SIZE; ++i) {
     ASSERT_TRUE(first[i]);
-    const dht::Node *s = sp::get(second, i);
+    const auto s = get(second, i);
     ASSERT_TRUE(s);
-    assert_eq2(*first[i], *s);
+    assert_eq(*first[i], *s);
   }
 }
 

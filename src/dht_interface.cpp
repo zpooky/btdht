@@ -88,7 +88,7 @@ Lstart : {
     assertx(!node->timeout_priv);
 
     if (node->good) {
-      if (dht::should_mark_bad(self, *node)) {//TODO ??
+      if (dht::should_mark_bad(self, *node)) { // TODO ??
         node->good = false;
         self.bad_nodes++;
       }
@@ -393,9 +393,7 @@ print_raw(FILE *f, const char *val, std::size_t len) noexcept {
     fprintf(f, "'%.*s': %zu", int(len), val, len);
   } else {
     fprintf(f, "hex[");
-    for (std::size_t i = 0; i < len; ++i) {
-      fprintf(f, "%hhX", (unsigned char)val[i]);
-    }
+    dht::print_hex((const sp::byte *)val, len);
     fprintf(f, "](");
     for (std::size_t i = 0; i < len; ++i) {
       if (ascii::is_printable(val[i])) {
@@ -1043,7 +1041,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
   message(ctx, sender, [&](auto &from) {
     if (db::valid(dht, from, token)) {
       Contact peer(ctx.remote);
-      if (implied_port) {
+      if (implied_port || port == 0) {
         peer.port = ctx.remote.port;
       } else {
         peer.port = port;

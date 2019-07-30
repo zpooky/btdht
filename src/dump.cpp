@@ -84,52 +84,6 @@ dump(const dht::DHT &dht, const char *path) noexcept {
 }
 
 //========================
-template <typename Buffer>
-static bool
-restore_node(Buffer &b, dht::IdContact &out) {
-  assertx(!is_marked(b));
-  return bencode::d<Buffer>::dict(b, [&out](Buffer &buffer) {
-    {
-      assertx(!is_marked(buffer));
-      if (!bencode::d<Buffer>::value(buffer, "id")) {
-        return false;
-      }
-
-      if (!bencode::d<Buffer>::value(buffer, out.id)) {
-        return false;
-      }
-    }
-    {
-      assertx(!is_marked(buffer));
-      if (!bencode::d<Buffer>::value(buffer, "ipv4")) {
-        return false;
-      }
-
-      assertx(!is_marked(buffer));
-      Ipv4 ip = 0;
-      if (!bencode::d<Buffer>::value(buffer, ip)) {
-        return false;
-      }
-      out.contact.ip = ntohl(ip);
-    }
-
-    {
-      assertx(!is_marked(buffer));
-      if (!bencode::d<Buffer>::value(buffer, "port")) {
-        return false;
-      }
-      assertx(!is_marked(buffer));
-      if (!bencode::d<Buffer>::value(buffer, out.contact.port)) {
-        return false;
-      }
-      out.contact.port = ntohs(out.contact.port);
-    }
-
-    assertx(!is_marked(buffer));
-    return true;
-  });
-}
-
 template <typename Buffer, typename Bootstrap>
 static bool
 restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
@@ -160,7 +114,7 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
     assertx(!is_marked(buffer));
     return bencode::d<Buffer>::list(buffer, [&bs, &dht](Buffer &b) {
       dht::IdContact contact;
-      if (!restore_node(b, contact)) {
+      if (!bencode::priv::d<Buffer>::value(b, contact)) {
         return false;
       }
 

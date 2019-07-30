@@ -1,9 +1,15 @@
 #include "bencode_print.h"
 #include "decode_bencode.h"
+#include "util.h"
 #include <buffer/Thing.h>
 #include <cstddef>
 #include <cstdio>
 #include <string/ascii.h>
+
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static FILE *_f = stdout;
 
@@ -25,9 +31,7 @@ print_raw(const char *val, std::size_t len) noexcept {
     fprintf(_f, "%.*s", int(len), val);
   } else {
     fprintf(_f, "hex[");
-    for (std::size_t i = 0; i < len; ++i) {
-      fprintf(_f, "%hhX", (unsigned char)val[i]);
-    }
+    dht::print_hex((const sp::byte *)val, len);
     fprintf(_f, "]: %zu(", len);
     for (std::size_t i = 0; i < len; ++i) {
       if (ascii::is_printable(val[i])) {
@@ -159,11 +163,13 @@ Lretry:
 }
 } // namespace internal
 
+//=====================================
 void
 bencode_print_out(FILE *f) noexcept {
   _f = f;
 }
 
+//=====================================
 template <>
 void
 bencode_print(sp::Buffer &d) noexcept {
@@ -185,6 +191,41 @@ bencode_print(sp::Thing &d) noexcept {
   internal::dict_wildcard(d, 0);
 }
 
+//=====================================
+void
+bencode_print_file(const char *file) noexcept {
+  fd fd{open(file, O_RDONLY)};
+  if (!fd) {
+    assertx(false);
+  }
+
+  struct stat st;
+  memset(&st, 0, sizeof(st));
+  if (fstat(int(fd), &st) < 0) {
+    assertx(false);
+  }
+
+  size_t file_size = (size_t)st.st_size;
+
+  if (!S_ISREG(st.st_mode)) {
+    assertx(false);
+  }
+
+  int prot = PROT_READ;
+  int flags = MAP_SHARED;
+
+  void *raw;
+  if ((raw = mmap(nullptr, file_size, prot, flags, int(fd), 0)) == MAP_FAILED) {
+    assertx(false);
+  }
+  sp::Buffer buf((sp::byte *)raw, file_size);
+  buf.length = file_size;
+  bencode_print(buf);
+
+  munmap(raw, file_size);
+}
+
+//=====================================
 template <typename Buffer>
 bool
 find_entry(Buffer &, const char *key, /*OUT*/ sp::byte *val,
@@ -192,3 +233,5 @@ find_entry(Buffer &, const char *key, /*OUT*/ sp::byte *val,
   // XXX
   return true;
 }
+
+//=====================================

@@ -2,10 +2,18 @@
 #include <dump.h>
 #include <gtest/gtest.h>
 #include <prng/util.h>
+#include <util.h>
+#include <bencode_print.h>
 
 static Contact
 rand_contact(prng::xorshift32 &r) {
-  return Contact(random(r), random(r));
+  return Contact(random(r), Port(random(r)));
+}
+
+TEST(dumpTest, test_hex) {
+  sp::byte buf[1]={'\0'};
+  dht::print_hex(buf,sizeof(buf));
+  // hex::enc
 }
 
 TEST(dumpTest, test) {
@@ -42,10 +50,13 @@ TEST(dumpTest, test) {
   }
   ASSERT_TRUE(sp::dump(dht, file));
 
+  bencode_print_file(file);
+
   dht::DHT restore_dht(sock, self, r);
   ASSERT_TRUE(sp::restore(restore_dht, file));
 
   ASSERT_EQ(dht.id, restore_dht.id);
   const auto K = dht::Bucket::K;
   ASSERT_EQ(K, length(restore_dht.bootstrap));
+  //TODO
 }

@@ -13,11 +13,19 @@ struct d {
   value(Buffer &buf, std::uint64_t &) noexcept;
 
   static bool
+  pair(Buffer &buf, const char *, std::uint64_t &) noexcept;
+  //=====================================
+  static bool
   value(Buffer &buf, std::uint32_t &) noexcept;
 
   static bool
+  pair(Buffer &buf, const char *, std::uint32_t &) noexcept;
+  //=====================================
+  static bool
   value(Buffer &buf, std::uint16_t &) noexcept;
 
+  static bool
+  pair(Buffer &buf, const char *, std::uint16_t &) noexcept;
   //=====================================
   static bool
   value(Buffer &buf, const char *key) noexcept;
@@ -27,6 +35,13 @@ struct d {
 
   static bool
   value(Buffer &buf, char *value, std::size_t &) noexcept;
+
+  //=====================================
+  static bool
+  value(Buffer &buf, Ip &) noexcept;
+
+  static bool
+  pair(Buffer &buf, const char *, Ip &) noexcept;
 
   //=====================================
   static bool
@@ -42,6 +57,9 @@ struct d {
   //=====================================
   static bool
   value(Buffer &, dht::NodeId &) noexcept;
+
+  static bool
+  pair(Buffer &, const char *, dht::NodeId &) noexcept;
 
 private:
   //=====================================
@@ -124,7 +142,26 @@ public:
   //=====================================
 }; // struct bencode::d
 
+//=====================================
+namespace priv {
+template <typename Buffer>
+struct d {
+  //=====================================
+  static bool
+  value(Buffer &buf, dht::IdContact &) noexcept;
+
+  //=====================================
+  static bool
+  value(Buffer &, Contact &) noexcept;
+
+  static bool
+  pair(Buffer &, const char *key, Contact &p) noexcept;
+
+  //=====================================
+};
+} // namespace priv
 } // namespace bencode
+
 } // namespace sp
 
 #endif

@@ -442,13 +442,16 @@ priv::e<Buffer>::value(Buffer &buf, const dht::Node &node) noexcept {
       return false;
     }
 
-    if (!bencode::e<Buffer>::pair(b, "good", node.good)) {
+    if (!bencode::priv::e<Buffer>::pair(b, "contact", node.contact)) {
       return false;
     }
 
-    if (!bencode::e<Buffer>::pair(b, "outstanding", node.outstanding)) {
-      return false;
-    }
+    // if (!bencode::e<Buffer>::pair(b, "good", node.good)) {
+    //   return false;
+    // }
+    // if (!bencode::e<Buffer>::pair(b, "outstanding", node.outstanding)) {
+    //   return false;
+    // }
 
     return true;
   });
