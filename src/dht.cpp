@@ -543,9 +543,7 @@ bucket_insert(DHT &self, Bucket &bucket, const Node &c, bool eager,
       Node &contact = bucket.contacts[i];
       assertx(is_valid(contact));
       if (!is_good(self, contact)) {
-        timeout::unlink(self, &contact);
-        reset(self, contact);
-        assertx(!is_valid(contact));
+        unlink_reset(self, contact);
 
         contact = c;
         assertx(is_valid(contact));
@@ -645,8 +643,8 @@ node_reseat(DHT &self, Node &source, Bucket &dest) noexcept {
 }
 
 static RoutingTable *
-split_transfer(DHT &self, RoutingTable *better, //
-               Bucket &subject, std::size_t level) {
+split_transfer(DHT &self, RoutingTable *better, Bucket &subject,
+               std::size_t level) {
   RoutingTable *better_it = better;
 
   auto should_transfer = [&self, level](const Node &n) {
@@ -994,7 +992,7 @@ compact_RoutingTable(dht::DHT &self) {
     root->next = nullptr;
     root->in_tree = nullptr;
     dealloc_RoutingTable(self, root);
-  }
+  } // while
 } // namespace dht
 
 Node *

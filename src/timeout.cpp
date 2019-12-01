@@ -120,6 +120,9 @@ unlink(dht::DHT &self, dht::Node *contact) noexcept {
 
   unlink(self.timeout_node, contact);
 
+  assertx(!contact->timeout_next);
+  assertx(!contact->timeout_priv);
+
   assertx(debug_is_cycle(self.timeout_node));
 } // timeout::unlink()
 
