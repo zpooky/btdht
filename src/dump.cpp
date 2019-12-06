@@ -11,7 +11,7 @@
 #include <util/assert.h>
 
 namespace sp {
-
+//========================
 template <typename Buffer>
 static bool
 do_dump(Buffer &sink, const dht::DHT &dht, dht::RoutingTable *t) noexcept {
@@ -43,8 +43,6 @@ do_dump(Buffer &sink, const dht::DHT &dht, dht::RoutingTable *t) noexcept {
     };
 
     return bencode::e<Buffer>::list(buffer, /*ARG*/ t, cb);
-
-    // TODO bootstrap
   });
 }
 
@@ -127,7 +125,7 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht,
   });
 
   return true;
-} // namespace sp
+}
 
 static bool
 topup(sp::CircularByteBuffer &b, void *arg) noexcept {
@@ -158,4 +156,5 @@ restore(dht::DHT &dht, const char *file) noexcept {
   return true;
 }
 
+//========================
 } // namespace sp

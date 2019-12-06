@@ -257,11 +257,10 @@ awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
 
   if (result != client::Res::ERR_TOKEN) {
     /* Bootstrap contacts */
-    const dht::NodeId &sid = self.id;
     dht::KContact cur;
-    while (take_head(self.bootstrap, cur)) {
-      dht::KContact *const closure = bootstrap_alloc(self, cur);
-      result = client::find_node(self, out, cur.contact, sid, closure);
+    while (bootstrap_take_head(self, cur)) {
+      auto closure = bootstrap_alloc(self, cur);
+      result = client::find_node(self, out, cur.contact, self.id, closure);
       if (result == client::Res::OK) {
         inc_active_searches();
       } else {
@@ -294,13 +293,13 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
   };
 
   auto good = nodes_good(dht);
-  const auto all = dht::max_routing_nodes(dht);
-  auto look_for = all - good;
+  const uint32_t all = dht::max_routing_nodes(dht);
+  uint32_t look_for = all - good;
 
   const auto cur = percentage(all, good);
   printf("good[%u], total[%u], bad[%u], look_for[%u], "
          "config.seek[%zu%s], "
-         "cur[%zu%s], max[%u], dht.root[%zu], bootstraps[%zu]\n",
+         "cur[%zu%s], max[%u], dht.root[%zd], bootstraps[%zu]\n",
          good, nodes_total(dht), nodes_bad(dht), look_for, //
          dht.config.percentage_seek, "%",                  //
          cur, "%", all, dht.root ? dht.root->depth : 0, length(dht.bootstrap));
@@ -905,7 +904,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     bool b_t = false;
     bool b_n = false;
     bool b_v = false;
-    bool b_ip = false;
+    // bool b_ip = false;
 
     dht::NodeId id;
     dht::Token token;

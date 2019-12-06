@@ -28,6 +28,10 @@ dht::KContact *
 bootstrap_alloc(DHT &, const dht::KContact &cur) noexcept;
 
 //==========================================
+bool
+bootstrap_take_head(DHT &, dht::KContact &out) noexcept;
+
+//==========================================
 } // namespace dht
 
 #endif

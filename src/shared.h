@@ -556,6 +556,12 @@ struct DHT {
   Timestamp upnp_sent;
   // }}}
 
+  //  {{{
+  void (*retire_good)(DHT &, Contact) noexcept = nullptr;
+  void (*topup_bootstrap)(DHT &) noexcept = nullptr;
+  void *cache{nullptr};
+  // }}}
+
   explicit DHT(fd &, const Contact &self, prng::xorshift32 &) noexcept;
 
   DHT(const DHT &) = delete;

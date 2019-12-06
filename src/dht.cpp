@@ -177,12 +177,11 @@ debug_correct_level(const DHT &self) noexcept {
     }
   }
 
-  assertxs(node_cnt == nodes_total(self), //
-           node_cnt, nodes_total(self));
-  assertxs(node_cnt == timeout::debug_count_nodes(self), //
-           node_cnt, timeout::debug_count_nodes(self));
-  assertxs(nodes_good(self) <= nodes_total(self), //
-           nodes_good(self), nodes_total(self));
+  assertxs(node_cnt == nodes_total(self), node_cnt, nodes_total(self));
+  assertxs(node_cnt == timeout::debug_count_nodes(self), node_cnt,
+           timeout::debug_count_nodes(self));
+  assertxs(nodes_good(self) <= nodes_total(self), nodes_good(self),
+           nodes_total(self));
 
   return true;
 }
@@ -365,14 +364,18 @@ reset(DHT &self, Node &contact) noexcept {
   }
 
   contact = Node();
+  assertx(!is_valid(contact));
 }
 
 static void
 unlink_reset(DHT &self, Node &contact) {
   if (is_valid(contact)) {
     timeout::unlink(self, &contact);
-    assertx(!contact.timeout_next);
-    assertx(!contact.timeout_priv);
+
+    if (contact.good) {
+      self.retire_good(self, contact.contact);
+    }
+
     reset(self, contact);
   }
 }
@@ -414,7 +417,6 @@ dequeue_root(DHT &self, RoutingTable *const subject) noexcept {
     auto tot = nodes_total(self);
 
     unlink_reset(self, contact);
-    assertx(!is_valid(contact));
     if (valid) {
       assertxs(nodes_total(self) == tot - 1, nodes_total(self), tot - 1);
     }
@@ -894,15 +896,6 @@ is_good(const DHT &dht, const Node &contact) noexcept {
 
 bool
 init(dht::DHT &dht) noexcept {
-  // if (!sp::init(dht.recycle_contact_list, 64)) {
-  //   return false;
-  // }
-  // if (!sp::init(dht.recycle_value_list, 64)) {
-  //   return false;
-  // }
-  // if (!sp::init(dht.bootstrap_contacts, 8)) {
-  //   return false;
-  // }
   if (!randomize(dht, dht.ip.ip, dht.id)) {
     return false;
   }

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include <bencode.h>
-#include <bootstrap.h>
+#include <cache.h>
 #include <cstdio>
 #include <cstring>
 #include <dht.h>
@@ -21,26 +21,6 @@
 #include <udp.h>
 #include <unistd.h> //read
 #include <upnp_service.h>
-
-
-// get_peers resp str['value': 5, hex[4E11B720F9F028A457FF5745CF3E5B48BF0917E72FBDE8E914E7EC14EA7C7ADE9EE646DC948FE9A95951BC133B2111104E7EB26E33A2695B516CC73A35EA28C9FB85D6E2EAC4EF2C2104E7B0D6AE529049F1F1BBE9EBB3A6DB3C87CE1C2BA99CA83CF4E7807D4285B498E7D147C9DDED355AFE8E58C030D1AE14E798E3F720AD993A4991767B94336696FC45B34F7E1F17BF694E5BD8B5DE5252DC84BFF34EB2C3A4C5BF792B56795C6BB8A84E4516D11E237509F7875168162D119B744CA5BC8F418FE96B](N___ __(_W_WE_>_____~r____N___________F_____YQ__;!__N__&_:&____s_^____]n._N___N____R_I________<_________N__}______}_|____Z__X_0___N____ __:I_v{_3f__E_O~___iN___]_%-_K_4_,:___y+Vy\k__N_Qm__7P_xu___-__tL___A__k)]
-// 2019-07-28 19:21:25|parse error|'get_peers' response missing 'id' and 'token' or ('nodes' or 'values')|
-// d
-//  2:id
-//  20:hex[4E7AA36D825AD96A5D1AFC8318A738457CDDDC2]: 20(N__6_%______1_s_W___)
-//  5:token
-//  20:hex[4E7AA36D825AD96A5D1AFC8318A738457CDDDC2]: 20(N__6_%______1_s_W___)
-//  5:value
-//  208:hex[4E11B720F9F028A457FF5745CF3E5B48BF0917E72FBDE8E914E7EC14EA7C7ADE9EE646DC948FE9A95951BC133B2111104E7EB26E33A2695B516CC73A35EA28C9FB85D6E2EAC4EF2C2104E7B0D6AE529049F1F1BBE9EBB3A6DB3C87CE1C2BA99CA83CF4E7807D4285B498E7D147C9DDED355AFE8E58C030D1AE14E798E3F720AD993A4991767B94336696FC45B34F7E1F17BF694E5BD8B5DE5252DC84BFF34EB2C3A4C5BF792B56795C6BB8A84E4516D11E237509F7875168162D119B744CA5BC8F418FE96B]: 208(N___ __(_W_WE_>_____~r____N___________F_____YQ__;!__N__&_:&____s_^____]n._N___N____R_I________<_________N__}______}_|____Z__X_0___N____ __:I_v{_3f__E_O~___iN___]_%-_K_4_,:___y+Vy\k__N_Qm__7P_xu___-__tL___A__k)
-// e
-
-// 2019-07-28 19:37:28|parse error|'get_peers' response missing 'id' and 'token' or ('nodes' or 'values')|
-// d
-//  2:id
-//  20:hex[A8D63B2AFA6A67B8E850D9809196E0F3D2D073D]: 20(__;*_jg__P________s_)
-//  5:token
-//  8:hex[D2C566FE215FC668]: 8(__f_!__h)
-// e
 
 // TODO !implement peer db timeout logic
 // TODO fix db read logic
@@ -281,74 +261,6 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
   return krpc::d::krpc(pctx, handle);
 }
 
-template <typename T, std::size_t SIZE, typename F>
-static void
-for_each(T (&arr)[SIZE], F f) noexcept {
-  for (std::size_t i = 0; i < SIZE; ++i) {
-    f(arr[i]);
-  }
-}
-
-bool
-setup_bootstrap(dht::DHT &self) noexcept {
-  /*boostrap*/
-  // Contact bs_node(INADDR_ANY, local.port); // TODO
-  const char *bss[] = {
-      // "192.168.1.47:13596",
-      // "127.0.0.1:13596",
-      // "213.65.130.80:13596",
-      // start {
-      "192.168.1.49:51413",   //
-      "192.168.2.14:51413",   //
-      "109.228.170.47:51413", //
-
-      "192.168.0.15:13596",  //
-      "127.0.0.1:13596",     //
-      "192.168.0.113:13596", //
-      "192.168.1.49:13596",  //
-      //
-      "213.174.1.219:13680",  //
-      "90.243.184.9:6881",    //
-      "24.34.3.237:6881",     //
-      "105.99.128.147:40189", //
-      "79.160.16.63:6881",    //
-      "213.174.1.219:13680",  //
-      "24.34.3.237:6881",     //
-      "2.154.168.153:6881",   //
-      "47.198.79.139:50321",  //
-      "94.181.155.240:47661", //
-      "47.198.79.139:50321",  //
-      "213.93.18.70:24896",   //
-      "173.92.231.220:6881",  //
-      "93.80.248.65:8999",    //
-      "95.219.168.133:50321", //
-      "85.247.221.231:19743", //
-      "62.14.189.18:57539",   //
-      //
-      "195.191.186.170:30337",
-      // }
-      //
-      // "0.0.0.0:51413",      //
-      // "192.168.2.14:51413",
-      // "127.0.0.1:51413", "213.65.130.80:51413",
-  };
-
-  for_each(bss, [&self](const char *ip) {
-    Contact bs;
-    if (!to_contact(ip, bs)) {
-      die("parse bootstrap ip failed");
-    }
-
-    assertx(bs.ip.ipv4 > 0);
-    assertx(bs.port > 0);
-
-    bootstrap_insert(self, dht::KContact(0, bs));
-  });
-
-  printf("total bootstrap(%zu)\n", length(self.bootstrap));
-  return true;
-}
-
 // transmission-daemon -er--dht
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
@@ -383,13 +295,17 @@ main(int argc, char **argv) {
     return 3;
   }
 
+  if (!sp::init_cache(*mdht)) {
+    die("failed to init dht");
+    return 3;
+  }
+
   if (!sp::restore(*mdht, options.dump_file)) {
     die("restore failed\n");
   }
 
   printf("node id: %s\n", to_hex(mdht->id));
 
-  printf("bootstrap from db(%zu)\n", length(mdht->bootstrap));
   {
     char str[256] = {0};
     assertx(to_string(mdht->ip, str, sizeof(str)));
@@ -399,10 +315,6 @@ main(int argc, char **argv) {
   }
 
   mdht->now = sp::now();
-
-  if (!setup_bootstrap(*mdht)) {
-    return 1;
-  }
 
   fd poll = setup_epoll(udp, sfd);
   if (!poll) {
@@ -422,8 +334,9 @@ main(int argc, char **argv) {
 
   auto handle_cb = [&](Contact from, sp::Buffer &in, sp::Buffer &out,
                        Timestamp now) {
-    mdht->last_activity =
-        mdht->last_activity == Timestamp(0) ? now : mdht->last_activity;
+    if (mdht->last_activity == Timestamp(0)) {
+      mdht->last_activity = now;
+    }
     mdht->now = now;
 
     const sp::Buffer in_view(in);
@@ -455,7 +368,6 @@ main(int argc, char **argv) {
     printf("signal: %s: %d\n", strsignal(info.ssi_signo), info.ssi_signo);
 
     if (mdht) {
-      // TODO only if is warmed up so we are not
       if (!sp::dump(*mdht, options.dump_file)) {
         return 2;
       }

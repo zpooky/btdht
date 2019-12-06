@@ -43,16 +43,22 @@ bootstrap_reset(DHT &self) noexcept {
 void
 bootstrap_reclaim(DHT &, dht::KContact *in) noexcept {
   assertx(in);
-  assertx(in->contact.port != 0);
   delete in;
 }
 
 //==========================================
 dht::KContact *
 bootstrap_alloc(DHT &, const dht::KContact &cur) noexcept {
-  assertx(cur.contact.port != 0);
   return new dht::KContact(cur);
 }
 
 //==========================================
+bool
+bootstrap_take_head(DHT &self, dht::KContact &out) noexcept {
+  if (is_empty(self.bootstrap)) {
+    self.topup_bootstrap(self);
+  }
+  return take_head(self.bootstrap, out);
+}
+
 } // namespace dht
