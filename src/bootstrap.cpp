@@ -35,8 +35,7 @@ bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
 void
 bootstrap_reset(DHT &self) noexcept {
   auto &filter = self.bootstrap_filter;
-  auto &set = filter.bitset;
-  std::memset(set.raw, 0, sizeof(set.raw));
+  clear(filter);
 }
 
 //==========================================
