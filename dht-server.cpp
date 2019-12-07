@@ -275,29 +275,29 @@ main(int argc, char **argv) {
 
   fd sfd = setup_signal();
   if (!sfd) {
-    return 1;
+    return 2;
   }
 
   fd udp = udp::bind_v4(options.port, udp::Mode::NONBLOCKING);
   if (!udp) {
-    return 1;
+    return 3;
   }
 
   Contact listen;
   if (!udp::local(udp, listen)) {
-    return 2;
+    return 3;
   }
 
   auto r = prng::seed<prng::xorshift32>();
   auto mdht = std::make_unique<dht::DHT>(udp, listen, r);
   if (!dht::init(*mdht)) {
     die("failed to init dht");
-    return 3;
+    return 4;
   }
 
   if (!sp::init_cache(*mdht)) {
-    die("failed to init dht");
-    return 3;
+    die("failed to init cache");
+    return 5;
   }
 
   if (!sp::restore(*mdht, options.dump_file)) {
@@ -318,7 +318,7 @@ main(int argc, char **argv) {
 
   fd poll = setup_epoll(udp, sfd);
   if (!poll) {
-    return 4;
+    return 6;
   }
 
   dht::Modules modules;

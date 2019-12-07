@@ -193,7 +193,7 @@ init_cache(dht::DHT &ctx) noexcept {
     return false;
   }
 
-  mode_t mode = S_IRUSR | S_IWUSR;
+  mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
   if (!fs::mkdirs(root, mode)) {
     return false;
   }
