@@ -1,7 +1,9 @@
 #include "cache.h"
 
+#include "dht.h"
 #include "shared.h"
 #include "util.h"
+
 #include <bootstrap.h>
 #include <collection/Array.h>
 #include <hash/djb2.h>
@@ -66,6 +68,14 @@ struct Cache {
     assertx_n(insert(hashers, djb_contact));
     assertx_n(insert(hashers, fnv_contact));
   }
+  Cache(const Cache &) = delete;
+  Cache(const Cache &&) = delete;
+
+  Cache &
+  operator=(const Cache &) = delete;
+
+  Cache &
+  operator=(const Cache &&) = delete;
 };
 
 //========================
@@ -122,7 +132,8 @@ cache_for_each(fs::DirectoryFd &dir, const char *fname, Function f) noexcept {
   bool result = false;
   void *addr = ::mmap(nullptr, stat.st_size, PROT_READ, MAP_SHARED, int(fd), 0);
   if (addr) {
-    const CacheHeader *const mem = (CacheHeader *)addr;
+    const CacheHeader *const mem =
+        (CacheHeader *)addr; // XXX what about alignemnt?
     const uint32_t entries = ntohl(mem->count);
     const uint32_t payload_entries = payload_length / entry_size;
     if (entries == payload_entries) {
@@ -227,6 +238,7 @@ static bool
 cache_finalize(Cache &self) noexcept {
   if (self.cur_header) {
     assertx(self.dir);
+    assertxs(bool(self.cur), int(self.cur));
 
     char from[PATH_MAX]{0};
     char to[PATH_MAX]{0};
@@ -254,33 +266,6 @@ cache_finalize(Cache &self) noexcept {
   return true;
 }
 
-void
-deinit_cache(dht::DHT &ctx) noexcept {
-  auto self = (Cache *)ctx.cache;
-  if (self) {
-    cache_finalize(*self);
-    delete self;
-    ctx.cache = nullptr;
-  }
-}
-
-//========================
-template <size_t SIZE>
-static bool
-take_next_read_cache(Cache &self, char (&file)[SIZE]) noexcept {
-  assertx(self.dir);
-  while (self.read_min_idx < self.read_max_idx) {
-    cache_filename(file, self.read_min_idx);
-    self.read_min_idx++;
-
-    if (::faccessat(int(self.dir), file, R_OK, 0) == 0) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 static bool
 flush(CircularByteBuffer &b, void *arg) noexcept {
   // XXX make generic filesink
@@ -296,7 +281,7 @@ flush(CircularByteBuffer &b, void *arg) noexcept {
 
 static bool
 cache_write_contact(Cache &self, const Contact &in) noexcept {
-  auto& sink = (Sink &)self.cur_sink;
+  auto &sink = (Sink &)self.cur_sink;
   if (!self.cur_header) {
     assertx(bool(self.dir));
     assertx(!bool(self.cur));
@@ -328,7 +313,7 @@ cache_write_contact(Cache &self, const Contact &in) noexcept {
     if (!addr) {
       return false;
     }
-    self.cur_header = (CacheHeader *)addr;
+    self.cur_header = (CacheHeader *)addr; // XXX what about alignemnt
     assertx(header.count == self.cur_header->count);
     assertx(memcmp(header.kind, self.cur_header->kind, sizeof(header.kind)) ==
             0);
@@ -351,6 +336,41 @@ cache_write_contact(Cache &self, const Contact &in) noexcept {
   }
 
   return true;
+}
+
+void
+deinit_cache(dht::DHT &ctx) noexcept {
+  auto self = (Cache *)ctx.cache;
+
+  if (self) {
+    /*drain*/
+    auto cb = [](void *, dht::DHT &ctx, const dht::Node &current) {
+      auto self = (Cache *)ctx.cache;
+      cache_write_contact(*self, current.contact);
+    };
+    debug_for_each(ctx, nullptr, cb);
+
+    cache_finalize(*self);
+    delete self;
+    ctx.cache = nullptr;
+  }
+}
+
+//========================
+template <size_t SIZE>
+static bool
+take_next_read_cache(Cache &self, char (&file)[SIZE]) noexcept {
+  assertx(self.dir);
+  while (self.read_min_idx < self.read_max_idx) {
+    cache_filename(file, self.read_min_idx);
+    self.read_min_idx++;
+
+    if (::faccessat(int(self.dir), file, R_OK, 0) == 0) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 static void
