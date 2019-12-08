@@ -49,7 +49,7 @@ struct Cache {
   sp::StaticArray<sp::hasher<Contact>, 2> hashers;
   sp::BloomFilter<Contact, 8 * 1024> seen;
 
-  fd dir{};
+  fs::DirectoryFd dir{};
 
   size_t read_min_idx{};
   size_t read_max_idx{};
@@ -99,7 +99,7 @@ cache_dir(char (&buffer)[SIZE]) noexcept {
 
 template <typename Function>
 static bool
-cache_for_each(fd &dir, const char *fname, Function f) noexcept {
+cache_for_each(fs::DirectoryFd &dir, const char *fname, Function f) noexcept {
   struct stat stat {};
   fd fd = fs::open_read(dir, fname);
   if (!fd) {
@@ -203,9 +203,9 @@ init_cache(dht::DHT &ctx) noexcept {
     return false;
   }
 
-  auto cb = [](fd &parent, const char *fname, void *arg) {
+  auto cb = [](fs::DirectoryFd &parent, const char *fname, void *arg) {
     uint32_t idx = 0;
-    if (filename_extract(fname, /*out*/ idx)) {
+    if (filename_extract(fname, /*OUT*/ idx)) {
       auto self = (Cache *)arg;
       self->read_min_idx = std::min(self->read_min_idx, (size_t)idx);
       self->read_max_idx = std::max(self->read_max_idx, (size_t)idx);
@@ -246,7 +246,7 @@ cache_finalize(Cache &self) noexcept {
     cache_filename(to, self.cur_idx);
     self.cur_idx++;
 
-    if (renameat(int(self.dir), from, int(self.dir), to) < 0) {
+    if (::renameat(int(self.dir), from, int(self.dir), to) < 0) {
       return false;
     }
   }
@@ -296,38 +296,44 @@ flush(CircularByteBuffer &b, void *arg) noexcept {
 
 static bool
 cache_write_contact(Cache &self, const Contact &in) noexcept {
-  auto sink = (Sink &)self.cur_sink;
+  auto& sink = (Sink &)self.cur_sink;
   if (!self.cur_header) {
+    assertx(bool(self.dir));
+    assertx(!bool(self.cur));
+
     char fname[FILENAME_MAX]{0};
     cache_filename(fname, self.cur_idx++);
     strcat(fname, ".tmp");
 
-    assertx(!bool(self.cur));
     swap(self.cur, fs::open_trunc(self.dir, fname));
-
     if (!self.cur) {
       return false;
     }
 
     new (&sink) Sink{self.cur_buf, &self.cur, flush};
 
+    CacheHeader header;
     {
-      CacheHeader header;
-      header.count = 0;
+      header.count = htonl(0);
       std::memcpy(header.kind, "ipv4", 4);
-      header.magic = 0xdead;
-      header.version = 1;
+      header.magic = htonl(0xdead);
+      header.version = htonl(1);
 
       write(sink, &header, sizeof(header));
       flush(sink);
     }
 
-    void *addr = ::mmap(nullptr, sizeof(CacheHeader), PROT_READ | PROT_WRITE,
+    void *addr = ::mmap(nullptr, sizeof(header), PROT_READ | PROT_WRITE,
                         MAP_SHARED, int(self.cur), 0);
     if (!addr) {
       return false;
     }
     self.cur_header = (CacheHeader *)addr;
+    assertx(header.count == self.cur_header->count);
+    assertx(memcmp(header.kind, self.cur_header->kind, sizeof(header.kind)) ==
+            0);
+    assertx(header.magic == self.cur_header->magic);
+    assertx(header.version == self.cur_header->version);
   }
 
   assertx(self.cur_header);

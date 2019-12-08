@@ -368,6 +368,7 @@ main(int argc, char **argv) {
     printf("signal: %s: %d\n", strsignal(info.ssi_signo), info.ssi_signo);
 
     if (mdht) {
+      sp::deinit_cache(*mdht);
       if (!sp::dump(*mdht, options.dump_file)) {
         return 2;
       }
