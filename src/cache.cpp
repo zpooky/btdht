@@ -246,7 +246,7 @@ cache_finalize(Cache &self) noexcept {
     munmap(self.cur_header, sizeof(CacheHeader));
     self.cur_header = nullptr;
 
-    auto& sink = (Sink &)self.cur_sink;
+    auto &sink = (Sink &)self.cur_sink;
     flush(sink);
     sink.~Sink();
 
@@ -453,6 +453,8 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
         cache_write_contact(self, cur);
       }
     });
+
+    ::unlinkat(int(self.dir), fname, 0);
   } else {
     clear(self.seen);
   }
