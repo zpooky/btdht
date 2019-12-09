@@ -22,6 +22,7 @@
 #include <unistd.h> //read
 #include <upnp_service.h>
 
+// TODO !!better upnp 
 // TODO !implement peer db timeout logic
 // TODO fix db read logic
 
@@ -33,20 +34,11 @@
 // TODO BytesView implement mark
 // TODO log explicit error response (error module)
 // XXX ipv6
-// TODO client: multiple receiver for the same search
+// XXX client: multiple receiver for the same search
 // TODO client: on server shutdown send to search clients that we are shutting
 // down
 // TODO replace bad node
-// TODO db file
-//      - incremental save
-//      - save to multiple db files
-//      - load from multiple db files
-//      - naming scheme
-// TODO interrupt
-//    - SIGHUP ^C QUIT, ...
-//      - save db file and quit
-//
-// TODO if both eth0 & wlan0 there is some problem
+// TODO if both eth0 & wlan0 is active there is some problem
 static void
 die(const char *s) {
   perror(s);

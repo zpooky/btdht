@@ -229,6 +229,9 @@ init_cache(dht::DHT &ctx) noexcept {
   };
 
   fs::for_each_files(self->dir, self, cb);
+  if (self->read_max_idx != 0) {
+    self->cur_idx = self->read_max_idx + 1;
+  }
 
   return true;
 }
@@ -287,7 +290,7 @@ cache_write_contact(Cache &self, const Contact &in) noexcept {
     assertx(!bool(self.cur));
 
     char fname[FILENAME_MAX]{0};
-    cache_filename(fname, self.cur_idx++);
+    cache_filename(fname, self.cur_idx);
     strcat(fname, ".tmp");
 
     swap(self.cur, fs::open_trunc(self.dir, fname));
@@ -444,18 +447,22 @@ static void
 on_topup_bootstrap(dht::DHT &ctx) noexcept {
   Cache &self = *((Cache *)ctx.cache);
   char fname[FILENAME_MAX]{0};
+  bool cont = true;
 
-  if (take_next_read_cache(self, /*OUT*/ fname)) {
+  while (take_next_read_cache(self, /*OUT*/ fname) && cont) {
     cache_for_each(self.dir, fname, [&](const Contact &cur) {
       if (is_full(ctx.bootstrap)) {
         bootstrap_insert(ctx, dht::KContact(0, cur));
       } else {
+        cont = false;
         cache_write_contact(self, cur);
       }
     });
 
     ::unlinkat(int(self.dir), fname, 0);
-  } else {
+  }
+  if (cont) {
+    /* bootstrap want more but there is no more cache files */
     clear(self.seen);
   }
 
