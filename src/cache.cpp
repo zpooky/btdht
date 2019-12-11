@@ -58,7 +58,7 @@ struct Cache {
 
   size_t cur_idx{};
   CacheHeader *cur_header{};
-  sp::StaticCircularByteBuffer<4096> cur_buf{};
+  sp::StaticCircularByteBuffer<128> cur_buf{};
   Sink_as cur_sink{};
   fd cur{};
 
