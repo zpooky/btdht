@@ -272,6 +272,7 @@ main(int argc, char **argv) {
 
   fd udp = udp::bind_v4(options.port, udp::Mode::NONBLOCKING);
   if (!udp) {
+    printf("failed to bind: %u\n", options.port);
     return 3;
   }
 

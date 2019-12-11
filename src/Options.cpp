@@ -8,10 +8,10 @@ static const char *def_dump_path = "./dht_db.dump";
 
 namespace dht {
 Options::Options()
-    : port(42605)
+    : port(0)
     , bootstrap()
     , dump_file{0} {
-  std::memcpy(dump_file, def_dump_path, strlen(def_dump_path));
+  memcpy(dump_file, def_dump_path, strlen(def_dump_path));
 }
 
 bool
@@ -77,7 +77,7 @@ parse(Options &self, int argc, char **argv) noexcept {
         fprintf(stderr, "To long '%s':%zu max: %zu\n", optarg, len, max);
         return 1;
       }
-      std::memcpy(self.dump_file, optarg, len + 1);
+      memcpy(self.dump_file, optarg, len + 1);
     } break;
 
     case 'f':

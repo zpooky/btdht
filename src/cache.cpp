@@ -53,7 +53,7 @@ struct Cache {
 
   fs::DirectoryFd dir{};
 
-  size_t read_min_idx{};
+  size_t read_min_idx{~size_t(0)};
   size_t read_max_idx{};
 
   size_t cur_idx{};
@@ -106,6 +106,11 @@ cache_dir(char (&buffer)[SIZE]) noexcept {
   strcat(buffer, "/spdht");
   return true;
 }
+template <typename T>
+static T *
+ptr_add(T *base, uintptr_t l) noexcept {
+  return (T *)(((uintptr_t)base) + l);
+}
 
 template <typename Function>
 static bool
@@ -119,40 +124,44 @@ cache_for_each(fs::DirectoryFd &dir, const char *fname, Function f) noexcept {
     return false;
   }
 
-  if (stat.st_size < sizeof(CacheHeader)) {
+  if (stat.st_size < 0) {
+    return false;
+  }
+  if (size_t(stat.st_size) < sizeof(CacheHeader)) {
     return false;
   }
 
   const size_t entry_size = (sizeof(Ipv4) + sizeof(Port));
-  const uint32_t payload_length = stat.st_size - sizeof(CacheHeader);
+  const size_t payload_length = size_t(stat.st_size) - sizeof(CacheHeader);
   if (payload_length % entry_size != 0) {
     return false;
   }
 
   bool result = false;
-  void *addr = ::mmap(nullptr, stat.st_size, PROT_READ, MAP_SHARED, int(fd), 0);
+  void *const addr =
+      ::mmap(nullptr, size_t(stat.st_size), PROT_READ, MAP_SHARED, int(fd), 0);
   if (addr) {
-    const CacheHeader *const mem =
-        (CacheHeader *)addr; // XXX what about alignemnt?
+    // XXX what about alignemnt?
+    const CacheHeader *const mem = (CacheHeader *)addr;
     const uint32_t entries = ntohl(mem->count);
-    const uint32_t payload_entries = payload_length / entry_size;
+    const size_t payload_entries = payload_length / entry_size;
     if (entries == payload_entries) {
-      void *it = addr + sizeof(CacheHeader);
-      void *end = it + (entry_size * entries);
+      void *it = ptr_add(addr, sizeof(CacheHeader));
+      void *end = ptr_add(it, (entry_size * entries));
       for (; it != end;) {
         Ipv4 ip;
         Port port;
         memcpy(&ip, it, sizeof(Ipv4));
-        it += sizeof(Ipv4);
+        it = ptr_add(it, sizeof(Ipv4));
         memcpy(&port, it, sizeof(Port));
-        it += sizeof(Port);
+        it = ptr_add(it, sizeof(Port));
         Contact con(ntohl(ip), ntohs(port));
         f(con);
       }
       result = true;
     }
 
-    ::munmap(addr, stat.st_size);
+    ::munmap(addr, size_t(stat.st_size));
   }
 
   return result;
@@ -179,10 +188,16 @@ filename_extract(const char *fname, uint32_t &idx) noexcept {
 
       assertx(strlen(fname + tail) == strlen(suffix));
       if (strcmp(fname + tail, suffix) == 0) {
-        char tmp[64];
+        char tmp[64]{0};
         size_t idx_len = (fn_len - prefix_len) - suf_len;
 
-        assertxs(idx_len < sizeof(tmp) && idx_len > 0, idx_len);
+        if (idx_len >= sizeof(tmp)) {
+          return false;
+        }
+        if (idx_len == 0) {
+          return false;
+        }
+
         memcpy(tmp, fname + prefix_len, idx_len);
         return parse_int(tmp, tmp + strlen(tmp), idx);
       }
@@ -217,21 +232,29 @@ init_cache(dht::DHT &ctx) noexcept {
   auto cb = [](fs::DirectoryFd &parent, const char *fname, void *arg) {
     uint32_t idx = 0;
     if (filename_extract(fname, /*OUT*/ idx)) {
-      auto self = (Cache *)arg;
-      self->read_min_idx = std::min(self->read_min_idx, (size_t)idx);
-      self->read_max_idx = std::max(self->read_max_idx, (size_t)idx);
+      auto s = (Cache *)arg;
+      s->read_min_idx = std::min(s->read_min_idx, (size_t)idx);
+      s->read_max_idx = std::max(s->read_max_idx, (size_t)idx);
 
       cache_for_each(parent, fname, [&](const Contact &good) { //
-        insert(self->seen, good);
+        insert(s->seen, good);
       });
     }
     return true;
   };
 
   fs::for_each_files(self->dir, self, cb);
-  if (self->read_max_idx != 0) {
+  if (self->read_min_idx == ~size_t(0)) {
+    assertxs(self->read_max_idx == 0, self->read_min_idx, self->read_max_idx);
+    self->read_min_idx = 0;
+  }
+  if (self->read_max_idx > 0) {
     self->cur_idx = self->read_max_idx + 1;
   }
+
+  printf("self->read_min_idx: %zu\n", self->read_min_idx);
+  printf("self->read_max_idx: %zu\n", self->read_max_idx);
+  printf("self->cur_idx: %zu\n", self->cur_idx);
 
   return true;
 }
@@ -343,16 +366,16 @@ cache_write_contact(Cache &self, const Contact &in) noexcept {
 
 void
 deinit_cache(dht::DHT &ctx) noexcept {
-  auto self = (Cache *)ctx.cache;
 
-  if (self) {
+  if (ctx.cache) {
     /*drain*/
-    auto cb = [](void *, dht::DHT &ctx, const dht::Node &current) {
-      auto self = (Cache *)ctx.cache;
+    auto cb = [](void *, dht::DHT &ctx2, const dht::Node &current) {
+      auto self = (Cache *)ctx2.cache;
       cache_write_contact(*self, current.contact);
     };
     debug_for_each(ctx, nullptr, cb);
 
+    auto self = (Cache *)ctx.cache;
     cache_finalize(*self);
     delete self;
     ctx.cache = nullptr;
@@ -449,17 +472,36 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
   char fname[FILENAME_MAX]{0};
   bool cont = true;
 
-  while (take_next_read_cache(self, /*OUT*/ fname) && cont) {
+  assertx(!is_full(ctx.bootstrap));
+
+  // printf("-------------------\n");
+  while (cont && take_next_read_cache(self, /*OUT*/ fname)) {
+    // printf("- fname[%s]", fname);
+    size_t bi = 0;
+    size_t cw = 0;
     cache_for_each(self.dir, fname, [&](const Contact &cur) {
-      if (is_full(ctx.bootstrap)) {
+      if (!is_full(ctx.bootstrap)) {
+        ++bi;
         bootstrap_insert(ctx, dht::KContact(0, cur));
       } else {
+        ++cw;
         cont = false;
         cache_write_contact(self, cur);
       }
-    });
 
-    ::unlinkat(int(self.dir), fname, 0);
+      if (is_full(ctx.bootstrap)) {
+        cont = false;
+      }
+    });
+    // printf("bs_insert[%zu]cache_write[%zu], bootstrap_lengt[%zu],
+    // is_full:%s\n",
+    //        bi, cw, length(ctx.bootstrap),
+    //        is_full(ctx.bootstrap) ? "TRUE" : "FALSE");
+
+    if (::unlinkat(int(self.dir), fname, 0) < 0) {
+      printf("unlinkat(%s): %s\n", fname, strerror(errno));
+      exit(1);
+    }
   }
   if (cont) {
     /* bootstrap want more but there is no more cache files */
