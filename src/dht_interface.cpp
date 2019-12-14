@@ -393,7 +393,7 @@ print_raw(FILE *f, const char *val, std::size_t len) noexcept {
     fprintf(f, "'%.*s': %zu", int(len), val, len);
   } else {
     fprintf(f, "hex[");
-    dht::print_hex((const sp::byte *)val, len);
+    dht::print_hex((const sp::byte *)val, len, f);
     fprintf(f, "](");
     for (std::size_t i = 0; i < len; ++i) {
       if (ascii::is_printable(val[i])) {
