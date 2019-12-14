@@ -366,6 +366,7 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
     return;
   }
 
+  assertx(ctx.remote.port != 0);
   if (dht::is_blacklisted(self, ctx.remote)) {
     return;
   }

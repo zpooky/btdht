@@ -144,7 +144,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
     return err;
   }
 
-  buf.pos += len;
+  buf.pos += (size_t)len;
   return 0;
 } // udp::receive()
 
@@ -155,6 +155,7 @@ receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
   int res = receive(fd, remote, buf);
   if (res == 0) {
     to_contact(remote, other);
+    assertx(other.port != 0);
   }
 
   return res;
@@ -184,7 +185,7 @@ send(int fd, ::sockaddr_in &dest, const Contact &debug_dest,
       sent = ::sendto(fd, raw, raw_len, flag, destaddr, sizeof(dest));
       error = errno;
       if (sent > 0) {
-        buf.pos += sent;
+        buf.pos += (size_t)sent;
       }
     }
   } while (sent < 0 && error == EAGAIN);

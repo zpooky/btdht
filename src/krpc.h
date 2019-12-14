@@ -126,7 +126,7 @@ namespace d {
 template <typename F>
 bool
 krpc(ParseContext &pctx, F handle) {
-  return bencode::d::dict(pctx.decoder, [&](auto &p) { //
+  return bencode::d::dict(pctx.decoder, [&](auto &p) {
     bool do_mark_dict = false;
     bool t = false;
     bool y = false;
@@ -248,7 +248,8 @@ krpc(ParseContext &pctx, F handle) {
       }
     } else if (is_query()) {
       if (!(t && y && q)) {
-        log::receive::parse::error(pctx.ctx, p, "'query' missing 't' or 'y' or 'q'");
+        log::receive::parse::error(pctx.ctx, p,
+                                   "'query' missing 't' or 'y' or 'q'");
         return false;
       }
     } else if (is_reply()) {

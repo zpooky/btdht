@@ -126,7 +126,7 @@ setup_epoll(fd &udp, fd &signal) noexcept {
 template <typename Handle, typename Awake, typename Interrupt>
 static int
 main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
-          Interrupt on_int) noexcept {
+          Interrupt on_inter) noexcept {
   Timestamp previous(0);
 
   constexpr std::size_t size = 10 * 1024 * 1024;
@@ -164,7 +164,7 @@ main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
             die("read(signal)");
           }
 
-          return on_int(info);
+          return on_inter(info);
         } else {
           int res = 0;
           while (res == 0) {
@@ -177,6 +177,7 @@ main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
               flip(inBuffer);
 
               if (inBuffer.length > 0) {
+                assertx(from.port != 0);
                 handle(from, inBuffer, outBuffer, now);
                 flip(outBuffer);
 
@@ -215,6 +216,7 @@ main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
 static bool
 parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       sp::Buffer &out) noexcept {
+  assertx(peer.port != 0);
 
   auto handle = [&](krpc::ParseContext &pctx) {
     dht::Module unknown;
@@ -327,6 +329,7 @@ main(int argc, char **argv) {
 
   auto handle_cb = [&](Contact from, sp::Buffer &in, sp::Buffer &out,
                        Timestamp now) {
+    assertx(from.port != 0);
     if (mdht->last_activity == Timestamp(0)) {
       mdht->last_activity = now;
     }
