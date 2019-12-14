@@ -139,7 +139,7 @@ Lretry:
   }
   flip(b);
 
-  dht::print_hex(b.raw, b.length);
+  dht::print_hex(b.raw, b.length, stdout);
   printf("\n");
   bencode_print(b);
   return true;

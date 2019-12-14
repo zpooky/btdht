@@ -618,7 +618,7 @@ print_hex(const NodeId &id) noexcept {
 }
 
 void
-print_hex(const sp::byte *arr, std::size_t length) {
+print_hex(const sp::byte *arr, std::size_t length, FILE *f) {
   const sp::byte *it = arr;
   const sp::byte *const end = it + length;
   char buf[257] = {'\0'};
@@ -626,7 +626,7 @@ print_hex(const sp::byte *arr, std::size_t length) {
     size_t buf_len = sizeof(buf) - 1;
     it = hex::encode_inc(it, end, buf, buf_len);
     buf[buf_len] = '\0';
-    printf("%s", buf);
+    fprintf(f, "%s", buf);
   }
 
   // /* TODO convert to use hex::encode */

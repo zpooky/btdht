@@ -310,7 +310,7 @@ void
 print_hex(const krpc::Transaction &tx);
 
 void
-print_hex(const sp::byte *arr, std::size_t length);
+print_hex(const sp::byte *arr, std::size_t length, FILE *f= stdout);
 } // namespace dht
 
 namespace sp {
