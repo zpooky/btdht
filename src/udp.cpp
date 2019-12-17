@@ -1,10 +1,11 @@
-#include "bencode_print.h"
 #include "udp.h"
+#include "bencode_print.h"
 #include <arpa/inet.h>
 #include <cstdio>
 #include <cstring>
 #include <util/assert.h>
 // #include <exception>
+#include "util.h"
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
 #include <unistd.h>     //close
@@ -140,8 +141,8 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
   int err = errno;
 
   if (len < 0) {
-    assertxs(err != 0, err);
-    return err;
+    assertxs(err != 0, err, strerror(err));
+    return -err;
   }
 
   buf.pos += (size_t)len;
@@ -151,10 +152,17 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
 int
 receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
   ::sockaddr_in remote{};
+  memset(&remote, 0, sizeof(remote));
 
   int res = receive(fd, remote, buf);
   if (res == 0) {
-    to_contact(remote, other);
+    assertx_n(to_contact(remote, other));
+    if (other.port == 0) {
+      printf("sockaddr_in[%s]\n", to_string(remote));
+      char tmp[64]{0};
+      to_string(other, tmp);
+      printf("Contact[%s]\n", tmp);
+    }
     assertx(other.port != 0);
   }
 

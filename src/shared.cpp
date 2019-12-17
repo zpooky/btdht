@@ -152,9 +152,10 @@ Config::Config() noexcept
 }
 
 /*dht::Peer*/
-Peer::Peer(Ipv4 i, Port p, Timestamp n) noexcept
+Peer::Peer(Ipv4 i, Port p, Timestamp n, bool s) noexcept
     : contact(i, p)
     , activity(n)
+    , seed(s)
     //{
     , timeout_priv(nullptr)
     , timeout_next(nullptr)
@@ -162,9 +163,10 @@ Peer::Peer(Ipv4 i, Port p, Timestamp n) noexcept
 {
 }
 
-Peer::Peer(const Contact &c, Timestamp a) noexcept
+Peer::Peer(const Contact &c, Timestamp a, bool s) noexcept
     : contact(c)
     , activity(a)
+    , seed(s)
     //{
     , timeout_priv(nullptr)
     , timeout_next(nullptr)
@@ -172,9 +174,9 @@ Peer::Peer(const Contact &c, Timestamp a) noexcept
 {
 }
 
-Peer::Peer() noexcept
-    : Peer(0, 0, Timestamp(0)) {
-}
+// Peer::Peer() noexcept
+//     : Peer(0, 0, Timestamp(0), false) {
+// }
 
 bool
 Peer::operator==(const Contact &c) const noexcept {
@@ -280,19 +282,22 @@ KeyValue::KeyValue(const Infohash &pid) noexcept
     , peers{} {
 }
 
-bool
-KeyValue::operator>(const Infohash &o) const noexcept {
-  return id.operator>(o.id);
+KeyValue::~KeyValue() {
 }
 
 bool
-KeyValue::operator>(const KeyValue &o) const noexcept {
-  return id.operator>(o.id.id);
+operator>(const KeyValue &self, const Infohash &o) noexcept {
+  return self.id > o.id;
+}
+
+bool
+operator>(const KeyValue &self, const KeyValue &o) noexcept {
+  return self.id > o.id.id;
 }
 
 bool
 operator>(const Infohash &f, const KeyValue &s) noexcept {
-  return f.operator>(s.id.id);
+  return f > s.id.id;
 }
 
 //=====================================
@@ -442,9 +447,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     // routing-table {{{
     , root(nullptr)
     , root_limit(4)
-    // TODO
-    , rt_reuse_raw{new RoutingTable *[1024] { nullptr }}
-    , rt_reuse(rt_reuse_raw, 1024)
+    , rt_reuse()
     , root_extra()
     //}}}
     // timeout{{{
@@ -474,11 +477,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     , searches()
     //}}}
     // upnp{{{
-    , upnp_sent(0)
-//}}}
-
-//}}}
-{
+    , upnp_sent{0} {
 
   assertx_n(insert(bootstrap_hashers, djb_ip));
   assertx_n(insert(bootstrap_hashers, fnv_ip));

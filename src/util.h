@@ -221,6 +221,13 @@ struct Transaction {
     length += N2;
   }
 
+  Transaction(const Transaction &o) noexcept {
+    memcpy(id, o.id, sizeof(id));
+    length = o.length;
+  }
+
+  Transaction(const Transaction &&) = delete;
+
   Transaction &
   operator=(const Transaction &) noexcept;
 };
@@ -310,7 +317,7 @@ void
 print_hex(const krpc::Transaction &tx);
 
 void
-print_hex(const sp::byte *arr, std::size_t length, FILE *f= stdout);
+print_hex(const sp::byte *arr, std::size_t length, FILE *f = stdout);
 } // namespace dht
 
 namespace sp {

@@ -132,7 +132,7 @@ Lretry:
   Contact c;
   int res = udp::receive(u, c, b);
   if (res != 0) {
-    if (res == EAGAIN) {
+    if (res == -EAGAIN) {
       goto Lretry;
     }
     return false;
@@ -424,7 +424,7 @@ Lretry:
   reset(b);
   int res = udp::receive(u, remote, b);
   if (res != 0) {
-    if (res == EAGAIN) {
+    if (res == -EAGAIN) {
       goto Lretry;
     }
     return false;

@@ -127,6 +127,9 @@ namespace peer_db {
 /*log::peer_db*/
 void
 insert(const dht::DHT &, const dht::Infohash &, const Contact &) noexcept;
+
+void
+update(const dht::DHT &, const dht::Infohash &, const dht::Peer &) noexcept;
 } // namespace peer_db
 
 namespace search {

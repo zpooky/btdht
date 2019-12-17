@@ -130,7 +130,7 @@ for_each(Node *node, F f) noexcept {
 
 static void
 inc_outstanding(Node &node) noexcept {
-  const std::uint8_t max = ~0;
+  const std::uint8_t max(~0);
   if (node.outstanding != max) {
     ++node.outstanding;
   }
@@ -818,7 +818,7 @@ setup(dht::Module &module) noexcept {
 namespace get_peers {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
-               const dht::Infohash &search) noexcept {
+               const dht::Infohash &search, bool noseed) noexcept {
   log::receive::req::get_peers(ctx);
 
   message(ctx, id, [&](auto &from) {
@@ -828,17 +828,29 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
     db::mint_token(dht, from, ctx.remote, token);
 
     const krpc::Transaction &t = ctx.transaction;
-    const dht::KeyValue *result = db::lookup(dht, search);
-    if (result) {
-      krpc::response::get_peers(ctx.out, t, dht.id, token, result->peers);
-    } else {
-      constexpr std::size_t capacity = 8;
-      dht::Node *closest[capacity] = {nullptr};
-      dht::multiple_closest(dht, search, closest);
-      const dht::Node **r = (const dht::Node **)&closest;
+    const dht::KeyValue *const result = db::lookup(dht, search);
 
-      krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
+    if (result) {
+      sp::UinStaticArray<dht::Peer, 128> filtered;
+      for_each(result->peers, [&](const dht::Peer &cur) {
+        if ((cur.seed == false && noseed == true) ||
+            (cur.seed == true && noseed == false)) {
+          insert(filtered, cur);
+        }
+      });
+
+      if (!is_empty(filtered)) {
+        krpc::response::get_peers(ctx.out, t, dht.id, token, filtered);
+        return;
+      }
     }
+
+    constexpr std::size_t capacity = 8;
+    dht::Node *closest[capacity] = {nullptr};
+    dht::multiple_closest(dht, search, closest);
+    const dht::Node **r = (const dht::Node **)&closest;
+
+    krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
   });
 } // get_peers::handle_request
 
@@ -988,9 +1000,11 @@ on_request(dht::MessageContext &ctx) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) {
     bool b_id = false;
     bool b_ih = false;
+    bool b_ns = false;
 
     dht::NodeId id;
     dht::Infohash infohash;
+    bool noseed = false;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
@@ -1000,6 +1014,11 @@ on_request(dht::MessageContext &ctx) noexcept {
 
     if (!b_ih && bencode::d::pair(p, "info_hash", infohash.id)) {
       b_ih = true;
+      goto Lstart;
+    }
+
+    if (!b_ns && bencode::d::pair(p, "noseed", noseed)) {
+      b_ns = true;
       goto Lstart;
     }
 
@@ -1013,7 +1032,7 @@ on_request(dht::MessageContext &ctx) noexcept {
       return false;
     }
 
-    handle_request(ctx, id, infohash);
+    handle_request(ctx, id, infohash, noseed);
     return true;
   });
 } // get_peers::on_request
@@ -1028,13 +1047,11 @@ setup(dht::Module &module) noexcept {
 } // namespace get_peers
 
 //===========================================================
-// announce_peer
-//===========================================================
 namespace announce_peer {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                bool implied_port, const dht::Infohash &infohash, Port port,
-               const dht::Token &token) noexcept {
+               const dht::Token &token, bool seed) noexcept {
   log::receive::req::announce_peer(ctx);
 
   dht::DHT &dht = ctx.dht;
@@ -1047,7 +1064,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
         peer.port = port;
       }
 
-      db::insert(dht, infohash, peer);
+      db::insert(dht, infohash, peer, seed);
       krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);
     } else {
       const char *msg = "Announce_peer with wrong token";
@@ -1101,12 +1118,14 @@ on_request(dht::MessageContext &ctx) noexcept {
     bool b_ih = false;
     bool b_p = false;
     bool b_t = false;
+    bool b_s = false;
 
     dht::NodeId id;
     bool implied_port = false;
     dht::Infohash infohash;
     Port port = 0;
     dht::Token token;
+    bool seed = true;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
@@ -1130,6 +1149,10 @@ on_request(dht::MessageContext &ctx) noexcept {
       b_t = true;
       goto Lstart;
     }
+    if (!b_s && bencode::d::pair(p, "seed", seed)) {
+      b_s = true;
+      goto Lstart;
+    }
 
     if (bencode_any(p, "announce_peer req")) {
       goto Lstart;
@@ -1142,7 +1165,7 @@ on_request(dht::MessageContext &ctx) noexcept {
       return false;
     }
 
-    handle_request(ctx, id, implied_port, infohash, port, token);
+    handle_request(ctx, id, implied_port, infohash, port, token, seed);
     return true;
   });
 }

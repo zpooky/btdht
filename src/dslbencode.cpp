@@ -202,34 +202,30 @@ pair_compact(sp::Buffer &buf, const char *key,
   return internal_pair(buf, key, list);
 } // bencode::e::pair()
 
-static bool
-xxx(sp::Buffer &buf, const char *key, const dht::Node **list,
-    std::size_t sz) noexcept {
+bool
+pair_compact(sp::Buffer &buf, const char *key, const dht::Node **list,
+             std::size_t sz) noexcept {
   if (!bencode::e::value(buf, key)) {
     return false;
   }
 
   std::size_t len = size(list, sz);
   std::tuple<const dht::Node **, std::size_t> arg(list, sz);
+
   return bencode::e::value(buf, len, &arg, [](auto &b, void *a) {
     auto targ = (std::tuple<const dht::Node **, std::size_t> *)a;
 
-    // const dht::Node **l = (dht::Node *)a;
-    return for_all(std::get<0>(*targ), std::get<1>(*targ),
-                   [&b](const auto &value) {
-                     if (!serialize(b, value)) {
-                       return false;
-                     }
-                     return true;
-                   });
-  });
-} // bencode::e::xxx()
+    auto cb = [&b](const auto &value) {
+      if (!serialize(b, value)) {
+        return false;
+      }
 
-bool
-pair_compact(sp::Buffer &buf, const char *key, const dht::Node **list,
-             std::size_t size) noexcept {
-  return xxx(buf, key, list, size);
-} // bencode::e::pair_compact()
+      return true;
+    };
+
+    return for_all(std::get<0>(*targ), std::get<1>(*targ), cb);
+  });
+}
 
 //=====================================
 namespace priv {
@@ -242,6 +238,7 @@ value(sp::Buffer &buf, const Contact &c) noexcept {
     if (!bencode::e::pair(b, "port", c.port)) {
       return false;
     }
+
     return true;
   });
 }

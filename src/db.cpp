@@ -5,11 +5,13 @@
 
 #include <prng/util.h>
 
+//TODO !! we never init array needle->peers it is always empty
 namespace db {
 //=====================================
 dht::KeyValue *
 lookup(dht::DHT &self, const dht::Infohash &infohash) noexcept {
   dht::KeyValue *needle;
+
   if ((needle = find(self.lookup_table, infohash))) {
 
     if (!is_empty(needle->peers)) {
@@ -49,8 +51,8 @@ peer_swap(dht::DHT &self, dht::Peer &f, dht::Peer &s) noexcept {
 }
 
 bool
-insert(dht::DHT &dht, const dht::Infohash &infohash,
-       const Contact &contact) noexcept {
+insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
+       bool seed) noexcept {
   bool result = true;
 
   auto new_table = [&dht, infohash]() -> dht::KeyValue * {
@@ -58,8 +60,9 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
     return std::get<0>(ires);
   };
 
-  auto add_peer = [&dht](dht::KeyValue &self, const Contact &c) -> dht::Peer * {
-    dht::Peer p(c, dht.now);
+  auto add_peer = [&dht](dht::KeyValue &self, const Contact &c,
+                         bool seed) -> dht::Peer * {
+    dht::Peer p(c, dht.now, seed);
     if (!is_full(self.peers)) {
       sp::greater cmp;
       auto first = bin_find_gte(self.peers, p, cmp);
@@ -100,7 +103,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash,
       existing->activity = dht.now;
       timeout::append_all(dht, existing);
     } else {
-      if ((existing = add_peer(*table, contact))) {
+      if ((existing = add_peer(*table, contact, seed))) {
         timeout::append_all(dht, existing);
         log::peer_db::insert(dht, infohash, contact);
       } else {

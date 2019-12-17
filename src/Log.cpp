@@ -21,6 +21,8 @@
 #define LOG_RES_GET_PEERS
 #define LOG_RES_ANNOUNCE_PEER
 
+#define LOG_PEER_DB
+
 // #define LOG_KNOWN_TX
 
 namespace log {
@@ -260,12 +262,16 @@ contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
 
 void
 peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
+#ifdef LOG_PEER_DB
   print_time(ctx);
   // TODO fix better print
   // printf("awake peer_db vote timeout[%" PRIu64 "ms] next date:",
   //        std::uint64_t(timeout));
   // print_time(stdout, ctx.timeout_peer_next);
   printf("\n");
+#endif
+  (void)ctx;
+  (void)timeout;
 }
 
 void
@@ -458,10 +464,26 @@ namespace peer_db {
 /*log::peer_db*/
 void
 insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
+#ifdef LOG_PEER_DB
   print_time(ctx);
   printf("peer db insert infohash[");
   dht::print_hex(h.id, sizeof(h.id));
   printf("]\n");
+#endif
+  (void)ctx;
+  (void)h;
+}
+
+void
+update(const dht::DHT &ctx, const dht::Infohash &h, const dht::Peer &) noexcept {
+#ifdef LOG_PEER_DB
+  print_time(ctx);
+  printf("peer db update infohash[");
+  dht::print_hex(h.id, sizeof(h.id));
+  printf("]\n");
+#endif
+  (void)ctx;
+  (void)h;
 }
 
 } // namespace peer_db

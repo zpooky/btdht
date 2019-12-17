@@ -10,7 +10,7 @@ lookup(dht::DHT &, const dht::Infohash &key) noexcept;
 
 //=====================================
 bool
-insert(dht::DHT &, const dht::Infohash &key, const Contact &value) noexcept;
+insert(dht::DHT &, const dht::Infohash &key, const Contact &value, bool seed) noexcept;
 
 //=====================================
 // TODO document

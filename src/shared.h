@@ -174,6 +174,7 @@ struct Config {
 struct Peer {
   Contact contact;
   Timestamp activity;
+  bool seed;
   // // {
   // Peer *next;
   // // }
@@ -181,9 +182,9 @@ struct Peer {
   Peer *timeout_priv;
   Peer *timeout_next;
   // }
-  Peer(Ipv4, Port, Timestamp) noexcept;
-  Peer(const Contact &, Timestamp) noexcept;
-  Peer() noexcept;
+  Peer(Ipv4, Port, Timestamp, bool) noexcept;
+  Peer(const Contact &, Timestamp, bool) noexcept;
+  // Peer() noexcept;
 
   bool
   operator==(const Contact &) const noexcept;
@@ -334,16 +335,22 @@ for_all_node(const RoutingTable *it, F f) noexcept {
 // dht::KeyValue
 struct KeyValue {
   Infohash id;
+  // TODO char name[128];
   sp::UinArray<Peer> peers;
   //
   explicit KeyValue(const Infohash &) noexcept;
 
-  bool
-  operator>(const Infohash &) const noexcept;
+  KeyValue(const KeyValue &) = delete;
+  KeyValue(const KeyValue &&) = delete;
 
-  bool
-  operator>(const KeyValue &) const noexcept;
+  ~KeyValue();
 };
+
+bool
+operator>(const KeyValue &, const Infohash &) noexcept;
+
+bool
+operator>(const KeyValue &, const KeyValue &) noexcept;
 
 bool
 operator>(const Infohash &, const KeyValue &) noexcept;
@@ -515,8 +522,8 @@ struct DHT {
   // routing-table {{{
   RoutingTable *root;
   std::size_t root_limit;
-  RoutingTable **rt_reuse_raw;
-  heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
+  // TODO dynamic
+  heap::StaticBinary<RoutingTable *, 1024, RoutingTableLess> rt_reuse;
   sp::dstack<RoutingTable *> root_extra;
   //}}}
 

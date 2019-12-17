@@ -31,7 +31,7 @@ print_raw(const char *val, std::size_t len) noexcept {
     fprintf(_f, "%.*s", int(len), val);
   } else {
     fprintf(_f, "hex[");
-    dht::print_hex((const sp::byte *)val, len);
+    dht::print_hex((const sp::byte *)val, len, _f);
     fprintf(_f, "]: %zu(", len);
     for (std::size_t i = 0; i < len; ++i) {
       if (ascii::is_printable(val[i])) {
@@ -62,7 +62,7 @@ template <typename Buffer>
 static bool
 string_wildcard(Buffer &d, std::size_t tabs) noexcept {
   auto m = mark(d);
-  char val[1024*4];
+  char val[1024 * 4];
   std::size_t len = sizeof(val);
   if (sp::bencode::d<Buffer>::value(d, val, len)) {
     print_tabs(tabs);
