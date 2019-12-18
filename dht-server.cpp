@@ -22,7 +22,7 @@
 #include <unistd.h> //read
 #include <upnp_service.h>
 
-// TODO !!better upnp 
+// TODO !!better upnp
 // TODO !implement peer db timeout logic
 // TODO fix db read logic
 
@@ -129,9 +129,9 @@ main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
           Interrupt on_inter) noexcept {
   Timestamp previous(0);
 
-  constexpr std::size_t size = 10 * 1024 * 1024;
-  auto in = new sp::byte[size];
-  auto out = new sp::byte[size];
+  constexpr std::size_t size = 65535;
+  auto in = std::make_unique<sp::byte[]>(size);
+  auto out = std::make_unique<sp::byte[]>(size);
 
   sp::Milliseconds timeout(0);
   for (;;) {
@@ -168,8 +168,8 @@ main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
         } else {
           int res = 0;
           while (res == 0) {
-            sp::Buffer inBuffer(in, size);
-            sp::Buffer outBuffer(out, size);
+            sp::Buffer inBuffer(in.get(), size);
+            sp::Buffer outBuffer(out.get(), size);
 
             Contact from;
             res = udp::receive(cfd, /*OUT*/ from, inBuffer);
@@ -201,14 +201,11 @@ main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
       }
     } // for
 
-    sp::Buffer outBuffer(out, size);
+    sp::Buffer outBuffer(out.get(), size);
     timeout = on_awake(outBuffer, now);
 
     previous = now;
   } // for
-
-  delete[] in;
-  delete[] out;
 
   return 0;
 }

@@ -21,8 +21,8 @@
 #include <unistd.h>
 
 // TODO if no internet connection we will send out request for all nodes in
-// bootstrap, then we will read nodes from cache then it will recurse until empty
-// cache
+// bootstrap, then we will read nodes from cache then it will recurse until
+// empty cache
 
 // XXX ipv6
 namespace sp {
