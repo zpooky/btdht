@@ -56,6 +56,7 @@ struct Cache {
 
   size_t read_min_idx{~size_t(0)};
   size_t read_max_idx{};
+  size_t contacts{};
 
   size_t cur_idx{};
   CacheHeader *cur_header{};
@@ -69,6 +70,7 @@ struct Cache {
     assertx_n(insert(hashers, djb_contact));
     assertx_n(insert(hashers, fnv_contact));
   }
+
   Cache(const Cache &) = delete;
   Cache(const Cache &&) = delete;
 
@@ -239,8 +241,10 @@ init_cache(dht::DHT &ctx) noexcept {
 
       cache_for_each(parent, fname, [&](const Contact &good) { //
         insert(s->seen, good);
+        s->contacts++;
       });
     }
+
     return true;
   };
 
@@ -358,6 +362,8 @@ cache_write_contact(Cache &self, const Contact &in) noexcept {
   ++entries;
   self.cur_header->count = htonl(entries);
 
+  ++self.contacts;
+
   if (entries == MAX_ENTRIES) {
     cache_finalize(self);
   }
@@ -369,14 +375,20 @@ void
 deinit_cache(dht::DHT &ctx) noexcept {
 
   if (ctx.cache) {
+    auto self = (Cache *)ctx.cache;
     /*drain*/
     auto cb = [](void *, dht::DHT &ctx2, const dht::Node &current) {
-      auto self = (Cache *)ctx2.cache;
-      cache_write_contact(*self, current.contact);
+      auto s = (Cache *)ctx2.cache;
+      cache_write_contact(*s, current.contact);
     };
     debug_for_each(ctx, nullptr, cb);
 
-    auto self = (Cache *)ctx.cache;
+    if (self->contacts < (2 * 1024)) { // XXX configurable
+      for_each(ctx.bootstrap, [&](const dht::KContact &boot) {
+        cache_write_contact(*self, boot.contact);
+      });
+    }
+
     cache_finalize(*self);
     delete self;
     ctx.cache = nullptr;
@@ -481,6 +493,9 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
     size_t bi = 0;
     size_t cw = 0;
     cache_for_each(self.dir, fname, [&](const Contact &cur) {
+      assertxs(self.contacts > 0, self.contacts);
+      --self.contacts;
+
       if (!is_full(ctx.bootstrap)) {
         ++bi;
         bootstrap_insert(ctx, dht::KContact(0, cur));

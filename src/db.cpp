@@ -23,6 +23,7 @@ lookup(dht::DHT &self, const dht::Infohash &infohash) noexcept {
 } // db::lookup()
 
 //=====================================
+#if 0
 static void
 peer_swap(dht::KeyValue &self, dht::Peer &f, dht::Peer &s) noexcept {
   dht::Peer *f_next = f.timeout_next, *f_priv = f.timeout_priv;
@@ -49,6 +50,7 @@ peer_swap(dht::KeyValue &self, dht::Peer &f, dht::Peer &s) noexcept {
     self.timeout_peer = &s;
   }
 }
+#endif
 
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
