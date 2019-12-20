@@ -20,14 +20,14 @@ void
 unlink(dht::DHT &, dht::Node *) noexcept;
 
 void
-unlink(dht::DHT &, dht::Peer *) noexcept;
+unlink(dht::KeyValue &, dht::Peer *) noexcept;
 
 //=====================================
 void
 append_all(dht::DHT &, dht::Node *) noexcept;
 
 void
-append_all(dht::DHT &, dht::Peer *) noexcept;
+append_all(dht::KeyValue &, dht::Peer *) noexcept;
 
 //=====================================
 void
@@ -46,7 +46,7 @@ dht::Node *
 take_node(dht::DHT &, sp::Milliseconds timeout) noexcept;
 
 dht::Peer *
-take_peer(dht::DHT &, sp::Milliseconds timeout) noexcept;
+take_peer(dht::DHT &dht, dht::KeyValue &, sp::Milliseconds timeout) noexcept;
 
 // TODO XXX what is timeout????!?!?! (i want last sent timeout)
 

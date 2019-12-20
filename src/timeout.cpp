@@ -127,7 +127,7 @@ unlink(dht::DHT &self, dht::Node *contact) noexcept {
 } // timeout::unlink()
 
 void
-unlink(dht::DHT &self, dht::Peer *peer) noexcept {
+unlink(dht::KeyValue &self, dht::Peer *peer) noexcept {
   return internal_unlink(self.timeout_peer, peer);
 } // timeout::unlink()
 
@@ -170,7 +170,7 @@ append_all(dht::DHT &self, dht::Node *node) noexcept {
 } // timeout::append_all()
 
 void
-append_all(dht::DHT &self, dht::Peer *peer) noexcept {
+append_all(dht::KeyValue &self, dht::Peer *peer) noexcept {
   assertx(debug_is_cycle(self.timeout_peer));
 
   internal_append_all(self.timeout_peer, peer);
@@ -264,12 +264,12 @@ take_node(dht::DHT &self, sp::Milliseconds timeout) noexcept {
 }
 
 dht::Peer *
-take_peer(dht::DHT &self, sp::Milliseconds timeout) noexcept {
+take_peer(dht::DHT &dht, dht::KeyValue &self,
+          sp::Milliseconds timeout) noexcept {
   dht::Peer *head = self.timeout_peer;
 
-  Timestamp now = self.now;
-  auto is_expired = [now, timeout](auto &node) { //
-    return (node.activity + timeout) > now;
+  auto is_expired = [&](auto &node) {
+    return (node.activity + timeout) > dht.now;
   };
 
   assertx(debug_is_cycle(self.timeout_peer));

@@ -17,12 +17,12 @@
 #include <tree/StaticTree.h>
 
 #include <heap/binary.h>
+#include <list/SkipList.h>
 #include <prng/xorshift.h>
 #include <tree/avl.h>
 #include <util/maybe.h>
 
 namespace dht {
-
 struct MessageContext;
 struct DHT;
 } // namespace dht
@@ -45,6 +45,14 @@ struct ParseContext {
   explicit ParseContext(dht::DHT &ctx, sp::Buffer &) noexcept;
 
   ParseContext(ParseContext &, sp::Buffer &) noexcept;
+
+  ParseContext(const ParseContext &) = delete;
+  ParseContext(const ParseContext &&) = delete;
+
+  ParseContext &
+  operator=(const ParseContext &) = delete;
+  ParseContext &
+  operator=(const ParseContext &&) = delete;
 };
 
 } // namespace krpc
@@ -64,6 +72,14 @@ struct TxContext {
 
   TxContext(TxHandle, TxCancelHandle, void *) noexcept;
   TxContext() noexcept;
+
+  // TxContext(const TxContext &) noexcept;
+  // TxContext(const TxContext &&) noexcept;
+
+  // TxContext &
+  // operator=(const TxContext &) noexcept;
+  // TxContext &
+  // operator=(const TxContext &&) noexcept;
 
   bool
   handle(dht::MessageContext &) noexcept;
@@ -88,6 +104,14 @@ struct Tx {
   sp::byte suffix[2];
 
   Tx() noexcept;
+
+  Tx(const Tx &) = delete;
+  Tx(const Tx &&) = delete;
+
+  Tx &
+  operator=(const Tx &) = delete;
+  Tx &
+  operator=(const Tx &&) = delete;
 
   bool
   operator==(const krpc::Transaction &) const noexcept;
@@ -120,6 +144,14 @@ struct Client {
   std::size_t active;
 
   explicit Client(fd &) noexcept;
+
+  Client(const Client &) = delete;
+  Client(const Client &&) = delete;
+
+  Client &
+  operator=(const Client &) = delete;
+  Client &
+  operator=(const Client &&) = delete;
 };
 
 } // namespace dht
@@ -185,6 +217,14 @@ struct Peer {
   Peer(Ipv4, Port, Timestamp, bool) noexcept;
   Peer(const Contact &, Timestamp, bool) noexcept;
   // Peer() noexcept;
+
+  // Peer(const Peer &) = delete;
+  // Peer(const Peer &&) = delete;
+
+  // Peer &
+  // operator=(const Peer &) = delete;
+  // Peer &
+  // operator=(const Peer &&) = delete;
 
   bool
   operator==(const Contact &) const noexcept;
@@ -279,6 +319,14 @@ struct RoutingTable {
 
   explicit RoutingTable(ssize_t) noexcept;
 
+  RoutingTable(const RoutingTable &) = delete;
+  RoutingTable(const RoutingTable &&) = delete;
+
+  RoutingTable &
+  operator=(const RoutingTable &) = delete;
+  RoutingTable &
+  operator=(const RoutingTable &&) = delete;
+
   ~RoutingTable() noexcept;
 };
 
@@ -336,12 +384,18 @@ for_all_node(const RoutingTable *it, F f) noexcept {
 struct KeyValue {
   Infohash id;
   // TODO char name[128];
-  sp::UinArray<Peer> peers;
-  //
+  sp::SkipList<Peer, 6> peers;
+  Peer *timeout_peer;
+
   explicit KeyValue(const Infohash &) noexcept;
 
   KeyValue(const KeyValue &) = delete;
   KeyValue(const KeyValue &&) = delete;
+
+  KeyValue &
+  operator=(const KeyValue &) = delete;
+  KeyValue &
+  operator=(const KeyValue &&) = delete;
 
   ~KeyValue();
 };
@@ -515,7 +569,6 @@ struct DHT {
 
   // peer-lookup db {{{
   avl::Tree<KeyValue> lookup_table;
-  Peer *timeout_peer;
   // Timestamp timeout_peer_next;
   //}}}
 
@@ -598,6 +651,14 @@ struct MessageContext {
 
   MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &,
                  Contact) noexcept;
+
+  MessageContext(const MessageContext &) = delete;
+  MessageContext(const MessageContext &&) = delete;
+
+  MessageContext &
+  operator=(const MessageContext &) = delete;
+  MessageContext &
+  operator=(const MessageContext &&) = delete;
 };
 
 //=====================================

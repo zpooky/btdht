@@ -5,7 +5,7 @@
 
 #include <prng/util.h>
 
-//TODO !! we never init array needle->peers it is always empty
+// TODO !! we never init array needle->peers it is always empty
 namespace db {
 //=====================================
 dht::KeyValue *
@@ -24,7 +24,7 @@ lookup(dht::DHT &self, const dht::Infohash &infohash) noexcept {
 
 //=====================================
 static void
-peer_swap(dht::DHT &self, dht::Peer &f, dht::Peer &s) noexcept {
+peer_swap(dht::KeyValue &self, dht::Peer &f, dht::Peer &s) noexcept {
   dht::Peer *f_next = f.timeout_next, *f_priv = f.timeout_priv;
   dht::Peer *s_next = s.timeout_next, *s_priv = s.timeout_priv;
 
@@ -53,13 +53,12 @@ peer_swap(dht::DHT &self, dht::Peer &f, dht::Peer &s) noexcept {
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
        bool seed) noexcept {
-  bool result = true;
-
   auto new_table = [&dht, infohash]() -> dht::KeyValue * {
     auto ires = insert(dht.lookup_table, infohash);
     return std::get<0>(ires);
   };
 
+#if 0
   auto add_peer = [&dht](dht::KeyValue &self, const Contact &c,
                          bool seed) -> dht::Peer * {
     dht::Peer p(c, dht.now, seed);
@@ -89,6 +88,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
     sp::greater cmp;
     return bin_search(self.peers, s, cmp);
   };
+#endif
 
   dht::KeyValue *table;
   if (!(table = lookup(dht, infohash))) {
@@ -98,25 +98,22 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
   if (table) {
     dht::Peer *existing;
 
-    if ((existing = find(*table, contact))) {
-      timeout::unlink(dht, existing);
+    if ((existing = find(table->peers, contact))) {
+      timeout::unlink(*table, existing);
       existing->activity = dht.now;
-      timeout::append_all(dht, existing);
+      timeout::append_all(*table, existing);
+      existing->seed = seed;
+      log::peer_db::update(dht, infohash, *existing);
     } else {
-      if ((existing = add_peer(*table, contact, seed))) {
-        timeout::append_all(dht, existing);
+      existing = insert(table->peers, dht::Peer(contact, dht.now, seed));
+      if (existing) {
+        timeout::append_all(*table, existing);
         log::peer_db::insert(dht, infohash, contact);
-      } else {
-        result = false;
       }
-    }
-
-    if (is_empty(table->peers)) {
-      // XXX if add false and create needle reclaim needle
     }
   }
 
-  return result;
+  return true;
 } // db::insert()
 
 //=====================================
@@ -146,20 +143,31 @@ valid(dht::DHT &, dht::Node &node, const dht::Token &token) noexcept {
 //=====================================
 Timeout
 on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
-  dht::Config &config = self.config;
-  Timeout result = self.now + config.peer_age_refresh;
-  auto timeout = sp::Milliseconds(config.peer_age_refresh);
+  auto timeout = sp::Milliseconds(self.config.peer_age_refresh);
+  sp::StaticArray<dht::KeyValue *, 16> empty;
+  Timestamp result{self.now};
 
-  dht::Peer *peer;
-  while ((peer = timeout::take_peer(self, timeout))) {
-    // TODO update dht::KeyValue->peers = peer
-  }
+  for_each(self.lookup_table, [&](dht::KeyValue &cur) {
+    dht::Peer *peer;
+    while ((peer = timeout::take_peer(self, cur, timeout))) {
+      assertx_n(remove(cur.peers, *peer));
+    }
 
-  if ((peer = self.timeout_peer)) {
-    result = peer->activity + config.peer_age_refresh;
-  }
+    if (cur.timeout_peer) {
+      result = std::min(result, cur.timeout_peer->activity);
+    }
+    if (is_empty(cur.peers)) {
+      insert(empty, &cur);
+    }
+  });
 
-  return result;
+  for_each(empty, [&](auto cur) { //
+    assertx_n(remove(self.lookup_table, cur->id));
+  });
+
+  result = self.now - result;
+  assertx(Timeout(self.config.peer_age_refresh) >= result);
+  return Timeout(self.config.peer_age_refresh) - result;
 }
 
 //=====================================

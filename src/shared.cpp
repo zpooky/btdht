@@ -279,7 +279,8 @@ RoutingTableLess::operator()(const RoutingTable *f, const RoutingTable *s) const
 // dht::KeyValue
 KeyValue::KeyValue(const Infohash &pid) noexcept
     : id(pid)
-    , peers{} {
+    , peers{}
+    , timeout_peer{nullptr} {
 }
 
 KeyValue::~KeyValue() {
@@ -442,7 +443,6 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     //}}}
     // peer-lookup db {{{
     , lookup_table()
-    , timeout_peer(nullptr)
     //}}}
     // routing-table {{{
     , root(nullptr)
