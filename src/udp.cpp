@@ -163,7 +163,7 @@ receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
       to_string(other, tmp);
       printf("Contact[%s]\n", tmp);
     }
-    assertx(other.port != 0);
+    assertxs(other.port != 0, other.port, remote.sin_port);
   }
 
   return res;
