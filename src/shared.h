@@ -461,7 +461,6 @@ struct SearchContext {
   explicit SearchContext(const Infohash &) noexcept;
 };
 
-// TODO
 struct KContact {
   /* number of common prefix bits */
   std::size_t common;

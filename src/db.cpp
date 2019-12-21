@@ -2,6 +2,7 @@
 
 #include "Log.h"
 #include "timeout.h"
+#include <tree/bst_extra.h>
 
 #include <prng/util.h>
 
@@ -149,7 +150,7 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
   sp::StaticArray<dht::KeyValue *, 16> empty;
   Timestamp result{self.now};
 
-  for_each(self.lookup_table, [&](dht::KeyValue &cur) {
+  binary::rec::inorder(self.lookup_table, [&](dht::KeyValue &cur) {
     dht::Peer *peer;
     while ((peer = timeout::take_peer(self, cur, timeout))) {
       assertx_n(remove(cur.peers, *peer));
