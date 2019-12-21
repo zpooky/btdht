@@ -151,6 +151,7 @@ receive(int fd, ::sockaddr_in &other, sp::Buffer &buf) noexcept {
 
 int
 receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
+  sp::BytesViewMark mrk = mark(buf);
   ::sockaddr_in remote{};
   memset(&remote, 0, sizeof(remote));
 
@@ -158,12 +159,14 @@ receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
   if (res == 0) {
     assertx_n(to_contact(remote, other));
     if (other.port == 0) {
-      printf("sockaddr_in[%s]\n", to_string(remote));
+      mrk.rollback = true;
+      fprintf(stderr, "sockaddr_in[%s]", to_string(remote));
       char tmp[64]{0};
       to_string(other, tmp);
-      printf("Contact[%s]\n", tmp);
+      fprintf(stderr, "Contact[%s]\n", tmp);
+      // assertxs(other.port != 0, other.port, remote.sin_port);
+      res = -EIO;
     }
-    assertxs(other.port != 0, other.port, remote.sin_port);
   }
 
   return res;
