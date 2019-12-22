@@ -158,40 +158,30 @@ make_t(R &r, dht::Token &t) {
   prng::fill(r, t.id);
   t.length = 5;
 }
-/*
- * # Statistics
- */
-static void
-send_statistics(prng::URandom &r, fd &udp, const Contact &to,
-                sp::Buffer &b) noexcept {
-  reset(b);
-  krpc::Transaction t;
-  make_tx(r, t);
-  krpc::request::statistics(b, t);
-  flip(b);
 
-  udp::send(udp, to, b);
+//====================================================
+static bool
+send_statistics(DHTClient &client, const Contact &to) noexcept {
+  reset(client.out);
+  krpc::Transaction tx;
+  make_tx(client.rand, tx);
+
+  krpc::request::statistics(client.out, tx);
+  flip(client.out);
+
+  return udp::send(client.udp, to, client.out);
 }
 
-static void
-receive_statistics(fd &u, sp::Buffer &b) noexcept {
-  printf("#receive statistics\n");
-  generic_receive(u, b);
-  printf("\n\n");
-}
-/*
- * # Dump
- */
-static void
-send_dump(prng::URandom &r, fd &udp, const Contact &to,
-          sp::Buffer &b) noexcept {
-  reset(b);
-  krpc::Transaction t;
-  make_tx(r, t);
-  krpc::request::dump(b, t);
-  flip(b);
+static bool
+send_dump(DHTClient &client, const Contact &to) noexcept {
+  reset(client.out);
+  krpc::Transaction tx;
+  make_tx(client.rand, tx);
 
-  udp::send(udp, to, b);
+  krpc::request::dump(client.out, tx);
+  flip(client.out);
+
+  return udp::send(client.udp, to, client.out);
 }
 
 static void
@@ -229,7 +219,7 @@ send_stop_seach(DHTClient &client, const Contact &to,
 }
 
 //====================================================
-static void
+static int
 send_ping(DHTClient &client, const Contact &to) noexcept {
   reset(client.out);
   krpc::Transaction tx;
@@ -237,14 +227,7 @@ send_ping(DHTClient &client, const Contact &to) noexcept {
   krpc::request::ping(client.out, tx, client.self);
   flip(client.out);
 
-  udp::send(client.udp, to, client.out);
-}
-
-static void
-receive_ping(fd &u, sp::Buffer &b) noexcept {
-  printf("#receive ping\n");
-  generic_receive(u, b);
-  printf("\n\n");
+  return udp::send(client.udp, to, client.out);
 }
 
 //========
@@ -311,17 +294,33 @@ receive_announce_peer(fd &u, sp::Buffer &b) noexcept {
 
 int
 handle_ping(DHTClient &client) {
-  // dht::Infohash search;
-  // prng::fill(r, search.id);
+  bool has = false;
+  Contact to;
 
-  // Contact to;
-  // if (!convert(avrgs[1], to)) {
-  //   printf("parse dest-ip[%s] failed\n", args[1]);
-  //   return 1;
-  // }
-  //
-  // send_statistics(r, udp, to, outBuffer);
-  // receive_statistics(udp, inBuffer);
+  while (client.argc) {
+    const char *p = client.argv[0];
+    if (to_contact(p, to)) {
+      has = true;
+      break;
+    }
+
+    client.argc--;
+    client.argv++;
+  }
+  if (!has) {
+    fprintf(stderr, "dht-client ping ip:port\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!send_ping(client, to)) {
+    fprintf(stderr, "failed to send\n");
+    return EXIT_FAILURE;
+  }
+
+  if (generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
+
   return 0;
 }
 
@@ -408,6 +407,34 @@ handle_announce_peer(DHTClient &client) {
 //=====================================
 int
 handle_statistics(DHTClient &client) {
+  bool has = false;
+  Contact to;
+
+  while (client.argc) {
+    const char *p = client.argv[0];
+    if (to_contact(p, to)) {
+      has = true;
+      break;
+    }
+
+    client.argc--;
+    client.argv++;
+  }
+
+  if (!has) {
+    fprintf(stderr, "dht-client stat ip:port\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!send_statistics(client, to)) {
+    fprintf(stderr, "failed to send\n");
+    return EXIT_FAILURE;
+  }
+
+  if (generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
+
   return 0;
 }
 
@@ -592,6 +619,34 @@ handle_search(DHTClient &client) {
 
 int
 handle_dump(DHTClient &client) {
+  bool has = false;
+  Contact to;
+
+  while (client.argc) {
+    const char *p = client.argv[0];
+    if (to_contact(p, to)) {
+      has = true;
+      break;
+    }
+
+    client.argc--;
+    client.argv++;
+  }
+
+  if (!has) {
+    fprintf(stderr, "dht-client dump ip:port\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!send_dump(client, to)) {
+    fprintf(stderr, "failed to send\n");
+    return EXIT_FAILURE;
+  }
+
+  if (generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
+
   return 0;
 }
 
@@ -683,7 +738,8 @@ parse_command(int argc, char **argv) {
       return bind_exe(subc, subv, handle_get_peers);
     } else if (std::strcmp(subcommand, "announce_peer") == 0) {
       return bind_exe(subc, subv, handle_announce_peer);
-    } else if (std::strcmp(subcommand, "statistics") == 0) {
+    } else if (std::strcmp(subcommand, "statistics") == 0 ||
+               std::strcmp(subcommand, "stat") == 0) {
       return bind_exe(subc, subv, handle_statistics);
     } else if (std::strcmp(subcommand, "search") == 0) {
       return bind_exe(subc, subv, handle_search);
