@@ -480,6 +480,12 @@ bool
 from_hex(dht::Infohash &id, const char *b) noexcept {
   return from_hex(id.id, b);
 }
+
+bool
+to_string(const dht::Infohash &ih, char *buf, size_t len) noexcept {
+  return hex::encode(ih.id, sizeof(ih.id), buf, len);
+}
+
 } // namespace dht
 
 //=====================================

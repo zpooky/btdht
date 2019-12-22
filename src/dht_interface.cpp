@@ -228,7 +228,7 @@ awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
   auto inc_active_searches = [&self, &missing_contacts, &now_sent]() {
     std::size_t K = dht::Bucket::K;
     missing_contacts -= std::min(missing_contacts, K);
-    self.active_searches++;
+    self.active_find_nodes++;
     now_sent++;
   };
 
@@ -649,8 +649,8 @@ handle_response_timeout(dht::DHT &dht, void *&closure) noexcept {
     closure = nullptr;
   }
 
-  assertx(dht.active_searches > 0);
-  dht.active_searches--;
+  assertx(dht.active_find_nodes > 0);
+  dht.active_find_nodes--;
 }
 
 static void

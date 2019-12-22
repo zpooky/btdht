@@ -262,6 +262,15 @@ struct Infohash {
 bool
 from_hex(dht::Infohash &, const char *) noexcept;
 
+bool
+to_string(const dht::Infohash &, char *buf, size_t) noexcept;
+
+template <size_t SIZE>
+bool
+to_string(const dht::Infohash &ih, char (&buf)[SIZE]) noexcept {
+  return to_string(ih, buf, SIZE);
+}
+
 //=====================================
 struct NodeId {
   Key id;

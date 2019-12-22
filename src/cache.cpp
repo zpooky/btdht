@@ -531,4 +531,28 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
 
 //========================
 
+size_t
+cache_read_min_idx(const dht::DHT &ctx) noexcept {
+  auto self = (Cache *)ctx.cache;
+  return self->read_min_idx;
+}
+
+size_t
+cache_read_max_idx(const dht::DHT &ctx) noexcept {
+  auto self = (Cache *)ctx.cache;
+  return self->read_max_idx;
+}
+
+size_t
+cache_contacts(const dht::DHT &ctx) noexcept {
+  auto self = (Cache *)ctx.cache;
+  return self->contacts;
+}
+
+size_t
+cache_write_idx(const dht::DHT &ctx) noexcept {
+  auto self = (Cache *)ctx.cache;
+  return self->cur_idx;
+}
+
 } // namespace sp

@@ -330,7 +330,7 @@ static bool
 handle_request(dht::MessageContext &ctx, const dht::Infohash &,
                const sp::UinStaticArray<Contact, 256> &) noexcept {
   // auto &dht = ctx.dht;
-  //TODO
+  // TODO
 
   return krpc::response::announce_this(ctx.out, ctx.transaction);
 }

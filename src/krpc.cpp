@@ -1,7 +1,9 @@
 #include "krpc.h"
+#include "cache.h"
 #include "dslbencode.h"
 #include <cstring>
 #include <list/LinkedList.h>
+#include <tree/bst_extra.h>
 #include <tuple>
 #include <type_traits>
 
@@ -322,14 +324,83 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
     if (!bencode::e::pair(b, "id", dht.id.id, sizeof(dht.id.id))) {
       return false;
     }
-    // TODO?
-    // if (!bencode::e::pair(b, "ip", dht.ip)) {
-    //   return false;
-    // }
-    // if (!bencode::e::pair(b, "peer_db", dht.lookup_table)) {
-    //   return false;
-    // }
-    if (!bencode::e::pair(b, "routing", dht.root)) {
+
+    {
+      if (!bencode::e::value(b, "cache")) {
+        return false;
+      }
+
+      bool res = bencode::e::dict(b, [&dht](auto &b2) {
+        if (!bencode::e::pair(b2, "min_read_idx",
+                              sp::cache_read_min_idx(dht))) {
+          return false;
+        }
+
+        if (!bencode::e::pair(b2, "max_read_idx",
+                              sp::cache_read_max_idx(dht))) {
+          return false;
+        }
+
+        if (!bencode::e::pair(b2, "contacts", sp::cache_contacts(dht))) {
+          return false;
+        }
+
+        if (!bencode::e::pair(b2, "write_idx", sp::cache_write_idx(dht))) {
+          return false;
+        }
+
+        return true;
+      });
+      if (!res) {
+        return false;
+      }
+    }
+
+    {
+      if (!bencode::e::value(b, "db")) {
+        return false;
+      }
+
+      bool res = bencode::e::dict(b, [&dht](auto &b2) {
+        binary::rec::inorder(dht.lookup_table, [&b2](dht::KeyValue &e) -> bool {
+          char buffer[64];
+          assertx_n(to_string(e.id, buffer));
+          std::uint64_t l(sp::n::length(e.peers));
+
+          return bencode::e::pair(b2, buffer, l);
+        });
+        return true;
+      });
+
+      if (!res) {
+        return false;
+      }
+    }
+
+    {
+      if (!bencode::e::value(b, "ip_election")) {
+        return false;
+      }
+
+      bool res = bencode::e::dict(b, [&dht](auto &b2) {
+        return for_all(dht.election.table, [&b2](const auto &e) {
+          Contact c = std::get<0>(e);
+          std::size_t votes = std::get<1>(e);
+          char str[64] = {0};
+          if (!to_string(c, str)) {
+            assertx(false);
+          }
+
+          return bencode::e::pair(b2, str, votes);
+        });
+      });
+
+      if (!res) {
+        return false;
+      }
+    }
+
+    if (!bencode::e::pair(b, "root", dht.root)) {
       return false;
     }
     std::uint64_t la(dht.last_activity);
@@ -342,10 +413,10 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
     if (!bencode::e::pair(b, "bad_nodes", dht.bad_nodes)) {
       return false;
     }
-    if (!bencode::e::priv::pair(b, "boostrap", dht.bootstrap)) {
-      return false;
-    }
-    if (!bencode::e::pair(b, "active_searches", dht.active_searches)) {
+    // if (!bencode::e::priv::pair(b, "boostrap", dht.bootstrap)) {
+    //   return false;
+    // }
+    if (!bencode::e::pair(b, "active_find_nodes", dht.active_find_nodes)) {
       return false;
     }
     return true;

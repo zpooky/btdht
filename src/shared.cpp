@@ -470,7 +470,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     , bootstrap_hashers()
     , bootstrap_filter(bootstrap_hashers)
     , bootstrap()
-    , active_searches(0)
+    , active_find_nodes(0)
     // }}}
     // searches{{{
     , search_root(nullptr)
