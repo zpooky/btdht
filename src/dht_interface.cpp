@@ -381,6 +381,7 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
     bootstrap_insert(self, dht::KContact(sender.id, ctx.remote, self.id.id));
     dht::Node n;
     n.id = sender;
+    n.contact = ctx.remote;
     f(n);
   }
 
@@ -825,7 +826,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
     dht::Token token;
     dht::DHT &dht = ctx.dht;
     // TODO ip
-    db::mint_token(dht, from, ctx.remote, token);
+    db::mint_token(dht, ctx.remote, token);
 
     const krpc::Transaction &t = ctx.transaction;
     const dht::KeyValue *const result = db::lookup(dht, search);

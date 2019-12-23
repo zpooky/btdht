@@ -483,7 +483,15 @@ from_hex(dht::Infohash &id, const char *b) noexcept {
 
 bool
 to_string(const dht::Infohash &ih, char *buf, size_t len) noexcept {
-  return hex::encode(ih.id, sizeof(ih.id), buf, len);
+  const size_t cap = len;
+  if (hex::encode(ih.id, sizeof(ih.id), buf, len)) {
+    if (len < cap) {
+      buf[len] = '\0';
+      return true;
+    }
+  }
+
+  return false;
 }
 
 } // namespace dht
@@ -729,7 +737,6 @@ Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
     //{{{
     , id(nid)
     , contact(p)
-    , his_token()
     //}}}
     // activity {{{
     , remote_activity(act)

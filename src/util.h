@@ -366,7 +366,6 @@ struct Node {
   //{{{
   NodeId id;
   Contact contact;
-  Token his_token;
   // }}}
 
   // activity {{{

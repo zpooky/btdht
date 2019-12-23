@@ -143,7 +143,10 @@ struct Client {
 
   std::size_t active;
 
+  void (*deinit)(Client &);
+
   explicit Client(fd &) noexcept;
+  ~Client() noexcept;
 
   Client(const Client &) = delete;
   Client(const Client &&) = delete;
@@ -195,6 +198,9 @@ struct Config {
    * 'look_for_nodes'
    */
   std::size_t max_bucket_not_find_node;
+
+  /*  */
+  sp::Minutes token_key_refresh;
   /*  */
   sp::Minutes bootstrap_reset;
 
@@ -551,9 +557,14 @@ bool
 operator>(const Search &, const Infohash &) noexcept;
 
 //=====================================
+struct TokenKey {
+  uint32_t key;
+  Timestamp created;
+  TokenKey() noexcept;
+};
+
 // dht::DHT
 struct DHT {
-  static const std::size_t token_table = 64;
   // self {{{
   NodeId id;
   Client client;
@@ -568,7 +579,7 @@ struct DHT {
 
   // peer-lookup db {{{
   avl::Tree<KeyValue> lookup_table;
-  // Timestamp timeout_peer_next;
+  TokenKey key[2];
   //}}}
 
   // routing-table {{{
@@ -621,7 +632,7 @@ struct DHT {
   void *cache{nullptr};
   // }}}
 
-  explicit DHT(fd &, const Contact &self, prng::xorshift32 &) noexcept;
+  DHT(fd &, const Contact &self, prng::xorshift32 &, Timestamp now) noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;

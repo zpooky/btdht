@@ -444,7 +444,7 @@ search_event_receive(fd &u, sp::Buffer &b) noexcept {
   fd udp{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, listen, r);
+  dht::DHT dht(udp, listen, r, sp::now());
   Contact remote;
 
 Lretry:

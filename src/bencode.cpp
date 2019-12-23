@@ -146,7 +146,7 @@ value(sp::Buffer &b, std::size_t length, void *closure,
     b.pos = pos;
     return false;
   }
-  assertx((before + length) == b.pos);
+  assertxs((before + length) == b.pos, before, length, before + length, b.pos);
 
   return true;
 }

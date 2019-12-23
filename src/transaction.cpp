@@ -124,6 +124,11 @@ add_front(Client &self, Tx *t) noexcept {
   assertxs((before + 1) == debug_count(self), (before + 1));
 }
 
+static void
+deinit(Client &self) noexcept {
+  // TODO cleanup active closures
+}
+
 bool
 init(Client &self) noexcept {
   sp::byte a = 'a';
@@ -147,6 +152,8 @@ init(Client &self) noexcept {
 
   assertx(debug_count(self) == Client::tree_capacity);
   assertx(Client::tree_capacity == cnt);
+
+  self.deinit = deinit;
 
   return true;
 }

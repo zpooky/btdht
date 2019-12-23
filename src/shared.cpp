@@ -124,7 +124,14 @@ Client::Client(fd &fd) noexcept
     , timeout_head(nullptr)
     , buffer{}
     , tree{buffer}
-    , active(0) {
+    , active(0)
+    , deinit(nullptr) {
+}
+
+Client::~Client() noexcept {
+  if (deinit) {
+    deinit(*this);
+  }
 }
 
 } // namespace dht
@@ -145,6 +152,8 @@ Config::Config() noexcept
     //
     , bucket_find_node_spam(1)
     , max_bucket_not_find_node(5)
+    //
+    , token_key_refresh(15)
     //
     , bootstrap_reset(60)
 //
@@ -428,8 +437,14 @@ Search::Search(Search &&o) noexcept
 }
 #endif
 
+TokenKey::TokenKey() noexcept
+    : key{}
+    , created{0} {
+}
+
 // dht::DHT
-DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
+DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r,
+         Timestamp n) noexcept
     // self {{{
     : id()
     , client(udp)
@@ -443,6 +458,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     //}}}
     // peer-lookup db {{{
     , lookup_table()
+    , key{}
     //}}}
     // routing-table {{{
     , root(nullptr)
@@ -464,7 +480,7 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
     /*total nodes present in the routing table*/
     , total_nodes(0)
     , bad_nodes(0)
-    , now(0)
+    , now(n)
     // boostrap {{{
     , bootstrap_last_reset(0)
     , bootstrap_hashers()
@@ -481,6 +497,11 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r) noexcept
 
   assertx_n(insert(bootstrap_hashers, djb_ip));
   assertx_n(insert(bootstrap_hashers, fnv_ip));
+
+  for (size_t i = 0; i < 2; ++i) {
+    fill(r, &key[i].key, sizeof(key[i].key));
+    key[i].created = now;
+  }
 }
 
 DHT::~DHT() {

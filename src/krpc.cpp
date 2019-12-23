@@ -363,7 +363,7 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
 
       bool res = bencode::e::dict(b, [&dht](auto &b2) {
         binary::rec::inorder(dht.lookup_table, [&b2](dht::KeyValue &e) -> bool {
-          char buffer[64];
+          char buffer[64]{0};
           assertx_n(to_string(e.id, buffer));
           std::uint64_t l(sp::n::length(e.peers));
 

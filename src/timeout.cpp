@@ -269,7 +269,7 @@ take_peer(dht::DHT &dht, dht::KeyValue &self,
   dht::Peer *head = self.timeout_peer;
 
   auto is_expired = [&](auto &node) {
-    return (node.activity + timeout) > dht.now;
+    return dht.now > (node.activity + timeout);
   };
 
   assertx(debug_is_cycle(self.timeout_peer));

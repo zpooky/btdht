@@ -2,6 +2,7 @@
 
 #include "Log.h"
 #include "timeout.h"
+#include <hash/fnv.h>
 #include <tree/bst_extra.h>
 
 #include <prng/util.h>
@@ -56,8 +57,8 @@ peer_swap(dht::KeyValue &self, dht::Peer &f, dht::Peer &s) noexcept {
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
        bool seed) noexcept {
-  auto new_table = [&dht, infohash]() -> dht::KeyValue * {
-    auto ires = insert(dht.lookup_table, infohash);
+  auto new_table = [](dht::DHT &self, const dht::Infohash &ih) {
+    auto ires = insert(self.lookup_table, ih);
     return std::get<0>(ires);
   };
 
@@ -95,7 +96,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
 
   dht::KeyValue *table;
   if (!(table = lookup(dht, infohash))) {
-    table = new_table();
+    table = new_table(dht, infohash);
   }
 
   if (table) {
@@ -120,24 +121,53 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
 } // db::insert()
 
 //=====================================
-void
-mint_token(dht::DHT &dht, dht::Node &id, Contact &, dht::Token &t) noexcept {
-Lretry:
-  prng::fill(dht.random, id.his_token.id);
-  id.his_token.length = 5;
+static dht::TokenKey &
+get_token_key(dht::DHT &self) noexcept {
+  dht::Config &conf = self.config;
+  if (self.now > (self.key[1].created + conf.token_key_refresh)) {
+    self.key[0] = self.key[1];
 
-  if (!is_valid(id.his_token)) {
-    goto Lretry;
+    fill(self.random, &self.key[1].key, sizeof(self.key[1].key));
+    self.key[1].created = self.now;
   }
 
-  t = id.his_token;
-} // db::mint_token()
+  return self.key[1];
+}
+
+static dht::Token
+ee(dht::TokenKey &key, const Contact &remote) noexcept {
+  dht::Token t;
+  uint32_t hash = fnv_1a::encode32(&key.key, sizeof(key.key));
+  if (remote.ip.type == IpType::IPV4) {
+    hash = fnv_1a::encode(&remote.ip.ipv4, sizeof(remote.ip.ipv4), hash);
+  } else {
+    hash = fnv_1a::encode(&remote.ip.ipv6, sizeof(remote.ip.ipv6), hash);
+  }
+  hash = fnv_1a::encode(&remote.port, sizeof(remote.port), hash);
+
+  t.length = sizeof(hash);
+  memcpy(t.id, &hash, t.length);
+
+  return t;
+}
+
+void
+mint_token(dht::DHT &self, const Contact &remote, dht::Token &t) noexcept {
+  dht::TokenKey &key = get_token_key(self);
+  t = ee(key, remote);
+}
 
 //=====================================
 bool
-valid(dht::DHT &, dht::Node &node, const dht::Token &token) noexcept {
+valid(dht::DHT &self, dht::Node &node, const dht::Token &token) noexcept {
   if (is_valid(token)) {
-    return node.his_token == token;
+    dht::Token cmp = ee(self.key[1], node.contact);
+    if (cmp == token) {
+      return true;
+    }
+
+    cmp = ee(self.key[0], node.contact);
+    return cmp == token;
   }
 
   return false;
@@ -146,7 +176,7 @@ valid(dht::DHT &, dht::Node &node, const dht::Token &token) noexcept {
 //=====================================
 Timeout
 on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
-  auto timeout = sp::Milliseconds(self.config.peer_age_refresh);
+  sp::Milliseconds timeout(self.config.peer_age_refresh);
   sp::StaticArray<dht::KeyValue *, 16> empty;
   Timestamp result{self.now};
 

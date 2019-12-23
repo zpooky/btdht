@@ -281,7 +281,8 @@ main(int argc, char **argv) {
   }
 
   auto r = prng::seed<prng::xorshift32>();
-  auto mdht = std::make_unique<dht::DHT>(udp, listen, r);
+  printf("sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
+  auto mdht = std::make_unique<dht::DHT>(udp, listen, r, sp::now());
   if (!dht::init(*mdht)) {
     die("failed to init dht");
     return 4;
@@ -305,8 +306,6 @@ main(int argc, char **argv) {
     assertx(to_string(listen, str, sizeof(str)));
     printf("bind(%s)\n", str);
   }
-
-  mdht->now = sp::now();
 
   fd poll = setup_epoll(udp, sfd);
   if (!poll) {

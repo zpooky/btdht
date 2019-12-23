@@ -10,12 +10,12 @@ lookup(dht::DHT &, const dht::Infohash &key) noexcept;
 
 //=====================================
 bool
-insert(dht::DHT &, const dht::Infohash &key, const Contact &value, bool seed) noexcept;
+insert(dht::DHT &, const dht::Infohash &key, const Contact &value,
+       bool seed) noexcept;
 
 //=====================================
-// TODO document
 void
-mint_token(dht::DHT &, dht::Node &, Contact &, dht::Token &) noexcept;
+mint_token(dht::DHT &, const Contact &, dht::Token &) noexcept;
 
 //=====================================
 bool
