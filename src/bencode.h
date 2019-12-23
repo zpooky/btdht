@@ -58,12 +58,6 @@ dict(sp::Buffer &buffer, F f) noexcept {
 bool
 pair(sp::Buffer &, const char *key, const char *value) noexcept;
 
-template <std::size_t N>
-bool
-pair(sp::Buffer &b, const char *key, const char (&value)[N]) noexcept {
-  return pair(b, key, value, N);
-}
-
 bool
 pair(sp::Buffer &, const char *key, std::int16_t value) noexcept;
 
@@ -222,6 +216,9 @@ pair(sp::Buffer &p, const char *key, sp::byte (&value)[SIZE],
   }
   return true;
 } // bencode::d::pair()
+
+bool
+pair_value_ref(sp::Buffer &, const char *, const char *&, std::size_t &) noexcept;
 
 bool
 pair(sp::Buffer &, const char *, bool &) noexcept;

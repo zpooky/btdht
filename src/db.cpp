@@ -56,7 +56,7 @@ peer_swap(dht::KeyValue &self, dht::Peer &f, dht::Peer &s) noexcept {
 
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
-       bool seed) noexcept {
+       bool seed, const char *name) noexcept {
   auto new_table = [](dht::DHT &self, const dht::Infohash &ih) {
     auto ires = insert(self.lookup_table, ih);
     return std::get<0>(ires);
@@ -100,6 +100,10 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
   }
 
   if (table) {
+    if (strlen(name) > 0) {
+      strcpy(table->name, name);
+    }
+
     dht::Peer *existing;
 
     if ((existing = find(table->peers, contact))) {

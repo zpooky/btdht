@@ -1052,7 +1052,7 @@ namespace announce_peer {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                bool implied_port, const dht::Infohash &infohash, Port port,
-               const dht::Token &token, bool seed) noexcept {
+               const dht::Token &token, bool seed, const char *name) noexcept {
   log::receive::req::announce_peer(ctx);
 
   dht::DHT &dht = ctx.dht;
@@ -1065,7 +1065,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
         peer.port = port;
       }
 
-      db::insert(dht, infohash, peer, seed);
+      db::insert(dht, infohash, peer, seed, name);
       krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);
     } else {
       const char *msg = "Announce_peer with wrong token";
@@ -1120,6 +1120,7 @@ on_request(dht::MessageContext &ctx) noexcept {
     bool b_p = false;
     bool b_t = false;
     bool b_s = false;
+    bool b_n = false;
 
     dht::NodeId id;
     bool implied_port = false;
@@ -1127,6 +1128,9 @@ on_request(dht::MessageContext &ctx) noexcept {
     Port port = 0;
     dht::Token token;
     bool seed = true;
+
+    const char *name = nullptr;
+    size_t name_len = 0;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
@@ -1155,6 +1159,11 @@ on_request(dht::MessageContext &ctx) noexcept {
       goto Lstart;
     }
 
+    if (!b_n && bencode::d::pair_value_ref(p, "name", name, name_len)) {
+      b_n = true;
+      goto Lstart;
+    }
+
     if (bencode_any(p, "announce_peer req")) {
       goto Lstart;
     }
@@ -1166,7 +1175,14 @@ on_request(dht::MessageContext &ctx) noexcept {
       return false;
     }
 
-    handle_request(ctx, id, implied_port, infohash, port, token, seed);
+    char name_abr[128]{'\0'};
+    if (name) {
+      memcpy(name_abr, name, std::min(name_len, sizeof(name_abr)));
+      name_abr[127] = '\0';
+    }
+
+    handle_request(ctx, id, implied_port, infohash, port, token, seed,
+                   name_abr);
     return true;
   });
 }

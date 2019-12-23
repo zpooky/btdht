@@ -389,9 +389,9 @@ for_all_node(const RoutingTable *it, F f) noexcept {
 // dht::KeyValue
 struct KeyValue {
   Infohash id;
-  // TODO char name[128];
   sp::SkipList<Peer, 6> peers;
   Peer *timeout_peer;
+  char name[128];
 
   explicit KeyValue(const Infohash &) noexcept;
 

@@ -146,7 +146,8 @@ value(sp::Buffer &b, std::size_t raw_size, void *closure,
     b.pos = pos;
     return false;
   }
-  assertxs((before + raw_size) == b.pos, before, raw_size, before + raw_size, b.pos);
+  assertxs((before + raw_size) == b.pos, before, raw_size, before + raw_size,
+           b.pos);
 
   return true;
 }
@@ -458,6 +459,23 @@ bool
 pair_x(sp::Buffer &d, const char *key, sp::byte *val,
        /*IN&OUT*/ std::size_t &len) noexcept {
   return parse_key_value(d, key, val, len);
+}
+
+bool
+pair_value_ref(sp::Buffer &b, const char *key, const char *&v,
+               std::size_t &vl) noexcept {
+  const std::size_t p = b.pos;
+  if (!parse_key(b, key)) {
+    b.pos = p;
+    return false;
+  }
+
+  if (!value_ref(b, v, vl)) {
+    b.pos = p;
+    return false;
+  }
+
+  return true;
 }
 
 bool

@@ -324,79 +324,87 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
       return false;
     }
 
-    {
-      if (!bencode::e::value(b, "cache")) {
-        return false;
-      }
-
-      bool res = bencode::e::dict(b, [&dht](auto &b2) {
-        if (!bencode::e::pair(b2, "min_read_idx",
-                              sp::cache_read_min_idx(dht))) {
-          return false;
-        }
-
-        if (!bencode::e::pair(b2, "max_read_idx",
-                              sp::cache_read_max_idx(dht))) {
-          return false;
-        }
-
-        if (!bencode::e::pair(b2, "contacts", sp::cache_contacts(dht))) {
-          return false;
-        }
-
-        if (!bencode::e::pair(b2, "write_idx", sp::cache_write_idx(dht))) {
-          return false;
-        }
-
-        return true;
-      });
-      if (!res) {
-        return false;
-      }
+    if (!bencode::e::value(b, "cache")) {
+      return false;
     }
 
-    {
-      if (!bencode::e::value(b, "db")) {
+    bool res = bencode::e::dict(b, [&dht](auto &b2) {
+      if (!bencode::e::pair(b2, "min_read_idx", sp::cache_read_min_idx(dht))) {
         return false;
       }
 
-      bool res = bencode::e::dict(b, [&dht](auto &b2) {
-        binary::rec::inorder(dht.lookup_table, [&b2](dht::KeyValue &e) -> bool {
+      if (!bencode::e::pair(b2, "max_read_idx", sp::cache_read_max_idx(dht))) {
+        return false;
+      }
+
+      if (!bencode::e::pair(b2, "contacts", sp::cache_contacts(dht))) {
+        return false;
+      }
+
+      if (!bencode::e::pair(b2, "write_idx", sp::cache_write_idx(dht))) {
+        return false;
+      }
+
+      return true;
+    });
+    if (!res) {
+      return false;
+    }
+
+    if (!bencode::e::value(b, "db")) {
+      return false;
+    }
+
+    res = bencode::e::dict(b, [&dht](auto &b2) {
+      binary::rec::inorder(dht.lookup_table, [&b2](dht::KeyValue &e) -> bool {
+        return bencode::e::dict(b2, [&e](auto &b3) {
           char buffer[64]{0};
           assertx_n(to_string(e.id, buffer));
-          std::uint64_t l(sp::n::length(e.peers));
 
-          return bencode::e::pair(b2, buffer, l);
-        });
-        return true;
-      });
-
-      if (!res) {
-        return false;
-      }
-    }
-
-    {
-      if (!bencode::e::value(b, "ip_election")) {
-        return false;
-      }
-
-      bool res = bencode::e::dict(b, [&dht](auto &b2) {
-        return for_all(dht.election.table, [&b2](const auto &e) {
-          Contact c = std::get<0>(e);
-          std::size_t votes = std::get<1>(e);
-          char str[64] = {0};
-          if (!to_string(c, str)) {
-            assertx(false);
+          const char *ih = buffer;
+          if (!bencode::e::pair(b3, "infohash", ih)) {
+            return false;
           }
 
-          return bencode::e::pair(b2, str, votes);
+          std::uint64_t l(sp::n::length(e.peers));
+          if (!bencode::e::pair(b3, "entries", l)) {
+            return false;
+          }
+
+          const char *name = e.name;
+          if (!bencode::e::pair(b3, "name", name)) {
+            return false;
+          }
+
+          return true;
         });
       });
+      return true;
+    });
 
-      if (!res) {
-        return false;
-      }
+    if (!res) {
+      return false;
+    }
+
+    if (!bencode::e::value(b, "ip_election")) {
+      return false;
+    }
+
+    res = bencode::e::dict(b, [&dht](auto &b2) {
+      return for_all(dht.election.table, [&b2](const auto &e) {
+        Contact c = std::get<0>(e);
+        std::size_t votes = std::get<1>(e);
+        char str[64] = {0};
+        if (!to_string(c, str)) {
+          assertx(false);
+        }
+
+        return bencode::e::pair(b2, str, votes);
+      });
+    });
+
+    if (!res) {
+      return false;
     }
 
     if (!bencode::e::pair(b, "root", dht.root)) {
