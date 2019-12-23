@@ -1,9 +1,9 @@
+#include <bencode_print.h>
 #include <dht.h>
 #include <dump.h>
 #include <gtest/gtest.h>
 #include <prng/util.h>
 #include <util.h>
-#include <bencode_print.h>
 
 static Contact
 rand_contact(prng::xorshift32 &r) {
@@ -11,8 +11,8 @@ rand_contact(prng::xorshift32 &r) {
 }
 
 TEST(dumpTest, test_hex) {
-  sp::byte buf[1]={'\0'};
-  dht::print_hex(buf,sizeof(buf));
+  sp::byte buf[1] = {'\0'};
+  dht::print_hex(buf, sizeof(buf));
   // hex::enc
 }
 
@@ -20,7 +20,7 @@ TEST(dumpTest, test) {
   fd sock(-1);
   prng::xorshift32 r(1);
   Contact self = rand_contact(r);
-  dht::DHT dht(sock, self, r);
+  dht::DHT dht(sock, self, r, sp::now());
   dht::init(dht);
 
   const char *file = "/tmp/wasd.dump";
@@ -52,11 +52,11 @@ TEST(dumpTest, test) {
 
   bencode_print_file(file);
 
-  dht::DHT restore_dht(sock, self, r);
+  dht::DHT restore_dht(sock, self, r, sp::now());
   ASSERT_TRUE(sp::restore(restore_dht, file));
 
   ASSERT_EQ(dht.id, restore_dht.id);
   const auto K = dht::Bucket::K;
   ASSERT_EQ(K, length(restore_dht.bootstrap));
-  //TODO
+  // TODO
 }

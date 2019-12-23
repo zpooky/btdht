@@ -246,16 +246,16 @@ send_find_node(DHTClient &client, const Contact &to,
 
 //=====================================
 /* # get_peers */
-static void
+static bool
 send_get_peers(DHTClient &client, const Contact &to,
-               dht::Infohash &search) noexcept {
+               const dht::Infohash &search) noexcept {
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
   krpc::request::get_peers(client.out, tx, client.self, search);
   flip(client.out);
-  udp::send(client.udp, to, client.out);
+  return udp::send(client.udp, to, client.out);
 }
 
 static dht::Token
@@ -395,6 +395,70 @@ handle_find_node(DHTClient &client) {
 //=====================================
 int
 handle_get_peers(DHTClient &client) {
+  bool has = false;
+  Contact to;
+  dht::Infohash search;
+  // printf("%s\n", client.argv[0]);
+
+  while (1) {
+    int opt;
+    int option_index = 0;
+    static struct option loptions[] = {
+        //
+        {"self", required_argument, 0, 's'},
+        {0, 0, 0, 0}
+        //
+    };
+
+    if (!has) {
+      auto argc = client.argc;
+      auto argv = client.argv;
+      if (parse_contact(client, to)) {
+        if (parse_id(client, search)) {
+          has = true;
+        }
+      }
+
+      if (!has) {
+        client.argc = argc;
+        client.argv = argv;
+      }
+    }
+
+    opt = getopt_long(client.argc, client.argv, "s:h", loptions, &option_index);
+    if (opt == -1) {
+      break;
+    }
+
+    switch (opt) {
+    case 's':
+      printf("-s \n");
+      // TODO
+      break;
+    case 'h':
+      printf("-h \n");
+      return EXIT_SUCCESS;
+      break;
+    default:
+      return EXIT_FAILURE;
+    }
+  }
+
+  if (!has) {
+    fprintf(stderr, "dht-client get_peers ip:port search [--self=hex]\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!send_get_peers(client, to, search)) {
+    fprintf(stderr, "failed to send\n");
+    return EXIT_FAILURE;
+  }
+
+  if (generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
+
+  return EXIT_SUCCESS;
   return 0;
 }
 

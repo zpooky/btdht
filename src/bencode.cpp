@@ -127,15 +127,15 @@ value(sp::Buffer &b, const sp::byte *str, std::size_t length) noexcept {
 } // bencode::e::value()
 
 bool
-value(sp::Buffer &b, std::size_t length, void *closure,
+value(sp::Buffer &b, std::size_t raw_size, void *closure,
       bool (*f)(sp::Buffer &, void *)) noexcept {
   const std::size_t pos = b.pos;
-  if (!encode_numeric(b, "%zu", length)) {
+  if (!encode_numeric(b, "%zu", raw_size)) {
     b.pos = pos;
     return false;
   }
 
-  if (sp::remaining_write(b) < (length + 1)) {
+  if (sp::remaining_write(b) < (raw_size + 1)) {
     b.pos = pos;
     return false;
   }
@@ -146,7 +146,7 @@ value(sp::Buffer &b, std::size_t length, void *closure,
     b.pos = pos;
     return false;
   }
-  assertxs((before + length) == b.pos, before, length, before + length, b.pos);
+  assertxs((before + raw_size) == b.pos, before, raw_size, before + raw_size, b.pos);
 
   return true;
 }

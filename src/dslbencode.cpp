@@ -59,25 +59,25 @@ serialize(sp::Buffer &b, const dht::Node &node) noexcept {
 } // bencode::e::serialize()
 
 static std::size_t
-size(const Contact &p) noexcept {
+serialize_size(const Contact &p) noexcept {
   // TODO ipv4
   assertx(p.ip.type == IpType::IPV4);
   return sizeof(p.ip.ipv4) + sizeof(p.port);
 }
 
 static std::size_t
-size(const dht::KContact &p) noexcept {
-  return size(p.contact);
+serialize_size(const dht::KContact &p) noexcept {
+  return serialize_size(p.contact);
 }
 
 static std::size_t
-size(const dht::Peer &p) noexcept {
-  return size(p.contact);
+serialize_size(const dht::Peer &p) noexcept {
+  return serialize_size(p.contact);
 }
 
 static std::size_t
-size(const dht::Node &p) noexcept {
-  return sizeof(p.id.id) + size(p.contact);
+serialize_size(const dht::Node &p) noexcept {
+  return sizeof(p.id.id) + serialize_size(p.contact);
 }
 
 template <typename F>
@@ -94,10 +94,10 @@ for_all(const dht::Node **list, std::size_t length, F f) noexcept {
 }
 
 static std::size_t
-size(const dht::Node **list, std::size_t length) noexcept {
+serialize_size(const dht::Node **list, std::size_t length) noexcept {
   std::size_t result = 0;
   for_all(list, length, [&result](const auto &value) { //
-    result += size(value);
+    result += serialize_size(value);
     return true;
   });
   return result;
@@ -105,31 +105,41 @@ size(const dht::Node **list, std::size_t length) noexcept {
 
 template <typename T>
 static std::size_t
-size(const sp::list<T> &list) noexcept {
+serialize_size(const sp::list<T> &list) noexcept {
   std::size_t result = 0;
   sp::for_each(list, [&result](const T &ls) { //
-    result += size(ls);
+    result += serialize_size(ls);
   });
   return result;
 }
 
 template <typename T>
 static std::size_t
-size(const sp::dstack<T> &list) noexcept {
+serialize_size(const sp::dstack<T> &list) noexcept {
   std::size_t result = 0;
   sp::for_each(list, [&result](const T &ls) { //
-    result += size(ls);
+    result += serialize_size(ls);
   });
   return result;
 }
 
 template <typename T>
 static std::size_t
-size(const heap::MaxBinary<T> &list) noexcept {
+serialize_size(const heap::MaxBinary<T> &list) noexcept {
   std::size_t result = 0;
   for_each(list, [&result](const auto &ls) {
     //
-    result += size(ls);
+    result += serialize_size(ls);
+  });
+  return result;
+}
+
+template <typename T>
+static std::size_t
+serialize_size(const sp::UinArray<T> &list) noexcept {
+  std::size_t result = 0;
+  sp::for_each(list, [&result](const T &ls) { //
+    result += serialize_size(ls);
   });
   return result;
 }
@@ -141,6 +151,8 @@ pair_compact(sp::Buffer &buf, const char *key,
     return false;
   }
 
+  std::size_t sz = serialize_size(list);
+
   auto cb = [](sp::Buffer &b, void *arg) {
     auto &l = *((const sp::UinArray<dht::Peer> *)arg);
 
@@ -149,15 +161,15 @@ pair_compact(sp::Buffer &buf, const char *key,
     });
   };
 
-  return bencode::e::value(buf, length(list), (void *)&list, cb);
+  return bencode::e::value(buf, sz, (void *)&list, cb);
 } // bencode::e::pair_compact()
 
 template <typename List>
 static bool
 sp_list(sp::Buffer &buf, const List &list) noexcept {
-  std::size_t len = size(list); // TODO ??
+  std::size_t sz = serialize_size(list);
 
-  return bencode::e::value(buf, len, (void *)&list, [](sp::Buffer &b, void *a) {
+  return bencode::e::value(buf, sz, (void *)&list, [](sp::Buffer &b, void *a) {
     const List *l = (List *)a;
     assertx(l);
     return for_all(*l, [&b](const auto &value) {
@@ -191,7 +203,7 @@ pair_compact(sp::Buffer &buf, const char *key, const dht::Node **list,
     return false;
   }
 
-  std::size_t len = size(list, sz);
+  std::size_t len = serialize_size(list, sz);
   std::tuple<const dht::Node **, std::size_t> arg(list, sz);
 
   return bencode::e::value(buf, len, &arg, [](auto &b, void *a) {

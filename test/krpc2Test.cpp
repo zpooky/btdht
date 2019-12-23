@@ -11,7 +11,7 @@ TEST(krpc2Test, get_peers) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
 
   Infohash h;
   auto sctx_t = emplace(dht.searches, h, h);
@@ -91,7 +91,7 @@ TEST(krpc2Test, find_node) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -135,7 +135,7 @@ TEST(krpc2Test, find_node) {
 
     return m.response(ctx, nullptr);
   };
-  dht.active_searches++;
+  dht.active_find_nodes++;
 
   krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
@@ -145,7 +145,7 @@ TEST(krpc2Test, find_node2) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -184,7 +184,7 @@ TEST(krpc2Test, find_node2) {
 
     return m.response(ctx, nullptr);
   };
-  dht.active_searches++;
+  dht.active_find_nodes++;
 
   krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
@@ -194,7 +194,7 @@ TEST(krpc2Test, ping) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -226,7 +226,7 @@ TEST(krpc2Test, ping) {
 
     return m.response(ctx, nullptr);
   };
-  dht.active_searches++;
+  dht.active_find_nodes++;
 
   krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
@@ -236,7 +236,7 @@ TEST(krpc2Test, xxx) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -275,7 +275,7 @@ TEST(krpc2Test, xxx) {
 
     return m.response(ctx, nullptr);
   };
-  dht.active_searches++;
+  dht.active_find_nodes++;
 
   krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
@@ -286,7 +286,7 @@ TEST(krpc2Test, get_peers3) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -379,7 +379,7 @@ TEST(krpc2Test, get_peers3) {
 
     return m.response(ctx, nullptr);
   };
-  dht.active_searches++;
+  dht.active_find_nodes++;
 
   krpc::ParseContext pctx(dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));

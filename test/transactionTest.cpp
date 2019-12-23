@@ -26,7 +26,7 @@ shuffle_tx(krpc::Transaction (&)[SIZE]) {
 TEST(transactionTest, test_valid_tree) {
   fd s(-1);
   prng::xorshift32 r(1);
-  dht::DHT dht(s, Contact(0, 0), r);
+  dht::DHT dht(s, Contact(0, 0), r, sp::now());
   dht.now = sp::now();
   assert(tx::init(dht.client));
   // TODO
@@ -36,7 +36,7 @@ TEST(transactionTest, test_valid) {
   std::size_t test_it = 0;
   fd s(-1);
   prng::xorshift32 r(1);
-  dht::DHT dht(s, Contact(0, 0), r);
+  dht::DHT dht(s, Contact(0, 0), r, sp::now());
   dht.now = sp::now();
   ASSERT_TRUE(tx::init(dht.client));
 

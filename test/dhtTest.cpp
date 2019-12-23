@@ -280,7 +280,7 @@ TEST(dhtTest, test) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
   dht::init(dht);
 
   insert_self(dht);
@@ -318,7 +318,7 @@ TEST(dhtTest, test_link) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
   dht::init(dht);
 
   random_insert(dht, 1024);
@@ -354,7 +354,7 @@ TEST(dhtTest, test_append) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
   dht::init(dht);
 
   for (std::size_t i = 1; i <= 50; ++i) {
@@ -433,7 +433,7 @@ TEST(dhtTest, test_node_id_strict) {
   for (std::size_t i = 0; i < 10000; ++i) {
     Ip ip(i);
     Contact c(ip, 0);
-    dht::DHT dht(sock, c, r);
+    dht::DHT dht(sock, c, r, sp::now());
     init(dht);
     ASSERT_TRUE(is_strict(ip, dht.id));
   }
@@ -455,7 +455,7 @@ TEST(dhtTest, test_full) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
   dht::init(dht);
   const char *id_hex = "B161DDEAF70A2485C32789B965CE62753B11CEFF";
   printf("%zu\n", std::strlen(id_hex));
@@ -623,7 +623,7 @@ TEST(dhtTest, test_first_full) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
   dht::init(dht);
   const char *id_hex = "FF61DDEAF70A2485C32789B965CE62753B11CEFF";
   ASSERT_TRUE(from_hex(dht.id, id_hex));
@@ -691,7 +691,7 @@ TEST(dhtTest, test_self_rand) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
   dht::init(dht);
   heap::StaticMaxBinary<RankNodeId, 1024> heap;
 
@@ -739,7 +739,7 @@ TEST(dhtTest, test_assert_fail) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
   dht::init(dht);
   const char *id_hex = "B161DD0EAF70A2485C32789B965CE602753B11CE";
   ASSERT_TRUE(from_hex(dht.id, id_hex));
@@ -829,7 +829,7 @@ TEST(dhtTest, test_assert_fail2) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r);
+  dht::DHT dht(sock, c, r, sp::now());
   dht::init(dht);
   const char *id_hex = "B161DD0EAF70A2485C32789B965CE602753B11CE";
   ASSERT_TRUE(from_hex(dht.id, id_hex));

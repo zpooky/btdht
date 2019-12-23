@@ -261,9 +261,8 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
 
 //=====================================
 bool
-get_peers(sp::Buffer &buf,
-          const Transaction &t, //
-          const dht::NodeId &id, const dht::Token &token,
+get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
+          const dht::Token &token,
           const sp::UinArray<dht::Peer> &values) noexcept {
   return resp(buf, t, [&id, &token, &values](auto &b) {
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
