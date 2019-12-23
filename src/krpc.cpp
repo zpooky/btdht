@@ -361,8 +361,7 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
           char buffer[64]{0};
           assertx_n(to_string(e.id, buffer));
 
-          const char *ih = buffer;
-          if (!bencode::e::pair(b3, "infohash", ih)) {
+          if (!bencode::e::pair(b3, "infohash", buffer)) {
             return false;
           }
 
@@ -371,9 +370,10 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
             return false;
           }
 
-          const char *name = e.name;
-          if (!bencode::e::pair(b3, "name", name)) {
-            return false;
+          if (strlen(e.name) > 0) {
+            if (!bencode::e::pair(b3, "name", e.name)) {
+              return false;
+            }
           }
 
           return true;
