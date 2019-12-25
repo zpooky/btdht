@@ -19,7 +19,7 @@ pair_compact(sp::Buffer &, const char *, const Contact *) noexcept;
 
 bool
 pair_compact(sp::Buffer &buf, const char *key,
-             const sp::UinArray<dht::Peer> &list) noexcept;
+             const sp::UinArray<Contact> &list) noexcept;
 
 bool
 pair_compact(sp::Buffer &, const char *, const sp::list<dht::Node> &) noexcept;
@@ -77,7 +77,7 @@ value(sp::Buffer &buf, Contact &) noexcept;
 
 bool
 value(sp::Buffer &buf, sp::UinArray<Contact> &) noexcept;
-}
+} // namespace priv
 } // namespace d
 
 //=====================================

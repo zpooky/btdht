@@ -22,9 +22,10 @@
 #include <unistd.h> //read
 #include <upnp_service.h>
 
+// TODO awake next timeout[0ms]
+// TODO use ip not ip:port in bloomfilters
 // TODO !!better upnp
-// TODO !implement peer db timeout logic
-// TODO fix db read logic
+// TODO if both eth0 & wlan0 is active there is some problem
 
 // TODO getopt: repeating bootstrap nodes
 
@@ -38,7 +39,6 @@
 // TODO client: on server shutdown send to search clients that we are shutting
 // down
 // TODO replace bad node
-// TODO if both eth0 & wlan0 is active there is some problem
 static void
 die(const char *s) {
   perror(s);

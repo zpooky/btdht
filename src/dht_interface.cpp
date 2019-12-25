@@ -819,41 +819,64 @@ setup(dht::Module &module) noexcept {
 namespace get_peers {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
-               const dht::Infohash &search, bool noseed) noexcept {
+               const dht::Infohash &search, bool noseed, bool scrape) noexcept {
   log::receive::req::get_peers(ctx);
 
-  message(ctx, id, [&](auto &from) {
-    dht::Token token;
+  message(ctx, id, [&](auto &) {
     dht::DHT &dht = ctx.dht;
-    // TODO ip
-    db::mint_token(dht, ctx.remote, token);
-
     const krpc::Transaction &t = ctx.transaction;
-    const dht::KeyValue *const result = db::lookup(dht, search);
 
-    if (result) {
-      sp::UinStaticArray<dht::Peer, 128> filtered;
-      for_each(result->peers, [&](const dht::Peer &cur) {
-        if ((cur.seed == false && noseed == true) ||
-            (cur.seed == true && noseed == false)) {
-          insert(filtered, cur);
-        }
-      });
+    if (scrape) {
+      // http://www.bittorrent.org/beps/bep_0033.html
+#if 0
+      sp::BloomFilter<uint8_t, 256> downloaders{};
+      sp::BloomFilter<uint8_t, 256> seeds{};
 
-      if (!is_empty(filtered)) {
-        krpc::response::get_peers(ctx.out, t, dht.id, token, filtered);
-        return;
+      const dht::KeyValue *const result = db::lookup(dht, search);
+      if (result) {
+        for_each(result->peers, [&](const dht::Peer &cur) {
+          if (cur.seed) {
+            insert(seeds, cur.contact.ip);
+          } else {
+            insert(downloaders,cur.contact.ip));
+          }
+        });
+
+        // peers["BFpe"] = downloaders.to_string();
+        // peers["BFsd"] = seeds.to_string();
+  krpc::response::get_peers_peers(ctx.out, t, dht.id, token?, downloaders,seeds);
       }
+#endif
+    } else {
+      dht::Token token;
+      db::mint_token(dht, ctx.remote, token);
+
+      const dht::KeyValue *const result = db::lookup(dht, search);
+      if (result) {
+        clear(dht.recycle_contact_list);
+        auto &filtered = dht.recycle_contact_list;
+        for_each(result->peers, [&](const dht::Peer &cur) {
+          if ((cur.seed == false && noseed == true) ||
+              (cur.seed == true && noseed == false)) {
+            insert(filtered, cur.contact);
+          }
+        });
+
+        if (!is_empty(filtered)) {
+          krpc::response::get_peers_peers(ctx.out, t, dht.id, token, filtered);
+          return;
+        }
+      }
+
+      constexpr std::size_t capacity = 8;
+      dht::Node *closest[capacity] = {nullptr};
+      dht::multiple_closest(dht, search, closest);
+      const dht::Node **r = (const dht::Node **)&closest;
+
+      krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
     }
-
-    constexpr std::size_t capacity = 8;
-    dht::Node *closest[capacity] = {nullptr};
-    dht::multiple_closest(dht, search, closest);
-    const dht::Node **r = (const dht::Node **)&closest;
-
-    krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
   });
-} // get_peers::handle_request
+} // namespace get_peers
 
 template <typename ResultType, typename ContactType>
 static void
@@ -1002,10 +1025,12 @@ on_request(dht::MessageContext &ctx) noexcept {
     bool b_id = false;
     bool b_ih = false;
     bool b_ns = false;
+    bool b_sc = false;
 
     dht::NodeId id;
     dht::Infohash infohash;
     bool noseed = false;
+    bool scrape = false;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
@@ -1023,6 +1048,11 @@ on_request(dht::MessageContext &ctx) noexcept {
       goto Lstart;
     }
 
+    if (!b_sc && bencode::d::pair(p, "scrape", scrape)) {
+      b_sc = true;
+      goto Lstart;
+    }
+
     if (bencode_any(p, "get_peers req")) {
       goto Lstart;
     }
@@ -1033,7 +1063,7 @@ on_request(dht::MessageContext &ctx) noexcept {
       return false;
     }
 
-    handle_request(ctx, id, infohash, noseed);
+    handle_request(ctx, id, infohash, noseed, scrape);
     return true;
   });
 } // get_peers::on_request

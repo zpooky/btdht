@@ -71,11 +71,6 @@ serialize_size(const dht::KContact &p) noexcept {
 }
 
 static std::size_t
-serialize_size(const dht::Peer &p) noexcept {
-  return serialize_size(p.contact);
-}
-
-static std::size_t
 serialize_size(const dht::Node &p) noexcept {
   return sizeof(p.id.id) + serialize_size(p.contact);
 }
@@ -146,7 +141,7 @@ serialize_size(const sp::UinArray<T> &list) noexcept {
 
 bool
 pair_compact(sp::Buffer &buf, const char *key,
-             const sp::UinArray<dht::Peer> &list) noexcept {
+             const sp::UinArray<Contact> &list) noexcept {
   if (!bencode::e::value(buf, key)) {
     return false;
   }
@@ -154,10 +149,10 @@ pair_compact(sp::Buffer &buf, const char *key,
   std::size_t sz = serialize_size(list);
 
   auto cb = [](sp::Buffer &b, void *arg) {
-    auto &l = *((const sp::UinArray<dht::Peer> *)arg);
+    auto &l = *((const sp::UinArray<Contact> *)arg);
 
     return for_all(l, [&b](const auto &head) { //
-      return serialize(b, head.contact);
+      return serialize(b, head);
     });
   };
 

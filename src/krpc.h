@@ -78,9 +78,9 @@ get_peers(sp::Buffer &, const Transaction &, //
           std::size_t) noexcept;
 
 bool
-get_peers(sp::Buffer &, const Transaction &, //
+get_peers_peers(sp::Buffer &, const Transaction &, //
           const dht::NodeId &id, const dht::Token &,
-          const sp::UinArray<dht::Peer> &) noexcept;
+          const sp::UinArray<Contact> &) noexcept;
 
 bool
 announce_peer(sp::Buffer &, const Transaction &, //

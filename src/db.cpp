@@ -25,35 +25,6 @@ lookup(dht::DHT &self, const dht::Infohash &infohash) noexcept {
 } // db::lookup()
 
 //=====================================
-#if 0
-static void
-peer_swap(dht::KeyValue &self, dht::Peer &f, dht::Peer &s) noexcept {
-  dht::Peer *f_next = f.timeout_next, *f_priv = f.timeout_priv;
-  dht::Peer *s_next = s.timeout_next, *s_priv = s.timeout_priv;
-
-  timeout::unlink(self, &f);
-  timeout::unlink(self, &s);
-
-  using std::swap;
-  swap(f, s);
-
-  timeout::insert(f_priv, &s, f_next);
-  timeout::insert(s_priv, &f, s_next);
-
-  if (!self.timeout_peer) {
-    self.timeout_peer = &f;
-  }
-
-  if (self.timeout_peer->activity > f.activity) {
-    self.timeout_peer = &f;
-  }
-
-  if (self.timeout_peer->activity > s.activity) {
-    self.timeout_peer = &s;
-  }
-}
-#endif
-
 bool
 insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
        bool seed, const char *name) noexcept {
@@ -61,38 +32,6 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
     auto ires = insert(self.lookup_table, ih);
     return std::get<0>(ires);
   };
-
-#if 0
-  auto add_peer = [&dht](dht::KeyValue &self, const Contact &c,
-                         bool seed) -> dht::Peer * {
-    dht::Peer p(c, dht.now, seed);
-    if (!is_full(self.peers)) {
-      sp::greater cmp;
-      auto first = bin_find_gte(self.peers, p, cmp);
-      dht::Peer *it = insert(self.peers, p);
-      assertx(it);
-
-      if (first) {
-      // shift down
-      Lit:
-        auto priv = it - 1;
-        peer_swap(dht, *it, *priv);
-        it = priv;
-        if (priv != first) {
-          goto Lit;
-        }
-      }
-      return it;
-    }
-
-    return nullptr;
-  };
-
-  auto find = [](dht::KeyValue &self, const Contact &s) -> dht::Peer * {
-    sp::greater cmp;
-    return bin_search(self.peers, s, cmp);
-  };
-#endif
 
   dht::KeyValue *table;
   if (!(table = lookup(dht, infohash))) {
@@ -178,6 +117,7 @@ valid(dht::DHT &self, dht::Node &node, const dht::Token &token) noexcept {
 } // db::valid()
 
 //=====================================
+// TODO sometimes return is Timeout(0)
 Timeout
 on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
   sp::Milliseconds timeout(self.config.peer_age_refresh);
@@ -194,6 +134,7 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
       result = std::min(result, cur.timeout_peer->activity);
     }
     if (is_empty(cur.peers)) {
+      assertx(!cur.timeout_peer);
       insert(empty, &cur);
     }
   });
