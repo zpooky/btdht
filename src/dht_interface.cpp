@@ -1168,9 +1168,9 @@ on_request(dht::MessageContext &ctx) noexcept {
       goto Lstart;
     }
 
-    if (!(b_id && b_ih && b_p && b_t)) {
-      const char *msg = "'announce_peer' request missing 'id' or 'info_hash' "
-                        "or 'port' or 'token'";
+    if (!(b_id && b_ih && b_t)) {
+      const char *msg =
+          "'announce_peer' request missing 'id' or 'info_hash' or 'token'";
       log::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
