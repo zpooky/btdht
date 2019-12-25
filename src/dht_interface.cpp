@@ -837,7 +837,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
         for_each(result->peers, [&](const dht::Peer &cur) {
           if (cur.seed) {
             insert(seeds, cur.contact.ip);
-          } else {
+          } else {//peers
             insert(downloaders,cur.contact.ip));
           }
         });
@@ -1157,7 +1157,9 @@ on_request(dht::MessageContext &ctx) noexcept {
     dht::Infohash infohash;
     Port port = 0;
     dht::Token token;
-    bool seed = true;
+    // According to BEP-33 if "seed" is omitted we assume it is a peer not a
+    // seed
+    bool seed = false;
 
     const char *name = nullptr;
     size_t name_len = 0;

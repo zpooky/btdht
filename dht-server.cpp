@@ -346,6 +346,7 @@ main(int argc, char **argv) {
     Timeout result = mdht->config.refresh_interval;
     auto cb = [&mdht, &out](auto acum, auto callback) {
       Timeout cr = callback(*mdht, out);
+      assertxs(cr != Timeout(0), uint64_t(cr));
       return std::min(cr, acum);
     };
     result = reduce(modules.on_awake, result, cb);

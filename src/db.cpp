@@ -7,7 +7,7 @@
 
 #include <prng/util.h>
 
-// TODO !! we never init array needle->peers it is always empty
+// TODO !! store peers using ip as key not ip:port
 namespace db {
 //=====================================
 dht::KeyValue *
@@ -49,7 +49,10 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
       timeout::unlink(*table, existing);
       existing->activity = dht.now;
       timeout::append_all(*table, existing);
+
       existing->seed = seed;
+      existing->contact.port = contact.port;
+
       log::peer_db::update(dht, infohash, *existing);
     } else {
       existing = insert(table->peers, dht::Peer(contact, dht.now, seed));
@@ -117,7 +120,6 @@ valid(dht::DHT &self, dht::Node &node, const dht::Token &token) noexcept {
 } // db::valid()
 
 //=====================================
-// TODO sometimes return is Timeout(0)
 Timeout
 on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
   sp::Milliseconds timeout(self.config.peer_age_refresh);
@@ -143,7 +145,7 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
     assertx_n(remove(self.lookup_table, cur->id));
   });
 
-  result = self.now - result;
+  result = self.now - result; // time already elapsed from $result to $now
   assertx(Timeout(self.config.peer_age_refresh) >= result);
   return Timeout(self.config.peer_age_refresh) - result;
 }
