@@ -7,6 +7,7 @@
 #include "client.h"
 #include "db.h"
 #include "dht.h"
+#include "hash/sha1.h"
 #include "krpc.h"
 #include "search.h"
 #include "timeout.h"
@@ -817,6 +818,36 @@ setup(dht::Module &module) noexcept {
 // get_peers
 //===========================================================
 namespace get_peers {
+// TODO test
+template <int SIZE>
+static void
+bloomfilter_insert(uint8_t (&bloom)[SIZE], const Ip &ip) noexcept {
+  const int m = SIZE * 8;
+  uint8_t hash[20]{0};
+  SHA1_CTX ctx;
+
+  SHA1Init(&ctx);
+
+  if (ip.type == IpType::IPV4) {
+    const void *raw = (const void *)&ip.ipv4;
+    SHA1Update(&ctx, (const uint8_t *)raw, (uint32_t)sizeof(ip.ipv4));
+  } else {
+    const void *raw = (const void *)&ip.ipv6.raw;
+    SHA1Update(&ctx, (const uint8_t *)raw, (uint32_t)sizeof(ip.ipv6));
+  }
+  SHA1Final(hash, &ctx);
+
+  int index1 = hash[0] | hash[1] << 8;
+  int index2 = hash[2] | hash[3] << 8;
+
+  // truncate index to m (11 bits required)
+  index1 %= m;
+  index2 %= m;
+
+  bloom[index1 / 8] = uint8_t(bloom[index1 / 8] | (0x01 << (index1 % 8)));
+  bloom[index2 / 8] = uint8_t(bloom[index2 / 8] | (0x01 << (index2 % 8)));
+}
+
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search, bool noseed, bool scrape) noexcept {
@@ -824,33 +855,31 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
 
   message(ctx, id, [&](auto &) {
     dht::DHT &dht = ctx.dht;
+    dht::Token token;
+    db::mint_token(dht, ctx.remote, token);
+
     const krpc::Transaction &t = ctx.transaction;
 
     if (scrape) {
       // http://www.bittorrent.org/beps/bep_0033.html
-#if 0
-      sp::BloomFilter<uint8_t, 256> downloaders{};
-      sp::BloomFilter<uint8_t, 256> seeds{};
+      uint8_t seeds[256]{};
+      uint8_t peers[256]{};
 
       const dht::KeyValue *const result = db::lookup(dht, search);
       if (result) {
         for_each(result->peers, [&](const dht::Peer &cur) {
           if (cur.seed) {
-            insert(seeds, cur.contact.ip);
-          } else {//peers
-            insert(downloaders,cur.contact.ip));
+            bloomfilter_insert(seeds, cur.contact.ip);
+          } else {
+            bloomfilter_insert(peers, cur.contact.ip);
           }
         });
 
-        // peers["BFpe"] = downloaders.to_string();
-        // peers["BFsd"] = seeds.to_string();
-  krpc::response::get_peers_peers(ctx.out, t, dht.id, token?, downloaders,seeds);
+        krpc::response::get_peers_scrape(ctx.out, t, dht.id, token, peers,
+                                         seeds);
+        return;
       }
-#endif
     } else {
-      dht::Token token;
-      db::mint_token(dht, ctx.remote, token);
-
       const dht::KeyValue *const result = db::lookup(dht, search);
       if (result) {
         clear(dht.recycle_contact_list);
@@ -867,14 +896,14 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
           return;
         }
       }
-
-      constexpr std::size_t capacity = 8;
-      dht::Node *closest[capacity] = {nullptr};
-      dht::multiple_closest(dht, search, closest);
-      const dht::Node **r = (const dht::Node **)&closest;
-
-      krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
     }
+
+    constexpr std::size_t capacity = 8;
+    dht::Node *closest[capacity] = {nullptr};
+    dht::multiple_closest(dht, search, closest);
+    const dht::Node **r = (const dht::Node **)&closest;
+
+    krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
   });
 } // namespace get_peers
 

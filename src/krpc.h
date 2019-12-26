@@ -65,26 +65,27 @@ namespace response {
 /* DHT interface */
 //{
 bool
-ping(sp::Buffer &, const Transaction &, //
-     const dht::NodeId &receiver) noexcept;
+ping(sp::Buffer &, const Transaction &, const dht::NodeId &receiver) noexcept;
 
 bool
-find_node(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &, const dht::Node **target, std::size_t) noexcept;
+find_node(sp::Buffer &, const Transaction &, const dht::NodeId &,
+          const dht::Node **target, std::size_t) noexcept;
 
 bool
-get_peers(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &id, const dht::Token &, const dht::Node **,
-          std::size_t) noexcept;
+get_peers(sp::Buffer &, const Transaction &, const dht::NodeId &id,
+          const dht::Token &, const dht::Node **, std::size_t) noexcept;
 
 bool
-get_peers_peers(sp::Buffer &, const Transaction &, //
-          const dht::NodeId &id, const dht::Token &,
-          const sp::UinArray<Contact> &) noexcept;
+get_peers_peers(sp::Buffer &, const Transaction &, const dht::NodeId &id,
+                const dht::Token &, const sp::UinArray<Contact> &) noexcept;
 
 bool
-announce_peer(sp::Buffer &, const Transaction &, //
-              const dht::NodeId &) noexcept;
+get_peers_scrape(sp::Buffer &, const Transaction &, const dht::NodeId &id,
+                 const dht::Token &, const uint8_t seeds[256],
+                 const uint8_t peers[256]) noexcept;
+
+bool
+announce_peer(sp::Buffer &, const Transaction &, const dht::NodeId &) noexcept;
 
 bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;

@@ -253,9 +253,9 @@ TEST(krpcTest, test_get_peers) {
 
     dht::Token token; // TODO
     // dht:: *peer[16] = {nullptr};
-    sp::UinStaticArray<dht::Peer, 256> peer;
+    sp::UinStaticArray<Contact, 256> peer;
 
-    ASSERT_TRUE(krpc::response::get_peers(buff, t, id, token, peer));
+    ASSERT_TRUE(krpc::response::get_peers_peers(buff, t, id, token, peer));
     sp::flip(buff);
   }
 }

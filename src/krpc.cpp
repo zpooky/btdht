@@ -262,8 +262,8 @@ get_peers(sp::Buffer &buf, const Transaction &t, //
 //=====================================
 bool
 get_peers_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
-          const dht::Token &token,
-          const sp::UinArray<Contact> &values) noexcept {
+                const dht::Token &token,
+                const sp::UinArray<Contact> &values) noexcept {
   return resp(buf, t, [&id, &token, &values](auto &b) {
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
@@ -276,6 +276,33 @@ get_peers_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
     return bencode::e::pair_compact(b, "values", values);
   });
 } // response::get_peers()
+
+//=====================================
+bool
+get_peers_scrape(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
+                 const dht::Token &token, const uint8_t seeds[256],
+                 const uint8_t peers[256]) noexcept {
+  return resp(buf, t, [&id, &token, &seeds, &peers](auto &b) {
+    if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "token", token.id, token.length)) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "BFsd", seeds)) {
+      return false;
+    }
+
+
+    if (!bencode::e::pair(b, "BFpe",peers)) {
+      return false;
+    }
+
+    return true;
+  });
+}
 
 //=====================================
 bool
