@@ -233,17 +233,20 @@ struct Transaction {
 };
 } // namespace krpc
 
-namespace dht {
 //=====================================
+namespace dht {
 using Key = sp::byte[20];
 
 std::size_t
 rank(const Key &, const Key &) noexcept;
 
 bool
-bit(const Key &key, std::size_t idx) noexcept;
+bit(const sp::byte (&key)[20], std::size_t idx) noexcept;
+
+} // namespace dht
 
 //=====================================
+namespace dht {
 struct Infohash {
   Key id;
 
@@ -270,8 +273,10 @@ bool
 to_string(const dht::Infohash &ih, char (&buf)[SIZE]) noexcept {
   return to_string(ih, buf, SIZE);
 }
+} // namespace dht
 
 //=====================================
+namespace dht {
 struct NodeId {
   Key id;
   NodeId();
@@ -337,8 +342,8 @@ struct Hasher<dht::NodeId> {
 };
 } // namespace sp
 
-namespace dht {
 //=====================================
+namespace dht {
 struct IdContact {
   Contact contact;
   NodeId id;

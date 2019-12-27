@@ -426,7 +426,7 @@ rank(const Key &id, const Key &o) noexcept {
 }
 
 bool
-bit(const Key &key, std::size_t idx) noexcept {
+bit(const sp::byte (&key)[20], std::size_t idx) noexcept {
   assertxs(idx < NodeId::bits, idx, NodeId::bits);
 
   std::size_t byte = idx / 8;
@@ -540,19 +540,20 @@ bit_index(std::size_t abs_idx) noexcept {
   return abs_idx % bits;
 }
 
-static char
+static sp::byte
 mask_out(std::size_t idx) noexcept {
-  char result = 0;
-  return char(result | char(1)) << idx;
+  assertx(idx < 8);
+  sp::byte result = 0;
+  return sp::byte(result | (1 << idx));
 }
 
 void
 NodeId::set_bit(std::size_t idx, bool v) noexcept {
   std::size_t wIdx = word_index(idx);
-  auto &word = id[wIdx];
+  sp::byte &word = this->id[wIdx];
   const auto bIdx = bit_index(idx);
 
-  char mask = mask_out(bIdx);
+  sp::byte mask = mask_out(bIdx);
   if (v) {
     word = word | mask;
   } else {
@@ -614,7 +615,7 @@ print_id(const NodeId &id, std::size_t color, const char *c) noexcept {
   for (std::size_t i = 0; i < NodeId::bits; ++i) {
     bool b = bit(id.id, i);
     if (i <= color) {
-      printf(c);
+      printf("%s", c);
     }
     printf("%d", b ? 1 : 0);
     if (i <= color) {

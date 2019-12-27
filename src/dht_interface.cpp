@@ -7,7 +7,7 @@
 #include "client.h"
 #include "db.h"
 #include "dht.h"
-#include "hash/sha1.h"
+#include <sha1.h>
 #include "krpc.h"
 #include "search.h"
 #include "timeout.h"

@@ -44,17 +44,17 @@ TEST(BEncodeTest, lst) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  ASSERT_TRUE(list(buff, nullptr, [](sp::Buffer &b, void *) { //
-    if (!value(b, "a")) {
+  ASSERT_TRUE(list(buff, nullptr, [](sp::Buffer &b2, void *) { //
+    if (!value(b2, "a")) {
       return false;
     }
-    if (!value(b, 42)) {
+    if (!value(b2, 42)) {
       return false;
     }
-    if (!value(b, "abc")) {
+    if (!value(b2, "abc")) {
       return false;
     }
-    if (!value(b, -42)) {
+    if (!value(b2, -42)) {
       return false;
     }
     return true;
@@ -67,17 +67,17 @@ TEST(BEncodeTest, dict) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  ASSERT_TRUE(dict(buff, [](sp::Buffer &b) { //
-    if (!value(b, "a")) {
+  ASSERT_TRUE(dict(buff, [](sp::Buffer &b2) { //
+    if (!value(b2, "a")) {
       return false;
     }
-    if (!value(b, 42)) {
+    if (!value(b2, 42)) {
       return false;
     }
-    if (!value(b, "abc")) {
+    if (!value(b2, "abc")) {
       return false;
     }
-    if (!value(b, -42)) {
+    if (!value(b2, -42)) {
       return false;
     }
     return true;

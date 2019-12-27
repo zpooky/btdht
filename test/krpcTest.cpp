@@ -5,12 +5,12 @@
 template <typename F>
 static void
 test_request(krpc::ParseContext &ctx, F body) {
-  auto f = [&body](krpc::ParseContext &ctx) {
-    if (!bencode::d::value(ctx.decoder, "a")) {
+  auto f = [&body](krpc::ParseContext &ctx2) {
+    if (!bencode::d::value(ctx2.decoder, "a")) {
       return false;
     }
 
-    return bencode::d::dict(ctx.decoder, body);
+    return bencode::d::dict(ctx2.decoder, body);
   };
 
   print("request: ", ctx.decoder);
@@ -20,12 +20,12 @@ test_request(krpc::ParseContext &ctx, F body) {
 template <typename F>
 static void
 test_response(krpc::ParseContext &ctx, F body) {
-  auto f = [&body](krpc::ParseContext &ctx) {
-    if (!bencode::d::value(ctx.decoder, "r")) {
+  auto f = [&body](krpc::ParseContext &ctx2) {
+    if (!bencode::d::value(ctx2.decoder, "r")) {
       return false;
     }
 
-    return bencode::d::dict(ctx.decoder, body);
+    return bencode::d::dict(ctx2.decoder, body);
   };
 
   print("response: ", ctx.decoder);
@@ -136,7 +136,7 @@ TEST(krpcTest, test_find_node) {
       nodeId(node[i].id);
       node[i].contact.ip.ipv4 = rand();
       node[i].contact.ip.type = IpType::IPV4;
-      node[i].contact.port = rand();
+      node[i].contact.port = (Port)rand();
       in[i] = &node[i];
     }
 
@@ -203,7 +203,7 @@ TEST(krpcTest, test_get_peers) {
       nodeId(node[i].id);
       node[i].contact.ip.ipv4 = rand();
       node[i].contact.ip.type = IpType::IPV4;
-      node[i].contact.port = rand();
+      node[i].contact.port = (Port)rand();
       in[i] = &node[i];
     }
 
@@ -2080,15 +2080,15 @@ TEST(krpcTest, print_find_node_debug) {
     sp::byte b[4096] = {0};
     std::size_t l = std::strlen(hex);
     FromHex(b, hex, l);
-    sp::Buffer buffer(b);
-    buffer.length = l;
+    sp::Buffer bufx(b);
+    bufx.length = l;
     {
       {
-        sp::Buffer copy(buffer);
+        sp::Buffer copy(bufx);
         bencode_print(copy);
       }
 
-      sp::Buffer copy(buffer);
+      sp::Buffer copy(bufx);
       krpc::ParseContext ctx(dht, copy);
       test_response(ctx, [](auto &p) {
         bool b_id = false;

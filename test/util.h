@@ -12,14 +12,15 @@ print_hex(const sp::byte *arr, std::size_t length) {
   const std::size_t hex_cap = 4096;
   char hexed[hex_cap + 1] = {0};
 
-  std::size_t hex_length = 0;
-  std::size_t i = 0;
+  size_t hex_length = 0;
+  size_t i = 0;
   while (i < length && hex_length < hex_cap) {
     char buff[128];
-    std::size_t buffLength = sprintf(buff, "%02x", arr[i++]);
-    memcpy(hexed + hex_length, buff, buffLength);
+    int buffLength = sprintf(buff, "%02x", arr[i++]);
+    assertx(buffLength >= 0);
+    memcpy(hexed + hex_length, buff, (size_t)buffLength);
 
-    hex_length += buffLength;
+    hex_length += (size_t)buffLength;
   }
 
   if (i == length) {
@@ -62,7 +63,7 @@ FromHex(sp::byte *theDest, const char *theSource, /*IN/OUT*/ SizeType &i) {
     char idx = *it++;
     assert(idx >= '0' && idx <= 'f');
     sp::byte f = lookup[int(idx)];
-    f = f << 4;
+    f = sp::byte(f << 4);
 
     idx = *it++;
     assert(idx >= '0' && idx <= 'f');

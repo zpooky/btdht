@@ -208,7 +208,7 @@ Lstart:
     Bucket &bucket = root->bucket;
     if (root->in_tree == nullptr) {
       // selfID should be in the last node routing table
-      dht.id.id[19] = ~dht.id.id[19];
+      dht.id.id[19] = sp::byte(~dht.id.id[19]);
       Node *res = find(bucket, dht.id);
       ASSERT_FALSE(res == nullptr);
     }
@@ -261,7 +261,7 @@ assert_present(dht::DHT &dht, const Node &current) {
   do {                                                                         \
     dht::Node self;                                                            \
     std::memcpy(self.id.id, dht.id.id, sizeof(dht.id.id));                     \
-    dht.id.id[19] = ~dht.id.id[19];                                            \
+    dht.id.id[19] = sp::byte(~dht.id.id[19]);                                  \
     auto *res = dht::insert(dht, self);                                        \
     ASSERT_TRUE(res);                                                          \
   } while (0)
@@ -430,7 +430,7 @@ TEST(dhtTest, test_append) {
 TEST(dhtTest, test_node_id_strict) {
   fd sock(-1);
   prng::xorshift32 r(1);
-  for (std::size_t i = 0; i < 10000; ++i) {
+  for (uint32_t i = 0; i < 10000; ++i) {
     Ip ip(i);
     Contact c(ip, 0);
     dht::DHT dht(sock, c, r, sp::now());
@@ -443,7 +443,7 @@ TEST(dhtTest, test_node_id_not_strict) {
   fd sock(-1);
   prng::xorshift32 r(1);
   dht::NodeId id;
-  for (std::size_t i = 0; i < 500000; ++i) {
+  for (uint32_t i = 0; i < 500000; ++i) {
     Ip ip(i);
     Contact c(ip, 0);
     fill(r, id.id);
@@ -695,7 +695,7 @@ TEST(dhtTest, test_self_rand) {
   dht::init(dht);
   heap::StaticMaxBinary<RankNodeId, 1024> heap;
 
-  std::size_t count = 0;
+  // std::size_t count = 0;
 
   for (std::size_t i = 1; i < 1024; ++i) {
     sp::HashSetProbing<NodeId> set;
@@ -703,6 +703,7 @@ TEST(dhtTest, test_self_rand) {
         std::max(dht.root_limit * Bucket::K, length(dht.rt_reuse) * Bucket::K);
 
     for (std::size_t x = 0; x < routing_capacity; ++x) {
+
       auto strt = uniform_dist(dht.random, 0, std::min(i, NodeId::bits));
 
       Node node;
@@ -1767,8 +1768,8 @@ TEST(dhtTest, test_assert_fail2) {
     Node *search[32]{nullptr};
     multiple_closest(dht, n.id, search);
     Node *it = search[0];
-    for (std::size_t i = 0; i < 32 && it; ++i) {
-      it = search[i];
+    for (size_t a = 0; a < 32 && it; ++a) {
+      it = search[a];
       if (it) {
         if (it->id == n.id) {
           search_find = true;
