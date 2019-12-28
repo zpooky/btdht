@@ -53,12 +53,12 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
       existing->seed = seed;
       existing->contact.port = contact.port;
 
-      log::peer_db::update(dht, infohash, *existing);
+      logger::peer_db::update(dht, infohash, *existing);
     } else {
       existing = insert(table->peers, dht::Peer(contact, dht.now, seed));
       if (existing) {
         timeout::append_all(*table, existing);
-        log::peer_db::insert(dht, infohash, contact);
+        logger::peer_db::insert(dht, infohash, contact);
       }
     }
   }

@@ -7,6 +7,23 @@
 #include <memory>
 #include <util/assert.h>
 
+
+//=====================================
+bool
+to_ipv4(const char *str, Ipv4 &result) noexcept {
+  bool ret = inet_pton(AF_INET, str, &result) == 1;
+  result = ntohl(result);
+  return ret;
+}
+
+//=====================================
+bool
+to_ipv6(const char *str, Ipv6 &result) noexcept{
+  static_assert(sizeof(result.raw) == sizeof(struct in6_addr), "");
+  bool ret = inet_pton(AF_INET6, str, &result) == 1;
+  return ret;
+}
+
 //=====================================
 /*Ip*/
 Ip::Ip(Ipv4 v4)
@@ -281,13 +298,6 @@ to_sockaddr(const Contact &src, ::sockaddr_in &dest) noexcept {
 }
 
 //=====================================
-bool
-to_ipv4(const char *str, Ipv4 &result) noexcept {
-  bool ret = inet_pton(AF_INET, str, &result) == 1;
-  result = ntohl(result);
-  return ret;
-}
-
 bool
 to_string(const Ip &ip, char *str, std::size_t length) noexcept {
   if (ip.type == IpType::IPV6) {

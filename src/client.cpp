@@ -29,7 +29,7 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
     }
 
     if (result != Res::OK) {
-      log::transmit::error::udp(dht);
+      logger::transmit::error::udp(dht);
       // since we fail to send request, we clear the transaction
       tx::TxContext dummy;
       if (!tx::consume(client, tx, dummy)) {
@@ -37,7 +37,7 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, dht::Module module,
       }
     }
   } else {
-    log::transmit::error::mint_transaction(dht);
+    logger::transmit::error::mint_transaction(dht);
   }
 
   return result;
@@ -54,7 +54,7 @@ ping(dht::DHT &dht, sp::Buffer &buf, const dht::Node &node) noexcept {
   };
 
   auto result = send(dht, node.contact, buf, ping, nullptr, serialize);
-  log::transmit::ping(dht, node.contact, result); // TODO log tx
+  logger::transmit::ping(dht, node.contact, result); // TODO log tx
   return result;
 }
 
@@ -70,7 +70,7 @@ find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
   };
 
   auto result = send(dht, dest, buf, find_node, closure, serialize);
-  log::transmit::find_node(dht, dest, result); // TODO log tx
+  logger::transmit::find_node(dht, dest, result); // TODO log tx
   return result;
 }
 
@@ -86,7 +86,7 @@ get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
   };
 
   auto result = send(dht, dest, buf, get_peers, closure, serialize);
-  log::transmit::get_peers(dht, dest, result); // TODO log tx
+  logger::transmit::get_peers(dht, dest, result); // TODO log tx
   return result;
 }
 

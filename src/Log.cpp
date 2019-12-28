@@ -25,8 +25,8 @@
 
 // #define LOG_KNOWN_TX
 
-namespace log {
-/*log*/
+namespace logger {
+/*logger*/
 static void
 print_time(FILE *f, Timestamp now) noexcept {
   char buff[32] = {0};
@@ -51,9 +51,9 @@ print_time(const dht::MessageContext &ctx) noexcept {
 
 
 namespace receive {
-/*log::receive*/
+/*logger::receive*/
 namespace req {
-/*log::receive::req*/
+/*logger::receive::req*/
 void
 ping(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
@@ -138,7 +138,7 @@ dump(dht::MessageContext &ctx) noexcept {
 } // namespace req
 
 namespace res {
-/*log::receive::res*/
+/*logger::receive::res*/
 void
 ping(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
@@ -220,7 +220,7 @@ unknown_tx(dht::MessageContext &ctx, const sp::Buffer &) noexcept {
 } // namespace res
 
 namespace parse {
-/*log::receive::parse*/
+/*logger::receive::parse*/
 void
 error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
   sp::Buffer copy(buffer);
@@ -241,7 +241,7 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
 } // namespace receive
 
 namespace awake {
-/*log::awake*/
+/*logger::awake*/
 void
 timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
   print_time(ctx);
@@ -285,7 +285,7 @@ contact_scan(const dht::DHT &ctx) noexcept {
 
 } // namespace awake
 
-/*log::transmit*/
+/*logger::transmit*/
 namespace transmit {
 static const char *
 to_string(client::Res result) noexcept {
@@ -357,7 +357,7 @@ get_peers(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
 }
 
 namespace error {
-/* log::transmit::error */
+/* logger::transmit::error */
 void
 mint_transaction(const dht::DHT &ctx) noexcept {
 #ifdef LOG_ERROR_MINT_TX
@@ -423,7 +423,7 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 } // namespace transmit
 
 namespace routing {
-/*log::routing*/
+/*logger::routing*/
 void
 split(const dht::DHT &ctx, const dht::RoutingTable &,
       const dht::RoutingTable &) noexcept {
@@ -461,7 +461,7 @@ can_not_insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
 } // namespace routing
 
 namespace peer_db {
-/*log::peer_db*/
+/*logger::peer_db*/
 void
 insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
 #ifdef LOG_PEER_DB
@@ -500,4 +500,4 @@ retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
 
 } // namespace search
 
-} // namespace log
+} // namespace logger

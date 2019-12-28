@@ -72,7 +72,7 @@ search_dequeue(dht::DHT &dht, dht::Search *current) noexcept {
 static void
 search_remove(dht::DHT &dht, dht::Search *current) noexcept {
   assertx(current);
-  log::search::retire(dht, *current);
+  logger::search::retire(dht, *current);
   search_dequeue(dht, current);
   bool res = remove(dht.searches, *current);
   assertx(res);
@@ -220,7 +220,7 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scratch) noexcept {
 namespace dump {
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  log::receive::req::dump(ctx);
+  logger::receive::req::dump(ctx);
 
   dht::DHT &dht = ctx.dht;
   return krpc::response::dump(ctx.out, ctx.transaction, dht);

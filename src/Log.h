@@ -3,14 +3,14 @@
 
 #include "shared.h"
 
-namespace log {
-/*log*/
+namespace logger {
+/*logger*/
 
 namespace receive {
-/*log::receive*/
+/*logger::receive*/
 
 namespace req {
-/*log::receive::req*/
+/*logger::receive::req*/
 void
 ping(dht::MessageContext &) noexcept;
 
@@ -31,7 +31,7 @@ dump(dht::MessageContext &) noexcept;
 } // namespace req
 
 namespace res {
-/* log::receive::res */
+/* logger::receive::res */
 void
 ping(dht::MessageContext &) noexcept;
 
@@ -56,7 +56,7 @@ unknown_tx(dht::MessageContext &, const sp::Buffer &) noexcept;
 } // namespace res
 
 namespace parse {
-/* log::receive::parse */
+/* logger::receive::parse */
 void
 error(dht::DHT &, const sp::Buffer &, const char *msg) noexcept;
 
@@ -64,7 +64,7 @@ error(dht::DHT &, const sp::Buffer &, const char *msg) noexcept;
 } // namespace receive
 
 namespace awake {
-/* log::awake */
+/* logger::awake */
 void
 timeout(const dht::DHT &, Timeout) noexcept;
 
@@ -79,7 +79,7 @@ contact_scan(const dht::DHT &) noexcept;
 } // namespace awake
 
 namespace transmit {
-/* log::transmit */
+/* logger::transmit */
 void
 ping(dht::DHT &, const Contact &, client::Res) noexcept;
 
@@ -90,7 +90,7 @@ void
 get_peers(dht::DHT &, const Contact &, client::Res) noexcept;
 
 namespace error {
-/* log::transmit::error */
+/* logger::transmit::error */
 void
 mint_transaction(const dht::DHT &) noexcept;
 
@@ -112,7 +112,7 @@ get_peers_response_timeout(dht::DHT &, const krpc::Transaction &,
 } // namespace transmit
 
 namespace routing {
-/*log::routing*/
+/*logger::routing*/
 void
 split(const dht::DHT &, const dht::RoutingTable &,
       const dht::RoutingTable &) noexcept;
@@ -124,7 +124,7 @@ can_not_insert(const dht::DHT &, const dht::Node &) noexcept;
 } // namespace routing
 
 namespace peer_db {
-/*log::peer_db*/
+/*logger::peer_db*/
 void
 insert(const dht::DHT &, const dht::Infohash &, const Contact &) noexcept;
 
@@ -138,6 +138,6 @@ void
 retire(const dht::DHT &, const dht::Search &) noexcept;
 
 } // namespace search
-} // namespace log
+} // namespace logger
 
 #endif

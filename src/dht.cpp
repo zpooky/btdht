@@ -1043,7 +1043,7 @@ Lstart:
                leaf->depth);
       timeout::insert_new(self, inserted);
 
-      log::routing::insert(self, *inserted);
+      logger::routing::insert(self, *inserted);
       if (!replaced) {
         ++self.total_nodes;
       }
@@ -1103,7 +1103,7 @@ Lstart:
       auto rnk = rank(self.id, contact.id);
       assertxs((ssize_t)rnk <= self.root->depth, rnk, self.root->depth);
 
-      log::routing::can_not_insert(self, contact);
+      logger::routing::can_not_insert(self, contact);
     }
 
     assertx(debug_assert_all(self));

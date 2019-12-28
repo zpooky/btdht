@@ -28,11 +28,20 @@ using ByteBuffer = BytesView;
 
 //=====================================
 using Port = std::uint16_t;
+
+//=====================================
 using Ipv4 = std::uint32_t;
 
+bool
+to_ipv4(const char *, Ipv4 &) noexcept;
+
+//=====================================
 struct Ipv6 {
   sp::byte raw[16];
 };
+
+bool
+to_ipv6(const char *, Ipv6 &) noexcept;
 
 namespace sp {
 template <>
@@ -137,9 +146,6 @@ to_string(const ::in_addr &) noexcept;
 
 bool
 to_sockaddr(const Contact &, ::sockaddr_in &) noexcept;
-
-bool
-to_ipv4(const char *, Ipv4 &) noexcept;
 
 bool
 to_string(const Ip &, char *, std::size_t) noexcept;

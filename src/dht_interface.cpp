@@ -311,7 +311,7 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
     // be the config.refresh_interval of 15min if we are under conf.p_seek)
     auto awake_next = awake_look_for_nodes(dht, out, look_for);
     result = std::min(result, awake_next);
-    log::awake::contact_scan(dht);
+    logger::awake::contact_scan(dht);
   }
 
   return result;
@@ -495,7 +495,7 @@ bencode_any(sp::Buffer &p, const char *ctx) noexcept {
 namespace ping {
 static bool
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  log::receive::req::ping(ctx);
+  logger::receive::req::ping(ctx);
 
   message(ctx, sender, [&ctx](auto &) {
     dht::DHT &dht = ctx.dht;
@@ -508,7 +508,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
 static bool
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  log::receive::res::ping(ctx);
+  logger::receive::res::ping(ctx);
 
   message(ctx, sender, [](auto &node) { //
     node.outstanding = 0;
@@ -549,7 +549,7 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
       return handle_response(ctx, sender);
     }
 
-    log::receive::parse::error(ctx.dht, p, "'ping' response missing 'id'");
+    logger::receive::parse::error(ctx.dht, p, "'ping' response missing 'id'");
     return false;
   });
 }
@@ -582,7 +582,7 @@ on_request(dht::MessageContext &ctx) noexcept {
       return handle_request(ctx, sender);
     }
 
-    log::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
+    logger::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
     return false;
   });
 }
@@ -590,7 +590,7 @@ on_request(dht::MessageContext &ctx) noexcept {
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *arg) noexcept {
-  log::transmit::error::ping_response_timeout(dht, tx, sent);
+  logger::transmit::error::ping_response_timeout(dht, tx, sent);
   assertx(arg == nullptr);
 }
 
@@ -610,7 +610,7 @@ namespace find_node {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search) noexcept {
-  log::receive::req::find_node(ctx);
+  logger::receive::req::find_node(ctx);
 
   message(ctx, sender, [&](auto &) {
     dht::DHT &dht = ctx.dht;
@@ -632,7 +632,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   static_assert(
       std::is_same<dht::IdContact, typename ContactType::value_type>::value,
       "");
-  log::receive::res::find_node(ctx);
+  logger::receive::res::find_node(ctx);
 
   message(ctx, sender, [&](auto &) {
     for_each(contacts, [&](const auto &contact) {
@@ -658,7 +658,7 @@ handle_response_timeout(dht::DHT &dht, void *&closure) noexcept {
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *closure) noexcept {
-  log::transmit::error::find_node_response_timeout(dht, tx, sent);
+  logger::transmit::error::find_node_response_timeout(dht, tx, sent);
   if (closure) {
     auto *bs = (dht::KContact *)closure;
     bootstrap_insert_force(dht, *bs);
@@ -752,7 +752,7 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
 
     if (!(b_id)) {
       const char *msg = "'find_node' response missing 'id'";
-      log::receive::parse::error(ctx.dht, p, msg);
+      logger::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -795,7 +795,7 @@ on_request(dht::MessageContext &ctx) noexcept {
 
     if (!(b_id && b_t)) {
       const char *msg = "'find_node' request missing 'id' or 'target'";
-      log::receive::parse::error(ctx.dht, p, msg);
+      logger::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -851,7 +851,7 @@ bloomfilter_insert(uint8_t (&bloom)[SIZE], const Ip &ip) noexcept {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
                const dht::Infohash &search, bool noseed, bool scrape) noexcept {
-  log::receive::req::get_peers(ctx);
+  logger::receive::req::get_peers(ctx);
 
   message(ctx, id, [&](auto &) {
     dht::DHT &dht = ctx.dht;
@@ -920,7 +920,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       std::is_same<dht::IdContact, typename ContactType::value_type>::value,
       "");
 
-  log::receive::res::get_peers(ctx);
+  logger::receive::res::get_peers(ctx);
   dht::DHT &dht = ctx.dht;
 
   message(ctx, sender, [&](auto &) {
@@ -942,7 +942,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
            void *ctx) noexcept {
-  log::transmit::error::get_peers_response_timeout(dht, tx, sent);
+  logger::transmit::error::get_peers_response_timeout(dht, tx, sent);
   auto search = (dht::SearchContext *)ctx;
   if (search) {
     search_decrement(search);
@@ -1043,7 +1043,7 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
 
     const char *msg = "'get_peers' response missing 'id' and 'token' or "
                       "('nodes' or 'values')";
-    log::receive::parse::error(ctx.dht, p, msg);
+    logger::receive::parse::error(ctx.dht, p, msg);
     return false;
   });
 } // get_peers::on_response
@@ -1088,7 +1088,7 @@ on_request(dht::MessageContext &ctx) noexcept {
 
     if (!(b_id && b_ih)) {
       const char *msg = "'get_peers' request missing 'id' or 'info_hash'";
-      log::receive::parse::error(ctx.dht, p, msg);
+      logger::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -1112,7 +1112,7 @@ static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                bool implied_port, const dht::Infohash &infohash, Port port,
                const dht::Token &token, bool seed, const char *name) noexcept {
-  log::receive::req::announce_peer(ctx);
+  logger::receive::req::announce_peer(ctx);
 
   dht::DHT &dht = ctx.dht;
   message(ctx, sender, [&](auto &from) {
@@ -1136,7 +1136,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
 
 static void
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
-  log::receive::res::announce_peer(ctx);
+  logger::receive::res::announce_peer(ctx);
 
   message(ctx, sender, [](auto &) { //
 
@@ -1161,7 +1161,7 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
 
     if (!(b_id)) {
       const char *msg = "'announce_peer' response missing 'id'";
-      log::receive::parse::error(ctx.dht, p, msg);
+      logger::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -1232,7 +1232,7 @@ on_request(dht::MessageContext &ctx) noexcept {
     if (!(b_id && b_ih && b_t)) {
       const char *msg =
           "'announce_peer' request missing 'id' or 'info_hash' or 'token'";
-      log::receive::parse::error(ctx.dht, p, msg);
+      logger::receive::parse::error(ctx.dht, p, msg);
       return false;
     }
 
@@ -1262,14 +1262,14 @@ setup(dht::Module &module) noexcept {
 namespace error {
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
-  log::receive::res::error(ctx);
+  logger::receive::res::error(ctx);
 
   return true;
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  log::receive::req::error(ctx);
+  logger::receive::req::error(ctx);
 
   krpc::Error e = krpc::Error::method_unknown;
   const char *msg = "unknown method";
