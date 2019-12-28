@@ -45,7 +45,5 @@ Session.vim
 dht
 perf.data
 perf.data.old
-compile_commands.json
 .clang_complete
-dht-client
 build

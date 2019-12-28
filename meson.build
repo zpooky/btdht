@@ -30,9 +30,13 @@ spdht_includes = [
   sphash_include,
 ]
 
+cpp = meson.get_compiler('cpp')
+m_dep = cpp.find_library('m')
+
 spdht_deps = [
   sputil_dep,
-  sphash_dep
+  sphash_dep,
+  m_dep
 ]
 
 subdir('src')
@@ -53,7 +57,6 @@ spdht_dep = declare_dependency(
 spdht_deps += spdht_dep
 subdir('test')
 
-
 executable('dht-client',
           'dht-client.cpp',
           link_args: spdht_link_options,
@@ -67,6 +70,5 @@ executable('dht-server',
           cpp_args: spdht_compile_options,
           dependencies: spdht_deps
           )
-
 
 # add_project_arguments('-DNDEBUG', language : ['cpp'])

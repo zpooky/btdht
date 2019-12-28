@@ -14,12 +14,12 @@ spdht_test_src = files([
 spdht_test_deps = spdht_deps
 spdht_test_deps += dependency('gtest_main')
 
-spdht_test = executable('spdhttest',
-                     spdht_test_src,
-                     # include_directories: spdht_includes,
-                     # link_with: spdht_lib,
-                     cpp_args: spdht_compile_options,
-                     dependencies: spdht_test_deps
+spdht_test = executable('thetest',
+                      spdht_test_src,
+                      include_directories: spdht_includes,
+                      link_args: spdht_link_options,
+                      cpp_args: spdht_compile_options,
+                      dependencies: spdht_test_deps
                      )
 
 test('spdht test', spdht_test)
