@@ -233,10 +233,10 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       std::size_t cnt = dht.client.active;
       if (tx::consume(dht.client, pctx.tx, tctx)) {
         assertx((cnt - 1) == dht.client.active);
-        log::receive::res::known_tx(mctx);
+        logger::receive::res::known_tx(mctx);
         return tctx.handle(mctx);
       } else {
-        log::receive::res::unknown_tx(mctx, in);
+        logger::receive::res::unknown_tx(mctx, in);
         // assertx(false);
       }
     } else if (std::strcmp(pctx.msg_type, "e") == 0) {
@@ -351,7 +351,7 @@ main(int argc, char **argv) {
     };
     result = reduce(modules.on_awake, result, cb);
 
-    log::awake::timeout(*mdht, result);
+    logger::awake::timeout(*mdht, result);
     mdht->last_activity = now;
 
     return result;

@@ -12,14 +12,18 @@ spdht_test_src = files([
 ])
 
 spdht_test_deps = spdht_deps
-spdht_test_deps += dependency('gtest_main')
+gtest_dep = dependency('gtest_main', required: false)
 
-spdht_test = executable('thetest',
-                      spdht_test_src,
-                      include_directories: spdht_includes,
-                      link_args: spdht_link_options,
-                      cpp_args: spdht_compile_options,
-                      dependencies: spdht_test_deps
-                     )
+if gtest_dep.found()
+  spdht_test_deps += gtest_dep
 
-test('spdht test', spdht_test)
+  spdht_test = executable('thetest',
+                        spdht_test_src,
+                        include_directories: spdht_includes,
+                        link_args: spdht_link_options,
+                        cpp_args: spdht_compile_options,
+                        dependencies: spdht_test_deps
+                       )
+
+  test('spdht test', spdht_test)
+endif
