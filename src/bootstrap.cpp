@@ -34,8 +34,7 @@ bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
 //==========================================
 void
 bootstrap_reset(DHT &self) noexcept {
-  auto &filter = self.bootstrap_filter;
-  clear(filter);
+  clear(self.bootstrap_filter);
 }
 
 //==========================================

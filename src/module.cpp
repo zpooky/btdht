@@ -16,7 +16,7 @@ Module::Module() noexcept
 
 // dht::Modules
 Modules::Modules() noexcept
-    : module{}
+    : modules{}
     , length(0)
     , on_awake() {
 }
@@ -24,7 +24,7 @@ Modules::Modules() noexcept
 Module &
 module_for(Modules &ms, const char *key, Module &error) noexcept {
   for (std::size_t i = 0; i < ms.length; ++i) {
-    dht::Module &current = ms.module[i];
+    dht::Module &current = ms.modules[i];
     if (std::strcmp(current.query, key) == 0) {
       return current;
     }

@@ -126,23 +126,23 @@ Lit:
 
 namespace interface_priv {
 //===========================================================
-static Timeout
+static Timestamp
 scheduled_search(dht::DHT &, sp::Buffer &) noexcept;
 
 bool
 setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
-  dump::setup(modules.module[i++]);
-  statistics::setup(modules.module[i++]);
-  search::setup(modules.module[i++]);
-  search_stop::setup(modules.module[i++]);
+  dump::setup(modules.modules[i++]);
+  statistics::setup(modules.modules[i++]);
+  search::setup(modules.modules[i++]);
+  search_stop::setup(modules.modules[i++]);
 
   insert(modules.on_awake, scheduled_search);
 
   return true;
 }
 
-static Timeout
+static Timestamp
 scheduled_search(dht::DHT &dht, sp::Buffer &scratch) noexcept {
   auto result_f = [&](dht::Search *current) {
     while (!is_empty(current->result)) {
@@ -194,22 +194,24 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scratch) noexcept {
     return result;
   });
 
-  Timeout deftime(dht.now);
-  Timeout *r = search_reduce(dht, &deftime, [](Timestamp *acum, auto &search) {
-    if (search.timeout < *acum) {
-      return &search.timeout;
-    }
+  Timestamp deftime(dht.now);
+  Timestamp *next =
+      search_reduce(dht, &deftime, [](Timestamp *it, dht::Search &search) {
+        if (search.timeout < *it) {
+          return &search.timeout;
+        }
 
-    return acum;
-  });
+        return it;
+      });
 
-  if (*r <= dht.now) {
-    dht::Config &config = dht.config;
+  if (*next <= dht.now) {
+    dht::Config &cfg = dht.config;
     /* XXX Arbitrary */
-    return Timestamp(config.transaction_timeout);
+    return dht.now + cfg.transaction_timeout;
   }
 
-  return *r - dht.now;
+  assertxs(*next > dht.now, uint64_t(*next), uint64_t(dht.now));
+  return *next;
 }
 
 } // namespace interface_priv

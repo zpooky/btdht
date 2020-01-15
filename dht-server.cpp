@@ -339,25 +339,30 @@ main(int argc, char **argv) {
     return true;
   };
 
-  auto awake_cb = [&mdht, &modules](sp::Buffer &out, Timestamp now) {
+  auto on_awake = [&mdht, &modules](sp::Buffer &out,
+                                    Timestamp now) -> sp::Milliseconds {
     // print_result(mdht->election);
     mdht->now = now;
 
-    Timeout result = mdht->config.refresh_interval;
-    auto cb = [&mdht, &out](auto acum, auto callback) {
-      Timeout cr = callback(*mdht, out);
-      assertxs(cr != Timeout(0), uint64_t(cr));
-      return std::min(cr, acum);
+    Timestamp next = now + mdht->config.refresh_interval;
+    auto cb = [&mdht, &out, now](auto acum, auto callback) {
+      Timestamp cr = callback(*mdht, out);
+      assertx(cr > now);
+      if (cr > now)
+        return std::min(cr, acum);
+      else
+        return acum;
     };
-    result = reduce(modules.on_awake, result, cb);
+    next = reduce(modules.on_awake, next, cb);
+    assertx(next > now);
 
-    logger::awake::timeout(*mdht, result);
+    logger::awake::timeout(*mdht, next);
     mdht->last_activity = now;
 
-    return result;
+    return sp::Milliseconds(next) - sp::Milliseconds(now);
   };
 
-  auto interrupt_cb = [&](const signalfd_siginfo &info) {
+  auto on_interrupt = [&](const signalfd_siginfo &info) {
     printf("signal: %s: %d\n", strsignal(info.ssi_signo), info.ssi_signo);
 
     if (mdht) {
@@ -371,5 +376,5 @@ main(int argc, char **argv) {
     return 1;
   };
 
-  return main_loop(poll, sfd, handle_cb, awake_cb, interrupt_cb);
+  return main_loop(poll, sfd, handle_cb, on_awake, on_interrupt);
 }

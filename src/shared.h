@@ -168,7 +168,7 @@ struct Config {
   sp::Minutes min_timeout_interval;
   /* Node refresh interval
    */
-  Timeout refresh_interval;
+  sp::Milliseconds refresh_interval;
   /* the max age of a peer db entry before it gets evicted */
   sp::Minutes peer_age_refresh;
   sp::Minutes token_max_age;

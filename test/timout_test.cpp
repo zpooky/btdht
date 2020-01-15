@@ -79,11 +79,11 @@ TEST(TimeoutTest, test2) {
   Contact c(0, 0);
   prng::xorshift32 r(1);
   dht::DHT dht(sock, c, r, sp::now());
-  dht.now = sp::Milliseconds(0);
+  dht.now = sp::Timestamp(0);
   ASSERT_EQ(timeout::take_node(dht, sp::Milliseconds(1)), nullptr);
 
   dht::Node node0;
-  node0.req_sent = sp::Milliseconds(0);
+  node0.req_sent = sp::Timestamp(0);
   ASSERT_EQ(dht.timeout_node, nullptr);
   timeout::insert_new(dht, &node0);
   ASSERT_TRUE(dht.timeout_node);

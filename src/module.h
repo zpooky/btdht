@@ -22,10 +22,10 @@ struct Module {
 
 // dht::Modules
 struct Modules {
-  Module module[24];
+  Module modules[24];
   std::size_t length;
 
-  using AwakeType = Timeout (*)(DHT &, sp::Buffer &) noexcept;
+  using AwakeType = Timestamp (*)(DHT &, sp::Buffer &) noexcept;
   sp::StaticArray<AwakeType, 24> on_awake;
 
   Modules() noexcept;

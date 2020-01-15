@@ -174,7 +174,6 @@ to_string(const Contact &) noexcept;
 bool
 to_port(const char *, Port &) noexcept;
 
-using Timeout = sp::Milliseconds;
 using Timestamp = sp::Timestamp;
 
 namespace dht {

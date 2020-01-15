@@ -149,7 +149,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
   return true;
 } // namespace dht_upnp
 
-static Timeout
+static Timestamp
 scheduled_upnp(dht::DHT &self, sp::Buffer &) noexcept {
   const sp::Seconds lease(sp::Hours(1));
   Timestamp expiry(self.upnp_sent + lease);
@@ -160,7 +160,8 @@ scheduled_upnp(dht::DHT &self, sp::Buffer &) noexcept {
     expiry = self.upnp_sent + lease;
   }
 
-  return expiry - self.now;
+  assertx(expiry > self.now);
+  return expiry;
 }
 
 bool

@@ -22,7 +22,7 @@ bool
 valid(dht::DHT &, dht::Node &, const dht::Token &) noexcept;
 
 //=====================================
-Timeout
+Timestamp
 on_awake_peer_db(dht::DHT &, sp::Buffer &) noexcept;
 
 } // namespace db

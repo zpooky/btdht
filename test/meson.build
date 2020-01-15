@@ -2,7 +2,6 @@ spdht_test_src = files([
   'krpcTest.cpp',
   'dumpTest.cpp',
   'bencodeTest.cpp',
-  'cacheTest.cpp',
   'dhtTest.cpp',
   'krpc2Test.cpp',
   'timout_test.cpp',

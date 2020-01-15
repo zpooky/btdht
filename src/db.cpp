@@ -120,11 +120,11 @@ valid(dht::DHT &self, dht::Node &node, const dht::Token &token) noexcept {
 } // db::valid()
 
 //=====================================
-Timeout
+Timestamp
 on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
-  sp::Milliseconds timeout(self.config.peer_age_refresh);
+  const sp::Milliseconds timeout(self.config.peer_age_refresh);
   sp::StaticArray<dht::KeyValue *, 16> empty;
-  Timestamp result{self.now};
+  Timestamp next{self.now};
 
   binary::rec::inorder(self.lookup_table, [&](dht::KeyValue &cur) {
     dht::Peer *peer;
@@ -133,7 +133,7 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
     }
 
     if (cur.timeout_peer) {
-      result = std::min(result, cur.timeout_peer->activity);
+      next = std::min(next, cur.timeout_peer->activity);
     }
     if (is_empty(cur.peers)) {
       assertx(!cur.timeout_peer);
@@ -145,9 +145,8 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
     assertx_n(remove(self.lookup_table, cur->id));
   });
 
-  result = self.now - result; // time already elapsed from $result to $now
-  assertx(Timeout(self.config.peer_age_refresh) >= result);
-  return Timeout(self.config.peer_age_refresh) - result;
+  assertx((next + timeout) > self.now);
+  return next + timeout;
 }
 
 //=====================================

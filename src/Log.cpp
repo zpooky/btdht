@@ -1,11 +1,11 @@
 #include "Log.h"
-#include <util.h>
 #include <bencode_print.h>
 #include <cstring>
 #include <encode/hex.h>
 #include <inttypes.h>
 #include <io/file.h>
 #include <string/ascii.h>
+#include <util.h>
 
 // #define LOG_REQ_PING
 // #define LOG_REQ_FIND_NODE
@@ -31,7 +31,7 @@ static void
 print_time(FILE *f, Timestamp now) noexcept {
   char buff[32] = {0};
 
-  sp::Seconds sec(now, sp::RoundMode::UP);
+  sp::Seconds sec(sp::Milliseconds(now), sp::RoundMode::UP);
   time_t tim(sec);
 
   strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", localtime(&tim));
@@ -47,8 +47,6 @@ static void
 print_time(const dht::MessageContext &ctx) noexcept {
   return print_time(ctx.dht);
 }
-
-
 
 namespace receive {
 /*logger::receive*/
@@ -243,25 +241,27 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
 namespace awake {
 /*logger::awake*/
 void
-timeout(const dht::DHT &ctx, Timeout timeout) noexcept {
+timeout(const dht::DHT &ctx, Timestamp timeout) noexcept {
   print_time(ctx);
-  printf("awake next timeout[%" PRIu64 "ms] ", std::uint64_t(timeout));
-  print_time(stdout, ctx.now + timeout);
+  Timestamp awake(timeout - ctx.now);
+  printf("awake next timeout[%" PRIu64 "ms] ", std::uint64_t(awake));
+  print_time(stdout, timeout);
   printf("\n");
 }
 
 void
-contact_ping(const dht::DHT &ctx, Timeout timeout) noexcept {
+contact_ping(const dht::DHT &ctx, Timestamp timeout) noexcept {
   print_time(ctx);
   // TODO fix better print
+  Timestamp awake(timeout - ctx.now);
   printf("awake contact_ping vote timeout[%" PRIu64 "ms] next date:",
-         std::uint64_t(timeout));
-  print_time(stdout, ctx.timeout_next);
+         std::uint64_t(awake));
+  print_time(stdout, timeout);
   printf("\n");
 }
 
 void
-peer_db(const dht::DHT &ctx, Timeout timeout) noexcept {
+peer_db(const dht::DHT &ctx, Timestamp timeout) noexcept {
 #ifdef LOG_PEER_DB
   print_time(ctx);
   // TODO fix better print
@@ -475,7 +475,8 @@ insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
 }
 
 void
-update(const dht::DHT &ctx, const dht::Infohash &h, const dht::Peer &) noexcept {
+update(const dht::DHT &ctx, const dht::Infohash &h,
+       const dht::Peer &) noexcept {
 #ifdef LOG_PEER_DB
   print_time(ctx);
   printf("peer db update infohash[");

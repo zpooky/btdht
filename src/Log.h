@@ -66,13 +66,13 @@ error(dht::DHT &, const sp::Buffer &, const char *msg) noexcept;
 namespace awake {
 /* logger::awake */
 void
-timeout(const dht::DHT &, Timeout) noexcept;
+timeout(const dht::DHT &, Timestamp) noexcept;
 
 void
-contact_ping(const dht::DHT &, Timeout) noexcept;
+contact_ping(const dht::DHT &, Timestamp) noexcept;
 
 void
-peer_db(const dht::DHT &, Timeout) noexcept;
+peer_db(const dht::DHT &, Timestamp) noexcept;
 
 void
 contact_scan(const dht::DHT &) noexcept;
