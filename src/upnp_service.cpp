@@ -3,6 +3,7 @@
 #include "tcp.h"
 #include "udp.h"
 #include "upnp.h"
+#include "util.h"
 #include <arpa/inet.h>
 #include <cstddef>
 #include <ifaddrs.h>
@@ -13,12 +14,31 @@
 #include <unistd.h>
 
 namespace dht_upnp {
+static fd
+open_upnp(const Ip &ip) {
+
+  {
+    Contact gateway{ip, Port(48353)};
+    fd tcp = tcp::connect(gateway, tcp::Mode::BLOCKING);
+    if (tcp) {
+      return tcp;
+    }
+  }
+  {
+    Contact gateway{ip, Port(49153)};
+    fd tcp = tcp::connect(gateway, tcp::Mode::BLOCKING);
+    if (tcp) {
+      return tcp;
+    }
+  }
+  return fd{-1};
+}
 
 static bool
-send(const upnp::upnp &in, const Contact &gateway) noexcept {
-  fd tcp = tcp::connect(gateway, tcp::Mode::BLOCKING);
+send(const upnp::upnp &in, const Ip &ip) noexcept {
+  fd tcp = open_upnp(ip);
   if (!tcp) {
-    printf("connect[%s]\n", to_string(gateway));
+    printf("failed open: %s\n", to_string(ip));
     return false;
   }
 
@@ -34,7 +54,7 @@ send(const upnp::upnp &in, const Contact &gateway) noexcept {
   }
 
   flip(buf);
-  printf("'%.*s': %zu\n", int(buf.length), buf.raw, buf.length);
+  printf("%s: '%.*s': %zu\n", __func__, int(buf.length), buf.raw, buf.length);
   return true;
 }
 
@@ -96,10 +116,12 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
         goto Lnext;
       }
 
-      auto me = (sockaddr_in *)it->ifa_addr;
-      auto netmask = (sockaddr_in *)it->ifa_netmask;
+      auto me = (::sockaddr_in *)it->ifa_addr;
+      auto netmask = (::sockaddr_in *)it->ifa_netmask;
 
       if (!sp::is_private_address(me->sin_addr, netmask->sin_addr)) {
+        printf("UPNP !is_private_address: me:%s\n", to_string(*me));
+        printf("UPNP !is_private_address: mask:%s\n", to_string(*netmask));
         goto Lnext;
       }
 
@@ -109,6 +131,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
       }
 
       Contact gateway;
+      Ip g{ntohl(def_gateway.s_addr)};
       if (!to_contact(def_gateway, Port(48353), gateway)) {
         assertx(false);
         goto Lnext;
@@ -136,7 +159,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
       ctx.local = local.port;
       ctx.external = ctx.local + Port(1);
       ctx.ip = local.ip;
-      if (!send(ctx, gateway)) {
+      if (!send(ctx, g)) {
         goto Lnext;
       }
     }

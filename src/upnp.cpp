@@ -1,8 +1,8 @@
 #define __STDC_FORMAT_MACROS
-#include "tcp.h"
-#include <inttypes.h>
 #include "upnp.h"
+#include "tcp.h"
 #include <cstddef>
+#include <inttypes.h>
 #include <util/assert.h>
 
 namespace upnp {
@@ -62,7 +62,7 @@ format_body(char *buffer, size_t length, const char *action, const upnp &data,
     return 0;
   }
 
-  return res;
+  return (size_t)res;
 }
 
 bool
@@ -85,6 +85,7 @@ http_add_port(fd &fd, const upnp &data) noexcept {
     assertx(false);
     return false;
   }
+  printf("%s gateway:%s\n", __func__, to_string(gateway));
 
   char gateway_ip[32] = {0};
   if (!to_string(gateway.ip, gateway_ip)) {
