@@ -127,7 +127,7 @@ parse_string(Buffer &b, /*OUT*/ T *str, std::size_t N,
   }
 
   if (len > N) {
-    assertx(false);
+    // TODO we sometimes get 32byte "id" instead of the expected 20byte "id"
     return false;
   }
 

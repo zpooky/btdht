@@ -195,14 +195,14 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scratch) noexcept {
   });
 
   Timestamp deftime(dht.now);
-  Timestamp *next =
-      search_reduce(dht, &deftime, [](Timestamp *it, dht::Search &search) {
-        if (search.timeout < *it) {
-          return &search.timeout;
-        }
+  Timestamp *next;
+  next = search_reduce(dht, &deftime, [](Timestamp *it, dht::Search &search) {
+    if (search.timeout < *it) {
+      return &search.timeout;
+    }
 
-        return it;
-      });
+    return it;
+  });
 
   if (*next <= dht.now) {
     dht::Config &cfg = dht.config;

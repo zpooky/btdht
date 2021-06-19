@@ -18,6 +18,7 @@ ParseContext::ParseContext(dht::DHT &ictx, sp::Buffer &d) noexcept
     , msg_type{0}
     , query{0}
     , remote_version{0}
+    , ro{0}
     , ip_vote{} {
 }
 
@@ -28,6 +29,7 @@ ParseContext::ParseContext(ParseContext &ictx, sp::Buffer &d) noexcept
     , msg_type{0}
     , query{0}
     , remote_version{0}
+    , ro{0}
     , ip_vote{} {
 
   std::memcpy(msg_type, ictx.msg_type, sizeof(msg_type));

@@ -187,6 +187,12 @@ krpc(ParseContext &pctx, F handle) {
         assertx(before == p.pos);
       }
 
+      if (bencode::d::pair(p, "ro", pctx.ro)) {
+        goto Lstart;
+      } else {
+        assertx(before == p.pos);
+      }
+
       // the application layer dict[request argument:a, reply: r]
       if (bencode::d::peek(p, "a")) {
         bencode::d::value(p, "a");
@@ -250,12 +256,13 @@ krpc(ParseContext &pctx, F handle) {
     } else if (is_query()) {
       if (!(t && y && q)) {
         logger::receive::parse::error(pctx.ctx, p,
-                                   "'query' missing 't' or 'y' or 'q'");
+                                      "'query' missing 't' or 'y' or 'q'");
         return false;
       }
     } else if (is_reply()) {
       if (!(t && y)) {
-        logger::receive::parse::error(pctx.ctx, p, "'reply' missing 't' or 'y'");
+        logger::receive::parse::error(pctx.ctx, p,
+                                      "'reply' missing 't' or 'y'");
         return false;
       }
     } else {

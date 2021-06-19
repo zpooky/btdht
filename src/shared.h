@@ -39,6 +39,7 @@ struct ParseContext {
   char msg_type[16];
   char query[16];
   sp::byte remote_version[16];
+  std::uint64_t ro = 0;
 
   sp::maybe<Contact> ip_vote;
 
