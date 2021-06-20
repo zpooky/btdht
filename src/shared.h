@@ -37,7 +37,7 @@ struct ParseContext {
   Transaction tx;
 
   char msg_type[16];
-  char query[16];
+  char query[64];
   sp::byte remote_version[16];
   std::uint64_t ro = 0;
 
