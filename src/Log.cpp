@@ -99,7 +99,7 @@ error(dht::MessageContext &ctx) noexcept {
   auto query_len = std::strlen(ctx.query);
 
   if (query_len < 127) {
-    if (ascii::is_alpha(ctx.query, query_len)) {
+    if (ascii::is_printable(ctx.query, query_len)) {
       char path[256] = {'\0'};
       sprintf(path, "./unknown_%s.txt", ctx.query);
 
