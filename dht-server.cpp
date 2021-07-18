@@ -314,10 +314,14 @@ on_priv_protocol_callback(void *closure, uint32_t events) {
           if (outBuffer.length > 0) {
             net::sock_write(self->client_fd, outBuffer);
           }
+        } else {
+          res = 1;
         }
       }
     } // while
-  } else if (events & EPOLLERR || events & EPOLLHUP || events & EPOLLRDHUP) {
+  }
+  if (events & EPOLLERR || events & EPOLLHUP || events & EPOLLRDHUP) {
+    printf("#=====close\n");
     delete self;
   }
   return 0;
