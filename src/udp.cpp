@@ -34,22 +34,6 @@ namespace udp {
 //   }
 // }
 //=====================================
-bool
-local(fd &listen, Contact &out) noexcept {
-  sockaddr_in addr{};
-  std::memset(&addr, 0, sizeof(addr));
-  socklen_t slen = sizeof(addr);
-  sockaddr *saddr = (sockaddr *)&addr;
-
-  int ret = ::getsockname(int(listen), saddr, &slen);
-  if (ret < 0) {
-    return false;
-  }
-
-  return to_contact(addr, out);
-}
-
-//=====================================
 fd
 bind(Ipv4 ip, Port port, Mode mode) noexcept {
   int type = SOCK_DGRAM;
@@ -103,7 +87,7 @@ do_bind_unix(const char *file, Mode m, int type) noexcept {
   strncpy(name.sun_path, file, strlen(file));
 
   if (::bind(int(udp), (struct sockaddr *)&name, sizeof(name)) < 0) {
-    fprintf(stderr, "2: %s\n", strerror(errno));
+    fprintf(stderr, "%s: 2: %s\n", __func__, strerror(errno));
     return fd{-1};
   }
 
@@ -124,12 +108,41 @@ bind_unix_seq(const char *file, Mode m) noexcept {
     /* Prepare for accepting connections. The backlog size is set to 20. So
      * while one request is being processed other requests can be waiting. */
     if (::listen(int(seq_fd), 20) < 0) {
-      fprintf(stderr, "3: %s\n", strerror(errno));
+      fprintf(stderr, "%s: 3: %s\n", __func__, strerror(errno));
       return fd{-1};
     }
   }
 
   return seq_fd;
+}
+
+static fd
+do_connect_unix(const char *file, Mode m, int type) noexcept {
+  if (m == Mode::NONBLOCKING) {
+    type |= SOCK_NONBLOCK;
+  }
+
+  fd udp{::socket(AF_UNIX, type, 0)};
+  if (!udp) {
+    return udp;
+  }
+
+  ::sockaddr_un name{};
+  name.sun_family = AF_UNIX;
+  strncpy(name.sun_path, file, strlen(file));
+
+  if (::connect(int(udp), (struct sockaddr *)&name, sizeof(name)) < 0) {
+    fprintf(stderr, "%s: 2: %s\n", __func__, strerror(errno));
+    return fd{-1};
+  }
+
+  return udp;
+}
+
+fd
+connect_unix_seq(const char *file, Mode m) noexcept {
+  int type = SOCK_SEQPACKET;
+  return do_connect_unix(file, m, type);
 }
 
 fd
@@ -280,5 +293,76 @@ send(fd &fd, const Contact &dest, sp::Buffer &buf) noexcept {
   return send(int(fd), dest, buf);
 } // udp::send()
 
-//=====================================
 } // namespace udp
+
+namespace net {
+//=====================================
+bool
+local(fd &listen, Contact &out) noexcept {
+  sockaddr_in addr{};
+  std::memset(&addr, 0, sizeof(addr));
+  socklen_t slen = sizeof(addr);
+  sockaddr *saddr = (sockaddr *)&addr;
+
+  int ret = ::getsockname(int(listen), saddr, &slen);
+  if (ret < 0) {
+    return false;
+  }
+
+  return to_contact(addr, out);
+}
+
+bool
+remote(fd &listen, Contact &out) noexcept {
+  sockaddr_in addr{};
+  std::memset(&addr, 0, sizeof(addr));
+  socklen_t slen = sizeof(addr);
+  sockaddr *saddr = (sockaddr *)&addr;
+
+  int ret = ::getpeername(int(listen), saddr, &slen);
+  if (ret < 0) {
+    return false;
+  }
+
+  return to_contact(addr, out);
+}
+
+//=====================================
+int
+sock_read(fd &fd, sp::Buffer &buf) noexcept {
+  sp::byte *const raw = offset(buf);
+  std::size_t raw_len = remaining_write(buf);
+
+  ssize_t len = 0;
+  len = ::read(int(fd), raw, raw_len);
+  int err = errno;
+
+  if (len < 0) {
+    assertxs(err != 0, err, strerror(err));
+    return -err;
+  }
+
+  buf.pos += (size_t)len;
+  return 0;
+}
+
+//=====================================
+bool
+sock_write(fd &fd, sp::Buffer &buf) noexcept {
+  sp::byte *const raw = offset(buf);
+  const std::size_t raw_len = remaining_read(buf);
+
+  if (raw_len > 0) {
+    ssize_t sent = write(int(fd), raw, raw_len);
+    if (sent > 0) {
+      buf.pos += (size_t)sent;
+    } else {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+//=====================================
+} // namespace net

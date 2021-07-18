@@ -81,8 +81,8 @@ parse(Options &self, int argc, char **argv) noexcept {
       memcpy(self.dump_file, optarg, len + 1);
     } break;
 
-    case 'f':
-      printf("option -f with value `%s'\n", optarg);
+    case 'l':
+      printf("option -l with value `%s'\n", optarg);
       break;
 
     case 'h':

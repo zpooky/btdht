@@ -131,8 +131,6 @@ struct dht_protocol_callback {
 static bool
 parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       sp::Buffer &out) noexcept {
-  assertx(peer.port != 0);
-
   auto handle = [&](krpc::ParseContext &pctx) {
     dht::Module unknown;
     error::setup(unknown);
@@ -196,6 +194,7 @@ on_dht_protocol_handle(void *callback, uint32_t events) {
           self->dht.last_activity = self->dht.now;
         }
 
+        assertx(from.port != 0);
         const sp::Buffer in_view(inBuffer);
         if (!parse(self->dht, self->modules, from, inBuffer, outBuffer)) {
           return 0;
@@ -212,40 +211,115 @@ on_dht_protocol_handle(void *callback, uint32_t events) {
 }
 
 static int
-on_priv_protocol_callback(void *closure, uint32_t events);
+on_priv_protocol_accept_callback(void *closure, uint32_t events);
 
-struct private_protocol_callback {
+struct priv_protocol_accept_callback {
   sp::core_callback core_cb;
   dht::Modules modules;
   dht::DHT &dht;
   dht::Options &options;
   fd &priv_fd;
+
+  priv_protocol_accept_callback(dht::ModulesAwake &awake, dht::DHT &_dht,
+                                dht::Options &_options, fd &_fd)
+      : core_cb{}
+      , modules{awake}
+      , dht{_dht}
+      , options{_options}
+      , priv_fd{_fd} {
+    if (!interface_priv::setup(modules)) {
+      die("interface_priv::setup(modules)");
+    }
+    core_cb.closure = this;
+    core_cb.callback = on_priv_protocol_accept_callback;
+  }
+};
+
+static int
+on_priv_protocol_callback(void *closure, uint32_t events);
+struct priv_protocol_callback {
+  sp::core_callback core_cb;
+  dht::Modules &modules;
+  dht::DHT &dht;
+  dht::Options &options;
+  fd client_fd;
   static constexpr std::size_t size = 16 * 1024;
   // TODO share these buffers better
   std::unique_ptr<sp::byte[]> in;
   std::unique_ptr<sp::byte[]> out;
 
-  private_protocol_callback(dht::ModulesAwake &awake, dht::DHT &_dht,
-                            dht::Options &_options, fd &_fd)
+  priv_protocol_callback(dht::Modules &_modules, dht::DHT &_dht,
+                         dht::Options &_options, fd &&_fd)
       : core_cb{}
-      , modules{awake}
+      , modules{_modules}
       , dht{_dht}
       , options{_options}
-      , priv_fd{_fd}
+      , client_fd{std::move(_fd)}
       , in{std::make_unique<sp::byte[]>(size)}
       , out{std::make_unique<sp::byte[]>(size)} {
-    if (!interface_priv::setup(modules)) {
-      die("interface_priv::setup(modules)");
-    }
 
     core_cb.closure = this;
     core_cb.callback = on_priv_protocol_callback;
   }
 };
+
+static int
+on_priv_protocol_accept_callback(void *closure, uint32_t events) {
+  auto self = (priv_protocol_accept_callback *)closure;
+  int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
+  fd client_fd{::accept4(int(self->priv_fd), NULL, NULL, flags)};
+  auto client = new priv_protocol_callback{self->modules, self->dht,
+                                           self->options, std::move(client_fd)};
+  int epoll_fd = self->dht.core.epoll_fd;
+  if (!bool(client)) {
+    die("accept");
+  }
+
+  ::epoll_event ev{};
+  ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+  ev.data.ptr = &client->core_cb;
+  if (::epoll_ctl(epoll_fd, EPOLL_CTL_ADD, int(client->client_fd), &ev) < 0) {
+    die("epoll_ctl: accept private local");
+  }
+  return 0;
+}
+
 static int
 on_priv_protocol_callback(void *closure, uint32_t events) {
-  auto self = (private_protocol_callback *)closure;
-  // TODO
+  auto self = (priv_protocol_callback *)closure;
+
+  if (events & EPOLLIN) {
+    int res = 0;
+
+    while (res == 0) {
+      sp::Buffer inBuffer(self->in.get(), self->size);
+      sp::Buffer outBuffer(self->out.get(), self->size);
+      Contact from;
+      if (!net::remote(self->client_fd, from)) {
+        // assertx(false);
+      }
+
+      res = net::sock_read(self->client_fd, inBuffer);
+      if (res == 0) {
+        flip(inBuffer);
+
+        if (inBuffer.length > 0) {
+          const sp::Buffer in_view(inBuffer);
+          if (!parse(self->dht, self->modules, from, inBuffer, outBuffer)) {
+
+            return 0;
+          }
+          flip(outBuffer);
+
+          if (outBuffer.length > 0) {
+            net::sock_write(self->client_fd, outBuffer);
+          }
+        }
+      }
+    } // while
+  } else if (events & EPOLLERR || events & EPOLLHUP || events & EPOLLRDHUP) {
+    delete self;
+  }
   return 0;
 }
 
@@ -289,7 +363,7 @@ void
 setup_epoll(dht::DHT &self, dht::ModulesAwake &awake, dht::Options &options,
             fd &udp_fd, fd &signal_fd, fd &priv_fd) noexcept {
   auto dp_cb = new dht_protocol_callback{awake, self, options, udp_fd};
-  auto pp_cb = new private_protocol_callback{awake, self, options, priv_fd};
+  auto pp_cb = new priv_protocol_accept_callback{awake, self, options, priv_fd};
   auto i_cb = new interrupt_callback{self, options, signal_fd};
   ::epoll_event ev{};
 
@@ -304,7 +378,7 @@ setup_epoll(dht::DHT &self, dht::ModulesAwake &awake, dht::Options &options,
   ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
   ev.data.ptr = &pp_cb->core_cb;
   if (::epoll_ctl(self.core.epoll_fd, EPOLL_CTL_ADD, int(priv_fd), &ev) < 0) {
-    die("epoll_ctl: listen local");
+    die("epoll_ctl: listen private local");
   }
 
   ev.events = EPOLLIN;
@@ -368,18 +442,18 @@ main(int argc, char **argv) {
     if (!fs::mkdirs(options.local_socket, mode)) {
       return 3;
     }
-    strcat(options.local_socket, "/spdht.socket");
+    ::strcat(options.local_socket, "/spdht.socket");
   }
   unlink(options.local_socket);
 
-  fd priv_fd = udp::bind_unix(options.local_socket, udp::Mode::NONBLOCKING);
+  fd priv_fd = udp::bind_unix_seq(options.local_socket, udp::Mode::NONBLOCKING);
   if (!priv_fd) {
     fprintf(stderr, "failed to bind: local %s\n", options.local_socket);
     return 3;
   }
 
   Contact listen;
-  if (!udp::local(udp_fd, listen)) {
+  if (!net::local(udp_fd, listen)) {
     return 3;
   }
 

@@ -242,6 +242,8 @@ to_contact(const ::sockaddr_in &src, Contact &dest) noexcept {
     Port port = ntohs(src.sin_port);
     return to_contact(ipv4, port, dest);
   } else if (src.sin_family == AF_INET6) {
+  } else if (src.sin_family == AF_UNIX) {
+    return true;
   }
   assertx(false);
   return false;

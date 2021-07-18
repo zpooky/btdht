@@ -130,7 +130,7 @@ Lretry:
   reset(b);
 
   Contact c;
-  int res = udp::receive(u, c, b);
+  int res = net::sock_read(u, b);
   if (res != 0) {
     if (res == -EAGAIN) {
       goto Lretry;
@@ -169,7 +169,7 @@ send_statistics(DHTClient &client, const Contact &to) noexcept {
   krpc::request::statistics(client.out, tx);
   flip(client.out);
 
-  return udp::send(client.udp, to, client.out);
+  return net::sock_write(client.udp, client.out);
 }
 
 static bool
@@ -181,7 +181,7 @@ send_dump(DHTClient &client, const Contact &to) noexcept {
   krpc::request::dump(client.out, tx);
   flip(client.out);
 
-  return udp::send(client.udp, to, client.out);
+  return net::sock_write(client.udp, client.out);
 }
 
 static void
@@ -202,7 +202,7 @@ send_search(DHTClient &client, const Contact &to,
   krpc::request::search(client.out, tx, search, 6000000);
   flip(client.out);
 
-  return udp::send(client.udp, to, client.out);
+  return net::sock_write(client.udp, client.out);
 }
 
 static bool
@@ -215,7 +215,7 @@ send_stop_seach(DHTClient &client, const Contact &to,
   krpc::request::stop_search(client.out, tx, search);
   flip(client.out);
 
-  return udp::send(client.udp, to, client.out);
+  return net::sock_write(client.udp, client.out);
 }
 
 //====================================================
@@ -227,7 +227,7 @@ send_ping(DHTClient &client, const Contact &to) noexcept {
   krpc::request::ping(client.out, tx, client.self);
   flip(client.out);
 
-  return udp::send(client.udp, to, client.out);
+  return net::sock_write(client.udp, client.out);
 }
 
 //========
@@ -241,7 +241,7 @@ send_find_node(DHTClient &client, const Contact &to,
   krpc::request::find_node(client.out, tx, client.self, search);
   flip(client.out);
 
-  return udp::send(client.udp, to, client.out);
+  return net::sock_write(client.udp, client.out);
 }
 
 //=====================================
@@ -255,7 +255,7 @@ send_get_peers(DHTClient &client, const Contact &to,
 
   krpc::request::get_peers(client.out, tx, client.self, search);
   flip(client.out);
-  return udp::send(client.udp, to, client.out);
+  return net::sock_write(client.udp, client.out);
 }
 
 static dht::Token
@@ -282,7 +282,7 @@ send_announce_peer(DHTClient &client, const Contact &to, dht::Token &token,
                                search, 0, token);
   flip(client.out);
 
-  udp::send(client.udp, to, client.out);
+  net::sock_write(client.udp, client.out);
 }
 
 static void
@@ -513,7 +513,7 @@ search_event_receive(fd &u, sp::Buffer &b) noexcept {
 
 Lretry:
   reset(b);
-  int res = udp::receive(u, remote, b);
+  int res = net::sock_read(u, b);
   if (res != 0) {
     if (res == -EAGAIN) {
       goto Lretry;
@@ -717,15 +717,15 @@ handle_dump(DHTClient &client) {
 typedef int (*exe_cb)(DHTClient &);
 static int
 bind_exe(int argc, char **argv, exe_cb cb) noexcept {
-  fd udp = udp::bind_v4(udp::Mode::BLOCKING);
-  if (!udp) {
-    fprintf(stderr, "failed bind\n");
+  char local_socket[PATH_MAX]{0};
+  if (!xdg_runtime_dir(local_socket)) {
     return 1;
   }
+  ::strcat(local_socket, "/spdht.socket");
 
-  Contact local;
-  if (!udp::local(udp, local)) {
-    fprintf(stderr, "failed local\n");
+  fd udp = udp::connect_unix_seq(local_socket, udp::Mode::BLOCKING);
+  if (!udp) {
+    fprintf(stderr, "failed bind\n");
     return 1;
   }
 
@@ -766,6 +766,8 @@ handle_upnp(int, char **) noexcept {
   if (!tcp::local(tcp, local)) {
     return 5;
   }
+  assertx(false);//TODO
+#if 0
   upnp::upnp in{sp::Seconds(sp::Minutes(5))};
   in.protocol = "udp";
   in.local = 42605;
@@ -781,7 +783,8 @@ handle_upnp(int, char **) noexcept {
     return 3;
   }
   flip(buf);
-  printf("'%.*s': %zu\n", buf.length, buf.raw, buf.length);
+  printf("'%.*s': %zu\n", (int)buf.length, buf.raw, buf.length);
+#endif
 
   return 0;
 }

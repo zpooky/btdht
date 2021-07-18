@@ -30,9 +30,10 @@ core::~core() noexcept {
 
 static int
 tick(::epoll_event &current) {
+  auto cb = (core_callback *)current.data.ptr;
+  cb->callback(cb->closure, current.events);
+
   if (current.events & EPOLLIN) {
-    auto cb = (core_callback *)current.data.ptr;
-    cb->callback(cb->closure, current.events);
   } else if (current.events & EPOLLERR) {
     fprintf(stderr, "EPOLLERR\n");
   } else if (current.events & EPOLLHUP) {

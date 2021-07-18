@@ -5,10 +5,6 @@
 
 namespace udp {
 //=====================================
-bool
-local(fd &, Contact &) noexcept;
-
-//=====================================
 enum class Mode { BLOCKING, NONBLOCKING };
 
 fd bind(Ipv4, Port, Mode) noexcept;
@@ -22,6 +18,9 @@ bind_unix(const char *file, Mode) noexcept;
 
 fd
 bind_unix_seq(const char *file, Mode) noexcept;
+
+fd
+connect_unix_seq(const char *file, Mode) noexcept;
 
 fd bind(Ipv6, Port, Mode) noexcept;
 
@@ -45,5 +44,24 @@ send(fd &, const Contact &, /*OUT*/ sp::Buffer &) noexcept;
 
 //=====================================
 } // namespace udp
+
+namespace net {
+//=====================================
+bool
+local(fd &, Contact &) noexcept;
+
+bool
+remote(fd &, Contact &) noexcept;
+
+//=====================================
+int
+sock_read(fd &, sp::Buffer &) noexcept;
+
+//=====================================
+bool
+sock_write(fd &, sp::Buffer &) noexcept;
+
+//=====================================
+} // namespace net
 
 #endif

@@ -229,10 +229,10 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 void
-setup(dht::Module &module) noexcept {
-  module.query = "sp_dump";
-  module.request = on_request;
-  module.response = nullptr;
+setup(dht::Module &mod) noexcept {
+  mod.query = "sp_dump";
+  mod.request = on_request;
+  mod.response = nullptr;
 }
 } // namespace dump
 
@@ -247,10 +247,10 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 void
-setup(dht::Module &module) noexcept {
-  module.query = "sp_statistics";
-  module.request = on_request;
-  module.response = nullptr;
+setup(dht::Module &mod) noexcept {
+  mod.query = "sp_statistics";
+  mod.request = on_request;
+  mod.response = nullptr;
 }
 
 } // namespace statistics
@@ -287,10 +287,10 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 void
-setup(dht::Module &module) noexcept {
-  module.query = "sp_search";
-  module.request = on_request;
-  module.response = nullptr;
+setup(dht::Module &mod) noexcept {
+  mod.query = "sp_search";
+  mod.request = on_request;
+  mod.response = nullptr;
 }
 } // namespace search
 
@@ -318,10 +318,10 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 void
-setup(dht::Module &module) noexcept {
-  module.query = "sp_search_stop";
-  module.request = on_request;
-  module.response = nullptr;
+setup(dht::Module &mod) noexcept {
+  mod.query = "sp_search_stop";
+  mod.request = on_request;
+  mod.response = nullptr;
 }
 
 //===========================================================
@@ -343,10 +343,10 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 void
-setup(dht::Module &module) noexcept {
-  module.query = "sp_announce";
-  module.request = on_request;
-  module.response = nullptr;
+setup(dht::Module &mod) noexcept {
+  mod.query = "sp_announce";
+  mod.request = on_request;
+  mod.response = nullptr;
 }
 } // namespace announce_this
 

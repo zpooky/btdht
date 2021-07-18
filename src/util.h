@@ -7,10 +7,10 @@
 #include <ctime>
 #include <hash/standard.h>
 #include <io/fd.h>
+#include <limits.h>
 #include <list/FixedList.h>
 #include <netinet/in.h>
 #include <util/timeout.h>
-#include <limits.h>
 
 using sp::fd;
 
@@ -96,8 +96,12 @@ djb_ip(const Ip &) noexcept;
 
 //=====================================
 struct Contact {
+  /*   union { */
+  /*     struct { */
   Ip ip;
   Port port;
+  /*     } inet; */
+  /*   }; */
 
   Contact(Ipv4, Port) noexcept;
   Contact(const Ipv6 &, Port) noexcept;

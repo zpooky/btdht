@@ -142,7 +142,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
       printf("%s\n", it->ifa_name);
 
       Contact current_listen;
-      if (!udp::local(self.client.udp, current_listen)) {
+      if (!net::local(self.client.udp, current_listen)) {
         assertx(false);
         goto Lnext;
       }
