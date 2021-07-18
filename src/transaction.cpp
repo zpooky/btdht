@@ -235,10 +235,9 @@ consume(Client &self, const krpc::Transaction &needle,
 
   constexpr std::size_t c = sizeof(Tx::prefix) + sizeof(Tx::suffix);
   if (needle.length == c) {
-
     Tx *const tx = search(self.tree, needle);
-    if (tx) {
 
+    if (tx) {
       if (*tx == needle) {
         out = tx->context;
 

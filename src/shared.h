@@ -16,6 +16,7 @@
 #include <list/LinkedList.h>
 #include <tree/StaticTree.h>
 
+#include <core.h>
 #include <heap/binary.h>
 #include <list/SkipList.h>
 #include <prng/xorshift.h>
@@ -576,6 +577,8 @@ struct DHT {
   Stat statistics;
   std::size_t ip_cnt;
   Config config;
+  sp::core core;
+  bool should_exit;
   //}}}
 
   // peer-lookup db {{{

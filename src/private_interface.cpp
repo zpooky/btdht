@@ -137,7 +137,7 @@ setup(dht::Modules &modules) noexcept {
   search::setup(modules.modules[i++]);
   search_stop::setup(modules.modules[i++]);
 
-  insert(modules.on_awake, scheduled_search);
+  insert(modules.awake.on_awake, scheduled_search);
 
   return true;
 }

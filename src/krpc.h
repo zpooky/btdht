@@ -24,8 +24,7 @@ namespace request {
 /* DHT interface */
 //{
 bool
-ping(sp::Buffer &, const Transaction &, //
-     const dht::NodeId &sender) noexcept;
+ping(sp::Buffer &, const Transaction &, const dht::NodeId &sender) noexcept;
 
 bool
 find_node(sp::Buffer &, const Transaction &, const dht::NodeId &self,

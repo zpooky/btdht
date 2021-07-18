@@ -189,7 +189,7 @@ scheduled_upnp(dht::DHT &self, sp::Buffer &) noexcept {
 
 bool
 setup(dht::Modules &modules) noexcept {
-  insert(modules.on_awake, scheduled_upnp);
+  insert(modules.awake.on_awake, scheduled_upnp);
   return true;
 }
 } // namespace dht_upnp

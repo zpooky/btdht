@@ -46,11 +46,11 @@ setup(dht::Modules &modules) noexcept {
   announce_peer::setup(modules.modules[i++]);
   error::setup(modules.modules[i++]);
 
-  insert(modules.on_awake, &dht::on_awake);
-  insert(modules.on_awake, &dht::on_awake_ping);
-  insert(modules.on_awake, &db::on_awake_peer_db);
-  insert(modules.on_awake, &dht::on_awake_bootstrap_reset);
-  insert(modules.on_awake, &dht::on_awake_eager_tx_timeout);
+  insert(modules.awake.on_awake, &dht::on_awake);
+  insert(modules.awake.on_awake, &dht::on_awake_ping);
+  insert(modules.awake.on_awake, &db::on_awake_peer_db);
+  insert(modules.awake.on_awake, &dht::on_awake_bootstrap_reset);
+  insert(modules.awake.on_awake, &dht::on_awake_eager_tx_timeout);
 
   return true;
 }

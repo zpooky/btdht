@@ -14,11 +14,15 @@ Module::Module() noexcept
     , request(nullptr) {
 }
 
+ModulesAwake::ModulesAwake() noexcept
+    : on_awake() {
+}
+
 // dht::Modules
-Modules::Modules() noexcept
-    : modules{}
-    , length(0)
-    , on_awake() {
+Modules::Modules(ModulesAwake &_awake) noexcept
+    : awake{_awake}
+    , modules{}
+    , length(0) {
 }
 
 Module &

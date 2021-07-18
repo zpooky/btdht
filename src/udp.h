@@ -17,6 +17,9 @@ fd bind_v4(Port, Mode) noexcept;
 
 fd bind_v4(Mode) noexcept;
 
+fd
+bind_unix(const char *file, Mode) noexcept;
+
 fd bind(Ipv6, Port, Mode) noexcept;
 
 fd bind_v6(Port, Mode) noexcept;

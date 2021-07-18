@@ -84,23 +84,6 @@ struct Cache {
 //========================
 template <size_t SIZE>
 static bool
-xdg_cache_dir(char (&buffer)[SIZE]) noexcept {
-  // read env $XDG_DATA_HOME default to $HOME/.local/share
-  // $XDG_CACHE_HOME default equal to $HOME/.cache
-  const char *data = getenv("XDG_DATA_HOME");
-  if (data == NULL || strcmp(data, "") == 0) {
-    const char *home = getenv("HOME");
-    assertx(home);
-    sprintf(buffer, "%s/.local/share", home);
-    return true;
-  }
-
-  sprintf(buffer, "%s", data);
-  return true;
-}
-
-template <size_t SIZE>
-static bool
 cache_dir(char (&buffer)[SIZE]) noexcept {
   if (!xdg_cache_dir(buffer)) {
     return false;
@@ -109,6 +92,7 @@ cache_dir(char (&buffer)[SIZE]) noexcept {
   strcat(buffer, "/spdht");
   return true;
 }
+
 template <typename T>
 static T *
 ptr_add(T *base, uintptr_t l) noexcept {

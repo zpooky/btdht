@@ -4,14 +4,15 @@
 #include <getopt.h>
 #include <io/file.h>
 
-static const char *def_dump_path = "./dht_db.dump";
+static const char *default_dump_path = "./dht_db.dump";
 
 namespace dht {
 Options::Options()
     : port(0)
     , bootstrap()
-    , dump_file{0} {
-  memcpy(dump_file, def_dump_path, strlen(def_dump_path));
+    , dump_file{0}
+    , local_socket{0} {
+  memcpy(dump_file, default_dump_path, strlen(default_dump_path));
 }
 
 bool
@@ -30,7 +31,7 @@ parse(Options &self, int argc, char **argv) noexcept {
           {"db", required_argument, nullptr, 'd'},
           // {"delete", required_argument, nullptr, 'd'},
           // {"create", required_argument, nullptr, 'c'},
-          {"fifo", required_argument, nullptr, 'f'},
+          {"local", required_argument, nullptr, 'l'},
           {"help", no_argument, nullptr, 'h'},
           //  The last element of the array has to be filled with zeros
           {nullptr, 0, nullptr, 0} //
@@ -38,7 +39,7 @@ parse(Options &self, int argc, char **argv) noexcept {
 
   while (true) {
     int option_index = 0;
-    int c = getopt_long(argc, argv, "b:o:f:hd", long_options, &option_index);
+    int c = getopt_long(argc, argv, "b:o:l:hd", long_options, &option_index);
     if (c == -1) {
       break;
     }

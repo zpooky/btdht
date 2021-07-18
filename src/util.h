@@ -10,6 +10,7 @@
 #include <list/FixedList.h>
 #include <netinet/in.h>
 #include <util/timeout.h>
+#include <limits.h>
 
 using sp::fd;
 
@@ -407,6 +408,14 @@ from_hex(NodeId &id, const char (&b)[N]) noexcept {
 }
 
 } // namespace dht
+
+//=====================================
+bool
+xdg_cache_dir(char (&directory)[PATH_MAX]) noexcept;
+
+bool
+xdg_runtime_dir(char (&directory)[PATH_MAX]) noexcept;
+
 //=====================================
 
 #endif

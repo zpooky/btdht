@@ -268,8 +268,8 @@ operator<(const RoutingTable &f, const RoutingTable &s) noexcept {
 #endif
 
 bool
-RoutingTableLess::operator()(const RoutingTable *f, std::size_t depth) const
-    noexcept {
+RoutingTableLess::operator()(const RoutingTable *f,
+                             std::size_t depth) const noexcept {
   assertx(f);
   if (f->depth < 0) {
     return true;
@@ -279,8 +279,8 @@ RoutingTableLess::operator()(const RoutingTable *f, std::size_t depth) const
 }
 
 bool
-RoutingTableLess::operator()(const RoutingTable *f, const RoutingTable *s) const
-    noexcept {
+RoutingTableLess::operator()(const RoutingTable *f,
+                             const RoutingTable *s) const noexcept {
   assertx(f);
   assertx(s);
   return f->depth < s->depth;
@@ -458,6 +458,8 @@ DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r,
     , statistics()
     , ip_cnt(0)
     , config()
+    , core()
+    , should_exit(false)
     //}}}
     // peer-lookup db {{{
     , lookup_table()

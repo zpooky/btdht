@@ -2,24 +2,28 @@
 #include <Options.h>
 #include <algorithm>
 #include <arpa/inet.h>
-#include <bencode.h>
-#include <cache.h>
 #include <cstdio>
 #include <cstring>
 #include <dht.h>
-#include <dht_interface.h>
 #include <dump.h>
 #include <errno.h>
 #include <exception>
+#include <fcntl.h>
+#include <io/file.h>
 #include <krpc.h>
 #include <memory>
-#include <private_interface.h>
 #include <shared.h>
 #include <signal.h>
 #include <sys/epoll.h>    //epoll
 #include <sys/signalfd.h> //signalfd
 #include <udp.h>
 #include <unistd.h> //read
+
+#include <bencode.h>
+#include <cache.h>
+#include <core.h>
+#include <dht_interface.h>
+#include <private_interface.h>
 #include <upnp_service.h>
 
 // TODO awake next timeout[0ms]
@@ -86,129 +90,44 @@ setup_signal() {
   // sigdelset(&sigset, SIGWINCH);
 
   int flags = SFD_NONBLOCK | SFD_CLOEXEC;
-  int sfd = signalfd(/*new fd*/ -1, &sigset, flags);
-  if (sfd < 0) {
+  int signal_fd = signalfd(/*new fd*/ -1, &sigset, flags);
+  if (signal_fd < 0) {
     die("signalfd");
   }
 
-  return fd{sfd};
+  return fd{signal_fd};
 }
 
-static fd
-setup_epoll(fd &udp, fd &signal) noexcept {
-  const int flag = 0;
-  const int pfd = ::epoll_create1(flag);
-  if (pfd < 0) {
-    die("epoll_create1");
-  }
-
-  ::epoll_event ev;
-  // this are the events we are polling for
-  // `man epoll_ctl` for list of events
-  // EPOLLIN: ready for read()
-  ev.events = EPOLLIN | EPOLLERR | EPOLLHUP;
-  ev.data.fd = int(udp);
-
-  // add fd to poll on
-  if (::epoll_ctl(pfd, EPOLL_CTL_ADD, int(udp), &ev) < 0) {
-    die("epoll_ctl: listen_udp");
-  }
-
-  ev.events = EPOLLIN;
-  ev.data.fd = int(signal);
-  if (::epoll_ctl(pfd, EPOLL_CTL_ADD, int(signal), &ev) < 0) {
-    die("epoll_ctl: listen_signal");
-  }
-
-  return fd{pfd};
-}
-
-template <typename Handle, typename Awake, typename Interrupt>
 static int
-main_loop(fd &pfd, fd &sfd, Handle handle, Awake on_awake,
-          Interrupt on_inter) noexcept {
-  Timestamp previous(0);
+on_dht_protocol_handle(void *callback);
 
-  constexpr std::size_t size = 65535;
-  auto in = std::make_unique<sp::byte[]>(size);
-  auto out = std::make_unique<sp::byte[]>(size);
+struct dht_protocol_callback {
+  sp::core_callback core_cb;
+  dht::Modules modules;
+  dht::DHT &dht;
+  dht::Options &options;
+  fd &udp_fd;
+  static constexpr std::size_t size = 16 * 1024;
+  std::unique_ptr<sp::byte[]> in;
+  std::unique_ptr<sp::byte[]> out;
 
-  sp::Milliseconds timeout(0);
-  for (;;) {
+  dht_protocol_callback(dht::ModulesAwake &awake, dht::DHT &_dht,
+                        dht::Options &_options, fd &_fd)
+      : core_cb{}
+      , modules{awake}
+      , dht{_dht}
+      , options{_options}
+      , udp_fd{_fd}
+      , in{std::make_unique<sp::byte[]>(size)}
+      , out{std::make_unique<sp::byte[]>(size)} {
 
-    constexpr std::size_t max_events = 64;
-    ::epoll_event events[max_events];
-
-    int no_events = ::epoll_wait(int(pfd), events, max_events, int(timeout));
-    if (no_events < 0) {
-      if (errno == EAGAIN || errno == EINTR) {
-      } else {
-        die("epoll_wait");
-      }
+    if (!interface_dht::setup(modules)) {
+      die("interface_dht::setup(modules)");
     }
-
-    // always increasing clock
-    Timestamp now = std::max(sp::now(), previous);
-
-    printf("============================\n");
-    for (int i = 0; i < no_events; ++i) {
-      ::epoll_event &current = events[i];
-
-      if (current.events & EPOLLIN) {
-        int cfd = current.data.fd;
-        if (cfd == int(sfd)) {
-          signalfd_siginfo info;
-
-          constexpr std::size_t len = sizeof(info);
-          if (::read(int(sfd), (void *)&info, len) != len) {
-            die("read(signal)");
-          }
-
-          return on_inter(info);
-        } else {
-          int res = 0;
-          while (res == 0) {
-            sp::Buffer inBuffer(in.get(), size);
-            sp::Buffer outBuffer(out.get(), size);
-
-            Contact from;
-            res = udp::receive(cfd, /*OUT*/ from, inBuffer);
-            if (res == 0) {
-              flip(inBuffer);
-
-              if (inBuffer.length > 0) {
-                assertx(from.port != 0);
-                handle(from, inBuffer, outBuffer, now);
-                flip(outBuffer);
-
-                if (outBuffer.length > 0) {
-                  udp::send(cfd, /*to*/ from, outBuffer);
-                }
-              }
-            }
-          } // while
-        }   // else
-      }     // if EPOLLIN
-
-      if (current.events & EPOLLERR) {
-        printf("EPOLLERR\n");
-      }
-      if (current.events & EPOLLHUP) {
-        printf("EPOLLHUP\n");
-      }
-      if (current.events & EPOLLOUT) {
-        printf("EPOLLOUT\n");
-      }
-    } // for
-
-    sp::Buffer outBuffer(out.get(), size);
-    timeout = on_awake(outBuffer, now);
-
-    previous = now;
-  } // for
-
-  return 0;
-}
+    core_cb.closure = this;
+    core_cb.callback = on_dht_protocol_handle;
+  }
+};
 
 static bool
 parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
@@ -240,7 +159,18 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
         // assertx(false);
       }
     } else if (std::strcmp(pctx.msg_type, "e") == 0) {
+      tx::TxContext tctx;
+      if (tx::consume(dht.client, pctx.tx, tctx)) {
+        logger::receive::res::known_tx(mctx);
+      } else {
+        logger::receive::res::unknown_tx(mctx, in);
+      }
+      bencode_print_out(stderr);
+      sp::Buffer copy(in);
+      copy.pos = 0;
+      bencode_print(copy);
       // TODO
+      // assertx(false);
     } else {
       assertx(false);
     }
@@ -252,37 +182,217 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
   return krpc::d::krpc(pctx, handle);
 }
 
+static int
+on_dht_protocol_handle(void *callback) {
+  auto self = (dht_protocol_callback *)callback;
+  int res = 0;
+
+  while (res == 0) {
+    sp::Buffer inBuffer(self->in.get(), self->size);
+    sp::Buffer outBuffer(self->out.get(), self->size);
+
+    Contact from;
+    res = udp::receive(self->udp_fd, /*OUT*/ from, inBuffer);
+    if (res == 0) {
+      flip(inBuffer);
+
+      if (inBuffer.length > 0) {
+        assertx(from.port != 0);
+        if (self->dht.last_activity == Timestamp(0)) {
+          self->dht.last_activity = self->dht.now;
+        }
+
+        const sp::Buffer in_view(inBuffer);
+        if (!parse(self->dht, self->modules, from, inBuffer, outBuffer)) {
+          return 0;
+        }
+        flip(outBuffer);
+
+        if (outBuffer.length > 0) {
+          udp::send(self->udp_fd, /*to*/ from, outBuffer);
+        }
+      }
+    }
+  } // while
+  return 0;
+}
+
+static int
+on_priv_protocol_callback(void *closure);
+
+struct private_protocol_callback {
+  sp::core_callback core_cb;
+  dht::Modules modules;
+  dht::DHT &dht;
+  dht::Options &options;
+  fd &priv_fd;
+  static constexpr std::size_t size = 16 * 1024;
+  // TODO share these buffers better
+  std::unique_ptr<sp::byte[]> in;
+  std::unique_ptr<sp::byte[]> out;
+
+  private_protocol_callback(dht::ModulesAwake &awake, dht::DHT &_dht,
+                            dht::Options &_options, fd &_fd)
+      : core_cb{}
+      , modules{awake}
+      , dht{_dht}
+      , options{_options}
+      , priv_fd{_fd}
+      , in{std::make_unique<sp::byte[]>(size)}
+      , out{std::make_unique<sp::byte[]>(size)} {
+    if (!interface_priv::setup(modules)) {
+      die("interface_priv::setup(modules)");
+    }
+
+    core_cb.closure = this;
+    core_cb.callback = on_priv_protocol_callback;
+  }
+};
+static int
+on_priv_protocol_callback(void *closure) {
+  auto self = (private_protocol_callback *)closure;
+  // TODO
+  return 0;
+}
+
+static int
+on_interrupt(void *closure);
+
+struct interrupt_callback {
+  sp::core_callback core_cb;
+  dht::DHT &dht;
+  dht::Options &options;
+  fd &signal_fd;
+  interrupt_callback(dht::DHT &_dht, dht::Options &_options, fd &_fd)
+      : core_cb{}
+      , dht{_dht}
+      , options{_options}
+      , signal_fd{_fd} {
+    core_cb.closure = this;
+    core_cb.callback = on_interrupt;
+  }
+};
+
+static int
+on_interrupt(void *closure) {
+  auto self = (interrupt_callback *)closure;
+  signalfd_siginfo info{};
+
+  constexpr std::size_t len = sizeof(info);
+  if (::read(int(self->signal_fd), (void *)&info, len) != len) {
+    die("read(signal)");
+  }
+
+  fprintf(stderr, "signal: %s: %d\n", strsignal((int)info.ssi_signo),
+          info.ssi_signo);
+  sp::deinit_cache(self->dht);
+  sp::dump(self->dht, self->options.dump_file);
+  self->dht.should_exit = true;
+  return 0;
+}
+
+void
+setup_epoll(dht::DHT &self, dht::ModulesAwake &awake, dht::Options &options,
+            fd &udp_fd, fd &signal_fd, fd &priv_fd) noexcept {
+  auto dp_cb = new dht_protocol_callback{awake, self, options, udp_fd};
+  auto pp_cb = new private_protocol_callback{awake, self, options, priv_fd};
+  auto i_cb = new interrupt_callback{self, options, signal_fd};
+  ::epoll_event ev{};
+
+  // this are the events we are polling for `man epoll_ctl` for list of events
+  // EPOLLIN: ready for read()
+  ev.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+  ev.data.ptr = &dp_cb->core_cb;
+  if (::epoll_ctl(self.core.epoll_fd, EPOLL_CTL_ADD, int(udp_fd), &ev) < 0) {
+    die("epoll_ctl: listen_udp");
+  }
+
+  ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+  ev.data.ptr = &pp_cb->core_cb;
+  if (::epoll_ctl(self.core.epoll_fd, EPOLL_CTL_ADD, int(priv_fd), &ev) < 0) {
+    die("epoll_ctl: listen local");
+  }
+
+  ev.events = EPOLLIN;
+  ev.data.ptr = &i_cb->core_cb;
+  if (::epoll_ctl(self.core.epoll_fd, EPOLL_CTL_ADD, int(signal_fd), &ev) < 0) {
+    die("epoll_ctl: listen_signal");
+  }
+}
+
+template <typename Awake>
+static int
+main_loop(dht::DHT &self, Awake on_awake) noexcept {
+  Timestamp previous(0);
+
+  constexpr std::size_t size = 16 * 1024;
+  auto out = std::make_unique<sp::byte[]>(size);
+
+  sp::Milliseconds timeout(0);
+  while (!self.should_exit) {
+    // always increasing clock
+    self.now = std::max(sp::now(), previous);
+
+    core_tick(self.core, timeout);
+    sp::Buffer outBuffer(out.get(), size);
+    timeout = on_awake(outBuffer);
+
+    previous = self.now;
+  } // for
+
+  return 0;
+}
+
 // transmission-daemon -er--dht
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
 main(int argc, char **argv) {
-  printf("sizeof(DHT): %zuB %zuKB\n", sizeof(dht::DHT),
-         sizeof(dht::DHT) / 1024);
+  fprintf(stderr, "sizeof(DHT): %zuB %zuKB\n", sizeof(dht::DHT),
+          sizeof(dht::DHT) / 1024);
   dht::Options options;
   if (!dht::parse(options, argc, argv)) {
     return 1;
   }
   std::srand((unsigned int)time(nullptr));
 
-  fd sfd = setup_signal();
-  if (!sfd) {
+  fd signal_fd = setup_signal();
+  if (!signal_fd) {
     return 2;
   }
 
-  fd udp = udp::bind_v4(options.port, udp::Mode::NONBLOCKING);
-  if (!udp) {
-    printf("failed to bind: %u\n", options.port);
+  fd udp_fd = udp::bind_v4(options.port, udp::Mode::NONBLOCKING);
+  if (!udp_fd) {
+    fprintf(stderr, "failed to bind: %u\n", options.port);
+    return 3;
+  }
+
+  if (strlen(options.local_socket) == 0) {
+    if (!xdg_runtime_dir(options.local_socket)) {
+      return 3;
+    }
+    mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
+    if (!fs::mkdirs(options.local_socket, mode)) {
+      return 3;
+    }
+    strcat(options.local_socket, "/spdht.socket");
+  }
+  unlink(options.local_socket);
+
+  // TODO private_interface.h should only be accessible through this
+  fd priv_fd = udp::bind_unix(options.local_socket, udp::Mode::NONBLOCKING);
+  if (!priv_fd) {
+    fprintf(stderr, "failed to bind: local %s\n", options.local_socket);
     return 3;
   }
 
   Contact listen;
-  if (!udp::local(udp, listen)) {
+  if (!udp::local(udp_fd, listen)) {
     return 3;
   }
 
   auto r = prng::seed<prng::xorshift32>();
-  printf("sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
-  auto mdht = std::make_unique<dht::DHT>(udp, listen, r, sp::now());
+  fprintf(stderr, "sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
+  auto mdht = std::make_unique<dht::DHT>(udp_fd, listen, r, sp::now());
   if (!dht::init(*mdht)) {
     die("failed to init dht");
     return 4;
@@ -297,84 +407,43 @@ main(int argc, char **argv) {
     die("restore failed\n");
   }
 
-  printf("node id: %s\n", to_hex(mdht->id));
+  fprintf(stderr, "node id: %s\n", to_hex(mdht->id));
 
   {
     char str[256] = {0};
     assertx(to_string(mdht->ip, str, sizeof(str)));
-    printf("remote(%s)\n", str);
+    fprintf(stderr, "remote(%s)\n", str);
     assertx(to_string(listen, str, sizeof(str)));
-    printf("bind(%s)\n", str);
+    fprintf(stderr, "bind(%s)\n", str);
   }
 
-  fd poll = setup_epoll(udp, sfd);
-  if (!poll) {
-    return 6;
-  }
+  dht::ModulesAwake modulesAwake;
+  setup_epoll(*mdht, modulesAwake, options, udp_fd, signal_fd, priv_fd);
 
-  dht::Modules modules;
-  if (!interface_priv::setup(modules)) {
-    die("interface_priv::setup(modules)");
-  }
-  if (!interface_dht::setup(modules)) {
-    die("interface_dht::setup(modules)");
-  }
+  dht::Modules modules{modulesAwake};
   if (!dht_upnp::setup(modules)) {
     die("dht_upnp::setup(modules)");
   }
 
-  auto handle_cb = [&](Contact from, sp::Buffer &in, sp::Buffer &out,
-                       Timestamp now) {
-    assertx(from.port != 0);
-    if (mdht->last_activity == Timestamp(0)) {
-      mdht->last_activity = now;
-    }
-    mdht->now = now;
-
-    const sp::Buffer in_view(in);
-    if (!parse(*mdht, modules, from, in, out)) {
-      return false;
-    }
-
-    return true;
-  };
-
-  auto on_awake = [&mdht, &modules](sp::Buffer &out,
-                                    Timestamp now) -> sp::Milliseconds {
+  auto on_awake = [&mdht, &modulesAwake](sp::Buffer &out) -> sp::Milliseconds {
     // print_result(mdht->election);
-    mdht->now = now;
-
-    Timestamp next = now + mdht->config.refresh_interval;
-    auto cb = [&mdht, &out, now](auto acum, auto callback) {
+    Timestamp next = mdht->now + mdht->config.refresh_interval;
+    auto cb = [&mdht, &out](auto acum, auto callback) {
       Timestamp cr = callback(*mdht, out);
-      assertx(cr > now);
-      if (cr > now)
+      assertx(cr > mdht->now);
+      if (cr > mdht->now)
         return std::min(cr, acum);
       else
         return acum;
     };
-    next = reduce(modules.on_awake, next, cb);
-    assertx(next > now);
+    next = reduce(modulesAwake.on_awake, next, cb);
+    assertx(next > mdht->now);
 
     logger::awake::timeout(*mdht, next);
-    mdht->last_activity = now;
+    mdht->last_activity = mdht->now;
 
-    return sp::Milliseconds(next) - sp::Milliseconds(now);
+    return sp::Milliseconds(next) - sp::Milliseconds(mdht->now);
   };
 
-  auto on_interrupt = [&](const signalfd_siginfo &info) {
-    printf("signal: %s: %d\n", strsignal(info.ssi_signo), info.ssi_signo);
-
-    if (mdht) {
-      sp::deinit_cache(*mdht);
-      if (!sp::dump(*mdht, options.dump_file)) {
-        return 2;
-      }
-    }
-
-    /**/
-    return 1;
-  };
-
-  return main_loop(poll, sfd, handle_cb, on_awake, on_interrupt);
+  return main_loop(*mdht, on_awake);
 }

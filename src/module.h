@@ -20,15 +20,19 @@ struct Module {
   Module() noexcept;
 };
 
+struct ModulesAwake {
+  using AwakeType = Timestamp (*)(DHT &, sp::Buffer &) noexcept;
+  sp::StaticArray<AwakeType, 24> on_awake;
+  ModulesAwake() noexcept;
+};
+
 // dht::Modules
 struct Modules {
+  ModulesAwake &awake;
   Module modules[24];
   std::size_t length;
 
-  using AwakeType = Timestamp (*)(DHT &, sp::Buffer &) noexcept;
-  sp::StaticArray<AwakeType, 24> on_awake;
-
-  Modules() noexcept;
+  Modules(ModulesAwake &awake) noexcept;
 };
 
 Module &

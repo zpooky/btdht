@@ -36,7 +36,8 @@ m_dep = cpp.find_library('m')
 spdht_deps = [
   sputil_dep,
   sphash_dep,
-  m_dep
+  m_dep,
+  
 ]
 
 subdir('src')

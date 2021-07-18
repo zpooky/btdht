@@ -7,7 +7,6 @@
 #include <memory>
 #include <util/assert.h>
 
-
 //=====================================
 bool
 to_ipv4(const char *str, Ipv4 &result) noexcept {
@@ -18,7 +17,7 @@ to_ipv4(const char *str, Ipv4 &result) noexcept {
 
 //=====================================
 bool
-to_ipv6(const char *str, Ipv6 &result) noexcept{
+to_ipv6(const char *str, Ipv6 &result) noexcept {
   static_assert(sizeof(result.raw) == sizeof(struct in6_addr), "");
   bool ret = inet_pton(AF_INET6, str, &result) == 1;
   return ret;
@@ -780,4 +779,37 @@ is_valid(const Node &n) noexcept {
 }
 
 } // namespace dht
-  //=====================================
+
+//=====================================
+bool
+xdg_cache_dir(char (&directory)[PATH_MAX]) noexcept {
+  // read env $XDG_DATA_HOME default to $HOME/.local/share
+  // $XDG_CACHE_HOME default equal to $HOME/.cache
+  const char *data = getenv("XDG_DATA_HOME");
+  if (data == NULL || strcmp(data, "") == 0) {
+    const char *home = getenv("HOME");
+    assertx(home);
+    home = home ? home : "/tmp";
+    directory[0] = '\0';
+    snprintf(directory, PATH_MAX, "%s/.local/share", home);
+    return true;
+  }
+
+  strcpy(directory, data);
+  return true;
+}
+
+bool
+xdg_runtime_dir(char (&directory)[PATH_MAX]) noexcept {
+  // XDG_RUNTIME_DIR (/run/user/1000)
+  const char *data = getenv("XDG_RUNTIME_DIR");
+  if (data == NULL || strcmp(data, "") == 0) {
+    strcpy(directory, "/tmp");
+    return true;
+  }
+
+  strcpy(directory, data);
+  return true;
+}
+
+//=====================================

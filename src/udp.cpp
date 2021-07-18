@@ -8,7 +8,8 @@
 #include "util.h"
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
-#include <unistd.h>     //close
+#include <sys/un.h>
+#include <unistd.h> //close
 
 namespace udp {
 //=====================================
@@ -55,7 +56,7 @@ bind(Ipv4 ip, Port port, Mode mode) noexcept {
 
   fd udp{::socket(AF_INET, type, IPPROTO_UDP)};
   if (!udp) {
-    return fd{-1};
+    return udp;
   }
 
   ::sockaddr_in me{};
@@ -81,6 +82,39 @@ bind_v4(Port port, Mode m) noexcept {
 fd
 bind_v4(Mode m) noexcept {
   return bind_v4(Port(0), m);
+}
+
+fd
+bind_unix(const char *file, Mode m) noexcept {
+  int type = SOCK_DGRAM;
+  if (m == Mode::NONBLOCKING) {
+    type |= SOCK_NONBLOCK;
+  }
+
+  fd udp{::socket(AF_UNIX, type, 0)};
+  if (!udp) {
+    return udp;
+  }
+
+  ::sockaddr_un name{};
+  name.sun_family = AF_UNIX;
+  strncpy(name.sun_path, file, strlen(file));
+
+  if (::bind(int(udp), (struct sockaddr *)&name, sizeof(name)) < 0) {
+    printf("2: %m\n");
+    return fd{-1};
+  }
+
+ #if 0
+  /* Prepare for accepting connections. The backlog size is set to 20. So while
+   * one request is being processed other requests can be waiting. */
+  if (::listen(int(udp), 20) < 0) {
+    printf("3: %m\n");
+    return fd{-1};
+  }
+#endif
+
+  return udp;
 }
 
 fd
