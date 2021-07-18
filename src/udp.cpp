@@ -103,18 +103,9 @@ do_bind_unix(const char *file, Mode m, int type) noexcept {
   strncpy(name.sun_path, file, strlen(file));
 
   if (::bind(int(udp), (struct sockaddr *)&name, sizeof(name)) < 0) {
-    printf("2: %s\n", strerror(errno));
+    fprintf(stderr, "2: %s\n", strerror(errno));
     return fd{-1};
   }
-
-#if 0
-  /* Prepare for accepting connections. The backlog size is set to 20. So while
-   * one request is being processed other requests can be waiting. */
-  if (::listen(int(udp), 20) < 0) {
-    printf("3: %m\n");
-    return fd{-1};
-  }
-#endif
 
   return udp;
 }
@@ -128,7 +119,17 @@ bind_unix(const char *file, Mode m) noexcept {
 fd
 bind_unix_seq(const char *file, Mode m) noexcept {
   int type = SOCK_SEQPACKET;
-  return do_bind_unix(file, m, type);
+  fd seq_fd = do_bind_unix(file, m, type);
+  if (bool(seq_fd)) {
+    /* Prepare for accepting connections. The backlog size is set to 20. So
+     * while one request is being processed other requests can be waiting. */
+    if (::listen(int(seq_fd), 20) < 0) {
+      fprintf(stderr, "3: %s\n", strerror(errno));
+      return fd{-1};
+    }
+  }
+
+  return seq_fd;
 }
 
 fd
@@ -251,12 +252,13 @@ send(int fd, ::sockaddr_in &dest, const Contact &debug_dest,
 
   if (sent < 0) {
     const std::size_t raw_len = remaining_read(buf);
-    printf("sent[%zd] = "
-           "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),"
-           "debug_dest[%s]): %s\n", //
-           sent,                    //
-           int(fd), raw_len, flag,  //
-           to_string(debug_dest), strerror(error));
+    fprintf(stderr,
+            "sent[%zd] = "
+            "sendto(fd[%d],raw,raw_len[%zu],flag[%d]),"
+            "debug_dest[%s]): %s\n", //
+            sent,                    //
+            int(fd), raw_len, flag,  //
+            to_string(debug_dest), strerror(error));
     assertx(false);
     return false;
   }
