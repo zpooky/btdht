@@ -17,7 +17,7 @@ core::core() noexcept
     : epoll_fd{-1} {
   const int flag = 0;
   if ((epoll_fd = ::epoll_create1(flag)) < 0) {
-    die("epoll_create1");
+    die("epoll_create1\n");
   }
 }
 
@@ -32,7 +32,7 @@ static int
 tick(::epoll_event &current) {
   if (current.events & EPOLLIN) {
     auto cb = (core_callback *)current.data.ptr;
-    cb->callback(cb->closure);
+    cb->callback(cb->closure, current.events);
   } // if EPOLLIN
 
   if (current.events & EPOLLERR) {

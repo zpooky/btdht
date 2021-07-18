@@ -40,7 +40,6 @@
 // TODO log explicit error response (error module)
 // XXX ipv6
 // XXX client: multiple receiver for the same search
-// TODO client: on server shutdown send to search clients that we are shutting
 // down
 // TODO replace bad node
 static void
@@ -99,7 +98,7 @@ setup_signal() {
 }
 
 static int
-on_dht_protocol_handle(void *callback);
+on_dht_protocol_handle(void *callback, int events);
 
 struct dht_protocol_callback {
   sp::core_callback core_cb;
@@ -139,15 +138,10 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
     error::setup(unknown);
 
     dht::MessageContext mctx{dht, pctx, out, peer};
-    if (std::strcmp(pctx.msg_type, "q") == 0) {
-      /*query*/
-
+    if (std::strcmp(pctx.msg_type, "q") == 0) { /*query*/
       dht::Module &m = module_for(modules, pctx.query, /*default*/ unknown);
-
       return m.request(mctx);
-    } else if (std::strcmp(pctx.msg_type, "r") == 0) {
-      /*response*/
-
+    } else if (std::strcmp(pctx.msg_type, "r") == 0) { /*response*/
       tx::TxContext tctx;
       std::size_t cnt = dht.client.active;
       if (tx::consume(dht.client, pctx.tx, tctx)) {
@@ -158,7 +152,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
         logger::receive::res::unknown_tx(mctx, in);
         // assertx(false);
       }
-    } else if (std::strcmp(pctx.msg_type, "e") == 0) {
+    } else if (std::strcmp(pctx.msg_type, "e") == 0) { /*error*/
       tx::TxContext tctx;
       if (tx::consume(dht.client, pctx.tx, tctx)) {
         logger::receive::res::known_tx(mctx);
@@ -183,7 +177,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
 }
 
 static int
-on_dht_protocol_handle(void *callback) {
+on_dht_protocol_handle(void *callback, int events) {
   auto self = (dht_protocol_callback *)callback;
   int res = 0;
 
@@ -218,7 +212,7 @@ on_dht_protocol_handle(void *callback) {
 }
 
 static int
-on_priv_protocol_callback(void *closure);
+on_priv_protocol_callback(void *closure, int events);
 
 struct private_protocol_callback {
   sp::core_callback core_cb;
@@ -249,14 +243,14 @@ struct private_protocol_callback {
   }
 };
 static int
-on_priv_protocol_callback(void *closure) {
+on_priv_protocol_callback(void *closure, int events) {
   auto self = (private_protocol_callback *)closure;
   // TODO
   return 0;
 }
 
 static int
-on_interrupt(void *closure);
+on_interrupt(void *closure, int events);
 
 struct interrupt_callback {
   sp::core_callback core_cb;
@@ -274,7 +268,7 @@ struct interrupt_callback {
 };
 
 static int
-on_interrupt(void *closure) {
+on_interrupt(void *closure, int events) {
   auto self = (interrupt_callback *)closure;
   signalfd_siginfo info{};
 
