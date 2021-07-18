@@ -98,7 +98,7 @@ setup_signal() {
 }
 
 static int
-on_dht_protocol_handle(void *callback, int events);
+on_dht_protocol_handle(void *callback, uint32_t events);
 
 struct dht_protocol_callback {
   sp::core_callback core_cb;
@@ -177,7 +177,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
 }
 
 static int
-on_dht_protocol_handle(void *callback, int events) {
+on_dht_protocol_handle(void *callback, uint32_t events) {
   auto self = (dht_protocol_callback *)callback;
   int res = 0;
 
@@ -212,7 +212,7 @@ on_dht_protocol_handle(void *callback, int events) {
 }
 
 static int
-on_priv_protocol_callback(void *closure, int events);
+on_priv_protocol_callback(void *closure, uint32_t events);
 
 struct private_protocol_callback {
   sp::core_callback core_cb;
@@ -243,14 +243,14 @@ struct private_protocol_callback {
   }
 };
 static int
-on_priv_protocol_callback(void *closure, int events) {
+on_priv_protocol_callback(void *closure, uint32_t events) {
   auto self = (private_protocol_callback *)closure;
   // TODO
   return 0;
 }
 
 static int
-on_interrupt(void *closure, int events);
+on_interrupt(void *closure, uint32_t events);
 
 struct interrupt_callback {
   sp::core_callback core_cb;
@@ -268,7 +268,7 @@ struct interrupt_callback {
 };
 
 static int
-on_interrupt(void *closure, int events) {
+on_interrupt(void *closure, uint32_t events) {
   auto self = (interrupt_callback *)closure;
   signalfd_siginfo info{};
 
@@ -372,7 +372,6 @@ main(int argc, char **argv) {
   }
   unlink(options.local_socket);
 
-  // TODO private_interface.h should only be accessible through this
   fd priv_fd = udp::bind_unix(options.local_socket, udp::Mode::NONBLOCKING);
   if (!priv_fd) {
     fprintf(stderr, "failed to bind: local %s\n", options.local_socket);

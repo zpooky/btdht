@@ -13,7 +13,7 @@ struct core {
 
 struct core_callback {
   void *closure;
-  int (*callback)(void *closure, int events);
+  int (*callback)(void *closure, uint32_t events);
 };
 
 int

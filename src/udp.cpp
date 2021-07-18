@@ -1,15 +1,18 @@
 #include "udp.h"
-#include "bencode_print.h"
 #include <arpa/inet.h>
 #include <cstdio>
 #include <cstring>
-#include <util/assert.h>
 // #include <exception>
-#include "util.h"
+#include <string.h>
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
 #include <sys/un.h>
 #include <unistd.h> //close
+
+#include <util/assert.h>
+
+#include "bencode_print.h"
+#include "util.h"
 
 namespace udp {
 //=====================================
@@ -84,9 +87,8 @@ bind_v4(Mode m) noexcept {
   return bind_v4(Port(0), m);
 }
 
-fd
-bind_unix(const char *file, Mode m) noexcept {
-  int type = SOCK_DGRAM;
+static fd
+do_bind_unix(const char *file, Mode m, int type) noexcept {
   if (m == Mode::NONBLOCKING) {
     type |= SOCK_NONBLOCK;
   }
@@ -101,11 +103,11 @@ bind_unix(const char *file, Mode m) noexcept {
   strncpy(name.sun_path, file, strlen(file));
 
   if (::bind(int(udp), (struct sockaddr *)&name, sizeof(name)) < 0) {
-    printf("2: %m\n");
+    printf("2: %s\n", strerror(errno));
     return fd{-1};
   }
 
- #if 0
+#if 0
   /* Prepare for accepting connections. The backlog size is set to 20. So while
    * one request is being processed other requests can be waiting. */
   if (::listen(int(udp), 20) < 0) {
@@ -115,6 +117,18 @@ bind_unix(const char *file, Mode m) noexcept {
 #endif
 
   return udp;
+}
+
+fd
+bind_unix(const char *file, Mode m) noexcept {
+  int type = SOCK_DGRAM;
+  return do_bind_unix(file, m, type);
+}
+
+fd
+bind_unix_seq(const char *file, Mode m) noexcept {
+  int type = SOCK_SEQPACKET;
+  return do_bind_unix(file, m, type);
 }
 
 fd

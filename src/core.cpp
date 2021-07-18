@@ -33,20 +33,16 @@ tick(::epoll_event &current) {
   if (current.events & EPOLLIN) {
     auto cb = (core_callback *)current.data.ptr;
     cb->callback(cb->closure, current.events);
-  } // if EPOLLIN
-
-  if (current.events & EPOLLERR) {
+  } else if (current.events & EPOLLERR) {
     fprintf(stderr, "EPOLLERR\n");
-  }
-  if (current.events & EPOLLHUP) {
+  } else if (current.events & EPOLLHUP) {
     fprintf(stderr, "EPOLLHUP\n");
-  }
-  if (current.events & EPOLLOUT) {
+  } else if (current.events & EPOLLOUT) {
     fprintf(stderr, "EPOLLOUT\n");
-  }
-  if (current.events & EPOLLRDHUP) {
+  } else if (current.events & EPOLLRDHUP) {
     fprintf(stderr, "EPOLLRDHUP\n");
   }
+
   return 0;
 }
 
