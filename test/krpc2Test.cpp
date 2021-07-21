@@ -11,7 +11,7 @@ TEST(krpc2Test, get_peers) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   Infohash h;
   auto sctx_t = emplace(dht.searches, h, h);
@@ -64,6 +64,7 @@ TEST(krpc2Test, get_peers) {
 
   Module m;
   get_peers::setup(m);
+  sp::fd fd{-1};
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
     dht::MessageContext ctx{dht, pctx, out, peer};
@@ -91,7 +92,7 @@ TEST(krpc2Test, find_node) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -126,6 +127,7 @@ TEST(krpc2Test, find_node) {
 
   Module m;
   find_node::setup(m);
+  sp::fd fd{-1};
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
     dht::MessageContext ctx{dht, pctx, out, peer};
@@ -145,7 +147,7 @@ TEST(krpc2Test, find_node2) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -175,6 +177,7 @@ TEST(krpc2Test, find_node2) {
 
   Module m;
   find_node::setup(m);
+  sp::fd fd{-1};
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
     dht::MessageContext ctx{dht, pctx, out, peer};
@@ -194,7 +197,7 @@ TEST(krpc2Test, ping) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -217,6 +220,7 @@ TEST(krpc2Test, ping) {
 
   Module m;
   ping::setup(m);
+  sp::fd fd{-1};
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
     dht::MessageContext ctx{dht, pctx, out, peer};
@@ -236,7 +240,7 @@ TEST(krpc2Test, xxx) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -286,7 +290,7 @@ TEST(krpc2Test, get_peers3) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -370,6 +374,7 @@ TEST(krpc2Test, get_peers3) {
 
   Module m;
   get_peers::setup(m);
+  sp::fd fd{-1};
 
   auto f = [&](krpc::ParseContext &pctx) -> bool {
     dht::MessageContext ctx{dht, pctx, out, peer};

@@ -18,6 +18,7 @@
 
 #include <core.h>
 #include <heap/binary.h>
+#include <io/fd.h>
 #include <list/SkipList.h>
 #include <prng/xorshift.h>
 #include <tree/avl.h>
@@ -482,25 +483,20 @@ struct KContact {
   KContact(std::size_t c, Contact con) noexcept
       : common(c)
       , contact(con) {
-
-    assertx(contact.ip.ipv4 != 33554432);
   }
 
   KContact(const Key &in, const Contact &c, const Key &search) noexcept
       : common(rank(in, search))
       , contact(c) {
-    assertx(contact.ip.ipv4 != 33554432);
   }
 
   KContact(const dht::IdContact &in, const Key &search) noexcept
       : common(rank(in.id, search))
       , contact(in.contact) {
-    assertx(contact.ip.ipv4 != 33554432);
   }
 
   KContact(const dht::IdContact &in, const NodeId &search) noexcept
       : KContact(in, search.id) {
-    assertx(contact.ip.ipv4 != 33554432);
   }
 
   explicit operator bool() const noexcept {
@@ -518,7 +514,6 @@ struct KContact {
 struct Search {
   SearchContext *ctx;
   Infohash search;
-  Contact remote;
 
   sp::StaticArray<sp::hasher<NodeId>, 2> hashers;
   sp::BloomFilter<NodeId, 8 * 1024 * 1024> searched;
@@ -570,6 +565,7 @@ struct DHT {
   // self {{{
   NodeId id;
   Client client;
+  sp::fd priv_fd;
   Log log;
   Contact ip;
   prng::xorshift32 &random;
@@ -636,7 +632,8 @@ struct DHT {
   void *cache{nullptr};
   // }}}
 
-  DHT(fd &, const Contact &self, prng::xorshift32 &, Timestamp now) noexcept;
+  DHT(fd &, fd &priv_fd, const Contact &self, prng::xorshift32 &, Timestamp now)
+  noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;

@@ -150,9 +150,8 @@ scheduled_search(dht::DHT &dht, sp::Buffer &scratch) noexcept {
       auto &search = current->search;
       std::size_t max(30);
       auto cx = sp::take(current->result, max);
-      auto &remote = current->remote;
 
-      auto res = client::priv::found(dht, scratch, search, remote, cx);
+      auto res = client::priv::found(dht, scratch, search, cx);
       if (res != client::Res::OK) {
         ++current->fail;
         prepend(current->result, std::move(cx));
@@ -267,7 +266,6 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
   if (std::get<1>(res)) {
     dht::Search *const ins = std::get<0>(res);
     assertx(ins);
-    ins->remote = ctx.remote;
     ins->timeout = dht.now + timeout;
     search_enqueue(dht, ins);
 

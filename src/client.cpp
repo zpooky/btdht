@@ -95,9 +95,8 @@ namespace priv {
 template <typename Contacts>
 Res
 found(dht::DHT &dht, sp::Buffer &out, const dht::Infohash &search,
-      const Contact &remote, const Contacts &contacts) noexcept {
+      const Contacts &contacts) noexcept {
   sp::reset(out);
-  dht::Client &client = dht.client;
 
   // TODO
   //- change from event to req and on resp we can mark sent contacts as
@@ -108,7 +107,7 @@ found(dht::DHT &dht, sp::Buffer &out, const dht::Infohash &search,
       krpc::priv::event::found(out, search, contacts) ? Res::OK : Res::ERR;
   if (result == Res::OK) {
     sp::flip(out);
-    result = udp::send(client.udp, remote, out) ? Res::OK : Res::ERR;
+    result = net::sock_write(dht.priv_fd, out) ? Res::OK : Res::ERR;
   }
 
   return result;
@@ -116,7 +115,6 @@ found(dht::DHT &dht, sp::Buffer &out, const dht::Infohash &search,
 
 template Res
 found<sp::LinkedList<Contact>>(dht::DHT &, sp::Buffer &, const dht::Infohash &,
-                               const Contact &,
                                const sp::LinkedList<Contact> &) noexcept;
 
 } // namespace priv

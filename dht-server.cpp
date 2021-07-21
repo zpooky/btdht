@@ -26,6 +26,8 @@
 #include <private_interface.h>
 #include <upnp_service.h>
 
+// TODO in private_interface on socket close automatically close connected
+// searches!
 // TODO awake next timeout[0ms]
 // TODO use ip not ip:port in bloomfilters
 // TODO !!better upnp
@@ -306,11 +308,10 @@ on_priv_protocol_callback(void *closure, uint32_t events) {
         if (inBuffer.length > 0) {
           const sp::Buffer in_view(inBuffer);
           if (!parse(self->dht, self->modules, from, inBuffer, outBuffer)) {
-
             return 0;
           }
-          flip(outBuffer);
 
+          flip(outBuffer);
           if (outBuffer.length > 0) {
             net::sock_write(self->client_fd, outBuffer);
           }
@@ -321,7 +322,6 @@ on_priv_protocol_callback(void *closure, uint32_t events) {
     } // while
   }
   if (events & EPOLLERR || events & EPOLLHUP || events & EPOLLRDHUP) {
-    printf("#=====close\n");
     delete self;
   }
   return 0;
@@ -463,7 +463,7 @@ main(int argc, char **argv) {
 
   auto r = prng::seed<prng::xorshift32>();
   fprintf(stderr, "sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
-  auto mdht = std::make_unique<dht::DHT>(udp_fd, listen, r, sp::now());
+  auto mdht = std::make_unique<dht::DHT>(udp_fd, priv_fd, listen, r, sp::now());
   if (!dht::init(*mdht)) {
     die("failed to init dht");
     return 4;

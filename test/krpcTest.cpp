@@ -44,7 +44,7 @@ TEST(krpcTest, test_ping) {
   fd udp{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, listen, r, sp::now());
+  dht::DHT dht(udp, udp, listen, r, sp::now());
 
   {
     sp::Buffer buff{b};
@@ -100,7 +100,7 @@ TEST(krpcTest, test_find_node) {
   fd udp{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, listen, r, sp::now());
+  dht::DHT dht(udp, udp, listen, r, sp::now());
 
   { //
     sp::Buffer buff{b};
@@ -176,7 +176,7 @@ TEST(krpcTest, test_get_peers) {
   fd udp{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, listen, r, sp::now());
+  dht::DHT dht(udp, udp, listen, r, sp::now());
 
   krpc::Transaction t;
   transaction(t);
@@ -272,7 +272,7 @@ TEST(krpcTest, test_anounce_peer) {
   fd udp{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, listen, r, sp::now());
+  dht::DHT dht(udp, udp, listen, r, sp::now());
 
   {
     dht::Infohash infohash;
@@ -1766,7 +1766,7 @@ TEST(krpcTest, print_find_node_debug) {
   fd udp{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, listen, r, sp::now());
+  dht::DHT dht(udp, udp, listen, r, sp::now());
   // const char hex[] =
   //     "64313a656c693230336531383a496e76616c696420606964272076616"
   //     "c756565313a74343a6569d4a3313a76343a6c740d60313a79313a6565";
@@ -2153,7 +2153,7 @@ TEST(krpcTest, debug) {
   fd udp{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, listen, r, sp::now());
+  dht::DHT dht(udp, udp, listen, r, sp::now());
   // const char hex[] =
   // "64313a7264323a696432303a17323a78dac46ada7f7b6d886fb28da"
   //                    "0cd4ae253323a6970"

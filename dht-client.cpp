@@ -206,8 +206,7 @@ send_search(DHTClient &client, const Contact &to,
 }
 
 static bool
-send_stop_seach(DHTClient &client, const Contact &to,
-                const dht::Infohash &search) noexcept {
+send_stop_seach(DHTClient &client, const dht::Infohash &search) noexcept {
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
@@ -506,9 +505,10 @@ handle_statistics(DHTClient &client) {
 static bool
 search_event_receive(fd &u, sp::Buffer &b) noexcept {
   fd udp{-1};
+  fd priv{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, listen, r, sp::now());
+  dht::DHT dht(udp, priv, listen, r, sp::now());
   Contact remote;
 
 Lretry:
@@ -674,7 +674,7 @@ handle_search(DHTClient &client) {
   } // while
 
   printf("send_stop_seach()\n");
-  if (!send_stop_seach(client, to, search)) {
+  if (!send_stop_seach(client, search)) {
     return EXIT_FAILURE;
   }
 
@@ -766,7 +766,7 @@ handle_upnp(int, char **) noexcept {
   if (!tcp::local(tcp, local)) {
     return 5;
   }
-  assertx(false);//TODO
+  assertx(false); // TODO
 #if 0
   upnp::upnp in{sp::Seconds(sp::Minutes(5))};
   in.protocol = "udp";

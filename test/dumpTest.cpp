@@ -20,7 +20,7 @@ TEST(dumpTest, test) {
   fd sock(-1);
   prng::xorshift32 r(1);
   Contact self = rand_contact(r);
-  dht::DHT dht(sock, self, r, sp::now());
+  dht::DHT dht(sock, sock, self, r, sp::now());
   dht::init(dht);
 
   const char *file = "/tmp/wasd.dump";
@@ -52,7 +52,7 @@ TEST(dumpTest, test) {
 
   bencode_print_file(file);
 
-  dht::DHT restore_dht(sock, self, r, sp::now());
+  dht::DHT restore_dht(sock, sock, self, r, sp::now());
   ASSERT_TRUE(sp::restore(restore_dht, file));
 
   ASSERT_EQ(dht.id, restore_dht.id);

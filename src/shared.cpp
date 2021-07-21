@@ -351,7 +351,6 @@ SearchContext::SearchContext(const Infohash &s) noexcept
 Search::Search(const Infohash &s) noexcept
     : ctx(new SearchContext(s))
     , search(s)
-    , remote()
     , hashers()
     , searched(hashers)
     , timeout(0)
@@ -446,7 +445,7 @@ TokenKey::TokenKey() noexcept
 }
 
 // dht::DHT
-DHT::DHT(fd &udp, const Contact &self, prng::xorshift32 &r,
+DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
          Timestamp n) noexcept
     // self {{{
     : id()

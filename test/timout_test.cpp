@@ -28,7 +28,7 @@ TEST(TimeoutTest, test) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
   ASSERT_EQ(std::size_t(0), is_cycle(dht));
 
   dht::Node n1;
@@ -78,7 +78,7 @@ TEST(TimeoutTest, test2) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
   dht.now = sp::Timestamp(0);
   ASSERT_EQ(timeout::take_node(dht, sp::Milliseconds(1)), nullptr);
 
@@ -126,7 +126,7 @@ TEST(TimeoutTest, test3) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   ASSERT_EQ(dht.timeout_node, nullptr);
   dht::Node node0;
@@ -174,7 +174,7 @@ TEST(TimeoutTest, test4) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   ASSERT_EQ(dht.timeout_node, nullptr);
   dht::Node node0;
@@ -222,7 +222,7 @@ TEST(TimeoutTest, test5) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   ASSERT_EQ(dht.timeout_node, nullptr);
   dht::Node node0;
@@ -270,7 +270,7 @@ TEST(TimeoutTest, test_arr) {
   fd sock(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
-  dht::DHT dht(sock, c, r, sp::now());
+  dht::DHT dht(sock, sock, c, r, sp::now());
 
   sp::UinStaticArray<dht::Node, 1024> a;
   while (!is_full(a)) {
