@@ -19,6 +19,8 @@
 #include <udp.h>
 #include <unistd.h> //read
 
+#include <encode/hex.h>
+
 #include <bencode.h>
 #include <cache.h>
 #include <core.h>
@@ -162,8 +164,9 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
       bencode_print_out(stderr);
       sp::Buffer copy(in);
       copy.pos = 0;
-      bencode_print(copy);
-      // TODO
+      if (!bencode_print(copy)) {
+        hex::encode_print(copy.raw, copy.length, stderr);
+      }
       // assertx(false);
     } else {
       assertx(false);

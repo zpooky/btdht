@@ -13,7 +13,6 @@ bencode::d<Buffer>::value(Buffer &b, std::uint64_t &val) noexcept {
 
   unsigned char out = '\0';
   if (pop_front(b, out) != 1) {
-    assertx(false);
     m.rollback = true;
     return false;
   }
@@ -49,7 +48,6 @@ bencode::d<Buffer>::value(Buffer &b, std::uint32_t &val) noexcept {
 
   unsigned char out = '\0';
   if (pop_front(b, out) != 1) {
-    assertx(false);
     m.rollback = true;
     return false;
   }
@@ -85,7 +83,6 @@ bencode::d<Buffer>::value(Buffer &b, std::uint16_t &val) noexcept {
 
   unsigned char out = '\0';
   if (pop_front(b, out) != 1) {
-    assertx(false);
     m.rollback = true;
     return false;
   }

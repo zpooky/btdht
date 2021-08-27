@@ -171,29 +171,30 @@ bencode_print_out(FILE *f) noexcept {
 
 //=====================================
 template <>
-void
+bool
 bencode_print(sp::Buffer &d) noexcept {
-  internal::dict_wildcard(d, 0);
+  return internal::dict_wildcard(d, 0);
 }
 
 template <>
-void
+bool
 bencode_print(const sp::Buffer &d) noexcept {
   sp::Buffer copy(d.raw, d.capacity);
   copy.length = d.length;
 
-  internal::dict_wildcard(copy, 0);
+  return internal::dict_wildcard(copy, 0);
 }
 
 template <>
-void
+bool
 bencode_print(sp::Thing &d) noexcept {
-  internal::dict_wildcard(d, 0);
+  return internal::dict_wildcard(d, 0);
 }
 
 //=====================================
-void
+bool
 bencode_print_file(const char *file) noexcept {
+  bool result = false;
   fd fd{open(file, O_RDONLY)};
   if (!fd) {
     assertx(false);
@@ -220,9 +221,10 @@ bencode_print_file(const char *file) noexcept {
   }
   sp::Buffer buf((sp::byte *)raw, file_size);
   buf.length = file_size;
-  bencode_print(buf);
+  result = bencode_print(buf);
 
   munmap(raw, file_size);
+  return result;
 }
 
 //=====================================

@@ -11,11 +11,11 @@ bencode_print_out(FILE *) noexcept;
 
 //=====================================
 template <typename Buffer>
-void
+bool
 bencode_print(Buffer &) noexcept;
 
 //=====================================
-void
+bool
 bencode_print_file(const char *file) noexcept;
 
 //=====================================
