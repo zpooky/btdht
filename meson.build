@@ -32,12 +32,13 @@ spdht_includes = [
 
 cpp = meson.get_compiler('cpp')
 m_dep = cpp.find_library('m')
+miniupnpc_dep = cpp.find_library('miniupnpc')
 
 spdht_deps = [
   sputil_dep,
   sphash_dep,
   m_dep,
-  
+  miniupnpc_dep,
 ]
 
 subdir('src')

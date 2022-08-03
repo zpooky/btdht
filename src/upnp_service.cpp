@@ -13,6 +13,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <miniupnpc/miniupnpc.h>
+#include <miniupnpc/upnpcommands.h>
+#include <miniupnpc/upnperrors.h>
+
 namespace dht_upnp {
 static fd
 open_upnp(const Ip &ip) {
@@ -81,6 +85,7 @@ struct sockaddr_in6 {
 };
 #endif
 
+#if 0
 static bool
 guess_default_gateway(const sockaddr_in &ip, const sockaddr_in &netmask,
                       in_addr &result) noexcept {
@@ -170,7 +175,68 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
   ::freeifaddrs(ifaddr);
 
   return true;
-} // namespace dht_upnp
+}
+#else
+static bool
+for_if_send(dht::DHT &self, const sp::Seconds &) noexcept {
+  char aLanAddr[64];
+  char pPort[16] = {};
+  bool result = false;
+  struct UPNPUrls upnp_urls = {};
+  struct IGDdatas upnp_data = {};
+  struct UPNPDev *upnp_dev = nullptr;
+
+  {
+    Contact current_listen;
+    if (!net::local(self.client.udp, current_listen)) {
+      assertx(false);
+      goto Lerr;
+    }
+
+    sprintf(pPort, "%d", current_listen.port);
+
+    int error = 0;
+    upnp_dev = upnpDiscover(2000, NULL, NULL, 0, 0, 2, &error);
+    // Retrieve a valid Internet Gateway Device
+    int status = UPNP_GetValidIGD(upnp_dev, &upnp_urls, &upnp_data, aLanAddr,
+                                  sizeof(aLanAddr));
+    printf("status=%d, lan_addr=%s\n", status, aLanAddr);
+
+    if (status == 1) {
+      printf("found valid IGD: %s\n", upnp_urls.controlURL);
+      error = UPNP_AddPortMapping(
+          upnp_urls.controlURL, upnp_data.first.servicetype,
+          pPort, // external port
+          pPort, // internal port
+          aLanAddr, "spdht", "UDP",
+          0,  // remote host
+          "0" // lease duration, recommended 0 as some NAT
+              // implementations may not support another value
+      );
+
+      if (error) {
+        printf("failed to map port\n");
+        printf("error: %s\n", strupnperror(error));
+      } else {
+        printf("%s:pPort[%.*s]aLanAddr[%.*s]\n", __func__, (int)16, pPort,
+               (int)64, aLanAddr);
+      }
+    } else {
+      printf("no valid IGD found\n");
+    }
+
+    // error = UPNP_DeletePortMapping(
+    //     upnp_urls.controlURL, upnp_data.first.servicetype, pPort, "UDP", 0);
+  }
+
+  result = true;
+Lerr:
+  FreeUPNPUrls(&upnp_urls);
+  freeUPNPDevlist(upnp_dev);
+  return result;
+}
+
+#endif
 
 static Timestamp
 scheduled_upnp(dht::DHT &self, sp::Buffer &) noexcept {
