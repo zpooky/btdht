@@ -468,6 +468,55 @@ handle_announce_peer(DHTClient &client) {
 }
 
 //=====================================
+static bool
+send_sample_infohashes(DHTClient &client, const Contact &to) noexcept {
+  reset(client.out);
+  krpc::Transaction tx;
+  make_tx(client.rand, tx);
+
+  krpc::request::sample_infohashes(client.out, tx, client.self, client.self.id);
+  flip(client.out);
+  std::size_t pos = client.out.pos;
+  bencode_print(client.out);
+  client.out.pos = pos;
+
+  return net::sock_write(client.udp, client.out);
+}
+
+int
+handle_sample_infohashes(DHTClient &client) {
+  bool has = false;
+  Contact to;
+
+  while (client.argc) {
+    const char *p = client.argv[0];
+    if (to_contact(p, to)) {
+      has = true;
+      break;
+    }
+
+    client.argc--;
+    client.argv++;
+  }
+
+  if (!has) {
+    fprintf(stderr, "dht-client sample_infohashes ip:port\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!send_sample_infohashes(client, to)) {
+    fprintf(stderr, "failed to send\n");
+    return EXIT_FAILURE;
+  }
+
+  if (generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
+
+  return 0;
+}
+
+//=====================================
 int
 handle_statistics(DHTClient &client) {
   bool has = false;
@@ -522,7 +571,8 @@ Lretry:
   }
   flip(b);
 
-  krpc::ParseContext pctx(dht, b);
+  dht::Domain dom = dht::Domain::Domain_private;
+  krpc::ParseContext pctx(dom, dht, b);
 
   // dht::print_hex(b.raw, b.length);
   // printf("\n");
@@ -805,6 +855,8 @@ parse_command(int argc, char **argv) {
       return bind_exe(subc, subv, handle_get_peers);
     } else if (std::strcmp(subcommand, "announce_peer") == 0) {
       return bind_exe(subc, subv, handle_announce_peer);
+    } else if (std::strcmp(subcommand, "sample_infohashes") == 0) {
+      return bind_exe(subc, subv, handle_sample_infohashes);
     } else if (std::strcmp(subcommand, "statistics") == 0 ||
                std::strcmp(subcommand, "stat") == 0) {
       return bind_exe(subc, subv, handle_statistics);

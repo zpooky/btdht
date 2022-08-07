@@ -6,7 +6,7 @@
 namespace interface_dht {
 
 bool
-setup(dht::Modules &) noexcept;
+setup(dht::Modules &, bool setup_cb) noexcept;
 
 } // namespace interface_dht
 

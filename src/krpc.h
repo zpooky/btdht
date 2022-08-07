@@ -38,6 +38,10 @@ bool
 announce_peer(sp::Buffer &, const Transaction &, const dht::NodeId &self,
               bool implied_port, const dht::Infohash &, Port port,
               const dht::Token &) noexcept;
+
+bool
+sample_infohashes(sp::Buffer &, const Transaction &, const dht::NodeId &self,
+                  const dht::Key &) noexcept;
 //}
 
 //=====================================

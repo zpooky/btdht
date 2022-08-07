@@ -37,7 +37,7 @@ on_awake_eager_tx_timeout(DHT &, sp::Buffer &) noexcept;
 //=====================================
 namespace interface_dht {
 bool
-setup(dht::Modules &modules) noexcept {
+setup(dht::Modules &modules, bool setup_cb) noexcept {
   std::size_t &i = modules.length;
   ping::setup(modules.modules[i++]);
   find_node::setup(modules.modules[i++]);
@@ -46,11 +46,13 @@ setup(dht::Modules &modules) noexcept {
   sample_infohashes::setup(modules.modules[i++]);
   error::setup(modules.modules[i++]);
 
-  insert(modules.awake.on_awake, &dht::on_awake);
-  insert(modules.awake.on_awake, &dht::on_awake_ping);
-  insert(modules.awake.on_awake, &db::on_awake_peer_db);
-  insert(modules.awake.on_awake, &dht::on_awake_bootstrap_reset);
-  insert(modules.awake.on_awake, &dht::on_awake_eager_tx_timeout);
+  if (setup_cb) {
+    insert(modules.awake.on_awake, &dht::on_awake);
+    insert(modules.awake.on_awake, &dht::on_awake_ping);
+    insert(modules.awake.on_awake, &db::on_awake_peer_db);
+    insert(modules.awake.on_awake, &dht::on_awake_bootstrap_reset);
+    insert(modules.awake.on_awake, &dht::on_awake_eager_tx_timeout);
+  }
 
   return true;
 }
@@ -364,23 +366,28 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
     return;
   }
 
-  assertx(ctx.remote.port != 0);
-  if (dht::is_blacklisted(self, ctx.remote)) {
-    return;
-  }
-
-  dht::Node *contact = dht_activity(ctx, sender);
-
-  handle_ip_election(ctx, sender);
-  if (contact) {
-    contact->remote_activity = self.now;
-    f(*contact);
+  if (ctx.domain == dht::Domain::Domain_private) {
+    dht::Node dummy{};
+    f(dummy);
   } else {
-    bootstrap_insert(self, dht::KContact(sender.id, ctx.remote, self.id.id));
-    dht::Node n;
-    n.id = sender;
-    n.contact = ctx.remote;
-    f(n);
+    assertx(ctx.remote.port != 0);
+    if (dht::is_blacklisted(self, ctx.remote)) {
+      return;
+    }
+
+    dht::Node *contact = dht_activity(ctx, sender);
+
+    handle_ip_election(ctx, sender);
+    if (contact) {
+      contact->remote_activity = self.now;
+      f(*contact);
+    } else {
+      bootstrap_insert(self, dht::KContact(sender.id, ctx.remote, self.id.id));
+      dht::Node n;
+      n.id = sender;
+      n.contact = ctx.remote;
+      f(n);
+    }
   }
 
   return;

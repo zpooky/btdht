@@ -11,8 +11,10 @@
 //=====================================
 namespace krpc {
 // krpc::ParseContext
-ParseContext::ParseContext(dht::DHT &ictx, sp::Buffer &d) noexcept
-    : ctx{ictx}
+ParseContext::ParseContext(dht::Domain domain, dht::DHT &ictx,
+                           sp::Buffer &d) noexcept
+    : domain{domain}
+    , ctx{ictx}
     , decoder(d)
     , tx()
     , msg_type{0}
@@ -23,7 +25,8 @@ ParseContext::ParseContext(dht::DHT &ictx, sp::Buffer &d) noexcept
 }
 
 ParseContext::ParseContext(ParseContext &ictx, sp::Buffer &d) noexcept
-    : ctx{ictx.ctx}
+    : domain{ictx.domain}
+    , ctx{ictx.ctx}
     , decoder(d)
     , tx(ictx.tx)
     , msg_type{0}
@@ -517,7 +520,8 @@ DHT::~DHT() {
 /*dht::MessageContext*/
 MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
                                sp::Buffer &p_out, Contact p_remote) noexcept
-    : query(ctx.query)
+    : domain(ctx.domain)
+    , query(ctx.query)
     , dht{p_dht}
     , in{ctx.decoder}
     , out{p_out}

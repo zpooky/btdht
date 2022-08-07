@@ -76,7 +76,8 @@ TEST(krpc2Test, get_peers) {
     // return true;
   };
 
-  krpc::ParseContext pctx(dht, in);
+  dht::Domain dom = dht::Domain::Domain_public;
+  krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -139,7 +140,8 @@ TEST(krpc2Test, find_node) {
   };
   dht.active_find_nodes++;
 
-  krpc::ParseContext pctx(dht, in);
+  dht::Domain dom = dht::Domain::Domain_public;
+  krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -189,7 +191,8 @@ TEST(krpc2Test, find_node2) {
   };
   dht.active_find_nodes++;
 
-  krpc::ParseContext pctx(dht, in);
+  dht::Domain dom = dht::Domain::Domain_public;
+  krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -232,7 +235,8 @@ TEST(krpc2Test, ping) {
   };
   dht.active_find_nodes++;
 
-  krpc::ParseContext pctx(dht, in);
+  dht::Domain dom = dht::Domain::Domain_public;
+  krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -281,7 +285,8 @@ TEST(krpc2Test, xxx) {
   };
   dht.active_find_nodes++;
 
-  krpc::ParseContext pctx(dht, in);
+  dht::Domain dom = dht::Domain::Domain_public;
+  krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
 
@@ -385,7 +390,7 @@ TEST(krpc2Test, get_peers3) {
     return m.response(ctx, nullptr);
   };
   dht.active_find_nodes++;
-
-  krpc::ParseContext pctx(dht, in);
+  dht::Domain dom = dht::Domain::Domain_public;
+  krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }

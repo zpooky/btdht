@@ -51,7 +51,8 @@ TEST(krpcTest, test_ping) {
     ASSERT_TRUE(krpc::request::ping(buff, t, id));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(dht, buff);
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
     test_request(ctx, [&id](sp::Buffer &d) {
       dht::NodeId sender;
       if (!bencode::d::pair(d, "id", sender.id)) {
@@ -71,7 +72,8 @@ TEST(krpcTest, test_ping) {
     ASSERT_TRUE(krpc::response::ping(buff, t, id));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(dht, buff);
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
     test_response(ctx, [&id](sp::Buffer &d) {
       dht::NodeId sender;
       if (!bencode::d::pair(d, "id", sender.id)) {
@@ -107,7 +109,8 @@ TEST(krpcTest, test_find_node) {
     ASSERT_TRUE(krpc::request::find_node(buff, t, id, id));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(dht, buff);
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
     test_request(ctx, [&id](sp::Buffer &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
@@ -146,7 +149,8 @@ TEST(krpcTest, test_find_node) {
     sp::flip(buff);
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
 
-    krpc::ParseContext ctx(dht, buff);
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
     test_response(ctx, [&id, &in](sp::Buffer &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
@@ -216,7 +220,8 @@ TEST(krpcTest, test_get_peers) {
 
     // bencode_print(p);
     // printf("asd\n\n\n\n\n");
-    krpc::ParseContext ctx(dht, buff);
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
     test_response(ctx, [&id, &in, &token](auto &p) { //
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
@@ -287,7 +292,8 @@ TEST(krpcTest, test_anounce_peer) {
                                              infohash, port, token));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(dht, buff);
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
     test_request(ctx,
                  [&id, implied_port, infohash, port, token](sp::Buffer &p) {
                    dht::NodeId sender;
@@ -333,7 +339,8 @@ TEST(krpcTest, test_anounce_peer) {
     ASSERT_TRUE(krpc::response::announce_peer(buff, t, id));
     sp::flip(buff);
 
-    krpc::ParseContext ctx(dht, buff);
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
     test_response(ctx, [&id](sp::Buffer &p) { //
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
@@ -2089,7 +2096,8 @@ TEST(krpcTest, print_find_node_debug) {
       }
 
       sp::Buffer copy(bufx);
-      krpc::ParseContext ctx(dht, copy);
+      dht::Domain dom = dht::Domain::Domain_public;
+      krpc::ParseContext ctx(dom, dht, copy);
       test_response(ctx, [](auto &p) {
         bool b_id = false;
         bool b_n = false;
@@ -2576,6 +2584,7 @@ TEST(krpcTest, debug) {
   sp::Buffer in(b);
   in.length = l;
 
-  krpc::ParseContext pctx(dht, in);
+  dht::Domain dom = dht::Domain::Domain_public;
+  krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }

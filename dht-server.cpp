@@ -124,7 +124,7 @@ struct dht_protocol_callback {
       , in{std::make_unique<sp::byte[]>(size)}
       , out{std::make_unique<sp::byte[]>(size)} {
 
-    if (!interface_dht::setup(modules)) {
+    if (!interface_dht::setup(modules, true)) {
       die("interface_dht::setup(modules)");
     }
     core_cb.closure = this;
@@ -133,8 +133,8 @@ struct dht_protocol_callback {
 };
 
 static bool
-parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
-      sp::Buffer &out) noexcept {
+parse(dht::Domain dom, dht::DHT &dht, dht::Modules &modules,
+      const Contact &peer, sp::Buffer &in, sp::Buffer &out) noexcept {
   auto handle = [&](krpc::ParseContext &pctx) {
     dht::Module unknown;
     error::setup(unknown);
@@ -175,7 +175,7 @@ parse(dht::DHT &dht, dht::Modules &modules, const Contact &peer, sp::Buffer &in,
     return false;
   };
 
-  krpc::ParseContext pctx(dht, in);
+  krpc::ParseContext pctx(dom, dht, in);
   return krpc::d::krpc(pctx, handle);
 }
 
@@ -201,7 +201,8 @@ on_dht_protocol_handle(void *callback, uint32_t events) {
 
         assertx(from.port != 0);
         const sp::Buffer in_view(inBuffer);
-        if (!parse(self->dht, self->modules, from, inBuffer, outBuffer)) {
+        dht::Domain dom = dht::Domain::Domain_public;
+        if (!parse(dom, self->dht, self->modules, from, inBuffer, outBuffer)) {
           return 0;
         }
         flip(outBuffer);
@@ -234,6 +235,9 @@ struct priv_protocol_accept_callback {
       , priv_fd{_fd} {
     if (!interface_priv::setup(modules)) {
       die("interface_priv::setup(modules)");
+    }
+    if (!interface_dht::setup(modules, false)) {
+      die("priv interface_dht::setup(modules)");
     }
     core_cb.closure = this;
     core_cb.callback = on_priv_protocol_accept_callback;
@@ -310,7 +314,9 @@ on_priv_protocol_callback(void *closure, uint32_t events) {
 
         if (inBuffer.length > 0) {
           const sp::Buffer in_view(inBuffer);
-          if (!parse(self->dht, self->modules, from, inBuffer, outBuffer)) {
+          dht::Domain dom = dht::Domain::Domain_private;
+          if (!parse(dom, self->dht, self->modules, from, inBuffer,
+                     outBuffer)) {
             return 0;
           }
 

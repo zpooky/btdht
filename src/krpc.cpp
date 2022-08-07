@@ -169,6 +169,20 @@ announce_peer(sp::Buffer &buffer, const Transaction &t, const dht::NodeId &self,
 } // request::announce_peer()
 
 bool
+sample_infohashes(sp::Buffer &b, const Transaction &t, const dht::NodeId &self,
+                  const dht::Key &target) noexcept {
+  return req(b, t, "sample_infohashes", [&self, &target](sp::Buffer &buf) { //
+    if (!bencode::e::pair(buf, "id", self.id, sizeof(self.id))) {
+      return false;
+    }
+    if (!bencode::e::pair(buf, "target", target, sizeof(target))) {
+      return false;
+    }
+    return true;
+  });
+}
+
+bool
 dump(sp::Buffer &b, const Transaction &t) noexcept {
   return req(b, t, "sp_dump", [](sp::Buffer &) { //
     return true;

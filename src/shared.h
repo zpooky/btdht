@@ -27,12 +27,14 @@
 namespace dht {
 struct MessageContext;
 struct DHT;
+enum class Domain { Domain_public, Domain_private };
 } // namespace dht
 
 //=====================================
 namespace krpc {
 // krpc::ParseContext
 struct ParseContext {
+  dht::Domain domain;
   dht::DHT &ctx;
 
   sp::Buffer &decoder;
@@ -45,7 +47,7 @@ struct ParseContext {
 
   sp::maybe<Contact> ip_vote;
 
-  explicit ParseContext(dht::DHT &ctx, sp::Buffer &) noexcept;
+  ParseContext(dht::Domain, dht::DHT &ctx, sp::Buffer &) noexcept;
 
   ParseContext(ParseContext &, sp::Buffer &) noexcept;
 
@@ -658,6 +660,7 @@ struct DHT {
 //=====================================
 // dht::MessageContext
 struct MessageContext {
+  dht::Domain domain;
   const char *query;
 
   DHT &dht;
