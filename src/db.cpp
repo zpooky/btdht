@@ -156,7 +156,6 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
 //=====================================
 sp::UinStaticArray<dht::Infohash, 20> &
 randomize_samples(dht::DHT &self) noexcept {
-
   if (!is_empty(self.db.lookup_table)) {
     if ((self.db.last_generated + self.config.db_samples_refresh_interval) <=
         self.now) {
