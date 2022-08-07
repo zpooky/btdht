@@ -29,6 +29,12 @@ bool
 value(sp::Buffer &, const sp::byte *, std::size_t) noexcept;
 
 bool
+value(sp::Buffer &, const dht::Infohash *, std::size_t) noexcept;
+
+bool
+value_id_contact(sp::Buffer &, const dht::Node **, std::size_t) noexcept;
+
+bool
 list(sp::Buffer &, void *, bool (*)(sp::Buffer &, void *)) noexcept;
 
 template <typename F>
@@ -87,6 +93,12 @@ bool
 pair(sp::Buffer &b, const char *key, const sp::byte (&value)[N]) noexcept {
   return pair(b, key, value, N);
 }
+
+bool
+pair(sp::Buffer &, const char *key, const dht::Infohash *,
+     std::size_t) noexcept;
+bool
+pair_id_contact(sp::Buffer &, const char *key, const dht::Node **, std::size_t) noexcept;
 } // namespace e
 
 //===============================================
@@ -218,7 +230,8 @@ pair(sp::Buffer &p, const char *key, sp::byte (&value)[SIZE],
 } // bencode::d::pair()
 
 bool
-pair_value_ref(sp::Buffer &, const char *, const char *&, std::size_t &) noexcept;
+pair_value_ref(sp::Buffer &, const char *, const char *&,
+               std::size_t &) noexcept;
 
 bool
 pair(sp::Buffer &, const char *, bool &) noexcept;

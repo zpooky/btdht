@@ -295,8 +295,7 @@ get_peers_scrape(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
       return false;
     }
 
-
-    if (!bencode::e::pair(b, "BFpe",peers)) {
+    if (!bencode::e::pair(b, "BFpe", peers)) {
       return false;
     }
 
@@ -316,6 +315,39 @@ announce_peer(sp::Buffer &buf, const Transaction &t,
     return true;
   });
 } // response::announce_peer()
+
+//=====================================
+bool
+sample_infohashes(
+    sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
+    std::uint32_t interval, const dht::Node **nodes, size_t l_nodes,
+    std::uint32_t num,
+    const sp::UinStaticArray<dht::Infohash, 20> &samples) noexcept {
+  return resp(
+      buf, t, [&id, &interval, &nodes, l_nodes, &num, &samples](auto &b) { //
+        if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
+          return false;
+        }
+
+        if (!bencode::e::pair(b, "interval", interval)) {
+          return false;
+        }
+
+        if (!bencode::e::pair_id_contact(b, "target", nodes, l_nodes)) {
+          return false;
+        }
+
+        if (!bencode::e::pair(b, "num", num)) {
+          return false;
+        }
+
+        if (!bencode::e::pair(b, "samples", samples.data(), samples.length)) {
+          return false;
+        }
+
+        return true;
+      });
+} // response::sample_infohashes()
 
 //=====================================
 bool
@@ -383,29 +415,30 @@ dump(sp::Buffer &buf, const Transaction &t, const dht::DHT &dht) noexcept {
     }
 
     res = bencode::e::dict(b, [&dht](auto &b2) {
-      binary::rec::inorder(dht.lookup_table, [&b2](dht::KeyValue &e) -> bool {
-        return bencode::e::dict(b2, [&e](auto &b3) {
-          char buffer[64]{0};
-          assertx_n(to_string(e.id, buffer));
+      binary::rec::inorder(dht.db.lookup_table,
+                           [&b2](dht::KeyValue &e) -> bool {
+                             return bencode::e::dict(b2, [&e](auto &b3) {
+                               char buffer[64]{0};
+                               assertx_n(to_string(e.id, buffer));
 
-          if (!bencode::e::pair(b3, "infohash", buffer)) {
-            return false;
-          }
+                               if (!bencode::e::pair(b3, "infohash", buffer)) {
+                                 return false;
+                               }
 
-          std::uint64_t l(sp::n::length(e.peers));
-          if (!bencode::e::pair(b3, "entries", l)) {
-            return false;
-          }
+                               std::uint64_t l(sp::n::length(e.peers));
+                               if (!bencode::e::pair(b3, "entries", l)) {
+                                 return false;
+                               }
 
-          if (strlen(e.name) > 0) {
-            if (!bencode::e::pair(b3, "name", e.name)) {
-              return false;
-            }
-          }
+                               if (strlen(e.name) > 0) {
+                                 if (!bencode::e::pair(b3, "name", e.name)) {
+                                   return false;
+                                 }
+                               }
 
-          return true;
-        });
-      });
+                               return true;
+                             });
+                           });
       return true;
     });
 

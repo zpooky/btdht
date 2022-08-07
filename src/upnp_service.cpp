@@ -225,6 +225,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &) noexcept {
       printf("no valid IGD found\n");
     }
 
+    // TODO delete in dtor
     // error = UPNP_DeletePortMapping(
     //     upnp_urls.controlURL, upnp_data.first.servicetype, pPort, "UDP", 0);
   }

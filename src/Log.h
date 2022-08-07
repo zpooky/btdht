@@ -27,6 +27,9 @@ void
 error(dht::MessageContext &) noexcept;
 
 void
+sample_infohashes(dht::MessageContext &) noexcept;
+
+void
 dump(dht::MessageContext &) noexcept;
 } // namespace req
 
@@ -108,6 +111,10 @@ find_node_response_timeout(dht::DHT &, const krpc::Transaction &,
 void
 get_peers_response_timeout(dht::DHT &, const krpc::Transaction &,
                            Timestamp) noexcept;
+
+void
+sample_infohashes_response_timeout(dht::DHT &, const krpc::Transaction &,
+                                    Timestamp) noexcept;
 } // namespace error
 } // namespace transmit
 

@@ -59,13 +59,6 @@ serialize(sp::Buffer &b, const dht::Node &node) noexcept {
 } // bencode::e::serialize()
 
 static std::size_t
-serialize_size(const Contact &p) noexcept {
-  // TODO ipv4
-  assertx(p.ip.type == IpType::IPV4);
-  return sizeof(p.ip.ipv4) + sizeof(p.port);
-}
-
-static std::size_t
 serialize_size(const dht::KContact &p) noexcept {
   return serialize_size(p.contact);
 }
@@ -73,19 +66,6 @@ serialize_size(const dht::KContact &p) noexcept {
 static std::size_t
 serialize_size(const dht::Node &p) noexcept {
   return sizeof(p.id.id) + serialize_size(p.contact);
-}
-
-template <typename F>
-static bool
-for_all(const dht::Node **list, std::size_t length, F f) noexcept {
-  for (std::size_t i = 0; i < length; ++i) {
-    if (list[i]) {
-      if (!f(*list[i])) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 static std::size_t

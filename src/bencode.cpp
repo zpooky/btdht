@@ -20,10 +20,10 @@ encode_numeric(sp::Buffer &buffer, const char *format, T in) noexcept {
   if (res < 0) {
     return false;
   }
-  if (buffer.pos + res > buffer.capacity) {
+  if (buffer.pos + (std::size_t)res > buffer.capacity) {
     return false;
   }
-  i += res;
+  i += (std::size_t)res;
   return true;
 } // bencode::encode_numeric()
 
@@ -125,6 +125,69 @@ bool
 value(sp::Buffer &b, const sp::byte *str, std::size_t length) noexcept {
   return encode_raw(b, str, length);
 } // bencode::e::value()
+
+bool
+value(sp::Buffer &buffer, const dht::Infohash *v, std::size_t length) noexcept {
+  const std::size_t pos = buffer.pos;
+  const std::size_t raw_length = length * sizeof(v->id);
+  if (!encode_numeric(buffer, "%zu", raw_length)) {
+    buffer.pos = pos;
+    return false;
+  }
+
+  if ((buffer.pos + raw_length + 1) > buffer.capacity) {
+    buffer.pos = pos;
+    return false;
+  }
+
+  std::size_t &i = buffer.pos;
+  buffer[i++] = ':';
+
+  for (std::size_t a = 0; a < length; ++a) {
+    std::memcpy(buffer.raw + i, v[a].id, sizeof(v[a].id));
+    i += sizeof(v->id);
+  }
+
+  return true;
+}
+
+bool
+value_id_contact(sp::Buffer &b, const dht::Node **list,
+                 std::size_t length) noexcept {
+  const std::size_t pos = b.pos;
+  std::size_t raw_size = 0;
+
+  for_all(list, length, [&raw_size](const auto &value) { //
+    raw_size += serialize_size(value.contact) + sizeof(value.id.id);
+    return true;
+  });
+
+  if (!encode_numeric(b, "%zu", raw_size)) {
+    b.pos = pos;
+    return false;
+  }
+
+  if ((b.pos + raw_size + 1) > b.capacity) {
+    b.pos = pos;
+    return false;
+  }
+
+  std::size_t &i = b.pos;
+  b[i++] = ':';
+
+  for_all(list, length, [&i, &b](const auto &value) { //
+    std::memcpy(b.raw + i, value.id.id, sizeof(value.id.id));
+    i += sizeof(value.id.id);
+    std::memcpy(b.raw + i, &value.contact.ip.ipv4,
+                sizeof(value.contact.ip.ipv4));
+    i += sizeof(value.contact.ip.ipv4);
+    std::memcpy(b.raw + i, &value.contact.port, sizeof(value.contact.port));
+    i += sizeof(value.contact.port);
+    return true;
+  });
+
+  return true;
+}
 
 bool
 value(sp::Buffer &b, std::size_t raw_size, void *closure,
@@ -250,6 +313,41 @@ pair(sp::Buffer &b, const char *k, const sp::byte *v, std::size_t l) noexcept {
 
   return true;
 } // bencode::e::pair()
+
+bool
+pair(sp::Buffer &b, const char *key, const dht::Infohash *v,
+     std::size_t l) noexcept {
+  const std::size_t before = b.pos;
+
+  if (!value(b, key)) {
+    b.pos = before;
+    return false;
+  }
+
+  if (!value(b, v, l)) {
+    b.pos = before;
+    return false;
+  }
+
+  return true;
+}
+
+bool
+pair_id_contact(sp::Buffer &b, const char *key, const dht::Node **list,
+                std::size_t length) noexcept {
+  const std::size_t before = b.pos;
+  if (!bencode::e::value(b, key)) {
+    b.pos = before;
+    return false;
+  }
+
+  if (!bencode::e::value_id_contact(b, list, length)) {
+    b.pos = before;
+    return false;
+  }
+
+  return true;
+}
 
 } // namespace e
 

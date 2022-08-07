@@ -155,6 +155,8 @@ Config::Config() noexcept
     , bucket_find_node_spam(1)
     , max_bucket_not_find_node(5)
     //
+    , db_samples_refresh_interval(60)
+    //
     , token_key_refresh(15)
     //
     , bootstrap_reset(60)
@@ -461,9 +463,9 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , should_exit(false)
     //}}}
     // peer-lookup db {{{
-    , lookup_table()
-    , key{} //}}}
-            // routing-table {{{
+    // , db::lookup_table()
+    // , db::key{} //}}}
+    // routing-table {{{
     , root(nullptr)
     , root_limit(4)
     , rt_reuse()
@@ -502,8 +504,8 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
   assertx_n(insert(bootstrap_hashers, fnv_ip));
 
   for (size_t i = 0; i < 2; ++i) {
-    fill(r, &key[i].key, sizeof(key[i].key));
-    key[i].created = now;
+    fill(r, &this->db.key[i].key, sizeof(this->db.key[i].key));
+    this->db.key[i].created = now;
   }
 }
 

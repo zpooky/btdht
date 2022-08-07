@@ -29,6 +29,6 @@ spdht_src = files([
   'bootstrap.cpp',
   'encode_bencode.cpp',
   'decode_bencode.cpp',
-  'core.cpp'
+  'core.cpp',
 ])
 

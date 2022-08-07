@@ -96,12 +96,8 @@ djb_ip(const Ip &) noexcept;
 
 //=====================================
 struct Contact {
-  /*   union { */
-  /*     struct { */
   Ip ip;
   Port port;
-  /*     } inet; */
-  /*   }; */
 
   Contact(Ipv4, Port) noexcept;
   Contact(const Ipv6 &, Port) noexcept;
@@ -118,6 +114,9 @@ struct Contact {
   bool
   operator>(const Contact &) const noexcept;
 };
+
+std::size_t
+serialize_size(const Contact &p) noexcept;
 
 std::size_t
 fnv_contact(const Contact &) noexcept;
@@ -400,6 +399,19 @@ struct Node {
   Node(const NodeId &, const Contact &, Timestamp) noexcept;
   Node(const IdContact &, Timestamp) noexcept;
 };
+
+template <typename F>
+bool
+for_all(const dht::Node **list, std::size_t length, F f) noexcept {
+  for (std::size_t i = 0; i < length; ++i) {
+    if (list[i]) {
+      if (!f(*list[i])) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 bool
 is_valid(const Node &) noexcept;

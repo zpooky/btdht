@@ -196,6 +196,13 @@ Contact::operator>(const Contact &o) const noexcept {
 }
 
 std::size_t
+serialize_size(const Contact &p) noexcept{
+  // TODO ipv4
+  assertx(p.ip.type == IpType::IPV4);
+  return sizeof(p.ip.ipv4) + sizeof(p.port);
+}
+
+std::size_t
 fnv_contact(const Contact &contact) noexcept {
   std::size_t result = fnv_ip(contact.ip);
   return fnv_1a::encode(&contact.port, sizeof(contact.port), result);

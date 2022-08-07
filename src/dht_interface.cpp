@@ -14,7 +14,6 @@
 #include <sha1.h>
 
 #include <algorithm>
-#include <collection/Array.h>
 #include <cstring>
 #include <prng/util.h>
 #include <string/ascii.h>
@@ -44,6 +43,7 @@ setup(dht::Modules &modules) noexcept {
   find_node::setup(modules.modules[i++]);
   get_peers::setup(modules.modules[i++]);
   announce_peer::setup(modules.modules[i++]);
+  sample_infohashes::setup(modules.modules[i++]);
   error::setup(modules.modules[i++]);
 
   insert(modules.awake.on_awake, &dht::on_awake);
@@ -1252,6 +1252,130 @@ setup(dht::Module &module) noexcept {
   module.response = on_response;
 }
 } // namespace announce_peer
+
+//===========================================================
+// sample_infohashes
+//===========================================================
+namespace sample_infohashes {
+static bool
+handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
+               const dht::Infohash &ih) noexcept {
+  logger::receive::req::sample_infohashes(ctx);
+
+  message(ctx, sender, [&ctx, &ih](auto &) {
+    dht::DHT &self = ctx.dht;
+    constexpr std::size_t capacity = 8;
+
+    dht::Node *nodes[capacity] = {nullptr};
+    dht::multiple_closest(self, ih, nodes);
+
+    std::uint32_t num = self.db.size_lookup_table;
+    sp::UinStaticArray<dht::Infohash, 20> &samples =
+        db::randomize_samples(self);
+    std::uint32_t interval = db::next_randomize_samples(self);
+
+    krpc::response::sample_infohashes(ctx.out, ctx.transaction, self.id,
+                                      interval, (const dht::Node **)nodes,
+                                      capacity, num, samples);
+  });
+  // XXX response
+
+  return true;
+}
+
+// static bool
+// handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept
+// {
+//   return true;
+// }
+
+static bool
+on_response(dht::MessageContext &ctx, void *) noexcept {
+  //   return bencode::d::dict(ctx.in, [&ctx](auto &p) {
+  //     bool b_id = false;
+  //     bool b_ip = false;
+  //
+  //     dht::NodeId sender;
+  //
+  //   Lstart:
+  //     if (!b_id && bencode::d::pair(p, "id", sender.id)) {
+  //       b_id = true;
+  //       goto Lstart;
+  //     }
+  //
+  //     {
+  //       Contact ip;
+  //       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+  //         ctx.ip_vote = ip;
+  //         assertx(bool(ctx.ip_vote));
+  //         b_ip = true;
+  //         goto Lstart;
+  //       }
+  //     }
+  //
+  //     if (bencode_any(p, "ping resp")) {
+  //       goto Lstart;
+  //     }
+  //
+  //     if (b_id) {
+  //       return handle_response(ctx, sender);
+  //     }
+  //
+  // logger::receive::parse::error(ctx.dht, p, "'ping' response missing 'id'");
+  //     return false;
+  // });
+  return true;
+}
+
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
+    bool b_id = false;
+    bool b_target = false;
+
+    dht::NodeId sender;
+    dht::Infohash ih;
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", sender.id)) {
+      b_id = true;
+      goto Lstart;
+    }
+
+    if (!b_target && bencode::d::pair(p, "target", ih.id)) {
+      b_target = true;
+      goto Lstart;
+    }
+
+    if (bencode_any(p, "sample_infohashes req")) {
+      goto Lstart;
+    }
+
+    if (b_id) {
+      return handle_request(ctx, sender, ih);
+    }
+
+    // logger::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
+    return false;
+  });
+}
+
+static void
+on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
+           void *arg) noexcept {
+  logger::transmit::error::sample_infohashes_response_timeout(dht, tx, sent);
+  assertx(arg == nullptr);
+}
+
+bool
+setup(dht::Module &m) noexcept {
+  m.query = "sample_infohashes";
+  m.request = on_request;
+  m.response = on_response;
+  m.response_timeout = on_timeout;
+  return true;
+}
+} // namespace sample_infohashes
 
 //===========================================================
 // error

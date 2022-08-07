@@ -14,7 +14,7 @@ dht::KeyValue *
 lookup(dht::DHT &self, const dht::Infohash &infohash) noexcept {
   dht::KeyValue *needle;
 
-  if ((needle = find(self.lookup_table, infohash))) {
+  if ((needle = find(self.db.lookup_table, infohash))) {
 
     if (!is_empty(needle->peers)) {
       return needle;
@@ -29,7 +29,9 @@ bool
 insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
        bool seed, const char *name) noexcept {
   auto new_table = [](dht::DHT &self, const dht::Infohash &ih) {
-    auto ires = insert(self.lookup_table, ih);
+    auto ires = insert(self.db.lookup_table, ih);
+    self.db.activity++;
+    self.db.size_lookup_table++;
     return std::get<0>(ires);
   };
 
@@ -70,14 +72,14 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
 static dht::TokenKey &
 get_token_key(dht::DHT &self) noexcept {
   dht::Config &conf = self.config;
-  if (self.now > (self.key[1].created + conf.token_key_refresh)) {
-    self.key[0] = self.key[1];
+  if (self.now > (self.db.key[1].created + conf.token_key_refresh)) {
+    self.db.key[0] = self.db.key[1];
 
-    fill(self.random, &self.key[1].key, sizeof(self.key[1].key));
-    self.key[1].created = self.now;
+    fill(self.random, &self.db.key[1].key, sizeof(self.db.key[1].key));
+    self.db.key[1].created = self.now;
   }
 
-  return self.key[1];
+  return self.db.key[1];
 }
 
 static dht::Token
@@ -107,12 +109,12 @@ mint_token(dht::DHT &self, const Contact &remote, dht::Token &t) noexcept {
 bool
 valid(dht::DHT &self, dht::Node &node, const dht::Token &token) noexcept {
   if (is_valid(token)) {
-    dht::Token cmp = ee(self.key[1], node.contact);
+    dht::Token cmp = ee(self.db.key[1], node.contact);
     if (cmp == token) {
       return true;
     }
 
-    cmp = ee(self.key[0], node.contact);
+    cmp = ee(self.db.key[0], node.contact);
     return cmp == token;
   }
 
@@ -126,7 +128,7 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
   sp::StaticArray<dht::KeyValue *, 16> empty;
   Timestamp next{self.now};
 
-  binary::rec::inorder(self.lookup_table, [&](dht::KeyValue &cur) {
+  binary::rec::inorder(self.db.lookup_table, [&](dht::KeyValue &cur) {
     dht::Peer *peer;
     while ((peer = timeout::take_peer(self, cur, timeout))) {
       assertx_n(remove(cur.peers, *peer));
@@ -142,11 +144,40 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
   });
 
   for_each(empty, [&](auto cur) { //
-    assertx_n(remove(self.lookup_table, cur->id));
+    assertx_n(remove(self.db.lookup_table, cur->id));
+    self.db.size_lookup_table--;
+    self.db.activity++;
   });
 
   assertx((next + timeout) > self.now);
   return next + timeout;
+}
+
+//=====================================
+sp::UinStaticArray<dht::Infohash, 20> &
+randomize_samples(dht::DHT &self) noexcept {
+
+  if (!is_empty(self.db.lookup_table)) {
+    if ((self.db.last_generated + self.config.db_samples_refresh_interval) >=
+        self.now) {
+      clear(self.db.random_samples);
+      // TODO randmice
+      self.db.last_generated = self.now;
+    }
+  }
+  return self.db.random_samples;
+}
+
+//=====================================
+std::uint32_t
+next_randomize_samples(const dht::DHT &self) noexcept {
+  Timestamp next_refresh =
+      self.db.last_generated + self.config.db_samples_refresh_interval;
+  if (next_refresh <= self.now) {
+    return sp::Seconds(self.config.db_samples_refresh_interval).value;
+  }
+  Timestamp delta = next_refresh - self.now;
+  return sp::Seconds(delta).value;
 }
 
 //=====================================

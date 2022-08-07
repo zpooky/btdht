@@ -241,19 +241,6 @@ size(const dht::Node &p) noexcept {
   return sizeof(p.id.id) + size(p.contact);
 }
 
-template <typename F>
-static bool
-for_all(const dht::Node **list, std::size_t length, F f) noexcept {
-  for (std::size_t i = 0; i < length; ++i) {
-    if (list[i]) {
-      if (!f(*list[i])) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 static std::size_t
 size(const dht::Node **list, std::size_t length) noexcept {
   std::size_t result = 0;

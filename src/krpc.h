@@ -87,6 +87,12 @@ bool
 announce_peer(sp::Buffer &, const Transaction &, const dht::NodeId &) noexcept;
 
 bool
+sample_infohashes(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
+                  std::uint32_t interval, const dht::Node **nodes,
+                  size_t l_nodes, std::uint32_t num,
+                  const sp::UinStaticArray<dht::Infohash, 20> &) noexcept;
+
+bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
 //}
 

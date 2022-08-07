@@ -202,6 +202,8 @@ struct Config {
    */
   std::size_t max_bucket_not_find_node;
 
+  sp::Minutes db_samples_refresh_interval;
+
   /*  */
   sp::Minutes token_key_refresh;
   /*  */
@@ -431,6 +433,7 @@ struct StatTrafic {
   std::size_t find_node;
   std::size_t get_peers;
   std::size_t announce_peer;
+  std::size_t sample_infohashes;
   std::size_t error;
 
   StatTrafic() noexcept;
@@ -578,8 +581,14 @@ struct DHT {
   //}}}
 
   // peer-lookup db {{{
-  avl::Tree<KeyValue> lookup_table;
-  TokenKey key[2];
+  struct {
+    avl::Tree<KeyValue> lookup_table;
+    TokenKey key[2];
+    uint32_t activity = {0};
+    uint32_t size_lookup_table = {0};
+    Timestamp last_generated{0};
+    sp::UinStaticArray<dht::Infohash, 20> random_samples;
+  } db;
   //}}}
 
   // routing-table {{{

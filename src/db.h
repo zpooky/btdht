@@ -25,6 +25,15 @@ valid(dht::DHT &, dht::Node &, const dht::Token &) noexcept;
 Timestamp
 on_awake_peer_db(dht::DHT &, sp::Buffer &) noexcept;
 
+//=====================================
+sp::UinStaticArray<dht::Infohash, 20> &
+randomize_samples(dht::DHT &) noexcept;
+
+//=====================================
+std::uint32_t next_randomize_samples(const dht::DHT &self) noexcept;
+
+//=====================================
+
 } // namespace db
 
 #endif

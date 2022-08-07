@@ -129,6 +129,12 @@ error(dht::MessageContext &ctx) noexcept {
 }
 
 void
+sample_infohashes(dht::MessageContext &ctx) noexcept {
+  print_time(ctx);
+  printf("receive sample_infohashes\n");
+}
+
+void
 dump(dht::MessageContext &ctx) noexcept {
   print_time(ctx);
   printf("receive dump\n");
@@ -412,6 +418,20 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
   print_time(ctx);
   printf("\033[91mget_peers response timeout\033[0m transaction[");
+  dht::print_hex(tx);
+  printf("] sent: ");
+  print_time(stdout, sent);
+  printf("seq[%zu]\n", tout++);
+}
+
+void
+sample_infohashes_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
+                                   Timestamp sent) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.sent.response_timeout.sample_infohashes;
+
+  print_time(ctx);
+  printf("\033[91msample_infohashes response timeout\033[0m transaction[");
   dht::print_hex(tx);
   printf("] sent: ");
   print_time(stdout, sent);
