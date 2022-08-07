@@ -1269,7 +1269,7 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
     dht::Node *nodes[capacity] = {nullptr};
     dht::multiple_closest(self, ih, nodes);
 
-    std::uint32_t num = self.db.size_lookup_table;
+    std::uint32_t num = self.db.length_lookup_table;
     sp::UinStaticArray<dht::Infohash, 20> &samples =
         db::randomize_samples(self);
     std::uint32_t interval = db::next_randomize_samples(self);

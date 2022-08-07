@@ -585,7 +585,7 @@ struct DHT {
     avl::Tree<KeyValue> lookup_table;
     TokenKey key[2];
     uint32_t activity = {0};
-    uint32_t size_lookup_table = {0};
+    uint32_t length_lookup_table = {0};
     Timestamp last_generated{0};
     sp::UinStaticArray<dht::Infohash, 20> random_samples;
   } db;

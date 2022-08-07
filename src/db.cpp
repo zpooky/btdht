@@ -31,7 +31,7 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
   auto new_table = [](dht::DHT &self, const dht::Infohash &ih) {
     auto ires = insert(self.db.lookup_table, ih);
     self.db.activity++;
-    self.db.size_lookup_table++;
+    self.db.length_lookup_table++;
     return std::get<0>(ires);
   };
 
@@ -145,7 +145,7 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
 
   for_each(empty, [&](auto cur) { //
     assertx_n(remove(self.db.lookup_table, cur->id));
-    self.db.size_lookup_table--;
+    self.db.length_lookup_table--;
     self.db.activity++;
   });
 
@@ -158,10 +158,19 @@ sp::UinStaticArray<dht::Infohash, 20> &
 randomize_samples(dht::DHT &self) noexcept {
 
   if (!is_empty(self.db.lookup_table)) {
-    if ((self.db.last_generated + self.config.db_samples_refresh_interval) >=
+    if ((self.db.last_generated + self.config.db_samples_refresh_interval) <=
         self.now) {
       clear(self.db.random_samples);
-      // TODO randmice
+      binary::rec::inorder(self.db.lookup_table, [&](dht::KeyValue &cur) {
+        if (!is_full(self.db.random_samples)) {
+          insert(self.db.random_samples, dht::Infohash(cur.id));
+        } else {
+          auto idx = random(self.random) % self.db.length_lookup_table;
+          if (idx < capacity(self.db.random_samples)) {
+            insert_at(self.db.random_samples, idx, dht::Infohash(cur.id));
+          }
+        }
+      });
       self.db.last_generated = self.now;
     }
   }
