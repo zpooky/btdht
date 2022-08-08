@@ -398,7 +398,7 @@ struct KeyValue {
   Infohash id;
   sp::SkipList<Peer, 6> peers;
   Peer *timeout_peer;
-  char name[128];
+  char *name;
 
   explicit KeyValue(const Infohash &) noexcept;
 

@@ -42,7 +42,10 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
 
   if (table) {
     if (strlen(name) > 0) {
-      strcpy(table->name, name);
+      if (!table->name) {
+        table->name = (char *)calloc(128 + 1, sizeof(char));
+      }
+      strncpy(table->name, name, 128);
     }
 
     dht::Peer *existing;

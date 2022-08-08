@@ -297,10 +297,14 @@ KeyValue::KeyValue(const Infohash &pid) noexcept
     : id(pid)
     , peers{}
     , timeout_peer{nullptr}
-    , name{'\0'} {
+    , name{nullptr} {
 }
 
 KeyValue::~KeyValue() {
+  if (name) {
+    free(name);
+    name = nullptr;
+  }
 }
 
 bool

@@ -108,7 +108,7 @@ response::dump(sp::Buffer &buf, const Transaction &t,
                                  return false;
                                }
 
-                               if (strlen(e.name) > 0) {
+                               if (e.name) {
                                  if (!bencode::e::pair(b3, "name", e.name)) {
                                    return false;
                                  }
@@ -412,7 +412,6 @@ serialize_size(const heap::MaxBinary<T> &list) noexcept {
   });
   return result;
 }
-
 
 template <typename List>
 static bool
