@@ -9,7 +9,7 @@ using namespace dht;
 TEST(krpc2Test, get_peers) {
 
   fd sock(-1);
-  Contact c(0, 0);
+  Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   dht::DHT dht(sock, sock, c, r, sp::now());
 
@@ -21,7 +21,7 @@ TEST(krpc2Test, get_peers) {
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
-  Contact peer;
+  Contact peer{Ipv4(12), Port(123)};
 
   unsigned char raw_in[1024];
   sp::Buffer in(raw_in);
@@ -70,8 +70,6 @@ TEST(krpc2Test, get_peers) {
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
-    assert(bencode::d::value(pctx.decoder, "r"));
-
     return m.response(ctx, sctx->ctx);
     // return true;
   };
@@ -91,13 +89,13 @@ TEST(krpc2Test, get_peers2) {
 
 TEST(krpc2Test, find_node) {
   fd sock(-1);
-  Contact c(0, 0);
+  Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
-  Contact peer;
+  Contact peer{Ipv4(12), Port(123)};
 
   unsigned char raw_in[1024];
   sp::Buffer in(raw_in);
@@ -134,8 +132,6 @@ TEST(krpc2Test, find_node) {
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
-    assert(bencode::d::value(pctx.decoder, "r"));
-
     return m.response(ctx, nullptr);
   };
   dht.active_find_nodes++;
@@ -147,13 +143,13 @@ TEST(krpc2Test, find_node) {
 
 TEST(krpc2Test, find_node2) {
   fd sock(-1);
-  Contact c(0, 0);
+  Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
-  Contact peer;
+  Contact peer{Ipv4(12), Port(123)};
 
   unsigned char raw_in[1024];
   sp::Buffer in(raw_in);
@@ -185,8 +181,6 @@ TEST(krpc2Test, find_node2) {
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
-    assert(bencode::d::value(pctx.decoder, "r"));
-
     return m.response(ctx, nullptr);
   };
   dht.active_find_nodes++;
@@ -198,13 +192,13 @@ TEST(krpc2Test, find_node2) {
 
 TEST(krpc2Test, ping) {
   fd sock(-1);
-  Contact c(0, 0);
+  Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
-  Contact peer;
+  Contact peer{Ipv4(12), Port(123)};
 
   unsigned char raw_in[1024];
   sp::Buffer in(raw_in);
@@ -229,8 +223,6 @@ TEST(krpc2Test, ping) {
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
-    assert(bencode::d::value(pctx.decoder, "r"));
-
     return m.response(ctx, nullptr);
   };
   dht.active_find_nodes++;
@@ -242,13 +234,13 @@ TEST(krpc2Test, ping) {
 
 TEST(krpc2Test, xxx) {
   fd sock(-1);
-  Contact c(0, 0);
+  Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
-  Contact peer;
+  Contact peer{Ipv4(12), Port(123)};
 
   unsigned char raw_in[1024];
   sp::Buffer in(raw_in);
@@ -279,8 +271,6 @@ TEST(krpc2Test, xxx) {
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
 
-    assert(bencode::d::value(pctx.decoder, "r"));
-
     return m.response(ctx, nullptr);
   };
   dht.active_find_nodes++;
@@ -293,13 +283,13 @@ TEST(krpc2Test, xxx) {
 TEST(krpc2Test, get_peers3) {
 
   fd sock(-1);
-  Contact c(0, 0);
+  Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   dht::DHT dht(sock, sock, c, r, sp::now());
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
-  Contact peer;
+  Contact peer{Ipv4(12), Port(123)};
 
   unsigned char raw_in[1024 * 4];
   sp::Buffer in(raw_in);
@@ -384,8 +374,6 @@ TEST(krpc2Test, get_peers3) {
   auto f = [&](krpc::ParseContext &pctx) -> bool {
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
-
-    assert(bencode::d::value(pctx.decoder, "r"));
 
     return m.response(ctx, nullptr);
   };
