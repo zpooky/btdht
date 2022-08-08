@@ -43,7 +43,7 @@ struct ParseContext {
   char msg_type[16];
   char query[64];
   sp::byte remote_version[16];
-  std::uint64_t ro = 0;
+  bool read_only = false;
 
   sp::maybe<Contact> ip_vote;
 
@@ -671,6 +671,7 @@ struct MessageContext {
   const krpc::Transaction &transaction;
   Contact remote;
   sp::maybe<Contact> ip_vote;
+  bool read_only;
 
   MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &,
                  Contact) noexcept;

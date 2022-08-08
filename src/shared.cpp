@@ -20,7 +20,7 @@ ParseContext::ParseContext(dht::Domain domain, dht::DHT &ictx,
     , msg_type{0}
     , query{0}
     , remote_version{0}
-    , ro{0}
+    , read_only{0}
     , ip_vote{} {
 }
 
@@ -32,7 +32,7 @@ ParseContext::ParseContext(ParseContext &ictx, sp::Buffer &d) noexcept
     , msg_type{0}
     , query{0}
     , remote_version{0}
-    , ro{0}
+    , read_only{ictx.read_only}
     , ip_vote{} {
 
   std::memcpy(msg_type, ictx.msg_type, sizeof(msg_type));
@@ -527,7 +527,8 @@ MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
     , out{p_out}
     , transaction{ctx.tx}
     , remote{p_remote}
-    , ip_vote(ctx.ip_vote) {
+    , ip_vote(ctx.ip_vote)
+    , read_only{ctx.read_only} {
   assertx(bool(ip_vote) == bool(ctx.ip_vote));
 }
 

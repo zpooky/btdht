@@ -322,6 +322,7 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
   Node *result = find_contact(self, sender);
   if (result) {
+    result->read_only = ctx.read_only;
     if (!result->good) {
       result->good = true;
       result->outstanding = 0; // XXX
@@ -329,8 +330,10 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
       self.bad_nodes--;
     }
   } else {
-    Node contact(sender, ctx.remote, self.now);
-    result = dht::insert(self, contact);
+    if (!ctx.read_only) {
+      Node contact(sender, ctx.remote, self.now);
+      result = dht::insert(self, contact);
+    }
   }
 
   return result;
@@ -382,10 +385,11 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
       contact->remote_activity = self.now;
       f(*contact);
     } else {
-      bootstrap_insert(self, dht::KContact(sender.id, ctx.remote, self.id.id));
-      dht::Node n;
-      n.id = sender;
-      n.contact = ctx.remote;
+      if (!ctx.read_only) {
+        bootstrap_insert(self,
+                         dht::KContact(sender.id, ctx.remote, self.id.id));
+      }
+      dht::Node n{sender, ctx.remote};
       f(n);
     }
   }

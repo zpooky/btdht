@@ -50,7 +50,7 @@ ping(dht::DHT &dht, sp::Buffer &buf, const dht::Node &node) noexcept {
   dht::Module ping;
   ping::setup(ping);
 
-  auto serialize = [&dht, &node](sp::Buffer &out, const krpc::Transaction &t) {
+  auto serialize = [&dht](sp::Buffer &out, const krpc::Transaction &t) {
     return krpc::request::ping(out, t, dht.id);
   };
 

@@ -146,7 +146,9 @@ krpc(ParseContext &pctx, F handle) {
         assertx(before == p.pos);
       }
 
-      if (bencode::d::pair(p, "ro", pctx.ro)) {
+      std::uint32_t ro = 0;
+      if (bencode::d::pair(p, "ro", ro)) {
+        pctx.read_only = ro == 1;
         goto Lstart;
       } else {
         assertx(before == p.pos);

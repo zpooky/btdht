@@ -397,8 +397,10 @@ struct Node {
   NodeIdValid valid_id;
   bool good;
   // }}}
+  bool read_only;
 
   Node() noexcept;
+  Node(const NodeId &, const Contact &) noexcept;
   Node(const NodeId &, const Contact &, Timestamp) noexcept;
   Node(const IdContact &, Timestamp) noexcept;
 };

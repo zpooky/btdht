@@ -750,8 +750,28 @@ Node::Node() noexcept
     , outstanding(0)
     , valid_id(NodeIdValid::NOT_YET)
     , good(true)
-//}}}
-{
+    //}}}
+    , read_only{false} {
+}
+
+Node::Node(const NodeId &nid, const Contact &p) noexcept
+    // timeout{{{
+    : timeout_next(nullptr)
+    , timeout_priv(nullptr)
+    //}}}
+    //{{{
+    , id(id)
+    , contact(p)
+    //}}}
+    , remote_activity(0)
+    , req_sent(0)
+    //}}}
+    //{{{
+    , outstanding(0)
+    , valid_id(NodeIdValid::NOT_YET)
+    , good(true)
+    //}}}
+    , read_only{false} {
 }
 
 /*Node*/
@@ -772,8 +792,8 @@ Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
     , outstanding(0)
     , valid_id(NodeIdValid::NOT_YET)
     , good(true)
-//}}}
-{
+    //}}}
+    , read_only{false} {
 }
 
 Node::Node(const IdContact &node, Timestamp now) noexcept

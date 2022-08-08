@@ -546,7 +546,7 @@ bucket_insert(DHT &self, Bucket &bucket, const Node &c, bool eager,
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
       assertx(is_valid(contact));
-      if (!is_good(self, contact)) {
+      if (!is_good(self, contact) || contact.read_only) {
         unlink_reset(self, contact);
 
         contact = c;
