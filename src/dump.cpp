@@ -88,29 +88,29 @@ static bool
 restore(Buffer &thing, /*OUT*/ dht::DHT &dht) noexcept {
   assertx(!is_marked(thing));
 
-  return bencode::d<Buffer>::dict(thing, [&dht](Buffer &buffer) {
+  return bencode_d<Buffer>::dict(thing, [&dht](Buffer &buffer) {
     assertx(!is_marked(buffer));
-    if (!bencode::d<Buffer>::pair(buffer, "id", dht.id.id)) {
+    if (!bencode_d<Buffer>::pair(buffer, "id", dht.id.id)) {
       return false;
     }
 
     Ip &ip = dht.ip.ip;
     assertx(!is_marked(buffer));
-    if (!bencode::d<Buffer>::value(buffer, "ip")) {
+    if (!bencode_d<Buffer>::value(buffer, "ip")) {
       return false;
     }
 
-    if (!bencode::d<Buffer>::value(buffer, ip.ipv4)) {
+    if (!bencode_d<Buffer>::value(buffer, ip.ipv4)) {
       return false;
     }
 
     assertx(!is_marked(buffer));
-    // if (!bencode::d<Buffer>::value(buffer, "nodes")) {
+    // if (!bencode_d<Buffer>::value(buffer, "nodes")) {
     //   return false;
     // }
     //
     // assertx(!is_marked(buffer));
-    // return bencode::d<Buffer>::list(buffer, [&bs, &dht](Buffer &b) {
+    // return bencode_d<Buffer>::list(buffer, [&bs, &dht](Buffer &b) {
     //   dht::IdContact contact;
     //   if (!bencode::priv::d<Buffer>::value(b, contact)) {
     //     return false;

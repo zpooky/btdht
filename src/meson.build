@@ -21,7 +21,6 @@ spdht_src = files([
   'transaction.cpp',
   'upnp.cpp',
   'search.cpp',
-  'dslbencode.cpp',
   'dht_interface.cpp',
   'dump.cpp',
   'bencode.cpp',
@@ -29,6 +28,9 @@ spdht_src = files([
   'bootstrap.cpp',
   'encode_bencode.cpp',
   'decode_bencode.cpp',
+  'priv_decode_bencode.cpp',
+  'priv_encode_bencode.cpp',
+  'priv_krpc.cpp',
   'core.cpp',
 ])
 

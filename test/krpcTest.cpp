@@ -6,10 +6,6 @@ template <typename F>
 static void
 test_request(krpc::ParseContext &ctx, F body) {
   auto f = [&body](krpc::ParseContext &ctx2) {
-    if (!bencode::d::value(ctx2.decoder, "a")) {
-      return false;
-    }
-
     return bencode::d::dict(ctx2.decoder, body);
   };
 
@@ -21,10 +17,6 @@ template <typename F>
 static void
 test_response(krpc::ParseContext &ctx, F body) {
   auto f = [&body](krpc::ParseContext &ctx2) {
-    if (!bencode::d::value(ctx2.decoder, "r")) {
-      return false;
-    }
-
     return bencode::d::dict(ctx2.decoder, body);
   };
 

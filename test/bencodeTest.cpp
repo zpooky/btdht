@@ -1,8 +1,6 @@
-#include "dslbencode.h"
 #include "util.h"
 #include "gtest/gtest.h"
-
-using namespace bencode::e;
+#include <encode_bencode.h>
 
 static bool
 EQ(const char *str, const sp::Buffer &b) {
@@ -15,13 +13,13 @@ TEST(BEncodeTest, integer) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  ASSERT_TRUE(value(buff, 42));
+  ASSERT_TRUE(sp::bencode::e<sp::Buffer>::value(buff, 42));
   ASSERT_TRUE(EQ("i42e", buff));
   buff.pos = 0;
-  ASSERT_TRUE(value(buff, -42));
+  ASSERT_TRUE(sp::bencode::e<sp::Buffer>::value(buff, -42));
   ASSERT_TRUE(EQ("i-42e", buff));
   buff.pos = 0;
-  ASSERT_TRUE(value(buff, 0));
+  ASSERT_TRUE(sp::bencode::e<sp::Buffer>::value(buff, 0));
   ASSERT_TRUE(EQ("i0e", buff));
 }
 
@@ -29,13 +27,13 @@ TEST(BEncodeTest, str) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  ASSERT_TRUE(value(buff, "a"));
+  ASSERT_TRUE(sp::bencode::e<sp::Buffer>::value(buff, "a"));
   ASSERT_TRUE(EQ("1:a", buff));
   buff.pos = 0;
-  ASSERT_TRUE(value(buff, "abc"));
+  ASSERT_TRUE(sp::bencode::e<sp::Buffer>::value(buff, "abc"));
   ASSERT_TRUE(EQ("3:abc", buff));
   buff.pos = 0;
-  ASSERT_TRUE(value(buff, ""));
+  ASSERT_TRUE(sp::bencode::e<sp::Buffer>::value(buff, ""));
   ASSERT_TRUE(EQ("0:", buff));
   buff.pos = 0;
 }
@@ -44,21 +42,22 @@ TEST(BEncodeTest, lst) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  ASSERT_TRUE(list(buff, nullptr, [](sp::Buffer &b2, void *) { //
-    if (!value(b2, "a")) {
-      return false;
-    }
-    if (!value(b2, 42)) {
-      return false;
-    }
-    if (!value(b2, "abc")) {
-      return false;
-    }
-    if (!value(b2, -42)) {
-      return false;
-    }
-    return true;
-  }));
+  ASSERT_TRUE(sp::bencode::e<sp::Buffer>::list(
+      buff, nullptr, [](sp::Buffer &b2, void *) { //
+        if (!sp::bencode::e<sp::Buffer>::value(b2, "a")) {
+          return false;
+        }
+        if (!sp::bencode::e<sp::Buffer>::value(b2, 42)) {
+          return false;
+        }
+        if (!sp::bencode::e<sp::Buffer>::value(b2, "abc")) {
+          return false;
+        }
+        if (!sp::bencode::e<sp::Buffer>::value(b2, -42)) {
+          return false;
+        }
+        return true;
+      }));
   ASSERT_TRUE(EQ("l1:ai42e3:abci-42ee", buff));
   buff.pos = 0;
 }
@@ -67,17 +66,17 @@ TEST(BEncodeTest, dict) {
   sp::byte b[256] = {0};
   sp::Buffer buff{b};
 
-  ASSERT_TRUE(dict(buff, [](sp::Buffer &b2) { //
-    if (!value(b2, "a")) {
+  ASSERT_TRUE(sp::bencode::e<sp::Buffer>::dict(buff, [](sp::Buffer &b2) { //
+    if (!sp::bencode::e<sp::Buffer>::value(b2, "a")) {
       return false;
     }
-    if (!value(b2, 42)) {
+    if (!sp::bencode::e<sp::Buffer>::value(b2, 42)) {
       return false;
     }
-    if (!value(b2, "abc")) {
+    if (!sp::bencode::e<sp::Buffer>::value(b2, "abc")) {
       return false;
     }
-    if (!value(b2, -42)) {
+    if (!sp::bencode::e<sp::Buffer>::value(b2, -42)) {
       return false;
     }
     return true;
@@ -144,7 +143,8 @@ TEST(BEncodeTest, list) {
   }
   {
     sp::Buffer b(raw);
-    ASSERT_TRUE(bencode::e::pair_compact(b, "target", list));
+    ASSERT_TRUE(
+        sp::bencode::e<sp::Buffer>::pair_id_contact_compact(b, "target", list));
     sp::flip(b);
     // print("list    ", b.raw + b.pos, b.length);
 

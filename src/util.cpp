@@ -196,7 +196,7 @@ Contact::operator>(const Contact &o) const noexcept {
 }
 
 std::size_t
-serialize_size(const Contact &p) noexcept{
+serialize_size(const Contact &p) noexcept {
   // TODO ipv4
   assertx(p.ip.type == IpType::IPV4);
   return sizeof(p.ip.ipv4) + sizeof(p.port);
@@ -497,6 +497,13 @@ from_hex(Key &id, const char *b) noexcept {
 bool
 from_hex(dht::Infohash &id, const char *b) noexcept {
   return from_hex(id.id, b);
+}
+
+void
+print_hex(const Infohash &ih) noexcept {
+  char out[(sizeof(ih.id) * 2) + 1] = {0};
+  assertx_n(hex::encode(ih.id, sizeof(ih.id), out));
+  printf("%s\n", out);
 }
 
 bool

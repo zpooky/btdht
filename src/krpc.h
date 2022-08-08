@@ -20,9 +20,6 @@ enum class Error {
 
 //=====================================
 namespace request {
-/*krpc::request*/
-/* DHT interface */
-//{
 bool
 ping(sp::Buffer &, const Transaction &, const dht::NodeId &sender) noexcept;
 
@@ -42,24 +39,6 @@ announce_peer(sp::Buffer &, const Transaction &, const dht::NodeId &self,
 bool
 sample_infohashes(sp::Buffer &, const Transaction &, const dht::NodeId &self,
                   const dht::Key &) noexcept;
-//}
-
-//=====================================
-/*private interface*/
-//{
-bool
-dump(sp::Buffer &b, const Transaction &) noexcept;
-
-bool
-statistics(sp::Buffer &b, const Transaction &t) noexcept;
-
-bool
-search(sp::Buffer &b, const Transaction &, const dht::Infohash &,
-       std::size_t) noexcept;
-
-bool
-stop_search(sp::Buffer &b, const Transaction &, const dht::Infohash &) noexcept;
-//}
 } // namespace request
 
 //=====================================
@@ -100,36 +79,7 @@ bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;
 //}
 
-//=====================================
-/*private interface*/
-//{
-bool
-dump(sp::Buffer &b, const Transaction &t, const dht::DHT &) noexcept;
-
-bool
-statistics(sp::Buffer &b, const Transaction &t, const dht::Stat &) noexcept;
-
-bool
-search(sp::Buffer &b, const Transaction &t) noexcept;
-
-bool
-search_stop(sp::Buffer &b, const Transaction &t) noexcept;
-
-bool
-announce_this(sp::Buffer &b, const Transaction &t) noexcept;
-//}
-
 } // namespace response
-
-//=====================================
-namespace priv {
-namespace event {
-template <typename Contacts>
-bool
-found(sp::Buffer &, const dht::Infohash &, const Contacts &) noexcept;
-
-} // namespace event
-} // namespace priv
 
 //=====================================
 namespace d {
@@ -293,64 +243,6 @@ krpc(ParseContext &pctx, F handle) {
   });
 }
 
-namespace request {
-//=====================================
-template <typename Ctx, typename F>
-bool
-search(Ctx &ctx, F f) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
-    dht::Infohash search;
-    if (!bencode::d::pair(p, "search", search.id)) {
-      return false;
-    }
-    std::size_t sec = 0;
-    if (!bencode::d::pair(p, "timeout", sec)) {
-      return false;
-    }
-
-    return f(ctx, search, sp::Seconds(sec));
-  });
-}
-
-//=====================================
-template <typename Ctx, typename F>
-bool
-search_stop(Ctx &ctx, F f) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
-    dht::Infohash search;
-    if (!bencode::d::pair(p, "search", search.id)) {
-      return false;
-    }
-
-    return f(ctx, search);
-  });
-}
-
-//=====================================
-template <typename Ctx, typename F>
-bool
-announce_this(Ctx &ctx, F f) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx, f](auto &p) {
-    dht::DHT &dht = ctx.dht;
-    auto &contacts = dht.recycle_contact_list;
-
-    dht::Infohash id;
-    if (!bencode::d::pair(p, "id", id.id)) {
-      return false;
-    }
-
-    clear(contacts);
-
-    if (!bencode::d::peers(p, "contacts", contacts)) {
-      return false;
-    }
-
-    return f(ctx, id, contacts);
-  });
-}
-
-//=====================================
-} // namespace request
 } // namespace d
 } // namespace krpc
 

@@ -49,7 +49,7 @@ static bool
 int_wildcard(Buffer &d, std::size_t tabs) noexcept {
   auto m = mark(d);
   std::uint64_t val = 0;
-  if (sp::bencode::d<Buffer>::value(d, val)) {
+  if (bencode_d<Buffer>::value(d, val)) {
     print_tabs(tabs);
     fprintf(_f, "i%lue\n", val);
     return true;
@@ -64,7 +64,7 @@ string_wildcard(Buffer &d, std::size_t tabs) noexcept {
   auto m = mark(d);
   char val[1024 * 4];
   std::size_t len = sizeof(val);
-  if (sp::bencode::d<Buffer>::value(d, val, len)) {
+  if (bencode_d<Buffer>::value(d, val, len)) {
     print_tabs(tabs);
     fprintf(_f, "%zu:", len);
     print_raw(val, len);

@@ -43,6 +43,22 @@ struct e {
 
   //=====================================
   static bool
+  value_compact(Buffer &, const dht::Infohash *, std::size_t) noexcept;
+
+  static bool
+  value_id_contact_compact(Buffer &, const dht::Node **, std::size_t) noexcept;
+
+  static bool
+  value_id_contact_compact(Buffer &b, const sp::list<dht::Node> &list) noexcept;
+
+  static bool
+  value_compact(Buffer &b, const sp::UinArray<Contact> &list) noexcept;
+
+  static bool
+  value_compact(Buffer &buf, const sp::list<Contact> &list) noexcept;
+
+  //=====================================
+  static bool
   pair(Buffer &, const char *key, bool value) noexcept;
 
   static bool
@@ -75,6 +91,24 @@ struct e {
   pair(Buffer &buf, const char *key, byte (&value)[SIZE]) noexcept {
     return pair(buf, key, value, SIZE);
   } // bencode::d::pair()
+
+  static bool
+  pair_compact(Buffer &, const char *key, const dht::Infohash *,
+               std::size_t) noexcept;
+  static bool
+  pair_id_contact_compact(Buffer &, const char *key, const dht::Node **,
+                          std::size_t) noexcept;
+  static bool
+  pair_id_contact_compact(Buffer &, const char *key,
+                          const sp::list<dht::Node> &list) noexcept;
+
+  static bool
+  pair_compact(Buffer &buf, const char *key,
+               const sp::UinArray<Contact> &list) noexcept;
+
+  static bool
+  pair_compact(Buffer &buf, const char *key,
+               const sp::list<Contact> &list) noexcept;
 
   //=====================================
   static bool
@@ -123,60 +157,6 @@ struct e {
 
   //=====================================
 }; // struct bencode::e
-
-namespace priv {
-template <typename Buffer>
-struct e {
-  //=====================================
-  static bool
-  value(Buffer &, const dht::NodeId &) noexcept;
-
-  static bool
-  pair(Buffer &, const char *key, const dht::NodeId &) noexcept;
-
-  //=====================================
-  static bool
-  value(Buffer &buf, const dht::Node &) noexcept;
-
-  //=====================================
-  static bool
-  value(Buffer &buf, const dht::Bucket &t) noexcept;
-
-  //=====================================
-  static bool
-  value(Buffer &buf, const dht::RoutingTable &) noexcept;
-
-  static bool
-  pair(Buffer &buf, const char *key, const dht::RoutingTable *) noexcept;
-
-  //=====================================
-  static bool
-  value(Buffer &buf, const dht::Peer &t) noexcept;
-
-  //=====================================
-  static bool
-  value(Buffer &buf, const dht::KeyValue &t) noexcept;
-
-  static bool
-  pair(Buffer &buf, const char *key, const dht::KeyValue &t) noexcept;
-
-  //=====================================
-  static bool
-  pair(Buffer &buf, const char *key, const dht::StatTrafic &t) noexcept;
-
-  static bool
-  pair(Buffer &buf, const char *key, const dht::StatDirection &d) noexcept;
-
-  //=====================================
-  static bool
-  value(Buffer &, const Contact &) noexcept;
-
-  static bool
-  pair(Buffer &, const char *key, const Contact &p) noexcept;
-
-  //=====================================
-}; // struct bencode::e
-} // namespace priv
 
 } // namespace bencode
 } // namespace sp

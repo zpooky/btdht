@@ -274,6 +274,9 @@ struct Infohash {
 bool
 from_hex(dht::Infohash &, const char *) noexcept;
 
+void
+print_hex(const Infohash &) noexcept;
+
 bool
 to_string(const dht::Infohash &, char *buf, size_t) noexcept;
 

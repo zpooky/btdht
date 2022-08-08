@@ -4,6 +4,7 @@
 #include "dht.h"
 #include "dht_interface.h"
 #include "krpc.h"
+#include "priv_krpc.h"
 #include "udp.h"
 #include <list/LinkedList.h>
 #include <util/assert.h>

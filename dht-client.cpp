@@ -1,9 +1,11 @@
+#include "decode_bencode.h"
+#include "priv_decode_bencode.h"
 #include <bencode_print.h>
 #include <dht.h>
-#include <dslbencode.h>
 #include <encode/hex.h>
 #include <getopt.h>
 #include <krpc.h>
+#include <priv_krpc.h>
 #include <prng/URandom.h>
 #include <prng/util.h>
 #include <signal.h>
@@ -166,7 +168,7 @@ send_statistics(DHTClient &client, const Contact &to) noexcept {
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
-  krpc::request::statistics(client.out, tx);
+  krpc::priv::request::statistics(client.out, tx);
   flip(client.out);
 
   return net::sock_write(client.udp, client.out);
@@ -178,7 +180,7 @@ send_dump(DHTClient &client, const Contact &to) noexcept {
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
-  krpc::request::dump(client.out, tx);
+  krpc::priv::request::dump(client.out, tx);
   flip(client.out);
 
   return net::sock_write(client.udp, client.out);
@@ -199,7 +201,7 @@ send_search(DHTClient &client, const Contact &to,
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
-  krpc::request::search(client.out, tx, search, 6000000);
+  krpc::priv::request::search(client.out, tx, search, 6000000);
   flip(client.out);
 
   return net::sock_write(client.udp, client.out);
@@ -211,7 +213,7 @@ send_stop_seach(DHTClient &client, const dht::Infohash &search) noexcept {
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
-  krpc::request::stop_search(client.out, tx, search);
+  krpc::priv::request::stop_search(client.out, tx, search);
   flip(client.out);
 
   return net::sock_write(client.udp, client.out);
@@ -469,6 +471,81 @@ handle_announce_peer(DHTClient &client) {
 
 //=====================================
 static bool
+sample_infohashes_receive(fd &u, sp::Buffer &b) noexcept {
+  fd udp{-1};
+  fd priv{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, priv, listen, r, sp::now());
+  Contact remote;
+
+Lretry:
+  reset(b);
+  int res = net::sock_read(u, b);
+  if (res != 0) {
+    if (res == -EAGAIN) {
+      goto Lretry;
+    }
+    return false;
+  }
+  flip(b);
+
+  dht::Domain dom = dht::Domain::Domain_private;
+  krpc::ParseContext pctx(dom, dht, b);
+
+  // dht::print_hex(b.raw, b.length);
+  // printf("\n");
+  return krpc::d::krpc(pctx, [](krpc::ParseContext &ctx) { //
+    dht::NodeId id{};
+    std::uint32_t interval = 0;
+    sp::UinStaticArray<std::tuple<dht::NodeId, Contact>, 128> nodes;
+    std::uint32_t num = 0;
+    sp::UinStaticArray<dht::Infohash, 128> samples;
+
+    return bencode::d::dict(ctx.decoder, [&](sp::Buffer &p) {
+      if (!bencode::d::pair(p, "id", id.id)) {
+        return false;
+      }
+      printf("id: ");
+      dht::print_hex(id);
+      if (!bencode::d::pair(p, "interval", interval)) {
+        return false;
+      }
+      printf("interval: %u\n", interval);
+
+      if (!bencode::d::value(p, "nodes")) {
+        return false;
+      }
+      // TODO
+      if (!bencode_d<sp::Buffer>::value_compact(p, nodes)) {
+        return false;
+      }
+
+      if (!bencode::d::pair(p, "num", num)) {
+        return false;
+      }
+      printf("num: %u\n", num);
+
+      if (!bencode::d::value(p, "samples")) {
+        return false;
+      }
+      // TODO
+      if (!bencode_d<sp::Buffer>::value_compact(p, samples)) {
+        return false;
+      }
+
+      printf("infohash:\n");
+      for_each(samples, [](auto &ih) {
+        printf("\t");
+        dht::print_hex(ih);
+      });
+
+      return true;
+    });
+  });
+}
+//
+static bool
 send_sample_infohashes(DHTClient &client, const Contact &to) noexcept {
   reset(client.out);
   krpc::Transaction tx;
@@ -509,9 +586,12 @@ handle_sample_infohashes(DHTClient &client) {
     return EXIT_FAILURE;
   }
 
-  if (generic_receive(client.udp, client.in)) {
+  if (!sample_infohashes_receive(client.udp, client.in)) {
     return EXIT_FAILURE;
   }
+  // if (!generic_receive(client.udp, client.in)) {
+  //   return EXIT_FAILURE;
+  // }
 
   return 0;
 }
@@ -588,7 +668,7 @@ Lretry:
       if (!bencode::d::value(p, "contacts")) {
         return false;
       } else {
-        if (!bencode::d::priv::value(p, contacts)) {
+        if (!bencode_priv_d<sp::Buffer>::value(p, contacts)) {
           return false;
         }
       }

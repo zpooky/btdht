@@ -125,6 +125,167 @@ bencode::e<Buffer>::value(Buffer &b, const sp::byte *str,
 } // bencode::e::value()
 
 //=====================================
+template <typename Buffer>
+bool
+bencode::e<Buffer>::value_compact(Buffer &buffer, const dht::Infohash *v,
+                                  std::size_t length) noexcept {
+  const std::size_t raw_length = length * sizeof(v->id);
+
+  if (!raw_numeric(buffer, "%zu", raw_length)) {
+    return false;
+  }
+
+  if (!write(buffer, ':')) {
+    return false;
+  }
+
+  for (std::size_t a = 0; a < length; ++a) {
+    if (!write(buffer, v[a].id, sizeof(v[a].id))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::value_id_contact_compact(Buffer &b, const dht::Node **list,
+                                             std::size_t length) noexcept {
+  std::size_t raw_size = 0;
+
+  for_all(list, length, [&raw_size](const auto &value) { //
+    raw_size += serialize_size(value.contact) + sizeof(value.id.id);
+    return true;
+  });
+
+  if (!raw_numeric(b, "%zu", raw_size)) {
+    return false;
+  }
+
+  if (!write(b, ':')) {
+    return false;
+  }
+
+  return for_all(list, length, [&b](const auto &value) {
+    if (!write(b, value.id.id, sizeof(value.id.id))) {
+      return false;
+    }
+
+    Ipv4 ip = htonl(value.contact.ip.ipv4);
+    if (!write(b, &ip, sizeof(ip))) {
+      return false;
+    }
+    Port port = htons(value.contact.port);
+    if (!write(b, &port, sizeof(port))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::value_id_contact_compact(
+    Buffer &b, const sp::list<dht::Node> &list) noexcept {
+  std::size_t raw_size = 0;
+
+  for_each(list, [&raw_size](const auto &value) { //
+    raw_size += serialize_size(value.contact) + sizeof(value.id.id);
+  });
+
+  if (!raw_numeric(b, "%zu", raw_size)) {
+    return false;
+  }
+
+  if (!write(b, ':')) {
+    return false;
+  }
+
+  return for_all(list, [&b](const auto &value) {
+    if (!write(b, value.id.id, sizeof(value.id.id))) {
+      return false;
+    }
+
+    Ipv4 ip = htonl(value.contact.ip.ipv4);
+    if (!write(b, &ip, sizeof(ip))) {
+      return false;
+    }
+    Port port = htons(value.contact.port);
+    if (!write(b, &port, sizeof(port))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::value_compact(Buffer &b,
+                                  const sp::UinArray<Contact> &list) noexcept {
+  std::size_t raw_size = 0;
+
+  for_each(list, [&raw_size](const auto &value) {
+    raw_size += serialize_size(value);
+  });
+
+  if (!raw_numeric(b, "%zu", raw_size)) {
+    return false;
+  }
+
+  if (!write(b, ':')) {
+    return false;
+  }
+
+  return for_all(list, [&b](const auto &value) {
+    Ipv4 ip = htonl(value.ip.ipv4);
+    if (!write(b, &ip, sizeof(ip))) {
+      return false;
+    }
+    Port port = htons(value.port);
+    if (!write(b, &port, sizeof(port))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::value_compact(Buffer &b,
+                                  const sp::list<Contact> &list) noexcept {
+  std::size_t raw_size = 0;
+
+  for_each(list, [&raw_size](const auto &value) {
+    raw_size += serialize_size(value);
+  });
+
+  if (!raw_numeric(b, "%zu", raw_size)) {
+    return false;
+  }
+
+  if (!write(b, ':')) {
+    return false;
+  }
+
+  return for_all(list, [&b](const auto &value) {
+    Ipv4 ip = htonl(value.ip.ipv4);
+    if (!write(b, &ip, sizeof(ip))) {
+      return false;
+    }
+    Port port = htons(value.port);
+    if (!write(b, &port, sizeof(port))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+//=====================================
 template <typename Buffer, typename V>
 static bool
 generic_encodePair(Buffer &buffer, const char *key, V val) {
@@ -211,6 +372,84 @@ bencode::e<Buffer>::pair(Buffer &buf, const char *key, const byte *value,
 //=====================================
 template <typename Buffer>
 bool
+bencode::e<Buffer>::pair_compact(Buffer &b, const char *key,
+                                 const dht::Infohash *v,
+                                 std::size_t l) noexcept {
+  if (!bencode::e<Buffer>::value(b, key)) {
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::value_compact(b, v, l)) {
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::pair_id_contact_compact(Buffer &b, const char *key,
+                                            const dht::Node **list,
+                                            std::size_t length) noexcept {
+  if (!bencode::e<Buffer>::value(b, key)) {
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::value_id_contact_compact(b, list, length)) {
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::pair_id_contact_compact(
+    Buffer &b, const char *key, const sp::list<dht::Node> &list) noexcept {
+  if (!bencode::e<Buffer>::value(b, key)) {
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::value_id_contact_compact(b, list)) {
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
+                                 const sp::UinArray<Contact> &list) noexcept {
+  if (!bencode::e<Buffer>::value(buf, key)) {
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::value_compact(buf, list)) {
+    return false;
+  }
+
+  return true;
+} // bencode::e::pair_compact()
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
+                                 const sp::list<Contact> &list) noexcept {
+  if (!bencode::e<Buffer>::value(buf, key)) {
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::value_compact(buf, list)) {
+    return false;
+  }
+
+  return true;
+}
+
+//=====================================
+template <typename Buffer>
+bool
 bencode::e<Buffer>::list(Buffer &buf, void *closure,
                          bool (*f)(Buffer &, void *)) noexcept {
   if (!write(buf, 'l')) {
@@ -229,6 +468,7 @@ bencode::e<Buffer>::list(Buffer &buf, void *closure,
 }
 
 //=====================================
+#if 0
 static std::size_t
 size(const Contact &p) noexcept {
   // TODO ipv4
@@ -260,6 +500,7 @@ size(const sp::list<T> &list) noexcept {
   });
   return result;
 }
+#endif
 
 //=====================================
 // template <typename Buffer>
@@ -400,282 +641,7 @@ size(const sp::list<T> &list) noexcept {
 // } // bencode::e::pair_compact()
 
 //=====================================
-//====Private==========================
-//=====================================
-namespace bencode {
-template <typename Buffer>
-bool
-priv::e<Buffer>::value(Buffer &b, const dht::NodeId &id) noexcept {
-  return bencode::e<Buffer>::value(b, id.id, sizeof(id.id));
-}
-
-template <typename Buffer>
-bool
-priv::e<Buffer>::pair(Buffer &buf, const char *key,
-                      const dht::NodeId &value) noexcept {
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  return bencode::priv::e<Buffer>::value(buf, value);
-}
-
-//=====================================
-template <typename Buffer>
-bool
-priv::e<Buffer>::value(Buffer &buf, const dht::Node &node) noexcept {
-  return bencode::e<Buffer>::dict(buf, [&node](Buffer &b) { //
-    if (!bencode::e<Buffer>::pair(b, "id", node.id.id, sizeof(node.id.id))) {
-      return false;
-    }
-
-    if (!bencode::priv::e<Buffer>::pair(b, "contact", node.contact)) {
-      return false;
-    }
-
-    // if (!bencode::e<Buffer>::pair(b, "good", node.good)) {
-    //   return false;
-    // }
-    // if (!bencode::e<Buffer>::pair(b, "outstanding", node.outstanding)) {
-    //   return false;
-    // }
-
-    return true;
-  });
-}
-
-//=====================================
-template <typename Buffer>
-bool
-priv::e<Buffer>::value(Buffer &buf, const dht::Bucket &t) noexcept {
-  return bencode::e<Buffer>::list(buf, (void *)&t, [](Buffer &b, void *arg) { //
-    auto *a = (dht::Bucket *)arg;
-
-    return for_all(*a, [&b](const dht::Node &node) { //
-      return value(b, node);
-    });
-  });
-}
-
-//=====================================
-template <typename Buffer>
-bool
-priv::e<Buffer>::value(Buffer &buf, const dht::RoutingTable &t) noexcept {
-  // used by dump
-
-  return bencode::e<Buffer>::dict(buf, [&t](Buffer &b) {
-    // dht::Infohash id; // TODO
-    // if (!pair(b, "id", id.id, sizeof(id.id))) {
-    //   return false;
-    // }
-
-    if (!bencode::e<Buffer>::value(b, "bucket")) {
-      return false;
-    }
-
-    if (!bencode::priv::e<Buffer>::value(b, t.bucket)) {
-      return false;
-    }
-
-    return true;
-  });
-} // bencode::priv::e::value()
-
-template <typename Buffer>
-bool
-priv::e<Buffer>::pair(Buffer &buf, const char *key,
-                      const dht::RoutingTable *t) noexcept {
-  // used by dump
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  return bencode::e<Buffer>::list(buf, (void *)&t, [](Buffer &b, void *arg) { //
-    const auto *a = (const dht::RoutingTable *)arg;
-
-    return dht::for_all(a, [&b](const dht::RoutingTable &p) { //
-      return value(b, p);
-    });
-  });
-} // bencode::priv::e::pair()
-
-//=====================================
-template <typename Buffer>
-bool
-priv::e<Buffer>::value(Buffer &buf, const dht::Peer &t) noexcept {
-  // used by dump
-
-  return bencode::e<Buffer>::dict(buf, [&t](Buffer &b) { //
-    if (!bencode::e<Buffer>::value(b, "contact")) {
-      return false;
-    }
-    if (!bencode::priv::e<Buffer>::value(b, t.contact)) {
-      return false;
-    }
-
-    if (!bencode::e<Buffer>::pair(b, "activity", t.activity.value)) {
-      return false;
-    }
-
-    return true;
-  });
-} // bencode::priv::e::value()
-
-//=====================================
-template <typename Buffer>
-bool
-priv::e<Buffer>::value(Buffer &buf, const dht::KeyValue &t) noexcept {
-  // used by dump
-  return bencode::e<Buffer>::dict(buf, [&t](Buffer &b) { //
-    if (!bencode::e<Buffer>::pair(b, "id", t.id.id, sizeof(t.id.id))) {
-      return false;
-    }
-
-    if (!bencode::e<Buffer>::value(b, "list")) {
-      return false;
-    }
-
-    return bencode::e<Buffer>::list(
-        b, (void *)&t, [](Buffer &b2, void *arg) { //
-          const auto *a = (const dht::KeyValue *)arg;
-
-          return for_all(a->peers, [&b2](const dht::Peer &p) { //
-            return value(b2, p);
-          });
-        });
-  });
-} // bencode::priv::e::value()
-
-// template <typename Buffer>
-// bool
-// priv::e<Buffer>::pair(Buffer &buf, const char *key,
-//                       const dht::KeyValue &t) noexcept {
-//   // used by dump
-//   if (!bencode::e<Buffer>::value(buf, key)) {
-//     return false;
-//   }
-//
-//   if (!bencode::e<Buffer>::value(buf, t)) {
-//     return false;
-//   }
-//
-//   return true;
-// } // bencode::priv::e::pair()
-
-//=====================================
-template <typename Buffer>
-bool
-priv::e<Buffer>::pair(Buffer &buf, const char *key,
-                      const dht::StatTrafic &t) noexcept {
-  // used by statistics
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  return bencode::e<Buffer>::dict(buf, [&t](Buffer &b) {
-    if (!bencode::e<Buffer>::pair(b, "ping", t.ping)) {
-      return false;
-    }
-    if (!bencode::e<Buffer>::pair(b, "find_node", t.find_node)) {
-      return false;
-    }
-    if (!bencode::e<Buffer>::pair(b, "get_peers", t.get_peers)) {
-      return false;
-    }
-    if (!bencode::e<Buffer>::pair(b, "announce_peer", t.announce_peer)) {
-      return false;
-    }
-    if (!bencode::e<Buffer>::pair(b, "error", t.error)) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
-template <typename Buffer>
-bool
-priv::e<Buffer>::pair(Buffer &buf, const char *key,
-                      const dht::StatDirection &d) noexcept {
-  // used by statistics
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  return bencode::e<Buffer>::dict(buf, [&d](Buffer &b) {
-    if (!bencode::priv::e<Buffer>::pair(b, "request", d.request)) {
-      return false;
-    }
-
-    if (!bencode::priv::e<Buffer>::pair(b, "response_timeout",
-                                        d.response_timeout)) {
-      return false;
-    }
-
-    if (!bencode::priv::e<Buffer>::pair(b, "response", d.response)) {
-      return false;
-    }
-
-    if (!bencode::e<Buffer>::pair(b, "parse_error", d.parse_error)) {
-      return false;
-    }
-    // TODO
-    return true;
-  });
-}
-
-//=====================================
-template <typename Buffer>
-static bool
-value_contact(Buffer &buffer, const Contact &p) noexcept {
-  Ipv4 ip = htonl(p.ip.ipv4);
-  Port port = htons(p.port);
-  if (!bencode::e<Buffer>::value(buffer, "ipv4")) {
-    return false;
-  }
-  if (!bencode::e<Buffer>::value(buffer, ip)) {
-    return false;
-  }
-
-  if (!bencode::e<Buffer>::value(buffer, "port")) {
-    return false;
-  }
-  if (!bencode::e<Buffer>::value(buffer, port)) {
-    return false;
-  }
-
-  return true;
-}
-
-template <typename Buffer>
-bool
-priv::e<Buffer>::value(Buffer &b, const Contact &p) noexcept {
-  // TODO
-  assertx(p.ip.type == IpType::IPV4);
-
-  return bencode::e<Buffer>::dict(b, [&p](Buffer &buffer) {
-    //
-    return value_contact(buffer, p);
-  });
-} // bencode::e::value()
-
-template <typename Buffer>
-bool
-priv::e<Buffer>::pair(Buffer &buf, const char *key, const Contact &p) noexcept {
-  if (!bencode::e<Buffer>::value(buf, key)) {
-    return false;
-  }
-
-  return value(buf, p);
-} // bencode::e::pair()
-
-} // namespace bencode
-
-//=====================================
-template struct bencode::e<sp::CircularByteBuffer>;
+template struct bencode::e<sp::BytesView>;
 template struct bencode::e<sp::Sink>;
-
-template struct bencode::priv::e<sp::CircularByteBuffer>;
-template struct bencode::priv::e<sp::Sink>;
-
+template struct bencode::e<sp::CircularByteBuffer>;
 } // namespace sp

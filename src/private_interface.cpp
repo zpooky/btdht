@@ -1,7 +1,8 @@
 #include "private_interface.h"
 #include "Log.h"
+#include "bencode_offset.h"
 #include "client.h"
-#include "krpc.h"
+#include "priv_krpc.h"
 #include "search.h"
 #include <util/assert.h>
 
@@ -224,7 +225,7 @@ on_request(dht::MessageContext &ctx) noexcept {
   logger::receive::req::dump(ctx);
 
   dht::DHT &dht = ctx.dht;
-  return krpc::response::dump(ctx.out, ctx.transaction, dht);
+  return krpc::priv::response::dump(ctx.out, ctx.transaction, dht);
 }
 
 void
@@ -242,7 +243,8 @@ namespace statistics {
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
   dht::DHT &dht = ctx.dht;
-  return krpc::response::statistics(ctx.out, ctx.transaction, dht.statistics);
+  return krpc::priv::response::statistics(ctx.out, ctx.transaction,
+                                          dht.statistics);
 }
 
 void
@@ -276,12 +278,23 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
     });
   }
 
-  return krpc::response::search(ctx.out, ctx.transaction);
+  return krpc::priv::response::search(ctx.out, ctx.transaction);
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return krpc::d::request::search(ctx, handle_request);
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
+    dht::Infohash search;
+    if (!bencode::d::pair(p, "search", search.id)) {
+      return false;
+    }
+    std::size_t sec = 0;
+    if (!bencode::d::pair(p, "timeout", sec)) {
+      return false;
+    }
+
+    return handle_request(ctx, search, sp::Seconds(sec));
+  });
 }
 
 void
@@ -307,12 +320,19 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search) noexcept {
     search_remove(dht, result);
   }
 
-  return krpc::response::search_stop(ctx.out, ctx.transaction);
+  return krpc::priv::response::search_stop(ctx.out, ctx.transaction);
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return krpc::d::request::search_stop(ctx, handle_request);
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
+    dht::Infohash search;
+    if (!bencode::d::pair(p, "search", search.id)) {
+      return false;
+    }
+
+    return handle_request(ctx, search);
+  });
 }
 
 void
@@ -332,12 +352,28 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &,
   // auto &dht = ctx.dht;
   // TODO
 
-  return krpc::response::announce_this(ctx.out, ctx.transaction);
+  return krpc::priv::response::announce_this(ctx.out, ctx.transaction);
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return krpc::d::request::announce_this(ctx, handle_request);
+  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
+    dht::DHT &dht = ctx.dht;
+    auto &contacts = dht.recycle_contact_list;
+
+    dht::Infohash id;
+    if (!bencode::d::pair(p, "id", id.id)) {
+      return false;
+    }
+
+    clear(contacts);
+
+    if (!bencode::d::peers(p, "contacts", contacts)) {
+      return false;
+    }
+
+    return handle_request(ctx, id, contacts);
+  });
 }
 
 void

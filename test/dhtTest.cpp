@@ -728,8 +728,8 @@ TEST(dhtTest, test_self_rand) {
         printf("%zu .%zu, [%zu]\n", i, kx, r4nk);
         ++kx;
         Node *fres = find_contact(dht, out.id);
-        assertx(fres);
-        assertx(fres->id == out.id);
+        ASSERT_TRUE(fres);
+        ASSERT_EQ(fres->id, out.id);
       }
     }
 

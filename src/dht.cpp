@@ -373,7 +373,9 @@ unlink_reset(DHT &self, Node &contact) {
     timeout::unlink(self, &contact);
 
     if (contact.good) {
-      self.retire_good(self, contact.contact);
+      if (self.retire_good) {
+        self.retire_good(self, contact.contact);
+      }
     }
 
     reset(self, contact);

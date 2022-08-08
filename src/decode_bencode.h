@@ -1,13 +1,12 @@
-#ifndef SP_MAINLINE_DHT_PRIV_BENCODE_H
-#define SP_MAINLINE_DHT_PRIV_BENCODE_H
+#ifndef SP_MAINLINE_DHT_DECODE_BENCODE_H
+#define SP_MAINLINE_DHT_DECODE_BENCODE_H
 
 #include "shared.h"
 #include "util.h"
 
-namespace sp {
-namespace bencode {
+//=====================================
 template <typename Buffer>
-struct d {
+struct bencode_d {
   //=====================================
   static bool
   value(Buffer &buf, std::uint64_t &) noexcept;
@@ -31,7 +30,7 @@ struct d {
   value(Buffer &buf, const char *key) noexcept;
 
   static bool
-  value(Buffer &buf, byte *value, std::size_t &) noexcept;
+  value(Buffer &buf, sp::byte *value, std::size_t &) noexcept;
 
   static bool
   value(Buffer &buf, char *value, std::size_t &) noexcept;
@@ -45,11 +44,11 @@ struct d {
 
   //=====================================
   static bool
-  pair(Buffer &buf, const char *key, byte *value, std::size_t &) noexcept;
+  pair(Buffer &buf, const char *key, sp::byte *value, std::size_t &) noexcept;
 
   template <std::size_t SIZE>
   static bool
-  pair(Buffer &buf, const char *key, byte (&value)[SIZE]) noexcept {
+  pair(Buffer &buf, const char *key, sp::byte (&value)[SIZE]) noexcept {
     auto len = SIZE;
     return pair(buf, key, value, len);
   } // bencode::d::pair()
@@ -140,28 +139,12 @@ public:
   }
 
   //=====================================
+  static bool
+  value_compact(Buffer &buf, sp::UinArray<dht::Infohash> &) noexcept;
+
+  static bool
+  value_compact(Buffer &buf,
+                sp::UinArray<std::tuple<dht::NodeId, Contact>> &) noexcept;
 }; // struct bencode::d
-
-//=====================================
-namespace priv {
-template <typename Buffer>
-struct d {
-  //=====================================
-  static bool
-  value(Buffer &buf, dht::IdContact &) noexcept;
-
-  //=====================================
-  static bool
-  value(Buffer &, Contact &) noexcept;
-
-  static bool
-  pair(Buffer &, const char *key, Contact &p) noexcept;
-
-  //=====================================
-};
-} // namespace priv
-} // namespace bencode
-
-} // namespace sp
 
 #endif
