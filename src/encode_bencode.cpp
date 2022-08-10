@@ -14,7 +14,7 @@ raw_numeric(Buffer &buffer, const char *format, T in) noexcept {
     return false;
   }
 
-  if (!write(buffer, b, res)) {
+  if (!write(buffer, b, (std::size_t)res)) {
     return false;
   }
 

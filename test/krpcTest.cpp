@@ -136,8 +136,8 @@ TEST(krpcTest, test_find_node) {
     }
 
     sp::Buffer buff{b};
-    ASSERT_TRUE(
-        krpc::response::find_node(buff, t, id, (const dht::Node **)&in, nodes));
+    ASSERT_TRUE(krpc::response::find_node(
+        buff, t, id, true, (const dht::Node **)&in, nodes, false));
     sp::flip(buff);
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
 
@@ -206,8 +206,8 @@ TEST(krpcTest, test_get_peers) {
     sp::Buffer buff{b};
 
     dht::Infohash infohash;
-    ASSERT_TRUE(krpc::response::get_peers(buff, t, id, token,
-                                          (const dht::Node **)&in, NODE_SIZE));
+    ASSERT_TRUE(krpc::response::get_peers(
+        buff, t, id, token, true, (const dht::Node **)&in, NODE_SIZE, false));
     sp::flip(buff);
 
     // bencode_print(p);

@@ -67,7 +67,7 @@ template <typename Buffer>
 bool
 bencode_d<Buffer>::pair(Buffer &buf, const char *key,
                         std::uint64_t &value) noexcept {
-  if (!bencode_d<Buffer>::value(buf, key)) {
+  if (!bencode_d<Buffer>::is_key(buf, key)) {
     return false;
   }
 
@@ -102,7 +102,7 @@ template <typename Buffer>
 bool
 bencode_d<Buffer>::pair(Buffer &buf, const char *key,
                         std::uint32_t &value) noexcept {
-  if (!bencode_d<Buffer>::value(buf, key)) {
+  if (!bencode_d<Buffer>::is_key(buf, key)) {
     return false;
   }
 
@@ -137,7 +137,7 @@ template <typename Buffer>
 bool
 bencode_d<Buffer>::pair(Buffer &buf, const char *key,
                         std::uint16_t &value) noexcept {
-  if (!bencode_d<Buffer>::value(buf, key)) {
+  if (!bencode_d<Buffer>::is_key(buf, key)) {
     return false;
   }
 
@@ -174,7 +174,7 @@ parse_string(Buffer &b, /*OUT*/ T (&str)[N], std::size_t &len) noexcept {
 
 template <typename Buffer>
 bool
-bencode_d<Buffer>::value(Buffer &buf, const char *key) noexcept {
+bencode_d<Buffer>::is_key(Buffer &buf, const char *key) noexcept {
   const auto key_len = std::strlen(key);
 
   unsigned char out[128] = {0};
@@ -229,6 +229,24 @@ bencode_d<Buffer>::value(Buffer &buf, char *value, std::size_t &len) noexcept {
   return true;
 }
 
+template <typename Buffer>
+bool
+bencode_d<Buffer>::value(Buffer &buf,
+                         sp::UinArray<std::string> &value) noexcept {
+  return bencode_d<Buffer>::list(buf, [&value](auto &b) {
+    char front;
+    while (peek_front(b, front) && front != 'e') {
+      std::string str;
+      if (!bencode_d<Buffer>::value(b, str)) {
+        return false;
+      }
+      //
+      insert(value, str);
+    }
+    return true;
+  });
+}
+
 //=====================================
 template <typename Buffer>
 bool
@@ -239,7 +257,7 @@ bencode_d<Buffer>::value(Buffer &buf, Ip &value) noexcept {
 template <typename Buffer>
 bool
 bencode_d<Buffer>::pair(Buffer &buf, const char *key, Ip &value) noexcept {
-  if (!bencode_d<Buffer>::value(buf, key)) {
+  if (!bencode_d<Buffer>::is_key(buf, key)) {
     return false;
   }
 
@@ -249,10 +267,31 @@ bencode_d<Buffer>::pair(Buffer &buf, const char *key, Ip &value) noexcept {
 //=====================================
 template <typename Buffer>
 bool
+bencode_d<Buffer>::value(Buffer &buf, std::string &value) noexcept {
+  std::size_t l_raw = 0;
+
+  if (!read_numeric(buf, l_raw, ':')) {
+    return false;
+  }
+  value.clear();
+  for (std::size_t i = 0; i < l_raw; ++i) {
+    char c;
+    size_t len = pop_front(buf, &c, sizeof(c));
+    assertx(len == sizeof(c));
+    value.append(&c, 1);
+    // XXX
+  }
+
+  return true;
+}
+
+//=====================================
+template <typename Buffer>
+bool
 bencode_d<Buffer>::pair(Buffer &buf, const char *key, sp::byte *value,
                         std::size_t &l) noexcept {
 
-  if (!bencode_d<Buffer>::value(buf, key)) {
+  if (!bencode_d<Buffer>::is_key(buf, key)) {
     return false;
   }
 
@@ -279,13 +318,26 @@ template <typename Buffer>
 bool
 bencode_d<Buffer>::pair(Buffer &buf, const char *key,
                         dht::NodeId &value) noexcept {
-  if (!bencode_d<Buffer>::value(buf, key)) {
+  if (!bencode_d<Buffer>::is_key(buf, key)) {
     return false;
   }
 
   return bencode_d<Buffer>::value(buf, value);
 }
 
+//=====================================
+template <typename Buffer>
+bool
+bencode_d<Buffer>::pair(Buffer &buf, const char *key,
+                        sp::UinArray<std::string> &value) noexcept {
+  if (!bencode_d<Buffer>::is_key(buf, key)) {
+    return false;
+  }
+
+  return bencode_d<Buffer>::value(buf, value);
+}
+
+//=====================================
 template <typename Buffer>
 bool
 bencode_d<Buffer>::value_compact(Buffer &buf,

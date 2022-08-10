@@ -6,6 +6,7 @@
 #include "bootstrap.h"
 #include "client.h"
 #include "db.h"
+#include "decode_bencode.h"
 #include "dht.h"
 #include "krpc.h"
 #include "search.h"
@@ -617,19 +618,24 @@ setup(dht::Module &module) noexcept {
 namespace find_node {
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
-               const dht::NodeId &search) noexcept {
+               const dht::NodeId &search, bool n4, bool n6) noexcept {
   logger::receive::req::find_node(ctx);
 
   message(ctx, sender, [&](auto &) {
     dht::DHT &dht = ctx.dht;
     constexpr std::size_t capacity = 8;
+    std::size_t length4 = 0;
 
     const krpc::Transaction &t = ctx.transaction;
     dht::Node *result[capacity] = {nullptr};
-    dht::multiple_closest(dht, search, result);
-    const dht::Node **r = (const dht::Node **)&result;
+    const dht::Node **nodes4 = nullptr;
+    if (n4) {
+      dht::multiple_closest(dht, search, result);
+      nodes4 = (const dht::Node **)&result;
+      length4 = capacity;
+    }
 
-    krpc::response::find_node(ctx.out, t, dht.id, r, capacity);
+    krpc::response::find_node(ctx.out, t, dht.id, n4, nodes4, length4, n6);
   });
 } // find_node::handle_request()
 
@@ -783,9 +789,14 @@ on_request(dht::MessageContext &ctx) noexcept {
   return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
     bool b_id = false;
     bool b_t = false;
+    bool b_want = false;
 
     dht::NodeId id;
     dht::NodeId target;
+
+    sp::UinStaticArray<std::string, 2> want;
+    bool n4 = false;
+    bool n6 = false;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
@@ -794,6 +805,18 @@ on_request(dht::MessageContext &ctx) noexcept {
     }
     if (!b_t && bencode::d::pair(p, "target", target.id)) {
       b_t = true;
+      goto Lstart;
+    }
+
+    if (!b_want && bencode_d<sp::Buffer>::pair(p, "want", want)) {
+      b_want = true;
+      for (std::string &w : want) {
+        if (w == "n4") {
+          n4 = true;
+        } else if (w == "n6") {
+          n6 = true;
+        }
+      }
       goto Lstart;
     }
 
@@ -807,7 +830,11 @@ on_request(dht::MessageContext &ctx) noexcept {
       return false;
     }
 
-    handle_request(ctx, id, target);
+    if (!b_want) {
+      n4 = true;
+    }
+
+    handle_request(ctx, id, target, n4, n6);
     return true;
   });
 } // find_node::on_request
@@ -858,7 +885,8 @@ bloomfilter_insert(uint8_t (&bloom)[SIZE], const Ip &ip) noexcept {
 
 static void
 handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
-               const dht::Infohash &search, bool noseed, bool scrape) noexcept {
+               const dht::Infohash &search, sp::maybe<bool> mnoseed,
+               bool scrape, bool n4, bool n6) noexcept {
   logger::receive::req::get_peers(ctx);
 
   message(ctx, id, [&](auto &) {
@@ -868,12 +896,12 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
 
     const krpc::Transaction &t = ctx.transaction;
 
+    const dht::KeyValue *const result = db::lookup(dht, search);
     if (scrape) {
       // http://www.bittorrent.org/beps/bep_0033.html
       uint8_t seeds[256]{};
       uint8_t peers[256]{};
 
-      const dht::KeyValue *const result = db::lookup(dht, search);
       if (result) {
         for_each(result->peers, [&](const dht::Peer &cur) {
           if (cur.seed) {
@@ -888,13 +916,16 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
         return;
       }
     } else {
-      const dht::KeyValue *const result = db::lookup(dht, search);
       if (result) {
         clear(dht.recycle_contact_list);
         auto &filtered = dht.recycle_contact_list;
-        for_each(result->peers, [&](const dht::Peer &cur) {
-          if ((cur.seed == false && noseed == true) ||
-              (cur.seed == true && noseed == false)) {
+        for_each(result->peers, [&filtered, &mnoseed](const dht::Peer &cur) {
+          if (mnoseed) {
+            if ((cur.seed == false && mnoseed.get() == true) ||
+                (cur.seed == true && mnoseed.get() == false)) {
+              insert(filtered, cur.contact);
+            }
+          } else {
             insert(filtered, cur.contact);
           }
         });
@@ -908,10 +939,16 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
 
     constexpr std::size_t capacity = 8;
     dht::Node *closest[capacity] = {nullptr};
-    dht::multiple_closest(dht, search, closest);
-    const dht::Node **r = (const dht::Node **)&closest;
+    const dht::Node **nodes4 = nullptr;
+    std::size_t length4 = 0;
+    if (n4) {
+      dht::multiple_closest(dht, search, closest);
+      nodes4 = (const dht::Node **)&closest;
+      length4 = capacity;
+    }
 
-    krpc::response::get_peers(ctx.out, t, dht.id, token, r, capacity);
+    krpc::response::get_peers(ctx.out, t, dht.id, token, n4, nodes4, length4,
+                              n6);
   });
 } // namespace get_peers
 
@@ -1063,11 +1100,16 @@ on_request(dht::MessageContext &ctx) noexcept {
     bool b_ih = false;
     bool b_ns = false;
     bool b_sc = false;
+    bool b_want = false;
 
     dht::NodeId id;
     dht::Infohash infohash;
-    bool noseed = false;
+    sp::maybe<bool> noseed{};
     bool scrape = false;
+
+    sp::UinStaticArray<std::string, 2> want;
+    bool n4 = false;
+    bool n6 = false;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", id.id)) {
@@ -1080,13 +1122,27 @@ on_request(dht::MessageContext &ctx) noexcept {
       goto Lstart;
     }
 
-    if (!b_ns && bencode::d::pair(p, "noseed", noseed)) {
+    bool tmp_noseed = false;
+    if (!b_ns && bencode::d::pair(p, "noseed", tmp_noseed)) {
       b_ns = true;
+      noseed = tmp_noseed;
       goto Lstart;
     }
 
     if (!b_sc && bencode::d::pair(p, "scrape", scrape)) {
       b_sc = true;
+      goto Lstart;
+    }
+
+    if (!b_want && bencode_d<sp::Buffer>::pair(p, "want", want)) {
+      b_want = true;
+      for (std::string &w : want) {
+        if (w == "n4") {
+          n4 = true;
+        } else if (w == "n6") {
+          n6 = true;
+        }
+      }
       goto Lstart;
     }
 
@@ -1100,7 +1156,12 @@ on_request(dht::MessageContext &ctx) noexcept {
       return false;
     }
 
-    handle_request(ctx, id, infohash, noseed, scrape);
+    if (!b_want) {
+      // default:
+      n4 = true;
+    }
+
+    handle_request(ctx, id, infohash, noseed, scrape, n4, n6);
     return true;
   });
 } // get_peers::on_request

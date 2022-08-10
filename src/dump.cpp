@@ -96,7 +96,7 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht) noexcept {
 
     Ip &ip = dht.ip.ip;
     assertx(!is_marked(buffer));
-    if (!bencode_d<Buffer>::value(buffer, "ip")) {
+    if (!bencode_d<Buffer>::is_key(buffer, "ip")) {
       return false;
     }
 

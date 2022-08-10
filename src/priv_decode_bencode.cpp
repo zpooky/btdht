@@ -63,7 +63,7 @@ template <typename Buffer>
 bool
 bencode_priv_d<Buffer>::pair(Buffer &buf, const char *key,
                              Contact &p) noexcept {
-  if (!bencode_d<Buffer>::value(buf, key)) {
+  if (!bencode_d<Buffer>::is_key(buf, key)) {
     return false;
   }
 

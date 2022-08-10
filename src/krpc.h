@@ -50,12 +50,13 @@ bool
 ping(sp::Buffer &, const Transaction &, const dht::NodeId &receiver) noexcept;
 
 bool
-find_node(sp::Buffer &, const Transaction &, const dht::NodeId &,
-          const dht::Node **target, std::size_t) noexcept;
+find_node(sp::Buffer &, const Transaction &, const dht::NodeId &, bool n4,
+          const dht::Node **target, std::size_t, bool n6) noexcept;
 
 bool
 get_peers(sp::Buffer &, const Transaction &, const dht::NodeId &id,
-          const dht::Token &, const dht::Node **, std::size_t) noexcept;
+          const dht::Token &, bool n4, const dht::Node **, std::size_t,
+          bool n6) noexcept;
 
 bool
 get_peers_peers(sp::Buffer &, const Transaction &, const dht::NodeId &id,
