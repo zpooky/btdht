@@ -235,11 +235,13 @@ send_ping(DHTClient &client, const Contact &to) noexcept {
 static bool
 send_find_node(DHTClient &client, const Contact &to,
                const dht::NodeId &search) noexcept {
+  bool n4 = true;
+  bool n6 = false;
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
-  krpc::request::find_node(client.out, tx, client.self, search);
+  krpc::request::find_node(client.out, tx, client.self, search, n4, n6);
   flip(client.out);
 
   return net::sock_write(client.udp, client.out);
@@ -250,11 +252,13 @@ send_find_node(DHTClient &client, const Contact &to,
 static bool
 send_get_peers(DHTClient &client, const Contact &to,
                const dht::Infohash &search) noexcept {
+  bool n4 = true;
+  bool n6 = false;
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
-  krpc::request::get_peers(client.out, tx, client.self, search);
+  krpc::request::get_peers(client.out, tx, client.self, search, n4, n6);
   flip(client.out);
   return net::sock_write(client.udp, client.out);
 }

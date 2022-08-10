@@ -59,6 +59,13 @@ struct e {
 
   //=====================================
   static bool
+  list(Buffer &, const sp::UinArray<std::string> &) noexcept;
+
+  static bool
+  pair(Buffer &, const char *key, const sp::UinArray<std::string> &) noexcept;
+
+  //=====================================
+  static bool
   pair(Buffer &, const char *key, bool value) noexcept;
 
   static bool

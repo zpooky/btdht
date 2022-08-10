@@ -98,7 +98,7 @@ TEST(krpcTest, test_find_node) {
 
   { //
     sp::Buffer buff{b};
-    ASSERT_TRUE(krpc::request::find_node(buff, t, id, id));
+    ASSERT_TRUE(krpc::request::find_node(buff, t, id, id, true, false));
     sp::flip(buff);
 
     dht::Domain dom = dht::Domain::Domain_public;
@@ -181,7 +181,7 @@ TEST(krpcTest, test_get_peers) {
     sp::Buffer buff{b};
 
     dht::Infohash infohash;
-    ASSERT_TRUE(krpc::request::get_peers(buff, t, id, infohash));
+    ASSERT_TRUE(krpc::request::get_peers(buff, t, id, infohash, true, false));
     sp::flip(buff);
     // TODO
   }

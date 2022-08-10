@@ -25,11 +25,11 @@ ping(sp::Buffer &, const Transaction &, const dht::NodeId &sender) noexcept;
 
 bool
 find_node(sp::Buffer &, const Transaction &, const dht::NodeId &self,
-          const dht::NodeId &search) noexcept;
+          const dht::NodeId &search, bool n4, bool n6) noexcept;
 
 bool
 get_peers(sp::Buffer &, const Transaction &, const dht::NodeId &,
-          const dht::Infohash &) noexcept;
+          const dht::Infohash &, bool n4, bool n6) noexcept;
 
 bool
 announce_peer(sp::Buffer &, const Transaction &, const dht::NodeId &self,

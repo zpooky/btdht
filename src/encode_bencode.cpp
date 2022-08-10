@@ -286,6 +286,43 @@ bencode::e<Buffer>::value_compact(Buffer &b,
 }
 
 //=====================================
+template <typename Buffer>
+bool
+bencode::e<Buffer>::list(Buffer &b,
+                         const sp::UinArray<std::string> &values) noexcept {
+  if (!write(b, 'l')) {
+    return false;
+  }
+
+  for (const std::string &v : values) {
+    if (!bencode::e<Buffer>::value(b, v.c_str())) {
+      return false;
+    }
+  }
+
+  if (!write(b, 'e')) {
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::pair(Buffer &b, const char *key,
+                         const sp::UinArray<std::string> &value) noexcept {
+  if (!bencode::e<Buffer>::value(b, key)) {
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::list(b, value)) {
+    return false;
+  }
+
+  return true;
+}
+
+//=====================================
 template <typename Buffer, typename V>
 static bool
 generic_encodePair(Buffer &buffer, const char *key, V val) {

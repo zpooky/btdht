@@ -24,9 +24,9 @@ request::ping(sp::Buffer &buf, const Transaction &t,
 
 bool
 request::find_node(sp::Buffer &buf, const Transaction &t,
-                   const dht::NodeId &self,
-                   const dht::NodeId &search) noexcept {
-  return req(buf, t, "find_node", [self, search](sp::Buffer &b) { //
+                   const dht::NodeId &self, const dht::NodeId &search, bool n4,
+                   bool n6) noexcept {
+  return req(buf, t, "find_node", [self, search, n4, n6](sp::Buffer &b) { //
     if (!bencode::e::pair(b, "id", self.id, sizeof(self.id))) {
       return false;
     }
@@ -34,19 +34,44 @@ request::find_node(sp::Buffer &buf, const Transaction &t,
     if (!bencode::e::pair(b, "target", search.id, sizeof(search.id))) {
       return false;
     }
+    sp::UinStaticArray<std::string, 2> want;
+    if (n4) {
+      insert(want, "n4");
+    }
+
+    if (n6) {
+      insert(want, "n6");
+    }
+
+    if (!sp::bencode::e<sp::Buffer>::pair(b, "want", want)) {
+      return false;
+    }
+
     return true;
   });
 }
 
 bool
 request::get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
-                   const dht::Infohash &infohash) noexcept {
-  return req(buf, t, "get_peers", [id, infohash](sp::Buffer &b) { //
+                   const dht::Infohash &infohash, bool n4, bool n6) noexcept {
+  return req(buf, t, "get_peers", [id, infohash, n4, n6](sp::Buffer &b) { //
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
       return false;
     }
 
     if (!bencode::e::pair(b, "info_hash", infohash.id, sizeof(infohash.id))) {
+      return false;
+    }
+    sp::UinStaticArray<std::string, 2> want;
+    if (n4) {
+      insert(want, "n4");
+    }
+
+    if (n6) {
+      insert(want, "n6");
+    }
+
+    if (!sp::bencode::e<sp::Buffer>::pair(b, "want", want)) {
       return false;
     }
     return true;

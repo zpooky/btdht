@@ -67,7 +67,9 @@ find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
   find_node::setup(find_node);
 
   auto serialize = [&dht, &search](sp::Buffer &o, const krpc::Transaction &t) {
-    return krpc::request::find_node(o, t, dht.id, search);
+    bool n4 = true;
+    bool n6 = false;
+    return krpc::request::find_node(o, t, dht.id, search, n4, n6);
   };
 
   auto result = send(dht, dest, buf, find_node, closure, serialize);
@@ -83,7 +85,9 @@ get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
   get_peers::setup(get_peers);
 
   auto serialize = [&dht, &search](sp::Buffer &o, const krpc::Transaction &t) {
-    return krpc::request::get_peers(o, t, dht.id, search);
+    bool n4 = true;
+    bool n6 = false;
+    return krpc::request::get_peers(o, t, dht.id, search, n4, n6);
   };
 
   auto result = send(dht, dest, buf, get_peers, closure, serialize);
