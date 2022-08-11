@@ -7,7 +7,7 @@ namespace sp {
 //=====================================
 template <typename Buffer, typename T>
 static bool
-raw_numeric(Buffer &buffer, const char *format, T in) noexcept {
+write_raw_numeric(Buffer &buffer, const char *format, T in) noexcept {
   char b[64] = {0};
   int res = std::snprintf(b, sizeof(b), format, in);
   if (res < 0) {
@@ -19,7 +19,7 @@ raw_numeric(Buffer &buffer, const char *format, T in) noexcept {
   }
 
   return true;
-} // bencode::raw_numeric()
+} // bencode::write_raw_numeric()
 
 template <typename Buffer, typename T>
 static bool
@@ -30,7 +30,7 @@ encode_integer(Buffer &buffer, const char *format, T in) noexcept {
     return false;
   }
 
-  if (!raw_numeric(buffer, format, in)) {
+  if (!write_raw_numeric(buffer, format, in)) {
     return false;
   }
 
@@ -90,7 +90,7 @@ encode_raw(Buffer &buffer, const T *str, std::size_t length) noexcept {
   static_assert(
       std::is_same<T, char>::value || std::is_same<T, sp::byte>::value, "");
 
-  if (!raw_numeric(buffer, "%zu", length)) {
+  if (!write_raw_numeric(buffer, "%zu", length)) {
     return false;
   }
 
@@ -131,7 +131,7 @@ bencode::e<Buffer>::value_compact(Buffer &buffer, const dht::Infohash *v,
                                   std::size_t length) noexcept {
   const std::size_t raw_length = length * sizeof(v->id);
 
-  if (!raw_numeric(buffer, "%zu", raw_length)) {
+  if (!write_raw_numeric(buffer, "%zu", raw_length)) {
     return false;
   }
 
@@ -159,7 +159,7 @@ bencode::e<Buffer>::value_id_contact_compact(Buffer &b, const dht::Node **list,
     return true;
   });
 
-  if (!raw_numeric(b, "%zu", raw_size)) {
+  if (!write_raw_numeric(b, "%zu", raw_size)) {
     return false;
   }
 
@@ -195,7 +195,7 @@ bencode::e<Buffer>::value_id_contact_compact(
     raw_size += serialize_size(value.contact) + sizeof(value.id.id);
   });
 
-  if (!raw_numeric(b, "%zu", raw_size)) {
+  if (!write_raw_numeric(b, "%zu", raw_size)) {
     return false;
   }
 
@@ -231,7 +231,7 @@ bencode::e<Buffer>::value_compact(Buffer &b,
     raw_size += serialize_size(value);
   });
 
-  if (!raw_numeric(b, "%zu", raw_size)) {
+  if (!write_raw_numeric(b, "%zu", raw_size)) {
     return false;
   }
 
@@ -263,7 +263,7 @@ bencode::e<Buffer>::value_compact(Buffer &b,
     raw_size += serialize_size(value);
   });
 
-  if (!raw_numeric(b, "%zu", raw_size)) {
+  if (!write_raw_numeric(b, "%zu", raw_size)) {
     return false;
   }
 
@@ -568,7 +568,7 @@ size(const sp::list<T> &list) noexcept {
 // bool
 // bencode::e<Buffer>::value(Buffer &b, std::size_t length, void *closure,
 //                           bool (*f)(Buffer &, void *)) noexcept {
-//   if (!raw_numeric(b, "%zu", length)) {
+//   if (!write_raw_numeric(b, "%zu", length)) {
 //     return false;
 //   }
 //

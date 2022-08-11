@@ -6,6 +6,7 @@
 #include <cstring>
 #include <krpc.h>
 #include <shared.h>
+#include <string/ascii.h>
 
 static inline void
 print_hex(const sp::byte *arr, std::size_t length) {
@@ -162,6 +163,8 @@ print(const char *prefix, const sp::byte *b, std::size_t len) noexcept {
     if (*b == 0) {
       b++;
       printf("0");
+    } else if (!ascii::is_printable(*b)) {
+      printf("#");
     } else {
       printf("%c", *b++);
     }

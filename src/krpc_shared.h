@@ -30,8 +30,8 @@ message(sp::Buffer &buf, const Transaction &t, const char *mt,
     {
       version[0] = 's';
       version[1] = 'p';
-      version[2] = 0;
-      version[3] = 1;
+      version[2] = '0';
+      version[3] = '1';
     }
     if (!bencode::e::pair(b, "v", version, sizeof(version))) {
       return false;

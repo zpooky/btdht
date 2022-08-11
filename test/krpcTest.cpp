@@ -1,6 +1,7 @@
 #include "util.h"
 #include <bencode_offset.h>
 #include <bencode_print.h>
+#include <decode_bencode.h>
 
 template <typename F>
 static void
@@ -114,6 +115,11 @@ TEST(krpcTest, test_find_node) {
       if (!bencode::d::pair(p, "target", target.id)) {
         return false;
       }
+
+      sp::UinStaticArray<std::string, 2> want;
+      if (!bencode_d<sp::Buffer>::pair(p, "want", want)) {
+        return false;
+      }
       assert_eq(target.id, id.id);
       return true;
     });
@@ -124,26 +130,31 @@ TEST(krpcTest, test_find_node) {
   }
 
   {
-    constexpr std::size_t nodes = 8;
-    dht::Node node[nodes];
-    const dht::Node *in[nodes];
-    for (std::size_t i = 0; i < nodes; ++i) {
+    // constexpr std::size_t length4 = 8;
+    constexpr std::size_t length4 = 1;
+    dht::Node node[length4];
+    const dht::Node *nodes4[length4]{nullptr};
+    for (std::size_t i = 0; i < length4; ++i) {
       nodeId(node[i].id);
       node[i].contact.ip.ipv4 = rand();
       node[i].contact.ip.type = IpType::IPV4;
       node[i].contact.port = (Port)rand();
-      in[i] = &node[i];
+      nodes4[i] = &node[i];
     }
 
     sp::Buffer buff{b};
+  // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
     ASSERT_TRUE(krpc::response::find_node(
-        buff, t, id, true, (const dht::Node **)&in, nodes, false));
+        buff, t, id, true, (const dht::Node **)&nodes4, length4, false));
+  // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
     sp::flip(buff);
+  // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
+TODO broken response
 
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_response(ctx, [&id, &in](sp::Buffer &p) {
+    test_response(ctx, [&id, &nodes4](sp::Buffer &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
         return false;
@@ -151,10 +162,10 @@ TEST(krpcTest, test_find_node) {
       assert_eq(sender.id, id.id);
       //
       sp::UinStaticArray<dht::IdContact, 256> outList;
-      if (!bencode::d::nodes(p, "target", outList)) {
+      if (!bencode::d::nodes(p, "nodes", outList)) {
         return false;
       }
-      assert_eq(in, outList);
+      assert_eq(nodes4, outList);
       return true;
     });
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
