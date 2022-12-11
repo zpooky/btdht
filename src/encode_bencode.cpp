@@ -167,22 +167,29 @@ bencode::e<Buffer>::value_id_contact_compact(Buffer &b, const dht::Node **list,
     return false;
   }
 
-  return for_all(list, length, [&b](const auto &value) {
+  std::size_t dummy_written = 0;
+  bool result = for_all(list, length, [&b, &dummy_written](const auto &value) {
     if (!write(b, value.id.id, sizeof(value.id.id))) {
       return false;
     }
+    dummy_written += sizeof(value.id.id);
 
     Ipv4 ip = htonl(value.contact.ip.ipv4);
     if (!write(b, &ip, sizeof(ip))) {
       return false;
     }
+    dummy_written += sizeof(ip);
     Port port = htons(value.contact.port);
     if (!write(b, &port, sizeof(port))) {
       return false;
     }
+    dummy_written += sizeof(port);
 
     return true;
   });
+  assertx(raw_size == dummy_written);
+
+  return result;
 }
 
 template <typename Buffer>

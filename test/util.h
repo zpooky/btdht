@@ -88,6 +88,7 @@ assert_eq(const char *one, const char *two) {
 template <std::size_t SIZE>
 inline static void
 assert_eq(const sp::byte (&one)[SIZE], const sp::byte (&two)[SIZE]) {
+  assertx(memcmp(one, two, SIZE) == 0);
   ASSERT_TRUE(memcmp(one, two, SIZE) == 0);
 }
 
@@ -146,7 +147,7 @@ assert_eq(const dht::Node *(&first)[SIZE],
 inline static void
 nodeId(dht::NodeId &id) {
   memset(id.id, 0, sizeof(id.id));
-  const char *raw_id = "abcdefghij0123456789";
+  const char *raw_id = "a0b0c0d0e0f0g0SPOOKY";
   memcpy(id.id, raw_id, strlen(raw_id));
 }
 
@@ -161,13 +162,13 @@ print(const char *prefix, const sp::byte *b, std::size_t len) noexcept {
   printf("%s", prefix);
   for (std::size_t i = 0; i < len; ++i) {
     if (*b == 0) {
-      b++;
-      printf("0");
+      printf("\\0");
     } else if (!ascii::is_printable(*b)) {
       printf("#");
     } else {
-      printf("%c", *b++);
+      printf("%c", *b);
     }
+    b++;
   }
   printf("\n");
 }

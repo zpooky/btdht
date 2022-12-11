@@ -10,19 +10,22 @@ test_request(krpc::ParseContext &ctx, F body) {
     return bencode::d::dict(ctx2.decoder, body);
   };
 
-  print("request: ", ctx.decoder);
+  print(" request: ", ctx.decoder);
   ASSERT_TRUE(krpc::d::krpc(ctx, f));
 }
 
 template <typename F>
 static void
 test_response(krpc::ParseContext &ctx, F body) {
+  bool r;
   auto f = [&body](krpc::ParseContext &ctx2) {
     return bencode::d::dict(ctx2.decoder, body);
   };
 
   print("response: ", ctx.decoder);
-  ASSERT_TRUE(krpc::d::krpc(ctx, f));
+  r = krpc::d::krpc(ctx, f);
+  assertx(r);
+  ASSERT_TRUE(r);
 }
 
 TEST(krpcTest, test_ping) {
@@ -143,18 +146,18 @@ TEST(krpcTest, test_find_node) {
     }
 
     sp::Buffer buff{b};
-  // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
+    // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
     ASSERT_TRUE(krpc::response::find_node(
         buff, t, id, true, (const dht::Node **)&nodes4, length4, false));
-  // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
+    // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
     sp::flip(buff);
-  // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
+    // printf("capacity[%zu]length[%zu]pos[%zu]\n",buff.capacity,buff.length,buff.pos);
+    // fprintf(stderr, "%s:\n", __func__);
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
-TODO broken response
 
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_response(ctx, [&id, &nodes4](sp::Buffer &p) {
+    test_response(ctx, [&id, &nodes4, &node](sp::Buffer &p) {
       dht::NodeId sender;
       if (!bencode::d::pair(p, "id", sender.id)) {
         return false;
@@ -165,6 +168,10 @@ TODO broken response
       if (!bencode::d::nodes(p, "nodes", outList)) {
         return false;
       }
+      assertx(length4 == outList.length);
+      // printf("%s: %zu\n", to_string(outList[0]), outList.length);
+      assertx(outList[0].contact == node[0].contact);
+      assertx(outList[0].id == node[0].id);
       assert_eq(nodes4, outList);
       return true;
     });

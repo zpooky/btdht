@@ -407,7 +407,7 @@ struct Node {
 
 template <typename F>
 bool
-for_all(const dht::Node **list, std::size_t length, F f) noexcept {
+for_all(const dht::Node *list[], std::size_t length, F f) noexcept {
   for (std::size_t i = 0; i < length; ++i) {
     if (list[i]) {
       if (!f(*list[i])) {
