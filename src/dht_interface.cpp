@@ -865,6 +865,10 @@ bloomfilter_insert(uint8_t (&bloom)[SIZE], const Ip &ip) noexcept {
   SHA1Init(&ctx);
 
   if (ip.type == IpType::IPV4) {
+    // both implementations work
+    // the standard want for example the address 192.168.0.1 to be proccesed in
+    // the order 192,168,0,1
+#if 0
     Ipv4 ipv4 = ip.ipv4;
     unsigned char c0 = (ipv4 & (uint32_t(0xff) << 24)) >> 24;
     unsigned char c1 = (ipv4 & (uint32_t(0xff) << 16)) >> 16;
@@ -875,8 +879,11 @@ bloomfilter_insert(uint8_t (&bloom)[SIZE], const Ip &ip) noexcept {
     SHA1Update(&ctx, &c1, 1);
     SHA1Update(&ctx, &c2, 1);
     SHA1Update(&ctx, &c3, 1);
-    // const void *raw = (const void *)&ip.ipv4;
-    // SHA1Update(&ctx, (const uint8_t *)raw, (uint32_t)sizeof(ip.ipv4));
+#else
+    Ipv4 tmp = htonl(ip.ipv4);
+    const uint8_t *raw = (const uint8_t *)&tmp;
+    SHA1Update(&ctx, raw, (uint32_t)sizeof(ip.ipv4));
+#endif
   } else {
     assertx(false);
     // const void *raw = (const void *)&ip.ipv6.raw;
