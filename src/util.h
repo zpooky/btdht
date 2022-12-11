@@ -218,6 +218,7 @@ struct Transaction {
   std::size_t length;
 
   Transaction() noexcept;
+  Transaction(const char *) noexcept;
 
   template <std::size_t N1, std::size_t N2>
   Transaction(sp::byte (&one)[N1], sp::byte (&two)[N2]) noexcept
@@ -239,6 +240,7 @@ struct Transaction {
 
   Transaction &
   operator=(const Transaction &) noexcept;
+  bool operator==(const Transaction &)const noexcept;
 };
 } // namespace krpc
 

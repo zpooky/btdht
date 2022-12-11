@@ -420,11 +420,27 @@ Transaction::Transaction() noexcept
     , length(0) {
 }
 
+Transaction::Transaction(const char *str) noexcept
+    : Transaction() {
+  size_t l = strlen(str);
+  assertx(l < sizeof(id));
+  memcpy(id, str, l);
+  length = l;
+}
+
 Transaction &
 Transaction::operator=(const Transaction &o) noexcept {
   memcpy(id, o.id, o.length);
   length = o.length;
   return *this;
+}
+
+bool
+Transaction::operator==(const Transaction &t) const noexcept {
+  if (length != t.length) {
+    return false;
+  }
+  return memcmp(id, t.id, length) == 0;
 }
 
 } // namespace krpc
@@ -760,7 +776,7 @@ Node::Node(const NodeId &nid, const Contact &p) noexcept
     , timeout_priv(nullptr)
     //}}}
     //{{{
-    , id(id)
+    , id(nid)
     , contact(p)
     //}}}
     , remote_activity(0)

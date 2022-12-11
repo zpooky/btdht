@@ -1,8 +1,12 @@
 #include "bencode.h"
+#include "db.h"
 #include "dht_interface.h"
 #include "krpc.h"
+#include "util.h"
 #include "gtest/gtest.h"
 #include <encode/hex.h>
+
+#include <sha1.h>
 
 using namespace dht;
 
@@ -66,9 +70,11 @@ TEST(krpc2Test, get_peers) {
   get_peers::setup(m);
   sp::fd fd{-1};
 
+  int dummy = 0;
   auto f = [&](krpc::ParseContext &pctx) -> bool {
     dht::MessageContext ctx{dht, pctx, out, peer};
     assert(std::strcmp(pctx.msg_type, "r") == 0);
+    dummy++;
 
     return m.response(ctx, sctx->ctx);
     // return true;
@@ -77,6 +83,116 @@ TEST(krpc2Test, get_peers) {
   dht::Domain dom = dht::Domain::Domain_public;
   krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
+  ASSERT_EQ(dummy, 1);
+}
+
+TEST(krpc2Test, get_peers_scrape) {
+  fd sock(-1);
+  Contact c(Ipv4(12), Port(123));
+  prng::xorshift32 r(1);
+  dht::DHT dht(sock, sock, c, r, sp::now());
+
+  unsigned char raw[1024];
+  sp::Buffer out(raw);
+  Contact peer{Ipv4(12), Port(123)};
+
+  unsigned char raw_in[1024];
+  sp::Buffer in(raw_in);
+  krpc::Transaction in_tx{"intx"};
+  dht::NodeId in_id;
+  nodeId(in_id);
+  dht::Infohash in_ih;
+  for (int i = 0; i < 256; ++i) {
+    char adr[50];
+    char ip[32];
+    std::snprintf(ip, sizeof(ip), "192.0.2.%d", i);
+    std::snprintf(adr, sizeof(adr), "%s:123", ip);
+    Contact announce_contact{};
+    ASSERT_TRUE(to_contact(adr, announce_contact));
+    ASSERT_EQ(announce_contact.port, 123);
+    ASSERT_TRUE(strcmp(ip, to_string(announce_contact.ip)) == 0);
+    db::insert(dht, in_ih, announce_contact, true, "dummy");
+  }
+  bool n4 = true;
+  bool n6 = false;
+  bool scrape = true;
+  krpc::request::get_peers_scrape(in, in_tx, in_id, in_ih, n4, n6, scrape);
+  flip(in);
+
+  Module m;
+  get_peers::setup(m);
+  int dummy = 0;
+  dht::Domain dom = dht::Domain::Domain_public;
+  {
+    auto f = [&](krpc::ParseContext &pctx) -> bool {
+      dht::MessageContext ctx{dht, pctx, out, peer};
+      assert(std::strcmp(pctx.msg_type, "q") == 0);
+      dummy++;
+      return m.request(ctx);
+    };
+
+    krpc::ParseContext pctx(dom, dht, in);
+    ASSERT_TRUE(krpc::d::krpc(pctx, f));
+    ASSERT_EQ(dummy, 1);
+  }
+  {
+    dummy = 0;
+    flip(out);
+    print(" response: ", out);
+    auto f_resp = [&](krpc::ParseContext &pctx) -> bool {
+      assert(std::strcmp(pctx.msg_type, "r") == 0);
+      assert(std::strncmp((char *)pctx.remote_version, "sp01", strlen("sp01")) == 0);
+      return bencode::d::dict(pctx.decoder, [&](sp::Buffer &d) {
+        dummy++;
+        dht::NodeId id;
+        if (!bencode::d::pair(d, "id", id.id)) {
+          return false;
+        }
+
+        Token token;
+        if (!bencode::d::pair(d, "token", token)) {
+          return false;
+        }
+
+        sp::byte BFsd[256]{};
+        if (!bencode::d::pair(d, "BFsd", BFsd)) {
+          return false;
+        }
+        char BFsd_hex[(sizeof(BFsd) * 2) + 1]{};
+        size_t h_len = sizeof(BFsd_hex);
+        hex::encode(BFsd, sizeof(BFsd), BFsd_hex, h_len);
+
+        assertx(strcmp(BFsd_hex, "24C0004020043000102012743E004800"
+                                 "37110820422110008000C0E302854835"
+                                 "A05401A4045021302A306C0600018810"
+                                 "02D8A0A3A8001901B40A800900310008"
+                                 "D2108110C2496A0028700010D804188B"
+                                 "01415200082004088026411104A80404"
+                                 "8002002000080680828C400080CC4002"
+                                 "0C042C0494447280928041402104080D"
+                                 "4240040414A41F0205654800B0811830"
+                                 "D2020042B002C5800004A71D0204804A"
+                                 "0028120A004C10017801490B83400404"
+                                 "4106005421000C86900A002050020351"
+                                 "0060144E900100924A1018141A028012"
+                                 "913F0041802250042280481200002004"
+                                 "430804210101C08111C1080100108000"
+                                 "2038008211004266848606B035001048") == 0);
+
+        char BFpe[256]{};
+        const char BFpe_zero[sizeof(BFpe)]{};
+        if (!bencode::d::pair(d, "BFpe", BFpe)) {
+          return false;
+        }
+        assertx(memcmp(BFpe, BFpe_zero, sizeof(BFpe)) == 0);
+        return true;
+      });
+    };
+
+    krpc::ParseContext response_ctx(dom, dht, out);
+    ASSERT_TRUE(krpc::d::krpc(response_ctx, f_resp));
+    ASSERT_EQ(dummy, 1);
+  }
 }
 
 TEST(krpc2Test, get_peers2) {
@@ -155,16 +271,23 @@ TEST(krpc2Test, find_node2) {
   sp::Buffer in(raw_in);
   {
 
-    const char hex[] =
-        "64313a7264323a696432303a61c58ef52d9f57f311e954e50a2eea97b2a30ca4323a69"
-        "70343a51e8520d353a6e6f6465733230383a61c5187c2acd7c756d4fbdb034afe3e3cb"
-        "0992745518b8b4c8d560a2c9fc1e7377d33891183965283e4be6c2578d512315413b3d"
-        "6439c5d2658e07471916c9b0b8a8a0dea7d525c5d93dc3641ae965454ca4595f382702"
-        "aecefda2b40afe1659532658e649482fab6f69798cf4949c79f57a72a5a9f2892130b1"
-        "9398484f0cdaeded6e2b5711c5af78cd9b0dbd1ed99cf6ec184828de5b7957bdd7476a"
-        "83b658a95c566924010f2ec0591ac0027cec6d3ed2c83dd75b6b966a083538b4722a5b"
-        "f404641af694a5a5354a5beaf801272465313a74343a6569cbef313a76343a4c54000f"
-        "313a79313a7265";
+    const char hex[] = "64313a7264323a696432303a61c58ef52d9f57f311e954e50a2ee"
+                       "a97b2a30ca4323a69"
+                       "70343a51e8520d353a6e6f6465733230383a61c5187c2acd7c756"
+                       "d4fbdb034afe3e3cb"
+                       "0992745518b8b4c8d560a2c9fc1e7377d33891183965283e4be6c"
+                       "2578d512315413b3d"
+                       "6439c5d2658e07471916c9b0b8a8a0dea7d525c5d93dc3641ae96"
+                       "5454ca4595f382702"
+                       "aecefda2b40afe1659532658e649482fab6f69798cf4949c79f57"
+                       "a72a5a9f2892130b1"
+                       "9398484f0cdaeded6e2b5711c5af78cd9b0dbd1ed99cf6ec18482"
+                       "8de5b7957bdd7476a"
+                       "83b658a95c566924010f2ec0591ac0027cec6d3ed2c83dd75b6b9"
+                       "66a083538b4722a5b"
+                       "f404641af694a5a5354a5beaf801272465313a74343a6569cbef3"
+                       "13a76343a4c54000f"
+                       "313a79313a7265";
     in.length = sizeof(raw_in);
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
     {
@@ -246,16 +369,23 @@ TEST(krpc2Test, xxx) {
   sp::Buffer in(raw_in);
   {
 
-    const char hex[] =
-        "64323a6970363a51e8520d2710313a7264323a696432303ad21c8aa750c01a84954d63"
-        "8248ba380efebc0b1f353a6e6f6465733230383afad6db7f51f9be60df5bfa7047c006"
-        "7f2377ff1cde63bd1b1ae1fee6fa771f5f24b9fa2de243518404abf644f8fd5f254fdf"
-        "7f0af037119ad3819ebe92e221c72f81807f189971f3c372884549bbf2aee88fcdbcba"
-        "2fe1782245af10c34fd2bee8814f941eba612af2ef1b82ddfdc69d83554875cd9ce537"
-        "81e3dd0263cb1634be1ae8c55014db730f7f1789b420c607ddfb6ab445f4b25b3d4fe2"
-        "f4eee4bb604902811780a8768c511517436950916bd918e246fccce23c8e1c9c2e1201"
-        "0530efda45e474e57c84692967f9e50f1ae165313a74343a05450000313a79313a726"
-        "5";
+    const char hex[] = "64323a6970363a51e8520d2710313a7264323a696432303ad21c8"
+                       "aa750c01a84954d63"
+                       "8248ba380efebc0b1f353a6e6f6465733230383afad6db7f51f9b"
+                       "e60df5bfa7047c006"
+                       "7f2377ff1cde63bd1b1ae1fee6fa771f5f24b9fa2de243518404a"
+                       "bf644f8fd5f254fdf"
+                       "7f0af037119ad3819ebe92e221c72f81807f189971f3c37288454"
+                       "9bbf2aee88fcdbcba"
+                       "2fe1782245af10c34fd2bee8814f941eba612af2ef1b82ddfdc69"
+                       "d83554875cd9ce537"
+                       "81e3dd0263cb1634be1ae8c55014db730f7f1789b420c607ddfb6"
+                       "ab445f4b25b3d4fe2"
+                       "f4eee4bb604902811780a8768c511517436950916bd918e246fcc"
+                       "ce23c8e1c9c2e1201"
+                       "0530efda45e474e57c84692967f9e50f1ae165313a74343a05450"
+                       "000313a79313a726"
+                       "5";
     in.length = sizeof(raw_in);
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));
     {
@@ -351,13 +481,20 @@ TEST(krpc2Test, get_peers3) {
         // "5e41e978c100363a6e36ec03cd2a363abd7fdcd13d65363abb545f7e53466565313a74"
         // "343a6468d087313a76353a417a07d0a1313a79313a7265";
 
-        "64313a7264323a696432303a629a57a2325faeeda065ea8c04b7bc01260ccdde353a6e"
-        "6f6465733230383a629a5f6aafe901520730e7791010aaabf1169d1a1f0f8a77c8d562"
-        "9a5db13c63cb6f9bbd94caa782cbd4bdebd2495b4d1d82b193629a5f5c69b338738f3c"
-        "e2db60f190a9ab2ebb0e1f84ae860800629a5f58e37abadb0746f3a4971641bc87e154"
-        "fe696268518fb2629a58cf134ca83b7f57090c252af23837c50981cbdd9d8232b1629a"
-        "5addb2ed0750399c181d7665eb2bd78943cc86f9587e65e5629a5f963ab5fc33d8b999"
-        "a2fb4169338049cd69598b5b55b7ab629a58da003a6371c54f135c59640c5e7b511d61"
+        "64313a7264323a696432303a629a57a2325faeeda065ea8c04b7bc01260ccdde353a"
+        "6e"
+        "6f6465733230383a629a5f6aafe901520730e7791010aaabf1169d1a1f0f8a77c8d5"
+        "62"
+        "9a5db13c63cb6f9bbd94caa782cbd4bdebd2495b4d1d82b193629a5f5c69b338738f"
+        "3c"
+        "e2db60f190a9ab2ebb0e1f84ae860800629a5f58e37abadb0746f3a4971641bc87e1"
+        "54"
+        "fe696268518fb2629a58cf134ca83b7f57090c252af23837c50981cbdd9d8232b162"
+        "9a"
+        "5addb2ed0750399c181d7665eb2bd78943cc86f9587e65e5629a5f963ab5fc33d8b9"
+        "99"
+        "a2fb4169338049cd69598b5b55b7ab629a58da003a6371c54f135c59640c5e7b511d"
+        "61"
         "cbcd1d82760165313a74343a6475156e313a79313a7265";
     in.length = sizeof(raw_in);
     ASSERT_TRUE(hex::decode(hex, raw_in, in.length));

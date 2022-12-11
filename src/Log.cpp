@@ -240,6 +240,18 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
   bencode_print(copy);
   bencode_print_out(stdout);
 }
+
+void
+invalid_node_id(dht::MessageContext &ctx, const dht::NodeId &id) noexcept {
+  print_time(ctx);
+  fprintf(stderr, "invalid node id[");
+  dht::print_hex(id.id, sizeof(id.id));
+  fprintf(stderr, "]\n");
+}
+
+void
+self_sender(dht::MessageContext &ctx) noexcept {
+}
 } // namespace parse
 
 } // namespace receive

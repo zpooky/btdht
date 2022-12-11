@@ -32,6 +32,10 @@ get_peers(sp::Buffer &, const Transaction &, const dht::NodeId &,
           const dht::Infohash &, bool n4, bool n6) noexcept;
 
 bool
+get_peers_scrape(sp::Buffer &, const Transaction &, const dht::NodeId &,
+                 const dht::Infohash &, bool n4, bool n6, bool scrape) noexcept;
+
+bool
 announce_peer(sp::Buffer &, const Transaction &, const dht::NodeId &self,
               bool implied_port, const dht::Infohash &, Port port,
               const dht::Token &) noexcept;

@@ -63,6 +63,12 @@ namespace parse {
 void
 error(dht::DHT &, const sp::Buffer &, const char *msg) noexcept;
 
+void
+invalid_node_id(dht::MessageContext &ctx, const dht::NodeId &id) noexcept;
+
+void
+self_sender(dht::MessageContext &ctx) noexcept;
+
 } // namespace parse
 } // namespace receive
 
@@ -114,7 +120,7 @@ get_peers_response_timeout(dht::DHT &, const krpc::Transaction &,
 
 void
 sample_infohashes_response_timeout(dht::DHT &, const krpc::Transaction &,
-                                    Timestamp) noexcept;
+                                   Timestamp) noexcept;
 } // namespace error
 } // namespace transmit
 

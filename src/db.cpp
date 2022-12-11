@@ -110,7 +110,7 @@ mint_token(dht::DHT &self, const Contact &remote, dht::Token &t) noexcept {
 
 //=====================================
 bool
-valid(dht::DHT &self, dht::Node &node, const dht::Token &token) noexcept {
+is_valid_token(dht::DHT &self, dht::Node &node, const dht::Token &token) noexcept {
   if (is_valid(token)) {
     dht::Token cmp = ee(self.db.key[1], node.contact);
     if (cmp == token) {

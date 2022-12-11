@@ -357,17 +357,19 @@ handle_ip_election(dht::MessageContext &ctx, const dht::NodeId &) noexcept {
 }
 
 template <typename F>
-static void
+static bool
 message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
   dht::DHT &self = ctx.dht;
 
   if (!dht::is_valid(sender)) {
-    return;
+    logger::receive::parse::invalid_node_id(ctx, sender);
+    return false;
   }
 
   /*request from self*/
   if (self.id == sender.id) {
-    return;
+    logger::receive::parse::self_sender(ctx);
+    return false;
   }
 
   if (ctx.domain == dht::Domain::Domain_private) {
@@ -376,7 +378,7 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
   } else {
     assertx(ctx.remote.port != 0);
     if (dht::is_blacklisted(self, ctx.remote)) {
-      return;
+      return true;
     }
 
     dht::Node *contact = dht_activity(ctx, sender);
@@ -395,7 +397,7 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
     }
   }
 
-  return;
+  return true;
 }
 
 static void
@@ -853,22 +855,32 @@ setup(dht::Module &module) noexcept {
 // get_peers
 //===========================================================
 namespace get_peers {
-// TODO test
 template <int SIZE>
 static void
 bloomfilter_insert(uint8_t (&bloom)[SIZE], const Ip &ip) noexcept {
   const int m = SIZE * 8;
   uint8_t hash[20]{0};
-  SHA1_CTX ctx;
+  SHA1_CTX ctx{};
 
   SHA1Init(&ctx);
 
   if (ip.type == IpType::IPV4) {
-    const void *raw = (const void *)&ip.ipv4;
-    SHA1Update(&ctx, (const uint8_t *)raw, (uint32_t)sizeof(ip.ipv4));
+    Ipv4 ipv4 = ip.ipv4;
+    unsigned char c0 = (ipv4 & (uint32_t(0xff) << 24)) >> 24;
+    unsigned char c1 = (ipv4 & (uint32_t(0xff) << 16)) >> 16;
+    unsigned char c2 = (ipv4 & (uint32_t(0xff) << 8)) >> 8;
+    unsigned char c3 = (ipv4 & (0xff));
+    // printf("%d.%d.%d.%d\n", c0, c1, c2, c3);
+    SHA1Update(&ctx, &c0, 1);
+    SHA1Update(&ctx, &c1, 1);
+    SHA1Update(&ctx, &c2, 1);
+    SHA1Update(&ctx, &c3, 1);
+    // const void *raw = (const void *)&ip.ipv4;
+    // SHA1Update(&ctx, (const uint8_t *)raw, (uint32_t)sizeof(ip.ipv4));
   } else {
-    const void *raw = (const void *)&ip.ipv6.raw;
-    SHA1Update(&ctx, (const uint8_t *)raw, (uint32_t)sizeof(ip.ipv6));
+    assertx(false);
+    // const void *raw = (const void *)&ip.ipv6.raw;
+    // SHA1Update(&ctx, (const uint8_t *)raw, (uint32_t)sizeof(ip.ipv6));
   }
   SHA1Final(hash, &ctx);
 
@@ -884,9 +896,9 @@ bloomfilter_insert(uint8_t (&bloom)[SIZE], const Ip &ip) noexcept {
 }
 
 static void
-handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
-               const dht::Infohash &search, sp::maybe<bool> mnoseed,
-               bool scrape, bool n4, bool n6) noexcept {
+handle_get_peers_request(dht::MessageContext &ctx, const dht::NodeId &id,
+                         const dht::Infohash &search, sp::maybe<bool> m_noseed,
+                         bool scrape, bool n4, bool n6) noexcept {
   logger::receive::req::get_peers(ctx);
 
   message(ctx, id, [&](auto &) {
@@ -911,18 +923,18 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &id,
           }
         });
 
-        krpc::response::get_peers_scrape(ctx.out, t, dht.id, token, peers,
-                                         seeds);
+        krpc::response::get_peers_scrape(ctx.out, t, dht.id, token, seeds,
+                                         peers);
         return;
       }
     } else {
       if (result) {
         clear(dht.recycle_contact_list);
         auto &filtered = dht.recycle_contact_list;
-        for_each(result->peers, [&filtered, &mnoseed](const dht::Peer &cur) {
-          if (mnoseed) {
-            if ((cur.seed == false && mnoseed.get() == true) ||
-                (cur.seed == true && mnoseed.get() == false)) {
+        for_each(result->peers, [&filtered, &m_noseed](const dht::Peer &cur) {
+          if (m_noseed) {
+            if ((cur.seed == false && m_noseed.get() == true) ||
+                (cur.seed == true && m_noseed.get() == false)) {
               insert(filtered, cur.contact);
             }
           } else {
@@ -1161,7 +1173,7 @@ on_request(dht::MessageContext &ctx) noexcept {
       n4 = true;
     }
 
-    handle_request(ctx, id, infohash, noseed, scrape, n4, n6);
+    handle_get_peers_request(ctx, id, infohash, noseed, scrape, n4, n6);
     return true;
   });
 } // get_peers::on_request
@@ -1178,14 +1190,16 @@ setup(dht::Module &module) noexcept {
 //===========================================================
 namespace announce_peer {
 static void
-handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
-               bool implied_port, const dht::Infohash &infohash, Port port,
-               const dht::Token &token, bool seed, const char *name) noexcept {
+handle_announce_peer_request(dht::MessageContext &ctx,
+                             const dht::NodeId &sender, bool implied_port,
+                             const dht::Infohash &infohash, Port port,
+                             const dht::Token &token, bool seed,
+                             const char *name) noexcept {
   logger::receive::req::announce_peer(ctx);
 
   dht::DHT &dht = ctx.dht;
   message(ctx, sender, [&](auto &from) {
-    if (db::valid(dht, from, token)) {
+    if (db::is_valid_token(dht, from, token)) {
       Contact peer(ctx.remote);
       if (implied_port || port == 0) {
         peer.port = ctx.remote.port;
@@ -1311,8 +1325,8 @@ on_request(dht::MessageContext &ctx) noexcept {
       name_abr[127] = '\0';
     }
 
-    handle_request(ctx, id, implied_port, infohash, port, token, seed,
-                   name_abr);
+    handle_announce_peer_request(ctx, id, implied_port, infohash, port, token,
+                                 seed, name_abr);
     return true;
   });
 }

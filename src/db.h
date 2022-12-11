@@ -19,7 +19,7 @@ mint_token(dht::DHT &, const Contact &, dht::Token &) noexcept;
 
 //=====================================
 bool
-valid(dht::DHT &, dht::Node &, const dht::Token &) noexcept;
+is_valid_token(dht::DHT &, dht::Node &, const dht::Token &) noexcept;
 
 //=====================================
 Timestamp

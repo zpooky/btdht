@@ -79,6 +79,40 @@ request::get_peers(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
 }
 
 bool
+request::get_peers_scrape(sp::Buffer &buf, const Transaction &t,
+                          const dht::NodeId &id, const dht::Infohash &infohash,
+                          bool n4, bool n6, bool scrape) noexcept {
+  return req(buf, t, "get_peers",
+             [id, infohash, n4, n6, scrape](sp::Buffer &b) { //
+               if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
+                 return false;
+               }
+
+               if (!bencode::e::pair(b, "info_hash", infohash.id,
+                                     sizeof(infohash.id))) {
+                 return false;
+               }
+               sp::UinStaticArray<std::string, 2> want;
+               if (n4) {
+                 insert(want, "n4");
+               }
+
+               if (n6) {
+                 insert(want, "n6");
+               }
+
+               if (!sp::bencode::e<sp::Buffer>::pair(b, "want", want)) {
+                 return false;
+               }
+
+               if (!sp::bencode::e<sp::Buffer>::pair(b, "scrape", scrape)) {
+                 return false;
+               }
+               return true;
+             });
+}
+
+bool
 request::announce_peer(sp::Buffer &buffer, const Transaction &t,
                        const dht::NodeId &self, bool implied_port,
                        const dht::Infohash &infohash, Port port,
@@ -230,11 +264,13 @@ response::get_peers_scrape(sp::Buffer &buf, const Transaction &t,
       return false;
     }
 
-    if (!bencode::e::pair(b, "BFsd", seeds)) {
+    const sp::byte *BFsd = seeds;
+    if (!bencode::e::pair(b, "BFsd", BFsd, 256)) {
       return false;
     }
 
-    if (!bencode::e::pair(b, "BFpe", peers)) {
+    const sp::byte *BFpe = peers;
+    if (!bencode::e::pair(b, "BFpe", BFpe, 256)) {
       return false;
     }
 
