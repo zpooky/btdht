@@ -179,7 +179,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
 #else
 static bool
 for_if_send(dht::DHT &self, const sp::Seconds &) noexcept {
-  char aLanAddr[64];
+  char aLanAddr[64] = {};
   char pPort[16] = {};
   bool result = false;
   struct UPNPUrls upnp_urls = {};
@@ -202,7 +202,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &) noexcept {
                                   sizeof(aLanAddr));
     printf("status=%d, lan_addr=%s\n", status, aLanAddr);
 
-    if (status == 1) {
+    if (status == 1 || status == 2) {
       printf("found valid IGD: %s\n", upnp_urls.controlURL);
       error = UPNP_AddPortMapping(
           upnp_urls.controlURL, upnp_data.first.servicetype,
