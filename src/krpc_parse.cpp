@@ -141,7 +141,7 @@ krpc::parse_ping_request(dht::MessageContext &ctx, krpc::PingRequest &out) {
     }
 
     logger::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
-    return false;
+    return false; // TODO return true?
   });
 }
 
@@ -177,7 +177,7 @@ krpc::parse_ping_response(dht::MessageContext &ctx, krpc::PingResponse &out) {
     }
 
     logger::receive::parse::error(ctx.dht, p, "'ping' response missing 'id'");
-    return false;
+    return false; // TODO return true?
   });
 }
 
@@ -221,7 +221,7 @@ krpc::parse_find_node_request(dht::MessageContext &ctx,
     if (!(b_id && b_t)) {
       const char *msg = "'find_node' request missing 'id' or 'target'";
       logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
+      return false; // TODO return true?
     }
 
     if (!b_want) {
@@ -300,7 +300,7 @@ krpc::parse_find_node_response(dht::MessageContext &ctx,
     if (!(b_id)) {
       const char *msg = "'find_node' response missing 'id'";
       logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
+      return false; // TODO return true?
     }
 
     return true;
@@ -362,7 +362,7 @@ krpc::parse_get_peers_request(dht::MessageContext &ctx,
     if (!(b_id && b_ih)) {
       const char *msg = "'get_peers' request missing 'id' or 'info_hash'";
       logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
+      return false; // TODO return true?
     }
 
     if (!b_want) {
@@ -445,7 +445,7 @@ krpc::parse_get_peers_response(dht::MessageContext &ctx,
     const char *msg = "'get_peers' response missing 'id' and 'token' or "
                       "('nodes' or 'values')";
     logger::receive::parse::error(ctx.dht, p, msg);
-    return false;
+    return false; // TODO return true?
   });
 }
 
@@ -502,7 +502,7 @@ krpc::parse_announce_peer_request(dht::MessageContext &ctx,
       const char *msg =
           "'announce_peer' request missing 'id' or 'info_hash' or 'token'";
       logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
+      return false; // TODO return true?
     }
 
     return true;
@@ -528,7 +528,7 @@ krpc::parse_announce_peer_response(dht::MessageContext &ctx,
     if (!(b_id)) {
       const char *msg = "'announce_peer' response missing 'id'";
       logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
+      return false; // TODO return true?
     }
 
     return true;

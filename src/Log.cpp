@@ -211,15 +211,20 @@ known_tx(dht::MessageContext &ctx) noexcept {
 }
 
 void
-unknown_tx(dht::MessageContext &ctx, const sp::Buffer &) noexcept {
+unknown_tx(dht::MessageContext &ctx, const sp::Buffer &in) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.unknown_tx;
+  auto f = stderr;
 
   print_time(ctx);
-  printf("unknow transaction[");
+  fprintf(f, "unknow transaction[");
   auto &tx = ctx.transaction;
-  dht::print_hex(stdout, tx.id, tx.length);
-  printf("]\n");
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "]\n");
+
+  if (!bencode_print(in)) {
+    hex::encode_print(in.raw, in.length, stderr);
+  }
 }
 } // namespace res
 
