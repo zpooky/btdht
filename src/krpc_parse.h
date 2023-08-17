@@ -68,6 +68,32 @@ bool
 parse_get_peers_response(dht::MessageContext &ctx, GetPeersResponse &out);
 
 // ========================================
+struct AnnouncePeerRequest {
+  dht::NodeId id;
+  bool implied_port = false;
+  dht::Infohash infohash;
+  Port port = 0;
+  dht::Token token;
+  // According to BEP-33 if "seed" is omitted we assume it is a peer not a
+  // seed
+  bool seed = false;
+
+  const char *name = nullptr;
+  size_t name_len = 0;
+};
+
+struct AnnouncePeerResponse {
+  dht::NodeId id;
+};
+
+bool
+parse_announce_peer_request(dht::MessageContext &ctx, AnnouncePeerRequest &out);
+
+bool
+parse_announce_peer_response(dht::MessageContext &ctx,
+                             AnnouncePeerResponse &out);
+
+// ========================================
 
 } // namespace krpc
 

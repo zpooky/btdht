@@ -900,7 +900,7 @@ setup(dht::Module &module) noexcept {
 
 //===========================================================
 namespace announce_peer {
-static void
+static bool
 handle_announce_peer_request(dht::MessageContext &ctx,
                              const dht::NodeId &sender, bool implied_port,
                              const dht::Infohash &infohash, Port port,
@@ -926,6 +926,8 @@ handle_announce_peer_request(dht::MessageContext &ctx,
                             krpc::Error::protocol_error, msg);
     }
   });
+
+  return true;
 }
 
 static bool
@@ -941,107 +943,28 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
-    dht::NodeId id;
-    bool b_id = false;
-
-  Lstart:
-    if (bencode::d::pair(p, "id", id.id)) {
-      b_id = true;
-      goto Lstart;
-    }
-
-    if (bencode_any(p, "announce_peer resp")) {
-      goto Lstart;
-    }
-
-    if (!(b_id)) {
-      const char *msg = "'announce_peer' response missing 'id'";
-      logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
-    }
-
-    handle_response(ctx, id);
-    return true;
-  });
+  krpc::AnnouncePeerResponse res;
+  if (krpc::parse_announce_peer_response(ctx, res)) {
+    return handle_response(ctx, res.id);
+  }
+  return false;
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
-    bool b_id = false;
-    bool b_ip = false;
-    bool b_ih = false;
-    bool b_p = false;
-    bool b_t = false;
-    bool b_s = false;
-    bool b_n = false;
-
-    dht::NodeId id;
-    bool implied_port = false;
-    dht::Infohash infohash;
-    Port port = 0;
-    dht::Token token;
-    // According to BEP-33 if "seed" is omitted we assume it is a peer not a
-    // seed
-    bool seed = false;
-
-    const char *name = nullptr;
-    size_t name_len = 0;
-
-  Lstart:
-    if (!b_id && bencode::d::pair(p, "id", id.id)) {
-      b_id = true;
-      goto Lstart;
-    }
-    // optional
-    if (!b_ip && bencode::d::pair(p, "implied_port", implied_port)) {
-      b_ip = true;
-      goto Lstart;
-    }
-    if (!b_ih && bencode::d::pair(p, "info_hash", infohash.id)) {
-      b_ih = true;
-      goto Lstart;
-    }
-    if (!b_p && bencode::d::pair(p, "port", port)) {
-      b_p = true;
-      goto Lstart;
-    }
-    if (!b_t && bencode::d::pair(p, "token", token)) {
-      b_t = true;
-      goto Lstart;
-    }
-    if (!b_s && bencode::d::pair(p, "seed", seed)) {
-      b_s = true;
-      goto Lstart;
-    }
-
-    if (!b_n && bencode::d::pair_value_ref(p, "name", name, name_len)) {
-      b_n = true;
-      goto Lstart;
-    }
-
-    if (bencode_any(p, "announce_peer req")) {
-      goto Lstart;
-    }
-
-    if (!(b_id && b_ih && b_t)) {
-      const char *msg =
-          "'announce_peer' request missing 'id' or 'info_hash' or 'token'";
-      logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
-    }
-
+  krpc::AnnouncePeerRequest req;
+  if (krpc::parse_announce_peer_request(ctx, req)) {
     char name_abr[128]{'\0'};
-    if (name) {
-      memcpy(name_abr, name, std::min(name_len, sizeof(name_abr)));
+    if (req.name) {
+      memcpy(name_abr, req.name, std::min(req.name_len, sizeof(name_abr)));
       name_abr[127] = '\0';
     }
 
-    handle_announce_peer_request(ctx, id, implied_port, infohash, port, token,
-                                 seed, name_abr);
-    return true;
-  });
+    return handle_announce_peer_request(ctx, req.id, req.implied_port,
+                                        req.infohash, req.port, req.token,
+                                        req.seed, name_abr);
+  }
+  return false;
 }
 
 void

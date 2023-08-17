@@ -450,3 +450,89 @@ krpc::parse_get_peers_response(dht::MessageContext &ctx,
 }
 
 // ========================================
+bool
+krpc::parse_announce_peer_request(dht::MessageContext &ctx,
+                                  krpc::AnnouncePeerRequest &out) {
+  return bencode::d::dict(ctx.in, [&ctx, &out](auto &p) {
+    bool b_id = false;
+    bool b_ip = false;
+    bool b_ih = false;
+    bool b_p = false;
+    bool b_t = false;
+    bool b_s = false;
+    bool b_n = false;
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
+      b_id = true;
+      goto Lstart;
+    }
+    // optional
+    if (!b_ip && bencode::d::pair(p, "implied_port", out.implied_port)) {
+      b_ip = true;
+      goto Lstart;
+    }
+    if (!b_ih && bencode::d::pair(p, "info_hash", out.infohash.id)) {
+      b_ih = true;
+      goto Lstart;
+    }
+    if (!b_p && bencode::d::pair(p, "port", out.port)) {
+      b_p = true;
+      goto Lstart;
+    }
+    if (!b_t && bencode::d::pair(p, "token", out.token)) {
+      b_t = true;
+      goto Lstart;
+    }
+    if (!b_s && bencode::d::pair(p, "seed", out.seed)) {
+      b_s = true;
+      goto Lstart;
+    }
+
+    if (!b_n && bencode::d::pair_value_ref(p, "name", out.name, out.name_len)) {
+      b_n = true;
+      goto Lstart;
+    }
+
+    if (bencode_any(p, "announce_peer req")) {
+      goto Lstart;
+    }
+
+    if (!(b_id && b_ih && b_t)) {
+      const char *msg =
+          "'announce_peer' request missing 'id' or 'info_hash' or 'token'";
+      logger::receive::parse::error(ctx.dht, p, msg);
+      return false;
+    }
+
+    return true;
+  });
+}
+
+bool
+krpc::parse_announce_peer_response(dht::MessageContext &ctx,
+                                   krpc::AnnouncePeerResponse &out) {
+  return bencode::d::dict(ctx.in, [&ctx, &out](auto &p) { //
+    bool b_id = false;
+
+  Lstart:
+    if (bencode::d::pair(p, "id", out.id.id)) {
+      b_id = true;
+      goto Lstart;
+    }
+
+    if (bencode_any(p, "announce_peer resp")) {
+      goto Lstart;
+    }
+
+    if (!(b_id)) {
+      const char *msg = "'announce_peer' response missing 'id'";
+      logger::receive::parse::error(ctx.dht, p, msg);
+      return false;
+    }
+
+    return true;
+  });
+}
+
+// ========================================
