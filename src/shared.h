@@ -439,6 +439,9 @@ struct StatTrafic {
   std::size_t error;
 
   StatTrafic() noexcept;
+
+  virtual ~StatTrafic() {
+  }
 };
 
 struct StatDirection {
@@ -450,6 +453,8 @@ struct StatDirection {
   std::size_t parse_error;
 
   StatDirection() noexcept;
+  virtual ~StatDirection() {
+  }
 };
 
 struct Stat {
@@ -460,6 +465,8 @@ struct Stat {
   std::size_t unknown_tx;
 
   Stat() noexcept;
+  virtual ~Stat() {
+  }
 };
 
 //=====================================

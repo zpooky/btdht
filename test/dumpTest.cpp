@@ -12,7 +12,7 @@ rand_contact(prng::xorshift32 &r) {
 
 TEST(dumpTest, test_hex) {
   sp::byte buf[1] = {'\0'};
-  dht::print_hex(buf, sizeof(buf));
+  dht::print_hex(stdout,buf, sizeof(buf));
   // hex::enc
 }
 

@@ -516,10 +516,10 @@ from_hex(dht::Infohash &id, const char *b) noexcept {
 }
 
 void
-print_hex(const Infohash &ih) noexcept {
+print_hex(FILE *f, const Infohash &ih) noexcept {
   char out[(sizeof(ih.id) * 2) + 1] = {0};
   assertx_n(hex::encode(ih.id, sizeof(ih.id), out));
-  printf("%s\n", out);
+  fprintf(f,"%s\n", out);
 }
 
 bool
@@ -667,14 +667,14 @@ print_id(const NodeId &id, std::size_t color, const char *c) noexcept {
 }
 
 void
-print_hex(const NodeId &id) noexcept {
+print_hex(FILE *f, const NodeId &id) noexcept {
   char out[41] = {0};
   assertx_n(hex::encode(id.id, sizeof(id.id), out));
-  printf("%s\n", out);
+  fprintf(f, "%s\n", out);
 }
 
 void
-print_hex(const sp::byte *arr, std::size_t length, FILE *f) {
+print_hex(FILE *f, const sp::byte *arr, std::size_t length) {
   const sp::byte *it = arr;
   const sp::byte *const end = it + length;
   char buf[257] = {'\0'};
@@ -707,8 +707,8 @@ print_hex(const sp::byte *arr, std::size_t length, FILE *f) {
 }
 
 void
-print_hex(const krpc::Transaction &tx) {
-  print_hex(tx.id, tx.length);
+print_hex(FILE *f, const krpc::Transaction &tx) {
+  print_hex(f, tx.id, tx.length);
 }
 
 bool

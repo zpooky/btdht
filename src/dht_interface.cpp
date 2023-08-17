@@ -9,9 +9,11 @@
 #include "decode_bencode.h"
 #include "dht.h"
 #include "krpc.h"
+#include "krpc_parse.h"
 #include "search.h"
 #include "timeout.h"
 #include "transaction.h"
+
 #include <sha1.h>
 
 #include <algorithm>
@@ -288,8 +290,8 @@ static Timestamp
 on_awake(DHT &dht, sp::Buffer &out) noexcept {
   Timestamp result(dht.now + dht.config.refresh_interval);
 
-  auto percentage = [](std::uint32_t t, std::uint32_t c) -> std::size_t {
-    return std::size_t(c) / std::size_t(t / std::size_t(100));
+  auto percentage = [](std::uint32_t t, std::uint32_t c) {
+    return double(c) / double(t / .100);
   };
 
   auto good = nodes_good(dht);
@@ -299,12 +301,12 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
   const auto cur = percentage(all, good);
   printf("good[%u], total[%u], bad[%u], look_for[%u], "
          "config.seek[%zu%s], "
-         "cur[%zu%s], max[%u], dht.root[%zd], bootstraps[%zu]\n",
+         "cur[%.2f%s], max[%u], dht.root[%zd], bootstraps[%zu]\n",
          good, nodes_total(dht), nodes_bad(dht), look_for, //
          dht.config.percentage_seek, "%",                  //
          cur, "%", all, dht.root ? dht.root->depth : 0, length(dht.bootstrap));
 
-  if (cur < dht.config.percentage_seek) {
+  if (cur < (double)dht.config.percentage_seek) {
     // TODO if we can't mint new tx then next should be calculated base on when
     // soonest next tx timesout is so we can directly reuse it. (it should not
     // be the config.refresh_interval of 15min if we are under conf.p_seek)
@@ -406,7 +408,7 @@ print_raw(FILE *f, const char *val, std::size_t len) noexcept {
     fprintf(f, "'%.*s': %zu", int(len), val, len);
   } else {
     fprintf(f, "hex[");
-    dht::print_hex((const sp::byte *)val, len, f);
+    dht::print_hex(f, (const sp::byte *)val, len);
     fprintf(f, "](");
     for (std::size_t i = 0; i < len; ++i) {
       if (ascii::is_printable(val[i])) {
@@ -530,72 +532,20 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
 
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
-    bool b_id = false;
-    bool b_ip = false;
-
-    dht::NodeId sender;
-
-  Lstart:
-    if (!b_id && bencode::d::pair(p, "id", sender.id)) {
-      b_id = true;
-      goto Lstart;
-    }
-
-    {
-      Contact ip;
-      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-        ctx.ip_vote = ip;
-        assertx(bool(ctx.ip_vote));
-        b_ip = true;
-        goto Lstart;
-      }
-    }
-
-    if (bencode_any(p, "ping resp")) {
-      goto Lstart;
-    }
-
-    if (b_id) {
-      return handle_response(ctx, sender);
-    }
-
-    logger::receive::parse::error(ctx.dht, p, "'ping' response missing 'id'");
-    return false;
-  });
+  krpc::PingResponse res;
+  if (krpc::parse_ping_response(ctx, res)) {
+    return handle_response(ctx, res.sender);
+  }
+  return false;
 }
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
-    bool b_id = false;
-    bool b_ip = false;
-
-    dht::NodeId sender;
-
-  Lstart:
-    if (!b_id && bencode::d::pair(p, "id", sender.id)) {
-      b_id = true;
-      goto Lstart;
-    }
-
-    {
-      Contact ip;
-      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-        ctx.ip_vote = ip;
-        assertx(bool(ctx.ip_vote));
-        b_ip = true;
-        goto Lstart;
-      }
-    }
-
-    if (b_id) {
-      return handle_request(ctx, sender);
-    }
-
-    logger::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
-    return false;
-  });
+  krpc::PingRequest req;
+  if (krpc::parse_ping_request(ctx, req)) {
+    return handle_request(ctx, req.sender);
+  }
+  return false;
 }
 
 static void
@@ -618,7 +568,7 @@ setup(dht::Module &module) noexcept {
 // find_node
 //===========================================================
 namespace find_node {
-static void
+static bool
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
                const dht::NodeId &search, bool n4, bool n6) noexcept {
   logger::receive::req::find_node(ctx);
@@ -639,10 +589,12 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
 
     krpc::response::find_node(ctx.out, t, dht.id, n4, nodes4, length4, n6);
   });
+
+  return true;
 } // find_node::handle_request()
 
 template <typename ContactType>
-static void
+static bool
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 /*const sp::list<dht::Node>*/ ContactType &contacts) noexcept {
   static_assert(
@@ -658,6 +610,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
     });
   });
 
+  return true;
 } // find_node::handle_response()
 
 static void
@@ -685,6 +638,7 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
 
 static bool
 on_response(dht::MessageContext &ctx, void *closure) noexcept {
+  krpc::FindNodeResponse res;
   dht::DHT &dht = ctx.dht;
 
   dht::KContact cap_copy;
@@ -698,81 +652,9 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
   }
   handle_response_timeout(ctx.dht, closure);
 
-  return bencode::d::dict(ctx.in, [&ctx, &dht, cap_ptr](auto &p) { //
-    bool b_id = false;
-    bool b_n = false;
-    bool b_p = false;
-    bool b_ip = false;
-    bool b_t = false;
+  if (krpc::parse_find_node_response(ctx, res)) {
 
-    dht::NodeId id;
-    dht::Token token;
-
-    auto &nodes = dht.recycle_id_contact_list;
-    clear(nodes);
-
-    std::uint64_t p_param = 0;
-
-  Lstart:
-    const std::size_t pos = p.pos;
-    if (!b_id && bencode::d::pair(p, "id", id.id)) {
-      b_id = true;
-      goto Lstart;
-    } else {
-      assertx(p.pos == pos);
-    }
-
-    // optional
-    if (!b_n) {
-      clear(nodes);
-      // TODO we parse a node which get 0 as port
-      // - ipv4 = 1148492139,
-      if (bencode::d::nodes(p, "nodes", nodes)) {
-        b_n = true;
-        goto Lstart;
-      } else {
-        assertx(p.pos == pos);
-      }
-    }
-
-    if (!b_t && bencode::d::pair(p, "token", token)) {
-      b_t = true;
-      goto Lstart;
-    } else {
-      assertx(p.pos == pos);
-    }
-
-    // optional
-    if (!b_p && bencode::d::pair(p, "p", p_param)) {
-      b_p = true;
-      goto Lstart;
-    } else {
-      assertx(p.pos == pos);
-    }
-
-    {
-      Contact ip;
-      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-        ctx.ip_vote = ip;
-        assertx(bool(ctx.ip_vote));
-        b_ip = true;
-        goto Lstart;
-      } else {
-        assertx(p.pos == pos);
-      }
-    }
-
-    if (bencode_any(p, "find_node resp")) {
-      goto Lstart;
-    }
-
-    if (!(b_id)) {
-      const char *msg = "'find_node' response missing 'id'";
-      logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
-    }
-
-    if (is_empty(nodes)) {
+    if (is_empty(res.nodes)) {
       if (cap_ptr) {
         if (nodes_good(dht) < 100) {
           /* Only remove bootstrap node if we have gotten some nodes from it */
@@ -781,64 +663,19 @@ on_response(dht::MessageContext &ctx, void *closure) noexcept {
       }
     }
 
-    handle_response(ctx, id, nodes);
-    return true;
-  });
+    return handle_response(ctx, res.id, res.nodes);
+  }
+
+  return false;
 } // find_node::on_response
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
-    bool b_id = false;
-    bool b_t = false;
-    bool b_want = false;
-
-    dht::NodeId id;
-    dht::NodeId target;
-
-    sp::UinStaticArray<std::string, 2> want;
-    bool n4 = false;
-    bool n6 = false;
-
-  Lstart:
-    if (!b_id && bencode::d::pair(p, "id", id.id)) {
-      b_id = true;
-      goto Lstart;
-    }
-    if (!b_t && bencode::d::pair(p, "target", target.id)) {
-      b_t = true;
-      goto Lstart;
-    }
-
-    if (!b_want && bencode_d<sp::Buffer>::pair(p, "want", want)) {
-      b_want = true;
-      for (std::string &w : want) {
-        if (w == "n4") {
-          n4 = true;
-        } else if (w == "n6") {
-          n6 = true;
-        }
-      }
-      goto Lstart;
-    }
-
-    if (bencode_any(p, "find_node req")) {
-      goto Lstart;
-    }
-
-    if (!(b_id && b_t)) {
-      const char *msg = "'find_node' request missing 'id' or 'target'";
-      logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
-    }
-
-    if (!b_want) {
-      n4 = true;
-    }
-
-    handle_request(ctx, id, target, n4, n6);
-    return true;
-  });
+  krpc::FindNodeRequest req;
+  if (krpc::parse_find_node_request(ctx, req)) {
+    return handle_request(ctx, req.id, req.target, req.n4, req.n6);
+  }
+  return false;
 } // find_node::on_request
 
 void

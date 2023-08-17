@@ -141,7 +141,7 @@ Lretry:
   }
   flip(b);
 
-  dht::print_hex(b.raw, b.length, stdout);
+  dht::print_hex(stdout, b.raw, b.length);
   printf("\n");
   bencode_print(b);
   return true;
@@ -511,7 +511,7 @@ Lretry:
         return false;
       }
       printf("id: ");
-      dht::print_hex(id);
+      dht::print_hex(stdout, id);
       if (!bencode::d::pair(p, "interval", interval)) {
         return false;
       }
@@ -541,7 +541,7 @@ Lretry:
       printf("infohash:\n");
       for_each(samples, [](auto &ih) {
         printf("\t");
-        dht::print_hex(ih);
+        dht::print_hex(stdout, ih);
       });
 
       return true;

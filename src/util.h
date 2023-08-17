@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <list/FixedList.h>
 #include <netinet/in.h>
+#include <cstdio>
 #include <util/timeout.h>
 
 using sp::fd;
@@ -240,7 +241,8 @@ struct Transaction {
 
   Transaction &
   operator=(const Transaction &) noexcept;
-  bool operator==(const Transaction &)const noexcept;
+  bool
+  operator==(const Transaction &) const noexcept;
 };
 } // namespace krpc
 
@@ -277,7 +279,7 @@ bool
 from_hex(dht::Infohash &, const char *) noexcept;
 
 void
-print_hex(const Infohash &) noexcept;
+print_hex(FILE *f, const Infohash &) noexcept;
 
 bool
 to_string(const dht::Infohash &, char *buf, size_t) noexcept;
@@ -339,13 +341,13 @@ void
 print_id(const NodeId &, std::size_t color = 0, const char *c = "") noexcept;
 
 void
-print_hex(const NodeId &) noexcept;
+print_hex(FILE *f, const NodeId &) noexcept;
 
 void
-print_hex(const krpc::Transaction &tx);
+print_hex(FILE *f, const krpc::Transaction &tx);
 
 void
-print_hex(const sp::byte *arr, std::size_t length, FILE *f = stdout);
+print_hex(FILE *f, const sp::byte *arr, std::size_t length);
 } // namespace dht
 
 namespace sp {

@@ -31,6 +31,7 @@ spdht_src = files([
   'priv_decode_bencode.cpp',
   'priv_encode_bencode.cpp',
   'priv_krpc.cpp',
+  'krpc_parse.cpp',
   'core.cpp',
 ])
 
