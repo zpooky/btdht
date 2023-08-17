@@ -291,7 +291,7 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
   Timestamp result(dht.now + dht.config.refresh_interval);
 
   auto percentage = [](std::uint32_t t, std::uint32_t c) {
-    return double(c) / double(t / .100);
+    return double(c) / (double(t) / 100.);
   };
 
   auto good = nodes_good(dht);
