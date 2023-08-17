@@ -94,6 +94,22 @@ parse_announce_peer_response(dht::MessageContext &ctx,
                              AnnouncePeerResponse &out);
 
 // ========================================
+struct SampleInfohashesRequest {
+  dht::NodeId sender;
+  dht::Infohash ih;
+};
+
+struct SampleInfohashesResponse {};
+
+bool
+parse_sample_infohashes_request(dht::MessageContext &ctx,
+                                SampleInfohashesRequest &out);
+
+bool
+parse_sample_infohashes_response(dht::MessageContext &ctx,
+                                 SampleInfohashesResponse &out);
+
+// ========================================
 
 } // namespace krpc
 

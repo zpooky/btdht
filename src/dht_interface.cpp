@@ -1051,35 +1051,11 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) { //
-    bool b_id = false;
-    bool b_target = false;
-
-    dht::NodeId sender;
-    dht::Infohash ih;
-
-  Lstart:
-    if (!b_id && bencode::d::pair(p, "id", sender.id)) {
-      b_id = true;
-      goto Lstart;
-    }
-
-    if (!b_target && bencode::d::pair(p, "target", ih.id)) {
-      b_target = true;
-      goto Lstart;
-    }
-
-    if (bencode_any(p, "sample_infohashes req")) {
-      goto Lstart;
-    }
-
-    if (b_id) {
-      return handle_request(ctx, sender, ih);
-    }
-
-    // logger::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
-    return false;
-  });
+  krpc::SampleInfohashesRequest req;
+  if (krpc::parse_sample_infohashes_request(ctx, req)) {
+    return handle_request(ctx, req.sender, req.ih);
+  }
+  return false;
 }
 
 static void

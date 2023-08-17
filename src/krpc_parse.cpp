@@ -536,3 +536,40 @@ krpc::parse_announce_peer_response(dht::MessageContext &ctx,
 }
 
 // ========================================
+bool
+krpc::parse_sample_infohashes_request(dht::MessageContext &ctx,
+                                      krpc::SampleInfohashesRequest &out) {
+
+  return bencode::d::dict(ctx.in, [&out](auto &p) { //
+    bool b_id = false;
+    bool b_target = false;
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", out.sender.id)) {
+      b_id = true;
+      goto Lstart;
+    }
+
+    if (!b_target && bencode::d::pair(p, "target", out.ih.id)) {
+      b_target = true;
+      goto Lstart;
+    }
+
+    if (bencode_any(p, "sample_infohashes req")) {
+      goto Lstart;
+    }
+
+    if (b_id) {
+      return true;
+    }
+
+    // logger::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
+    return false;
+  });
+}
+
+bool
+krpc::parse_sample_infohashes_response(dht::MessageContext &ctx,
+                                       krpc::SampleInfohashesResponse &out);
+
+// ========================================
