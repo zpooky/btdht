@@ -308,3 +308,145 @@ krpc::parse_find_node_response(dht::MessageContext &ctx,
 }
 
 // ========================================
+bool
+krpc::parse_get_peers_request(dht::MessageContext &ctx,
+                              krpc::GetPeersRequest &out) {
+  return bencode::d::dict(ctx.in, [&ctx, &out](auto &p) {
+    bool b_id = false;
+    bool b_ih = false;
+    bool b_ns = false;
+    bool b_sc = false;
+    bool b_want = false;
+
+    sp::UinStaticArray<std::string, 2> want;
+
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
+      b_id = true;
+      goto Lstart;
+    }
+
+    if (!b_ih && bencode::d::pair(p, "info_hash", out.infohash.id)) {
+      b_ih = true;
+      goto Lstart;
+    }
+
+    bool tmp_noseed = false;
+    if (!b_ns && bencode::d::pair(p, "noseed", tmp_noseed)) {
+      b_ns = true;
+      out.noseed = tmp_noseed;
+      goto Lstart;
+    }
+
+    if (!b_sc && bencode::d::pair(p, "scrape", out.scrape)) {
+      b_sc = true;
+      goto Lstart;
+    }
+
+    if (!b_want && bencode_d<sp::Buffer>::pair(p, "want", want)) {
+      b_want = true;
+      for (std::string &w : want) {
+        if (w == "n4") {
+          out.n4 = true;
+        } else if (w == "n6") {
+          out.n6 = true;
+        }
+      }
+      goto Lstart;
+    }
+
+    if (bencode_any(p, "get_peers req")) {
+      goto Lstart;
+    }
+
+    if (!(b_id && b_ih)) {
+      const char *msg = "'get_peers' request missing 'id' or 'info_hash'";
+      logger::receive::parse::error(ctx.dht, p, msg);
+      return false;
+    }
+
+    if (!b_want) {
+      // default:
+      out.n4 = true;
+    }
+
+    return true;
+  });
+}
+
+bool
+krpc::parse_get_peers_response(dht::MessageContext &ctx,
+                               krpc::GetPeersResponse &out) {
+  return bencode::d::dict(ctx.in, [&ctx, &out](auto &p) { //
+    bool b_id = false;
+    bool b_t = false;
+    bool b_n = false;
+    bool b_v = false;
+    // bool b_ip = false;
+
+  Lstart:
+    const std::size_t pos = p.pos;
+    if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
+      b_id = true;
+      goto Lstart;
+    } else {
+      assertx(pos == p.pos);
+    }
+
+    if (!b_t && bencode::d::pair(p, "token", out.token)) {
+      b_t = true;
+      goto Lstart;
+    } else {
+      assertx(pos == p.pos);
+    }
+
+    // XXX
+    // {
+    //   Contact ip;
+    //   if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+    //     ctx.ip_vote = ip;
+    //     assertx(bool(ctx.ip_vote));
+    //     b_ip = true;
+    //     goto Lstart;
+    //   } else {
+    //     assertx(pos == p.pos);
+    //   }
+    // }
+
+    /*closes K nodes*/
+    if (!b_n) {
+      clear(out.nodes);
+      if (bencode::d::nodes(p, "nodes", out.nodes)) {
+        b_n = true;
+        goto Lstart;
+      } else {
+        assertx(pos == p.pos);
+      }
+    }
+
+    if (!b_v) {
+      clear(out.values);
+      if (bencode::d::peers(p, "values", out.values)) {
+        b_v = true;
+        goto Lstart;
+      } else {
+        assertx(pos == p.pos);
+      }
+    }
+
+    if (bencode_any(p, "get_peers resp")) {
+      goto Lstart;
+    }
+
+    if (b_id && b_t && (b_n || b_v)) {
+      return true;
+    }
+
+    const char *msg = "'get_peers' response missing 'id' and 'token' or "
+                      "('nodes' or 'values')";
+    logger::receive::parse::error(ctx.dht, p, msg);
+    return false;
+  });
+}
+
+// ========================================

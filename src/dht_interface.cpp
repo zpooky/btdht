@@ -739,7 +739,7 @@ bloomfilter_insert(uint8_t (&bloom)[SIZE], const Ip &ip) noexcept {
   bloom[index2 / 8] = uint8_t(bloom[index2 / 8] | (0x01 << (index2 % 8)));
 }
 
-static void
+static bool
 handle_get_peers_request(dht::MessageContext &ctx, const dht::NodeId &id,
                          const dht::Infohash &search, sp::maybe<bool> m_noseed,
                          bool scrape, bool n4, bool n6) noexcept {
@@ -806,10 +806,12 @@ handle_get_peers_request(dht::MessageContext &ctx, const dht::NodeId &id,
     krpc::response::get_peers(ctx.out, t, dht.id, token, n4, nodes4, length4,
                               n6);
   });
+
+  return true;
 } // namespace get_peers
 
 template <typename ResultType, typename ContactType>
-static void
+static bool
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
                 const dht::Token &, // XXX store token to used for announce
                 const ResultType /*sp::list<Contact>*/ &result,
@@ -838,6 +840,8 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
       search_insert_result(search, c);
     });
   });
+
+  return true;
 } // namespace get_peers
 
 static void
@@ -852,6 +856,7 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
 
 static bool
 on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
+  krpc::GetPeersResponse res;
   // assertx(searchCtx);
   if (!searchCtx) {
     return true;
@@ -866,160 +871,22 @@ on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
     return true;
   }
 
-  return bencode::d::dict(ctx.in, [&ctx, search](auto &p) { //
-    bool b_id = false;
-    bool b_t = false;
-    bool b_n = false;
-    bool b_v = false;
-    // bool b_ip = false;
+  if (krpc::parse_get_peers_response(ctx, res)) {
+    return handle_response(ctx, res.id, res.token, res.values, res.nodes,
+                           *search);
+  }
 
-    dht::NodeId id;
-    dht::Token token;
-
-    dht::DHT &dht = ctx.dht;
-    auto &nodes = dht.recycle_id_contact_list;
-    clear(nodes);
-
-    auto &values = dht.recycle_contact_list;
-    clear(values);
-
-  Lstart:
-    const std::size_t pos = p.pos;
-    if (!b_id && bencode::d::pair(p, "id", id.id)) {
-      b_id = true;
-      goto Lstart;
-    } else {
-      assertx(pos == p.pos);
-    }
-
-    if (!b_t && bencode::d::pair(p, "token", token)) {
-      b_t = true;
-      goto Lstart;
-    } else {
-      assertx(pos == p.pos);
-    }
-
-    // XXX
-    // {
-    //   Contact ip;
-    //   if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-    //     ctx.ip_vote = ip;
-    //     assertx(bool(ctx.ip_vote));
-    //     b_ip = true;
-    //     goto Lstart;
-    //   } else {
-    //     assertx(pos == p.pos);
-    //   }
-    // }
-
-    /*closes K nodes*/
-    if (!b_n) {
-      clear(nodes);
-      if (bencode::d::nodes(p, "nodes", nodes)) {
-        b_n = true;
-        goto Lstart;
-      } else {
-        assertx(pos == p.pos);
-      }
-    }
-
-    if (!b_v) {
-      clear(values);
-      if (bencode::d::peers(p, "values", values)) {
-        b_v = true;
-        goto Lstart;
-      } else {
-        assertx(pos == p.pos);
-      }
-    }
-
-    if (bencode_any(p, "get_peers resp")) {
-      goto Lstart;
-    }
-
-    if (b_id && b_t && (b_n || b_v)) {
-      handle_response(ctx, id, token, values, nodes, *search);
-      return true;
-    }
-
-    const char *msg = "'get_peers' response missing 'id' and 'token' or "
-                      "('nodes' or 'values')";
-    logger::receive::parse::error(ctx.dht, p, msg);
-    return false;
-  });
+  return false;
 } // get_peers::on_response
 
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
-  return bencode::d::dict(ctx.in, [&ctx](auto &p) {
-    bool b_id = false;
-    bool b_ih = false;
-    bool b_ns = false;
-    bool b_sc = false;
-    bool b_want = false;
-
-    dht::NodeId id;
-    dht::Infohash infohash;
-    sp::maybe<bool> noseed{};
-    bool scrape = false;
-
-    sp::UinStaticArray<std::string, 2> want;
-    bool n4 = false;
-    bool n6 = false;
-
-  Lstart:
-    if (!b_id && bencode::d::pair(p, "id", id.id)) {
-      b_id = true;
-      goto Lstart;
-    }
-
-    if (!b_ih && bencode::d::pair(p, "info_hash", infohash.id)) {
-      b_ih = true;
-      goto Lstart;
-    }
-
-    bool tmp_noseed = false;
-    if (!b_ns && bencode::d::pair(p, "noseed", tmp_noseed)) {
-      b_ns = true;
-      noseed = tmp_noseed;
-      goto Lstart;
-    }
-
-    if (!b_sc && bencode::d::pair(p, "scrape", scrape)) {
-      b_sc = true;
-      goto Lstart;
-    }
-
-    if (!b_want && bencode_d<sp::Buffer>::pair(p, "want", want)) {
-      b_want = true;
-      for (std::string &w : want) {
-        if (w == "n4") {
-          n4 = true;
-        } else if (w == "n6") {
-          n6 = true;
-        }
-      }
-      goto Lstart;
-    }
-
-    if (bencode_any(p, "get_peers req")) {
-      goto Lstart;
-    }
-
-    if (!(b_id && b_ih)) {
-      const char *msg = "'get_peers' request missing 'id' or 'info_hash'";
-      logger::receive::parse::error(ctx.dht, p, msg);
-      return false;
-    }
-
-    if (!b_want) {
-      // default:
-      n4 = true;
-    }
-
-    handle_get_peers_request(ctx, id, infohash, noseed, scrape, n4, n6);
-    return true;
-  });
+  krpc::GetPeersRequest req;
+  if (krpc::parse_get_peers_request(ctx, req)) {
+    return handle_get_peers_request(ctx, req.id, req.infohash, req.noseed,
+                                    req.scrape, req.n4, req.n6);
+  }
+  return false;
 } // get_peers::on_request
 
 void
@@ -1061,13 +928,15 @@ handle_announce_peer_request(dht::MessageContext &ctx,
   });
 }
 
-static void
+static bool
 handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   logger::receive::res::announce_peer(ctx);
 
   message(ctx, sender, [](auto &) { //
 
   });
+
+  return true;
 }
 
 static bool

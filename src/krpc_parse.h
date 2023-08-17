@@ -43,6 +43,31 @@ bool
 parse_find_node_response(dht::MessageContext &ctx, FindNodeResponse &out);
 
 // ========================================
+struct GetPeersRequest {
+  dht::NodeId id;
+  dht::Infohash infohash;
+  sp::maybe<bool> noseed{};
+  bool scrape = false;
+
+  bool n4 = false;
+  bool n6 = false;
+};
+
+struct GetPeersResponse {
+  dht::NodeId id;
+  dht::Token token;
+
+  sp::UinStaticArray<Contact, 256> values;
+  sp::UinStaticArray<dht::IdContact, 256> nodes;
+};
+
+bool
+parse_get_peers_request(dht::MessageContext &ctx, GetPeersRequest &out);
+
+bool
+parse_get_peers_response(dht::MessageContext &ctx, GetPeersResponse &out);
+
+// ========================================
 
 } // namespace krpc
 
