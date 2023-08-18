@@ -173,6 +173,14 @@ rand_nodeId(dht::NodeId &id) {
   }
 }
 
+inline static void
+rand_infohash(dht::Infohash &id) {
+  memset(id.id, 0, sizeof(id.id));
+  for (std::size_t i = 0; i < sizeof(id.id) - 1; ++i) {
+    id.id[i] = (sp::byte)rand();
+  }
+}
+
 static inline void
 transaction(krpc::Transaction &t) {
   memcpy(t.id, "aa", 3);

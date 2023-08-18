@@ -25,6 +25,69 @@ test_response(krpc::ParseContext &ctx, F body) {
   return krpc::d::krpc(ctx, f);
 }
 
+TEST(krpcTest, test_ping_static) {
+  sp::byte b[2048] = {0};
+
+  krpc::Transaction t{"aa"};
+
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, udp, listen, r, sp::now());
+
+  {
+    sp::Buffer buf{b};
+    const char *bencode_req =
+        "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe";
+    ASSERT_TRUE(write(buf, bencode_req, strlen(bencode_req)));
+    sp::flip(buf);
+
+    krpc::PingRequest req;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_ping_request(mctx, req);
+    }));
+
+    dht::NodeId id{"abcdefghij0123456789"};
+
+    ASSERT_TRUE(req.sender == id);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(std::string("ping") == ctx.query);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("q") == ctx.msg_type);
+  }
+  {
+    sp::Buffer buf{b};
+    const char *bencode_res = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t2:aa1:y1:re";
+
+    ASSERT_TRUE(write(buf, bencode_res, strlen(bencode_res)));
+    sp::flip(buf);
+
+    krpc::PingResponse res;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_ping_response(mctx, res);
+    }));
+
+    dht::NodeId id{"mnopqrstuvwxyz123456"};
+
+    ASSERT_TRUE(res.sender == id);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("r") == ctx.msg_type);
+  }
+}
+
 TEST(krpcTest, test_ping) {
   sp::byte b[256] = {0};
 
@@ -79,6 +142,98 @@ TEST(krpcTest, test_ping) {
     ASSERT_TRUE(std::string("r") == ctx.msg_type);
     ASSERT_TRUE(t == ctx.tx);
     ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
+  }
+}
+
+TEST(krpcTest, test_find_node_static) {
+  sp::byte b[2048] = {0};
+
+  krpc::Transaction t{"aa"};
+
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, udp, listen, r, sp::now());
+
+  {
+    sp::Buffer buf{b};
+    const char *bencode_req =
+        "d1:ad2:id20:abcdefghij01234567896:target20:mnopqrstuvwxyz123456e1:q9:"
+        "find_node1:t2:aa1:y1:qe";
+    ASSERT_TRUE(write(buf, bencode_req, strlen(bencode_req)));
+    sp::flip(buf);
+
+    krpc::FindNodeRequest req;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_find_node_request(mctx, req);
+    }));
+
+    dht::NodeId id{"abcdefghij0123456789"};
+    dht::NodeId target{"mnopqrstuvwxyz123456"};
+
+    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.target == target);
+    ASSERT_TRUE(req.n4);
+    ASSERT_FALSE(req.n6);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(std::string("find_node") == ctx.query);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("q") == ctx.msg_type);
+  }
+  {
+    sp::Buffer buf{b};
+    const char *bencode_res = "d1:rd2:id20:0123456789abcdefghij5:nodes26:"
+                              "01234567890123456789abcdefe1:t2:aa1:y1:re";
+
+    ASSERT_TRUE(write(buf, bencode_res, strlen(bencode_res)));
+    sp::flip(buf);
+
+    krpc::FindNodeResponse res;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_find_node_response(mctx, res);
+    }));
+
+    dht::NodeId id{"0123456789abcdefghij"};
+    // dht::Token token{""};
+
+    sp::UinStaticArray<dht::IdContact, 256> nodes;
+    {
+      dht::NodeId c_id{"01234567890123456789"};
+      Contact c_contact;
+
+      char *ipv4 = (char *)&c_contact.ip.ipv4;
+      strcpy(ipv4, "abcd");
+      c_contact.ip.ipv4 = ntohl(c_contact.ip.ipv4);
+
+      c_contact.ip.type = IpType::IPV4;
+
+      char *port = (char *)&c_contact.port;
+      strcpy(port, "ef");
+      c_contact.port = ntohs(c_contact.port);
+
+      dht::IdContact c{c_id, c_contact};
+      insert(nodes, c);
+    }
+
+    ASSERT_TRUE(res.id == id);
+    ASSERT_TRUE(res.token == "");
+    ASSERT_EQ(length(res.nodes), 1);
+    ASSERT_TRUE(res.nodes == nodes);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("r") == ctx.msg_type);
   }
 }
 
@@ -341,12 +496,35 @@ TEST(krpcTest, test_get_peers) {
   transaction(t);
 
   {
-    sp::Buffer buff{b};
+    sp::Buffer buf{b};
 
     dht::Infohash infohash;
-    ASSERT_TRUE(krpc::request::get_peers(buff, t, id, infohash, true, false));
-    sp::flip(buff);
-    // TODO
+    rand_infohash(infohash);
+
+    ASSERT_TRUE(krpc::request::get_peers(buf, t, id, infohash, true, false));
+    sp::flip(buf);
+
+    krpc::GetPeersRequest req;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_get_peers_request(mctx, req);
+    }));
+
+    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.infohash == infohash);
+    ASSERT_FALSE(bool(req.noseed));
+    ASSERT_FALSE(req.scrape);
+    ASSERT_TRUE(req.n4);
+    ASSERT_FALSE(req.n6);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(std::string("get_peers") == ctx.query);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("q") == ctx.msg_type);
   }
   /*response Nodes*/
   {
