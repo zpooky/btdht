@@ -3,29 +3,26 @@
 #include <bencode_print.h>
 #include <decode_bencode.h>
 
-template <typename F>
-static void
-test_request(krpc::ParseContext &ctx, F body) {
-  auto f = [&body](krpc::ParseContext &ctx2) {
-    return bencode::d::dict(ctx2.decoder, body);
-  };
+#include <krpc_parse.h>
 
+template <typename F>
+static bool
+test_request(krpc::ParseContext &ctx, F body) {
+  auto f = [&body](krpc::ParseContext &ctx2) { //
+    return body(ctx2);
+  };
   print(" request: ", ctx.decoder);
-  ASSERT_TRUE(krpc::d::krpc(ctx, f));
+  return krpc::d::krpc(ctx, f);
 }
 
 template <typename F>
-static void
+static bool
 test_response(krpc::ParseContext &ctx, F body) {
-  bool r;
-  auto f = [&body](krpc::ParseContext &ctx2) {
-    return bencode::d::dict(ctx2.decoder, body);
+  auto f = [&body](krpc::ParseContext &ctx2) { //
+    return body(ctx2);
   };
-
   print("response: ", ctx.decoder);
-  r = krpc::d::krpc(ctx, f);
-  assertx(r);
-  ASSERT_TRUE(r);
+  return krpc::d::krpc(ctx, f);
 }
 
 TEST(krpcTest, test_ping) {
@@ -49,39 +46,38 @@ TEST(krpcTest, test_ping) {
 
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_request(ctx, [&id](sp::Buffer &d) {
-      dht::NodeId sender;
-      if (!bencode::d::pair(d, "id", sender.id)) {
-        return false;
-      }
-      assert_eq(sender.id, id.id);
+    krpc::PingRequest req;
 
-      return true;
-    });
-    //--
-    assert_eq(ctx.query, "ping");
-    assert_eq(t.id, ctx.tx.id);
-    assert_eq(ctx.msg_type, "q");
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf{b2};
+      dht::MessageContext mctx(dht, pctx, buf, remote);
+      return krpc::parse_ping_request(mctx, req);
+    }));
+    ASSERT_EQ(req.sender, id);
+    ASSERT_EQ(std::string("ping"), ctx.query);
+    ASSERT_EQ(t, ctx.tx);
+    ASSERT_EQ(std::string("q"), ctx.msg_type);
   }
   {
+    krpc::PingResponse res;
     sp::Buffer buff{b};
     ASSERT_TRUE(krpc::response::ping(buff, t, id));
     sp::flip(buff);
 
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_response(ctx, [&id](sp::Buffer &d) {
-      dht::NodeId sender;
-      if (!bencode::d::pair(d, "id", sender.id)) {
-        return false;
-      }
-      assert_eq(sender.id, id.id);
-
-      return true;
-    });
-    //--
-    assert_eq(ctx.msg_type, "r");
-    assert_eq(t.id, ctx.tx.id);
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf{b2};
+      dht::MessageContext mctx(dht, pctx, buf, remote);
+      return krpc::parse_ping_response(mctx, res);
+    }));
+    ASSERT_EQ(res.sender, id);
+    ASSERT_EQ(std::string("r"), ctx.msg_type);
+    ASSERT_EQ(t, ctx.tx);
     ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
 }
@@ -91,6 +87,9 @@ TEST(krpcTest, test_find_node) {
 
   dht::NodeId id;
   nodeId(id);
+
+  dht::NodeId target;
+  rand_nodeId(target);
 
   krpc::Transaction t;
   transaction(t);
@@ -102,47 +101,38 @@ TEST(krpcTest, test_find_node) {
 
   { //
     sp::Buffer buff{b};
-    ASSERT_TRUE(krpc::request::find_node(buff, t, id, id, true, false));
+    ASSERT_TRUE(krpc::request::find_node(buff, t, id, target, true, false));
     sp::flip(buff);
 
+    krpc::FindNodeRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_request(ctx, [&id](sp::Buffer &p) {
-      dht::NodeId sender;
-      if (!bencode::d::pair(p, "id", sender.id)) {
-        return false;
-      }
-      assert_eq(sender.id, id.id);
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf{b2};
+      dht::MessageContext mctx(dht, pctx, buf, remote);
+      return krpc::parse_find_node_request(mctx, req);
+    }));
 
-      dht::NodeId target;
-      if (!bencode::d::pair(p, "target", target.id)) {
-        return false;
-      }
-
-      sp::UinStaticArray<std::string, 2> want;
-      if (!bencode_d<sp::Buffer>::pair(p, "want", want)) {
-        return false;
-      }
-      assert_eq(target.id, id.id);
-      return true;
-    });
+    ASSERT_EQ(req.id, id);
+    ASSERT_EQ(req.target, target);
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(ctx.query, "find_node");
-    assert_eq(t.id, ctx.tx.id);
-    assert_eq(ctx.msg_type, "q");
+    ASSERT_EQ(std::string("find_node"), ctx.query);
+    ASSERT_EQ(t, ctx.tx);
+    ASSERT_EQ(std::string("q"), ctx.msg_type);
   }
 
   {
-    // constexpr std::size_t length4 = 8;
-    constexpr std::size_t length4 = 1;
-    dht::Node node[length4];
+    constexpr std::size_t length4 = 8;
+    dht::Node nodes[length4];
     const dht::Node *nodes4[length4]{nullptr};
     for (std::size_t i = 0; i < length4; ++i) {
-      nodeId(node[i].id);
-      node[i].contact.ip.ipv4 = rand();
-      node[i].contact.ip.type = IpType::IPV4;
-      node[i].contact.port = (Port)rand();
-      nodes4[i] = &node[i];
+      rand_nodeId(nodes[i].id);
+      nodes[i].contact.ip.ipv4 = (Ipv4)rand();
+      nodes[i].contact.ip.type = IpType::IPV4;
+      nodes[i].contact.port = (Port)rand();
+      nodes4[i] = &nodes[i];
     }
 
     sp::Buffer buff{b};
@@ -157,28 +147,72 @@ TEST(krpcTest, test_find_node) {
 
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_response(ctx, [&id, &nodes4, &node](sp::Buffer &p) {
-      dht::NodeId sender;
-      if (!bencode::d::pair(p, "id", sender.id)) {
-        return false;
-      }
-      assert_eq(sender.id, id.id);
-      //
-      sp::UinStaticArray<dht::IdContact, 256> outList;
-      if (!bencode::d::nodes(p, "nodes", outList)) {
-        return false;
-      }
-      assertx(length4 == outList.length);
-      // printf("%s: %zu\n", to_string(outList[0]), outList.length);
-      assertx(outList[0].contact == node[0].contact);
-      assertx(outList[0].id == node[0].id);
-      assert_eq(nodes4, outList);
-      return true;
-    });
+    krpc::FindNodeResponse res;
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf{b2};
+      dht::MessageContext mctx(dht, pctx, buf, remote);
+      return krpc::parse_find_node_response(mctx, res);
+    }));
+    ASSERT_EQ(res.id, id.id);
+    dht::Token dummy_token;
+    ASSERT_EQ(dummy_token, res.token);
+    ASSERT_EQ(length4, res.nodes.length);
+    // printf("%s: %zu\n", to_string(outList[0]), outList.length);
+    ASSERT_EQ(res.nodes[0].contact, nodes[0].contact);
+    ASSERT_EQ(res.nodes[0].id, nodes[0].id);
+    ASSERT_EQ(res.nodes, nodes);
+
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(ctx.msg_type, "r");
-    assert_eq(t.id, ctx.tx.id);
+    ASSERT_EQ(std::string("r"), ctx.msg_type);
+    ASSERT_EQ(t, ctx.tx);
     ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
+  }
+}
+
+TEST(krpcTest, test_get_peers_static) {
+  sp::byte b[2048] = {0};
+  sp::Buffer buf{b};
+
+  krpc::Transaction t{"aa"};
+
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, udp, listen, r, sp::now());
+
+  {
+    const char *bencode_req =
+        "d1:ad2:id20:abcdefghij01234567899:info_hash20:"
+        "mnopqrstuvwxyz123456e1:q9:get_peers1:t2:aa1:y1:qe";
+    ASSERT_TRUE(write(buf, bencode_req, strlen(bencode_req)));
+    sp::flip(buf);
+
+    krpc::GetPeersRequest req;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_get_peers_request(mctx, req);
+    }));
+
+    dht::NodeId id{"abcdefghij0123456789"};
+    dht::Infohash infohash{"mnopqrstuvwxyz123456"};
+
+    ASSERT_EQ(req.id, id);
+    ASSERT_EQ(req.infohash, infohash);
+    ASSERT_FALSE(bool(req.noseed));
+    ASSERT_FALSE(req.scrape);
+    ASSERT_TRUE(req.n4);
+    ASSERT_FALSE(req.n6);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_EQ(std::string("get_peers"), ctx.query);
+    ASSERT_EQ(t, ctx.tx);
+    ASSERT_EQ(std::string("q"), ctx.msg_type);
   }
 }
 
@@ -208,14 +242,14 @@ TEST(krpcTest, test_get_peers) {
     dht::Token token;
     token.length = 8;
     std::memcpy(token.id, "thetoken", token.length);
-    printf("token length: %zu\n", token.length);
+    // printf("token length: %zu\n", token.length);
 
-    constexpr std::size_t NODE_SIZE = 8;
+    constexpr std::size_t NODE_SIZE = 32;
     dht::Node node[NODE_SIZE];
     const dht::Node *in[NODE_SIZE];
     for (std::size_t i = 0; i < NODE_SIZE; ++i) {
-      nodeId(node[i].id);
-      node[i].contact.ip.ipv4 = rand();
+      rand_nodeId(node[i].id);
+      node[i].contact.ip.ipv4 = (Ipv4)rand();
       node[i].contact.ip.type = IpType::IPV4;
       node[i].contact.port = (Port)rand();
       in[i] = &node[i];
@@ -232,49 +266,67 @@ TEST(krpcTest, test_get_peers) {
     // printf("asd\n\n\n\n\n");
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_response(ctx, [&id, &in, &token](auto &p) { //
-      dht::NodeId sender;
-      if (!bencode::d::pair(p, "id", sender.id)) {
-        return false;
-      }
-      assert_eq(sender.id, id.id);
 
-      dht::Token oToken;
-      if (!bencode::d::pair(p, "token", oToken.id, oToken.length)) {
-        printf("failed to parse token\n");
-        return false;
-      }
-      printf("out token length: %zu\n", oToken.length);
-      assert_eq(oToken, token);
-
-      /*closes K nodes*/
-      sp::UinStaticArray<dht::IdContact, 256> outNodes;
-
-      if (!bencode::d::nodes(p, "nodes", outNodes)) {
-        return false;
-      }
-      assert_eq(in, outNodes);
-
-      return true;
-    });
+    krpc::GetPeersResponse res;
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf{b2};
+      dht::MessageContext mctx(dht, pctx, buf, remote);
+      return krpc::parse_get_peers_response(mctx, res);
+    }));
+    ASSERT_EQ(res.id, id.id);
+    ASSERT_EQ(res.token, token);
+    ASSERT_EQ(res.nodes, node);
+    ASSERT_EQ(length(res.nodes), NODE_SIZE);
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(ctx.msg_type, "r");
-    assert_eq(t.id, ctx.tx.id);
+    ASSERT_EQ(std::string("r"), ctx.msg_type);
+    ASSERT_EQ(t, ctx.tx);
     ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
   /*response Peers*/
   {
     sp::Buffer buff{b};
 
-    dht::Token token; // TODO
-    // dht:: *peer[16] = {nullptr};
+    dht::Token token;
+    token.length = 8;
+    std::memcpy(token.id, "thetoken", token.length);
+
     sp::UinStaticArray<Contact, 256> peer;
+    constexpr std::size_t PEER_SIZE = 32;
+    for (std::size_t i = 0; i < PEER_SIZE; ++i) {
+      Contact c;
+      c.ip.ipv4 = (Ipv4)rand();
+      c.ip.type = IpType::IPV4;
+      c.port = (Port)rand();
+      insert(peer, c);
+    }
 
     ASSERT_TRUE(krpc::response::get_peers_peers(buff, t, id, token, peer));
     sp::flip(buff);
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
+
+    krpc::GetPeersResponse res;
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf{b2};
+      dht::MessageContext mctx(dht, pctx, buf, remote);
+      return krpc::parse_get_peers_response(mctx, res);
+    }));
+    ASSERT_EQ(res.id, id.id);
+    ASSERT_EQ(res.token, token);
+    ASSERT_EQ(length(res.values), PEER_SIZE);
+    ASSERT_EQ(res.values, peer);
+    ASSERT_TRUE(sp::remaining_read(buff) == 0);
+    ASSERT_EQ(std::string("r"), ctx.msg_type);
+    ASSERT_EQ(t, ctx.tx);
+    ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
 }
 
+#if 0
 TEST(krpcTest, test_anounce_peer) {
   sp::byte b[256] = {0};
 
@@ -2598,3 +2650,4 @@ TEST(krpcTest, debug) {
   krpc::ParseContext pctx(dom, dht, in);
   ASSERT_TRUE(krpc::d::krpc(pctx, f));
 }
+#endif

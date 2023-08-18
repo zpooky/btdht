@@ -4,13 +4,13 @@
 #include <buffer/BytesView.h>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <ctime>
 #include <hash/standard.h>
 #include <io/fd.h>
 #include <limits.h>
 #include <list/FixedList.h>
 #include <netinet/in.h>
-#include <cstdio>
 #include <util/timeout.h>
 
 using sp::fd;
@@ -264,6 +264,7 @@ struct Infohash {
   Key id;
 
   Infohash() noexcept;
+  Infohash(const char*) noexcept;
 
   bool
   operator==(const Infohash &) const noexcept;
@@ -296,6 +297,7 @@ namespace dht {
 struct NodeId {
   Key id;
   NodeId();
+  NodeId(const char *test);
 
   static constexpr std::size_t bits = sizeof(Key) * 8;
 
@@ -365,6 +367,9 @@ struct IdContact {
   NodeId id;
   IdContact() noexcept;
   IdContact(const NodeId &id, const Contact &contact) noexcept;
+
+  bool
+  operator==(const IdContact &o) const noexcept;
 };
 
 const char *
@@ -407,7 +412,18 @@ struct Node {
   Node(const NodeId &, const Contact &) noexcept;
   Node(const NodeId &, const Contact &, Timestamp) noexcept;
   Node(const IdContact &, Timestamp) noexcept;
+
+#if 0
+  bool
+  operator==(const Node &) const noexcept;
+#endif
+
+  bool
+  operator==(const IdContact &) const noexcept;
 };
+
+bool
+operator==(const IdContact &f, const Node &s) noexcept;
 
 template <typename F>
 bool

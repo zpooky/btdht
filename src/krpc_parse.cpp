@@ -266,6 +266,7 @@ krpc::parse_find_node_response(dht::MessageContext &ctx,
       }
     }
 
+    // TODO optional?
     if (!b_t && bencode::d::pair(p, "token", out.token)) {
       b_t = true;
       goto Lstart;

@@ -616,7 +616,7 @@ struct DHT {
   // recycle contact list {{{
   // sp::UinStaticArray<Node, 256> recycle_node_list;
   sp::UinStaticArray<Contact, 256> recycle_contact_list;
-  sp::UinStaticArray<IdContact, 256> recycle_id_contact_list;
+  // sp::UinStaticArray<IdContact, 256> recycle_id_contact_list;
   // }}}
 
   // stuff {{{

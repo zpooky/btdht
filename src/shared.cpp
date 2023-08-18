@@ -484,7 +484,6 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     //}}}
     // recycle contact list {{{
     , recycle_contact_list()
-    , recycle_id_contact_list()
     // }}}
     // {{{
     /*timestamp of received request&response*/

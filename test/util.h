@@ -144,11 +144,33 @@ assert_eq(const dht::Node *(&first)[SIZE],
   }
 }
 
+template <std::size_t SIZE>
+inline static void
+assert_eq(const dht::Node (&first)[SIZE],
+          const sp::UinArray<dht::IdContact> &second) {
+  ASSERT_EQ(SIZE, length(second));
+
+  for (std::size_t i = 0; i < SIZE; ++i) {
+    ASSERT_TRUE(first[i]);
+    const auto s = get(second, i);
+    ASSERT_TRUE(s);
+    assert_eq(first[i], *s);
+  }
+}
+
 inline static void
 nodeId(dht::NodeId &id) {
   memset(id.id, 0, sizeof(id.id));
   const char *raw_id = "a0b0c0d0e0f0g0SPOOKY";
   memcpy(id.id, raw_id, strlen(raw_id));
+}
+
+inline static void
+rand_nodeId(dht::NodeId &id) {
+  memset(id.id, 0, sizeof(id.id));
+  for (std::size_t i = 0; i < sizeof(id.id) - 1; ++i) {
+    id.id[i] = (sp::byte)rand();
+  }
 }
 
 static inline void

@@ -478,6 +478,13 @@ Infohash::Infohash() noexcept
     : id{0} {
 }
 
+Infohash::Infohash(const char *dummy) noexcept
+    : id{0} {
+  size_t l = strlen(dummy);
+  assertxs(l == sizeof(id), l, sizeof(id));
+  memcpy(id, dummy, l);
+}
+
 bool
 Infohash::operator==(const Infohash &o) const noexcept {
   return std::memcmp(id, o.id, sizeof(id)) == 0;
@@ -519,7 +526,7 @@ void
 print_hex(FILE *f, const Infohash &ih) noexcept {
   char out[(sizeof(ih.id) * 2) + 1] = {0};
   assertx_n(hex::encode(ih.id, sizeof(ih.id), out));
-  fprintf(f,"%s\n", out);
+  fprintf(f, "%s\n", out);
 }
 
 bool
@@ -542,6 +549,13 @@ namespace dht {
 /*NodeId*/
 NodeId::NodeId()
     : id{0} {
+}
+
+NodeId::NodeId(const char *dummy)
+    : id{0} {
+  std::size_t lx = strlen(dummy);
+  assertxs(lx == sizeof(id), lx, sizeof(id));
+  memcpy(id, dummy, std::min(lx, sizeof(id)));
 }
 
 bool
@@ -734,6 +748,11 @@ IdContact::IdContact(const NodeId &iid, const Contact &icon) noexcept
     , id{iid} {
 }
 
+bool
+IdContact::operator==(const IdContact &o) const noexcept {
+  return this->contact == o.contact && this->id == o.id;
+}
+
 const char *
 to_string(const IdContact &c) noexcept {
   static char buffer[sizeof(c.id.id) + 1 + INET6_ADDRSTRLEN + 1 + 5] = {0};
@@ -814,6 +833,23 @@ Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
 
 Node::Node(const IdContact &node, Timestamp now) noexcept
     : Node(node.id, node.contact, now) {
+}
+
+#if 0
+bool
+Node::operator==(const Node &) const noexcept {
+  return true;
+}
+#endif
+
+bool
+Node::operator==(const IdContact &o) const noexcept {
+  return o == (*this);
+}
+
+bool
+operator==(const IdContact &f, const Node &s) noexcept {
+  return f.contact == s.contact && f.id == s.id;
 }
 
 bool
