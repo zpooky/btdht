@@ -396,6 +396,14 @@ Token::Token() noexcept
     , length(0) {
 }
 
+Token::Token(const char *dummy) noexcept
+    : Token() {
+  size_t l = strlen(dummy);
+  assertx(l < sizeof(id));
+  memcpy(id, dummy, l);
+  length = l;
+}
+
 bool
 Token::operator==(const Token &o) const noexcept {
   if (length == o.length) {

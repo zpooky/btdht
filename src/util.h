@@ -188,6 +188,7 @@ struct Token {
   std::size_t length;
 
   Token() noexcept;
+  Token(const char *) noexcept;
 
   bool
   operator==(const Token &) const noexcept;
@@ -264,7 +265,7 @@ struct Infohash {
   Key id;
 
   Infohash() noexcept;
-  Infohash(const char*) noexcept;
+  Infohash(const char *) noexcept;
 
   bool
   operator==(const Infohash &) const noexcept;

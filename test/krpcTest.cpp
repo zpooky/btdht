@@ -173,7 +173,6 @@ TEST(krpcTest, test_find_node) {
 
 TEST(krpcTest, test_get_peers_static) {
   sp::byte b[2048] = {0};
-  sp::Buffer buf{b};
 
   krpc::Transaction t{"aa"};
 
@@ -183,6 +182,7 @@ TEST(krpcTest, test_get_peers_static) {
   dht::DHT dht(udp, udp, listen, r, sp::now());
 
   {
+    sp::Buffer buf{b};
     const char *bencode_req =
         "d1:ad2:id20:abcdefghij01234567899:info_hash20:"
         "mnopqrstuvwxyz123456e1:q9:get_peers1:t2:aa1:y1:qe";
@@ -213,6 +213,118 @@ TEST(krpcTest, test_get_peers_static) {
     ASSERT_EQ(std::string("get_peers"), ctx.query);
     ASSERT_EQ(t, ctx.tx);
     ASSERT_EQ(std::string("q"), ctx.msg_type);
+  }
+  {
+    sp::Buffer buf{b};
+    const char *bencode_res =
+        "d1:rd2:id20:abcdefghij01234567895:token8:aoeusnth6:valuesl6:axje.u6:"
+        "idhtnmee1:t2:aa1:y1:re";
+    ASSERT_TRUE(write(buf, bencode_res, strlen(bencode_res)));
+    sp::flip(buf);
+
+    krpc::GetPeersResponse res;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_get_peers_response(mctx, res);
+    }));
+
+    dht::NodeId id{"abcdefghij0123456789"};
+    dht::Token token{"aoeusnth"};
+
+    sp::UinStaticArray<Contact, 256> values;
+    {
+      Contact c;
+      char *ipv4 = (char *)&c.ip.ipv4;
+      strcpy(ipv4, "axje");
+      c.ip.ipv4 = ntohl(c.ip.ipv4);
+
+      c.ip.type = IpType::IPV4;
+
+      char *port = (char *)&c.port;
+      strcpy(port, ".u");
+      c.port = ntohs(c.port);
+
+      insert(values, c);
+    }
+    {
+      Contact c;
+      char *ipv4 = (char *)&c.ip.ipv4;
+      strcpy(ipv4, "idht");
+      c.ip.ipv4 = ntohl(c.ip.ipv4);
+
+      c.ip.type = IpType::IPV4;
+
+      char *port = (char *)&c.port;
+      strcpy(port, "nm");
+      c.port = ntohs(c.port);
+
+      insert(values, c);
+    }
+
+    ASSERT_TRUE(res.id == id);
+    ASSERT_TRUE(res.values == values);
+    ASSERT_TRUE(res.token == token);
+    ASSERT_EQ(length(res.values), 2);
+    ASSERT_EQ(length(res.nodes), 0);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_EQ(std::string("r"), ctx.msg_type);
+  }
+  {
+    sp::Buffer buf{b};
+    const char *bencode_res =
+        "d1:rd2:id20:abcdefghij01234567895:nodes26:01234567890123456789abcdef5:"
+        "token8:aoeusnthe1:t2:aa1:y1:re";
+    ASSERT_TRUE(write(buf, bencode_res, strlen(bencode_res)));
+    sp::flip(buf);
+
+    krpc::GetPeersResponse res;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_get_peers_response(mctx, res);
+    }));
+
+    dht::NodeId id{"abcdefghij0123456789"};
+    dht::Token token{"aoeusnth"};
+
+    sp::UinStaticArray<dht::IdContact, 256> nodes;
+    {
+      dht::NodeId c_id{"01234567890123456789"};
+      Contact c_contact;
+
+      char *ipv4 = (char *)&c_contact.ip.ipv4;
+      strcpy(ipv4, "abcd");
+      c_contact.ip.ipv4 = ntohl(c_contact.ip.ipv4);
+
+      c_contact.ip.type = IpType::IPV4;
+
+      char *port = (char *)&c_contact.port;
+      strcpy(port, "ef");
+      c_contact.port = ntohs(c_contact.port);
+
+      dht::IdContact c{c_id, c_contact};
+      insert(nodes, c);
+    }
+
+    ASSERT_TRUE(res.id == id);
+    ASSERT_TRUE(res.token == token);
+    ASSERT_EQ(length(res.values), 0);
+    ASSERT_EQ(length(res.nodes), 1);
+    ASSERT_TRUE(res.nodes == nodes);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    // ASSERT_EQ(std::string("get_peers"), ctx.query);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_EQ(std::string("r"), ctx.msg_type);
   }
 }
 
