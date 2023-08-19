@@ -163,7 +163,7 @@ make_t(R &r, dht::Token &t) {
 
 //====================================================
 static bool
-send_statistics(DHTClient &client, const Contact &to) noexcept {
+send_statistics(DHTClient &client) noexcept {
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
@@ -175,7 +175,7 @@ send_statistics(DHTClient &client, const Contact &to) noexcept {
 }
 
 static bool
-send_dump(DHTClient &client, const Contact &to) noexcept {
+send_dump(DHTClient &client) noexcept {
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
@@ -195,8 +195,7 @@ receive_dump(fd &u, sp::Buffer &b) noexcept {
 
 //====================================================
 static bool
-send_search(DHTClient &client, const Contact &to,
-            const dht::Infohash &search) noexcept {
+send_search(DHTClient &client, const dht::Infohash &search) noexcept {
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
@@ -312,6 +311,14 @@ handle_ping(DHTClient &client) {
     client.argc--;
     client.argv++;
   }
+
+  fd udp = udp::bind(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
+  if (!udp) {
+    fprintf(stderr, "failed connect: %s\n", to_string(to));
+    return EXIT_FAILURE;
+  }
+  swap(client.udp, udp);
+
   if (!has) {
     fprintf(stderr, "dht-client ping ip:port\n");
     return EXIT_FAILURE;
@@ -335,6 +342,23 @@ handle_find_node(DHTClient &client) {
   Contact to;
   dht::NodeId search;
   // printf("%s\n", client.argv[0]);
+
+  while (client.argc) {
+    const char *p = client.argv[0];
+    if (to_contact(p, to)) {
+      has = true;
+      break;
+    }
+
+    client.argc--;
+    client.argv++;
+  }
+  fd udp = udp::bind(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
+  if (!udp) {
+    fprintf(stderr, "failed connect: %s\n", to_string(to));
+    return EXIT_FAILURE;
+  }
+  swap(client.udp, udp);
 
   while (1) {
     int opt;
@@ -404,6 +428,17 @@ handle_get_peers(DHTClient &client) {
   Contact to;
   dht::Infohash search;
   // printf("%s\n", client.argv[0]);
+
+  while (client.argc) {
+    const char *p = client.argv[0];
+    if (to_contact(p, to)) {
+      has = true;
+      break;
+    }
+
+    client.argc--;
+    client.argv++;
+  }
 
   while (1) {
     int opt;
@@ -603,26 +638,7 @@ handle_sample_infohashes(DHTClient &client) {
 //=====================================
 int
 handle_statistics(DHTClient &client) {
-  bool has = false;
-  Contact to;
-
-  while (client.argc) {
-    const char *p = client.argv[0];
-    if (to_contact(p, to)) {
-      has = true;
-      break;
-    }
-
-    client.argc--;
-    client.argv++;
-  }
-
-  if (!has) {
-    fprintf(stderr, "dht-client stat ip:port\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!send_statistics(client, to)) {
+  if (!send_statistics(client)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
   }
@@ -690,8 +706,6 @@ Lretry:
 
 int
 handle_search(DHTClient &client) {
-  bool has = false;
-  Contact to;
   dht::Infohash search;
 
   while (1) {
@@ -704,21 +718,6 @@ handle_search(DHTClient &client) {
         //
     };
 
-    if (!has) {
-      auto argc = client.argc;
-      auto argv = client.argv;
-      if (parse_contact(client, to)) {
-        if (parse_id(client, search)) {
-          has = true;
-        }
-      }
-
-      if (!has) {
-        client.argc = argc;
-        client.argv = argv;
-      }
-    }
-
     opt = getopt_long(client.argc, client.argv, "s:h", loptions, &option_index);
     if (opt == -1) {
       break;
@@ -730,7 +729,7 @@ handle_search(DHTClient &client) {
       // TODO
       break;
     case 'h':
-      printf("-h \n");
+      fprintf(stderr, "dht-client search <infohash>\n");
       return EXIT_SUCCESS;
       break;
     default:
@@ -738,12 +737,7 @@ handle_search(DHTClient &client) {
     }
   }
 
-  if (!has) {
-    fprintf(stderr, "dht-client search ip:port search [--self=hex]\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!send_search(client, to, search)) {
+  if (!send_search(client, search)) {
     return EXIT_FAILURE;
   }
 
@@ -817,26 +811,7 @@ handle_search(DHTClient &client) {
 
 int
 handle_dump(DHTClient &client) {
-  bool has = false;
-  Contact to;
-
-  while (client.argc) {
-    const char *p = client.argv[0];
-    if (to_contact(p, to)) {
-      has = true;
-      break;
-    }
-
-    client.argc--;
-    client.argv++;
-  }
-
-  if (!has) {
-    fprintf(stderr, "dht-client dump ip:port\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!send_dump(client, to)) {
+  if (!send_dump(client)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
   }
@@ -851,6 +826,29 @@ handle_dump(DHTClient &client) {
 typedef int (*exe_cb)(DHTClient &);
 static int
 bind_exe(int argc, char **argv, exe_cb cb) noexcept {
+  prng::URandom r;
+
+  constexpr std::size_t size = 12 * 1024 * 1024;
+
+  auto in = new sp::byte[size];
+  auto out = new sp::byte[size];
+
+  sp::Buffer inBuffer(in, size);
+  sp::Buffer outBuffer(out, size);
+
+  fd udp{};
+  DHTClient client(argc, argv, inBuffer, outBuffer, r, udp);
+  randomize(r, client.self);
+  int res = cb(client);
+
+  delete[] in;
+  delete[] out;
+
+  return res;
+}
+
+static int
+bind_priv_exe(int argc, char **argv, exe_cb cb) noexcept {
   char local_socket[PATH_MAX]{0};
   if (!xdg_runtime_dir(local_socket)) {
     return 1;
@@ -943,11 +941,11 @@ parse_command(int argc, char **argv) {
       return bind_exe(subc, subv, handle_sample_infohashes);
     } else if (std::strcmp(subcommand, "statistics") == 0 ||
                std::strcmp(subcommand, "stat") == 0) {
-      return bind_exe(subc, subv, handle_statistics);
+      return bind_priv_exe(subc, subv, handle_statistics);
     } else if (std::strcmp(subcommand, "search") == 0) {
-      return bind_exe(subc, subv, handle_search);
+      return bind_priv_exe(subc, subv, handle_search);
     } else if (std::strcmp(subcommand, "dump") == 0) {
-      return bind_exe(subc, subv, handle_dump);
+      return bind_priv_exe(subc, subv, handle_dump);
     } else if (std::strcmp(subcommand, "upnp") == 0) {
       return handle_upnp(subc, subv);
     } else {

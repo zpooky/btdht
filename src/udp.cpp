@@ -47,7 +47,6 @@ bind(Ipv4 ip, Port port, Mode mode) noexcept {
   }
 
   ::sockaddr_in me{};
-  std::memset(&me, 0, sizeof(me));
   me.sin_family = AF_INET;
   me.sin_port = htons(port);
   me.sin_addr.s_addr = htonl(ip);
