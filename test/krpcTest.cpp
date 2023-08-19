@@ -687,7 +687,6 @@ TEST(krpcTest, test_anounce_peer_static) {
   }
 }
 
-#if 0
 TEST(krpcTest, test_anounce_peer) {
   sp::byte b[256] = {0};
 
@@ -704,6 +703,7 @@ TEST(krpcTest, test_anounce_peer) {
 
   {
     dht::Infohash infohash;
+    rand_infohash(infohash);
     Port port = 64123;
     dht::Token token;
     token.length = 5;
@@ -715,71 +715,54 @@ TEST(krpcTest, test_anounce_peer) {
                                              infohash, port, token));
     sp::flip(buff);
 
+    krpc::AnnouncePeerRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_request(ctx,
-                 [&id, implied_port, infohash, port, token](sp::Buffer &p) {
-                   dht::NodeId sender;
-                   if (!bencode::d::pair(p, "id", sender.id)) {
-                     return false;
-                   }
-                   assert_eq(sender.id, id.id);
-                   //
-                   bool out_implied_port = false;
-                   if (!bencode::d::pair(p, "implied_port", out_implied_port)) {
-                     return false;
-                   }
-                   assert_eq(out_implied_port, implied_port);
-                   //
-                   dht::Infohash out_infohash;
-                   if (!bencode::d::pair(p, "info_hash", out_infohash.id)) {
-                     return false;
-                   }
-                   assert_eq(out_infohash.id, infohash.id);
-                   //
-                   Port out_port = 0;
-                   if (!bencode::d::pair(p, "port", out_port)) {
-                     return false;
-                   }
-                   assert_eq(out_port, port);
-                   //
-                   dht::Token out_token;
-                   if (!bencode::d::pair(p, "token", out_token)) {
-                     return false;
-                   }
-                   assert_eq(out_token, token);
+    test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) {
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_announce_peer_request(mctx, req);
+    });
 
-                   return true;
-                 });
+    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.implied_port);
+    ASSERT_TRUE(req.infohash == infohash);
+    ASSERT_TRUE(req.port == port);
+    ASSERT_TRUE(req.token == token);
+    ASSERT_FALSE(req.seed);
     //--
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(ctx.msg_type, "q");
-    assert_eq(t.id, ctx.tx.id);
-    assert_eq(ctx.query, "announce_peer");
+    ASSERT_TRUE(std::string("q") == ctx.msg_type);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("announce_peer") == ctx.query);
   }
   {
     sp::Buffer buff{b};
     ASSERT_TRUE(krpc::response::announce_peer(buff, t, id));
     sp::flip(buff);
 
+    krpc::AnnouncePeerResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, buff);
-    test_response(ctx, [&id](sp::Buffer &p) { //
-      dht::NodeId sender;
-      if (!bencode::d::pair(p, "id", sender.id)) {
-        return false;
-      }
-      assert_eq(sender.id, id.id);
-      //
-      return true;
-    });
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_announce_peer_response(mctx, res);
+    }));
+    ASSERT_TRUE(res.id == id);
+
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
-    assert_eq(ctx.msg_type, "r");
-    assert_eq(t.id, ctx.tx.id);
+    ASSERT_TRUE(std::string("r") == ctx.msg_type);
+    ASSERT_TRUE(t == ctx.tx);
     ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
   }
 }
 
+#if 0
 TEST(krpcTest, print_error_debug3) {
   // const char *hex =
   // "64313a7264323a696432303a635b15186f1a13ce53cf3759392b322b73"
