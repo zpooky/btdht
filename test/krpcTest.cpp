@@ -582,7 +582,7 @@ TEST(krpcTest, test_get_peers) {
     std::memcpy(token.id, "thetoken", token.length);
 
     sp::UinStaticArray<Contact, 256> peer;
-    constexpr std::size_t PEER_SIZE = 32;
+    constexpr std::size_t PEER_SIZE = 128;
     for (std::size_t i = 0; i < PEER_SIZE; ++i) {
       Contact c;
       c.ip.ipv4 = (Ipv4)rand();
@@ -612,6 +612,78 @@ TEST(krpcTest, test_get_peers) {
     ASSERT_TRUE(std::string("r") == ctx.msg_type);
     ASSERT_TRUE(t == ctx.tx);
     ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
+  }
+}
+
+TEST(krpcTest, test_anounce_peer_static) {
+  sp::byte b[2048] = {0};
+
+  krpc::Transaction t{"aa"};
+
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, udp, listen, r, sp::now());
+
+  {
+    sp::Buffer buf{b};
+    const char *bencode_req =
+        "d1:ad2:id20:abcdefghij012345678912:implied_porti1e9:info_hash20:"
+        "mnopqrstuvwxyz1234564:porti6881e5:token8:aoeusnthe1:q13:announce_"
+        "peer1:t2:aa1:y1:qe";
+    ASSERT_TRUE(write(buf, bencode_req, strlen(bencode_req)));
+    sp::flip(buf);
+
+    krpc::AnnouncePeerRequest req;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_announce_peer_request(mctx, req);
+    }));
+
+    dht::NodeId id{"abcdefghij0123456789"};
+    dht::Infohash infohash{"mnopqrstuvwxyz123456"};
+    dht::Token token{"aoeusnth"};
+
+    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.implied_port);
+    ASSERT_TRUE(req.infohash == infohash);
+    ASSERT_TRUE(req.port == 6881);
+    ASSERT_TRUE(req.token == token);
+    ASSERT_FALSE(req.seed);
+
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(std::string("announce_peer") == ctx.query);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("q") == ctx.msg_type);
+  }
+  {
+    sp::Buffer buf{b};
+    const char *bencode_res = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t2:aa1:y1:re";
+    ASSERT_TRUE(write(buf, bencode_res, strlen(bencode_res)));
+    sp::flip(buf);
+
+    krpc::AnnouncePeerResponse res;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_announce_peer_response(mctx, res);
+    }));
+
+    dht::NodeId id{"mnopqrstuvwxyz123456"};
+
+    ASSERT_TRUE(res.id == id);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("r") == ctx.msg_type);
   }
 }
 

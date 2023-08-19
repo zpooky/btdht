@@ -141,6 +141,18 @@ raw_compact_idcontact(sp::Buffer &buf, dht::IdContact &value) noexcept {
   return true;
 } // bencode::d::value()
 
+static bool
+raw_compact_contact(sp::Buffer &buf, Contact &value) noexcept {
+  const std::size_t pos = buf.pos;
+
+  if (!raw_compact_contact_v4(buf, value)) {
+    buf.pos = pos;
+    return false;
+  }
+
+  return true;
+} // bencode::d::value()
+
 template <typename ListType>
 static bool
 raw_compact_node_list(sp::Buffer &d, ListType &result) noexcept {
@@ -223,7 +235,7 @@ value_contact(sp::Buffer &b, Contact &result) noexcept {
 
 template <typename ListType>
 static bool
-list_contact(sp::Buffer &d, const char *key, ListType &l) noexcept {
+list_contact(sp::Buffer &d, ListType &result) noexcept {
   static_assert(std::is_same<Contact, typename ListType::value_type>(), "");
   const std::size_t pos = d.pos;
 
@@ -241,7 +253,7 @@ list_contact(sp::Buffer &d, const char *key, ListType &l) noexcept {
       break;
     }
 
-    insert(l, n);
+    insert(result, n);
     // if (!insert(l, n)) {
     //   d.pos = pos;
     //   // too many result
@@ -299,7 +311,7 @@ peers(sp::Buffer &d, const char *key, sp::list<Contact> &l) noexcept {
     return false;
   }
 
-  if (!list_contact(d, key, l)) {
+  if (!list_contact(d, l)) {
     d.pos = pos;
     return false;
   }
@@ -315,7 +327,7 @@ peers(sp::Buffer &d, const char *key,
     return false;
   }
 
-  if (!list_contact(d, key, l)) {
+  if (!list_contact(d, l)) {
     d.pos = pos;
     return false;
   }

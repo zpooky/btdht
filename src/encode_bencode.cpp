@@ -262,6 +262,69 @@ bencode::e<Buffer>::value_compact(Buffer &b,
 
 template <typename Buffer>
 bool
+bencode::e<Buffer>::value_string_list_contact(
+    Buffer &b, const sp::list<Contact> &values) noexcept {
+  if (!write(b, 'l')) {
+    return false;
+  }
+
+  bool res = for_all(values, [&b](const auto &v) {
+    char entry[sizeof(Ipv4) + sizeof(Port) + 1] = {0};
+    Ipv4 ip = htonl(v.ip.ipv4);
+    Port port = htons(v.port);
+    memcpy(entry, &ip, sizeof(ip));
+    memcpy(entry + sizeof(ip), &port, sizeof(port));
+
+    if (!bencode::e<Buffer>::value(b, entry)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  if (!res) {
+    return false;
+  }
+
+  if (!write(b, 'e')) {
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::value_string_list_contact(
+    Buffer &b, const sp::UinArray<Contact> &values) noexcept {
+  if (!write(b, 'l')) {
+    assertx(false);
+    return false;
+  }
+
+  for (const Contact &v : values) {
+    sp::byte entry[sizeof(Ipv4) + sizeof(Port)] = {0};
+    Ipv4 ip = htonl(v.ip.ipv4);
+    Port port = htons(v.port);
+    memcpy(entry, &ip, sizeof(ip));
+    memcpy(entry + sizeof(ip), &port, sizeof(port));
+
+    if (!bencode::e<Buffer>::value(b, entry, sizeof(entry))) {
+      assertx(false);
+      return false;
+    }
+  }
+
+  if (!write(b, 'e')) {
+    assertx(false);
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
 bencode::e<Buffer>::value_compact(Buffer &b,
                                   const sp::list<Contact> &list) noexcept {
   std::size_t raw_size = 0;
@@ -461,6 +524,7 @@ bencode::e<Buffer>::pair_id_contact_compact(
   return true;
 }
 
+#if 0
 template <typename Buffer>
 bool
 bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
@@ -485,6 +549,40 @@ bencode::e<Buffer>::pair_compact(Buffer &buf, const char *key,
   }
 
   if (!bencode::e<Buffer>::value_compact(buf, list)) {
+    return false;
+  }
+
+  return true;
+}
+#endif
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::pair_string_list_contact(
+    Buffer &b, const char *key, const sp::UinArray<Contact> &list) noexcept {
+
+  if (!bencode::e<Buffer>::value(b, key)) {
+    assertx(false);
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::value_string_list_contact(b, list)) {
+    assertx(false);
+    return false;
+  }
+
+  return true;
+}
+
+template <typename Buffer>
+bool
+bencode::e<Buffer>::pair_string_list_contact(
+    Buffer &b, const char *key, const sp::list<Contact> &list) noexcept {
+  if (!bencode::e<Buffer>::value(b, key)) {
+    return false;
+  }
+
+  if (!bencode::e<Buffer>::value_string_list_contact(b, list)) {
     return false;
   }
 

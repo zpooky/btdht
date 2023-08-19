@@ -238,14 +238,17 @@ response::get_peers_peers(sp::Buffer &buf, const Transaction &t,
                           const sp::UinArray<Contact> &values) noexcept {
   return resp(buf, t, [&id, &token, &values](auto &b) {
     if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
+      assertx(false);
       return false;
     }
 
     if (!bencode::e::pair(b, "token", token.id, token.length)) {
+      assertx(false);
       return false;
     }
 
-    return sp::bencode::e<sp::Buffer>::pair_compact(b, "values", values);
+    return sp::bencode::e<sp::Buffer>::pair_string_list_contact(b, "values",
+                                                                values);
   });
 }
 

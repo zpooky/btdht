@@ -57,6 +57,12 @@ struct e {
   static bool
   value_compact(Buffer &buf, const sp::list<Contact> &list) noexcept;
 
+  static bool
+  value_string_list_contact(Buffer &b, const sp::UinArray<Contact> &list) noexcept;
+
+  static bool
+  value_string_list_contact(Buffer &buf, const sp::list<Contact> &list) noexcept;
+
   //=====================================
   static bool
   list(Buffer &, const sp::UinArray<std::string> &) noexcept;
@@ -109,6 +115,7 @@ struct e {
   pair_id_contact_compact(Buffer &, const char *key,
                           const sp::list<dht::Node> &list) noexcept;
 
+#if 0
   static bool
   pair_compact(Buffer &buf, const char *key,
                const sp::UinArray<Contact> &list) noexcept;
@@ -116,6 +123,15 @@ struct e {
   static bool
   pair_compact(Buffer &buf, const char *key,
                const sp::list<Contact> &list) noexcept;
+#endif
+
+  static bool
+  pair_string_list_contact(Buffer &buf, const char *key,
+                           const sp::UinArray<Contact> &list) noexcept;
+
+  static bool
+  pair_string_list_contact(Buffer &buf, const char *key,
+                           const sp::list<Contact> &list) noexcept;
 
   //=====================================
   static bool
