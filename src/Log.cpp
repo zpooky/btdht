@@ -250,12 +250,36 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
   bencode_print_out(stdout);
 }
 
+static void
+print_raw(FILE *_f, const sp::byte *val, std::size_t len) noexcept {
+  if (ascii::is_printable(val, len)) {
+    fprintf(_f, "%.*s", int(len), val);
+  } else {
+    fprintf(_f, "hex[");
+    dht::print_hex(_f, (const sp::byte *)val, len);
+    fprintf(_f, "]: %zu(", len);
+    for (std::size_t i = 0; i < len; ++i) {
+      if (ascii::is_printable(val[i])) {
+        fprintf(_f, "%c", val[i]);
+      } else {
+        fprintf(_f, "_");
+      }
+    }
+    fprintf(_f, ")");
+  }
+}
+
 void
-invalid_node_id(dht::MessageContext &ctx,const char*query, const dht::NodeId &id) noexcept {
+invalid_node_id(dht::MessageContext &ctx, const char *query,
+                const sp::byte *version, std::size_t l_version,
+                const dht::NodeId &id) noexcept {
+  auto f = stderr;
   print_time(ctx);
-  fprintf(stderr, "%s: invalid node id[",query);
-  dht::print_hex(stderr, id.id, sizeof(id.id));
-  fprintf(stderr, "]\n");
+  fprintf(f, "%s: invalid node id[", query);
+  dht::print_hex(f, id.id, sizeof(id.id));
+  fprintf(f, "] version[");
+  print_raw(f, version, l_version);
+  fprintf(f, "]\n");
 }
 
 void

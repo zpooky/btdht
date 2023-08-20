@@ -366,7 +366,9 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
   dht::DHT &self = ctx.dht;
 
   if (!dht::is_valid(sender)) {
-    logger::receive::parse::invalid_node_id(ctx, ctx.query, sender);
+    logger::receive::parse::invalid_node_id(
+        ctx, ctx.query, ctx.pctx.remote_version,
+        sizeof(ctx.pctx.remote_version), sender);
     return false;
   }
 

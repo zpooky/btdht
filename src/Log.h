@@ -70,6 +70,7 @@ error(dht::DHT &, const sp::Buffer &, const char *msg) noexcept;
 
 void
 invalid_node_id(dht::MessageContext &ctx, const char *query,
+                const sp::byte *version, std::size_t l_version,
                 const dht::NodeId &id) noexcept;
 
 void

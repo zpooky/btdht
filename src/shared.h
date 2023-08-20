@@ -680,6 +680,8 @@ struct MessageContext {
   sp::maybe<Contact> ip_vote;
   bool read_only;
 
+  const krpc::ParseContext &pctx;
+
   MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &,
                  Contact) noexcept;
 

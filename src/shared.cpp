@@ -531,7 +531,8 @@ MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
     , transaction{ctx.tx}
     , remote{p_remote}
     , ip_vote(ctx.ip_vote)
-    , read_only{ctx.read_only} {
+    , read_only{ctx.read_only}
+    , pctx{ctx} {
   assertx(bool(ip_vote) == bool(ctx.ip_vote));
 }
 
