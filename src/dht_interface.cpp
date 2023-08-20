@@ -299,12 +299,14 @@ on_awake(DHT &dht, sp::Buffer &out) noexcept {
   uint32_t look_for = all - good;
 
   const auto cur = percentage(all, good);
+#if 0
   printf("good[%u], total[%u], bad[%u], look_for[%u], "
          "config.seek[%zu%s], "
          "cur[%.2f%s], max[%u], dht.root[%zd], bootstraps[%zu]\n",
          good, nodes_total(dht), nodes_bad(dht), look_for, //
          dht.config.percentage_seek, "%",                  //
          cur, "%", all, dht.root ? dht.root->depth : 0, length(dht.bootstrap));
+#endif
 
   if (cur < (double)dht.config.percentage_seek) {
     // TODO if we can't mint new tx then next should be calculated base on when
@@ -364,7 +366,7 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
   dht::DHT &self = ctx.dht;
 
   if (!dht::is_valid(sender)) {
-    logger::receive::parse::invalid_node_id(ctx, sender);
+    logger::receive::parse::invalid_node_id(ctx, ctx.query, sender);
     return false;
   }
 

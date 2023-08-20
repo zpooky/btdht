@@ -99,7 +99,13 @@ struct SampleInfohashesRequest {
   dht::Infohash ih;
 };
 
-struct SampleInfohashesResponse {};
+struct SampleInfohashesResponse {
+  dht::NodeId id;
+  std::uint32_t interval = 0;
+  sp::UinStaticArray<std::tuple<dht::NodeId, Contact>, 128> nodes;
+  std::uint32_t num = 0;
+  sp::UinStaticArray<dht::Infohash, 128> samples;
+};
 
 bool
 parse_sample_infohashes_request(dht::MessageContext &ctx,

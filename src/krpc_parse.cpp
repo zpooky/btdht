@@ -571,6 +571,38 @@ krpc::parse_sample_infohashes_request(dht::MessageContext &ctx,
 
 bool
 krpc::parse_sample_infohashes_response(dht::MessageContext &ctx,
-                                       krpc::SampleInfohashesResponse &out);
+                                       krpc::SampleInfohashesResponse &out) {
+
+  return bencode::d::dict(ctx.in, [&](sp::Buffer &p) {
+    if (!bencode::d::pair(p, "id", out.id.id)) {
+      return false;
+    }
+    if (!bencode::d::pair(p, "interval", out.interval)) {
+      return false;
+    }
+
+    if (!bencode::d::value(p, "nodes")) {
+      return false;
+    }
+    // TODO
+    if (!bencode_d<sp::Buffer>::value_compact(p, out.nodes)) {
+      return false;
+    }
+
+    if (!bencode::d::pair(p, "num", out.num)) {
+      return false;
+    }
+
+    if (!bencode::d::value(p, "samples")) {
+      return false;
+    }
+    // TODO
+    if (!bencode_d<sp::Buffer>::value_compact(p, out.samples)) {
+      return false;
+    }
+
+    return true;
+  });
+}
 
 // ========================================

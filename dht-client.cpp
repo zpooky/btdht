@@ -5,6 +5,7 @@
 #include <encode/hex.h>
 #include <getopt.h>
 #include <krpc.h>
+#include <krpc_parse.h>
 #include <priv_krpc.h>
 #include <prng/URandom.h>
 #include <prng/util.h>
@@ -186,13 +187,6 @@ send_dump(DHTClient &client) noexcept {
   return net::sock_write(client.udp, client.out);
 }
 
-static void
-receive_dump(fd &u, sp::Buffer &b) noexcept {
-  printf("#receive dump\n");
-  generic_receive(u, b);
-  printf("\n\n");
-}
-
 //====================================================
 static bool
 send_search(DHTClient &client, const dht::Infohash &search) noexcept {
@@ -220,7 +214,7 @@ send_stop_seach(DHTClient &client, const dht::Infohash &search) noexcept {
 
 //====================================================
 static int
-send_ping(DHTClient &client, const Contact &to) noexcept {
+send_ping(DHTClient &client) noexcept {
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
@@ -232,8 +226,7 @@ send_ping(DHTClient &client, const Contact &to) noexcept {
 
 //========
 static bool
-send_find_node(DHTClient &client, const Contact &to,
-               const dht::NodeId &search) noexcept {
+send_find_node(DHTClient &client, const dht::NodeId &search) noexcept {
   bool n4 = true;
   bool n6 = false;
   reset(client.out);
@@ -249,8 +242,7 @@ send_find_node(DHTClient &client, const Contact &to,
 //=====================================
 /* # get_peers */
 static bool
-send_get_peers(DHTClient &client, const Contact &to,
-               const dht::Infohash &search) noexcept {
+send_get_peers(DHTClient &client, const dht::Infohash &search) noexcept {
   bool n4 = true;
   bool n6 = false;
   reset(client.out);
@@ -276,7 +268,7 @@ receive_get_peers(fd &u, sp::Buffer &b) noexcept {
 //=====================================
 /* # announce_peer */
 static void
-send_announce_peer(DHTClient &client, const Contact &to, dht::Token &token,
+send_announce_peer(DHTClient &client, dht::Token &token,
                    dht::Infohash &search) noexcept {
   reset(client.out);
   krpc::Transaction tx;
@@ -324,7 +316,7 @@ handle_ping(DHTClient &client) {
     return EXIT_FAILURE;
   }
 
-  if (!send_ping(client, to)) {
+  if (!send_ping(client)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
   }
@@ -409,7 +401,7 @@ handle_find_node(DHTClient &client) {
     return EXIT_FAILURE;
   }
 
-  if (!send_find_node(client, to, search)) {
+  if (!send_find_node(client, search)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
   }
@@ -489,7 +481,7 @@ handle_get_peers(DHTClient &client) {
     return EXIT_FAILURE;
   }
 
-  if (!send_get_peers(client, to, search)) {
+  if (!send_get_peers(client, search)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
   }
@@ -534,54 +526,30 @@ Lretry:
 
   // dht::print_hex(b.raw, b.length);
   // printf("\n");
-  return krpc::d::krpc(pctx, [](krpc::ParseContext &ctx) { //
-    dht::NodeId id{};
-    std::uint32_t interval = 0;
-    sp::UinStaticArray<std::tuple<dht::NodeId, Contact>, 128> nodes;
-    std::uint32_t num = 0;
-    sp::UinStaticArray<dht::Infohash, 128> samples;
-
-    return bencode::d::dict(ctx.decoder, [&](sp::Buffer &p) {
-      if (!bencode::d::pair(p, "id", id.id)) {
-        return false;
-      }
-      printf("id: ");
-      dht::print_hex(stdout, id);
-      if (!bencode::d::pair(p, "interval", interval)) {
-        return false;
-      }
-      printf("interval: %u\n", interval);
-
-      if (!bencode::d::value(p, "nodes")) {
-        return false;
-      }
-      // TODO
-      if (!bencode_d<sp::Buffer>::value_compact(p, nodes)) {
-        return false;
-      }
-
-      if (!bencode::d::pair(p, "num", num)) {
-        return false;
-      }
-      printf("num: %u\n", num);
-
-      if (!bencode::d::value(p, "samples")) {
-        return false;
-      }
-      // TODO
-      if (!bencode_d<sp::Buffer>::value_compact(p, samples)) {
-        return false;
-      }
-
-      printf("infohash:\n");
-      for_each(samples, [](auto &ih) {
-        printf("\t");
-        dht::print_hex(stdout, ih);
+  krpc::SampleInfohashesResponse response;
+  bool krpc_res = krpc::d::krpc(
+      pctx, [&dht, &remote, &response](krpc::ParseContext &pctx2) { //
+        sp::byte b2[256] = {0};
+        sp::Buffer buf2{b2};
+        dht::MessageContext mctx(dht, pctx2, buf2, remote);
+        return krpc::parse_sample_infohashes_response(mctx, response);
       });
 
-      return true;
-    });
+  if (!krpc_res) {
+    fprintf(stderr, "parse error\n");
+    return false;
+  }
+
+  printf("id: ");
+  dht::print_hex(stdout, response.id);
+  printf("interval: %u\n", response.interval);
+  printf("num: %u\n", response.num);
+  printf("infohash:\n");
+  for_each(response.samples, [](auto &ih) {
+    printf("\t");
+    dht::print_hex(stdout, ih);
   });
+  return true;
 }
 //
 static bool
@@ -619,6 +587,13 @@ handle_sample_infohashes(DHTClient &client) {
     fprintf(stderr, "dht-client sample_infohashes ip:port\n");
     return EXIT_FAILURE;
   }
+
+  fd udp = udp::bind(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
+  if (!udp) {
+    fprintf(stderr, "failed connect: %s\n", to_string(to));
+    return EXIT_FAILURE;
+  }
+  swap(client.udp, udp);
 
   if (!send_sample_infohashes(client, to)) {
     fprintf(stderr, "failed to send\n");

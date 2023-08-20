@@ -61,7 +61,7 @@ core_tick(core &self, Milliseconds timeout) {
     }
   }
 
-  fprintf(stdout, "============================\n");
+  // fprintf(stdout, "============================\n");
   for (int i = 0; i < n_events; ++i) {
     tick(events[i]);
   } // for

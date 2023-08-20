@@ -16,12 +16,14 @@
 
 // #define LOG_ERROR_MINT_TX
 
-// #define LOG_RES_PING
-// #define LOG_RES_FIND_NODE
+#define LOG_RES_PING
+#define LOG_RES_FIND_NODE
 #define LOG_RES_GET_PEERS
 #define LOG_RES_ANNOUNCE_PEER
 
 #define LOG_PEER_DB
+
+// #define LOG_AWAKE_TIMEOUT
 
 // #define LOG_KNOWN_TX
 
@@ -130,8 +132,10 @@ error(dht::MessageContext &ctx) noexcept {
 
 void
 sample_infohashes(dht::MessageContext &ctx) noexcept {
+  dht::Stat &s = ctx.dht.statistics;
   print_time(ctx);
   printf("receive sample_infohashes\n");
+  ++s.received.request.sample_infohashes;
 }
 
 void
@@ -247,9 +251,9 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
 }
 
 void
-invalid_node_id(dht::MessageContext &ctx, const dht::NodeId &id) noexcept {
+invalid_node_id(dht::MessageContext &ctx,const char*query, const dht::NodeId &id) noexcept {
   print_time(ctx);
-  fprintf(stderr, "invalid node id[");
+  fprintf(stderr, "%s: invalid node id[",query);
   dht::print_hex(stderr, id.id, sizeof(id.id));
   fprintf(stderr, "]\n");
 }
@@ -265,11 +269,16 @@ namespace awake {
 /*logger::awake*/
 void
 timeout(const dht::DHT &ctx, Timestamp timeout) noexcept {
+#ifdef LOG_AWAKE_TIMEOUT
   print_time(ctx);
   Timestamp awake(timeout - ctx.now);
   printf("awake next timeout[%" PRIu64 "ms] ", std::uint64_t(awake));
   print_time(stdout, timeout);
   printf("\n");
+#else
+  (void)ctx;
+  (void)timeout;
+#endif
 }
 
 void

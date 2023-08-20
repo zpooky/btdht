@@ -3,12 +3,15 @@
 
 #include "shared.h"
 
+// ===============================================================================
 namespace logger {
 /*logger*/
 
+// ========================================
 namespace receive {
 /*logger::receive*/
 
+// ====================
 namespace req {
 /*logger::receive::req*/
 void
@@ -33,6 +36,7 @@ void
 dump(dht::MessageContext &) noexcept;
 } // namespace req
 
+// ====================
 namespace res {
 /* logger::receive::res */
 void
@@ -58,20 +62,25 @@ unknown_tx(dht::MessageContext &, const sp::Buffer &) noexcept;
 
 } // namespace res
 
+// ====================
 namespace parse {
 /* logger::receive::parse */
 void
 error(dht::DHT &, const sp::Buffer &, const char *msg) noexcept;
 
 void
-invalid_node_id(dht::MessageContext &ctx, const dht::NodeId &id) noexcept;
+invalid_node_id(dht::MessageContext &ctx, const char *query,
+                const dht::NodeId &id) noexcept;
 
 void
 self_sender(dht::MessageContext &ctx) noexcept;
 
 } // namespace parse
+// ====================
+
 } // namespace receive
 
+// ========================================
 namespace awake {
 /* logger::awake */
 void
@@ -87,6 +96,7 @@ void
 contact_scan(const dht::DHT &) noexcept;
 } // namespace awake
 
+// ========================================
 namespace transmit {
 /* logger::transmit */
 void
@@ -98,6 +108,7 @@ find_node(dht::DHT &, const Contact &, client::Res) noexcept;
 void
 get_peers(dht::DHT &, const Contact &, client::Res) noexcept;
 
+// ====================
 namespace error {
 /* logger::transmit::error */
 void
@@ -122,8 +133,10 @@ void
 sample_infohashes_response_timeout(dht::DHT &, const krpc::Transaction &,
                                    Timestamp) noexcept;
 } // namespace error
+// ====================
 } // namespace transmit
 
+// ========================================
 namespace routing {
 /*logger::routing*/
 void
@@ -136,6 +149,7 @@ void
 can_not_insert(const dht::DHT &, const dht::Node &) noexcept;
 } // namespace routing
 
+// ========================================
 namespace peer_db {
 /*logger::peer_db*/
 void
@@ -145,6 +159,7 @@ void
 update(const dht::DHT &, const dht::Infohash &, const dht::Peer &) noexcept;
 } // namespace peer_db
 
+// ========================================
 namespace search {
 
 void
@@ -152,5 +167,6 @@ retire(const dht::DHT &, const dht::Search &) noexcept;
 
 } // namespace search
 } // namespace logger
+// ===============================================================================
 
 #endif

@@ -104,13 +104,13 @@ raw_compact_contact_v4(sp::Buffer &buf, Contact &contact) noexcept {
 
   if (contact.port == 0 || contact.ip.ipv4 == 0) {
     // buf.pos = 0;
+    Contact peer;
     // bencode_print(buf);
     // assertxs(peer.port != 0, peer.port, peer.ip.ipv4);
     // assertxs(peer.ip.ipv4 != 0, peer.port, peer.ip.ipv4);
-    //
-    // char bx[128] = {'\0'};
-    // assertx_n(to_string(peer, bx));
-    // printf("%s\n", bx);
+    char bx[128] = {'\0'};
+    assertx_n(to_string(peer, bx));
+    fprintf(stderr,"%s\n", bx);
     // return false;
     buf.pos = pos;
     return false;
@@ -288,14 +288,14 @@ nodes(sp::Buffer &d, const char *key, sp::list<dht::IdContact> &l) noexcept {
 
 bool
 nodes(sp::Buffer &d, const char *key,
-      sp::UinStaticArray<dht::IdContact, 256> &l) noexcept {
+      sp::UinStaticArray<dht::IdContact, 256> &out) noexcept {
   const std::size_t pos = d.pos;
   if (!bencode::d::value(d, key)) {
     d.pos = pos;
     return false;
   }
 
-  if (!raw_compact_node_list(d, l)) {
+  if (!raw_compact_node_list(d, out)) {
     d.pos = pos;
     return false;
   }
