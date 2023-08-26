@@ -4,6 +4,9 @@ https://www.bittorrent.org/beps/bep_0000.html
 -------------------------------------------------------------------------------
 https://github.com/arvidn/libtorrent/blob/b82b350b38147ac7ddf6ec41027ebe07dc15f913/src/kademlia/node.cpp#L827
 
+TODO after 100 ip votes check if the ip is differet from the one used to
+generate the nodeid
+
 d
  1:e
  l

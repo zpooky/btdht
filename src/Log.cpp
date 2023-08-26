@@ -201,8 +201,10 @@ error(dht::MessageContext &ctx) noexcept {
 }
 
 void
-known_tx(dht::MessageContext &ctx) noexcept {
+known_tx(dht::MessageContext &ctx, const tx::TxContext &tctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  sp::Milliseconds ms{tctx.latency};
+  // TODO histogram tctx.latency
   ++s.known_tx;
 
 #ifdef LOG_KNOWN_TX

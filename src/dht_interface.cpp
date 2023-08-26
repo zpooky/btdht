@@ -577,7 +577,7 @@ static bool
 on_request(dht::MessageContext &ctx) noexcept {
   krpc::FindNodeRequest req;
   if (krpc::parse_find_node_request(ctx, req)) {
-    return handle_request(ctx, req.id, req.target, req.n4, req.n6);
+    return handle_request(ctx, req.sender, req.target, req.n4, req.n6);
   }
   return false;
 } // find_node::on_request
@@ -787,7 +787,7 @@ static bool
 on_request(dht::MessageContext &ctx) noexcept {
   krpc::GetPeersRequest req;
   if (krpc::parse_get_peers_request(ctx, req)) {
-    return handle_get_peers_request(ctx, req.id, req.infohash, req.noseed,
+    return handle_get_peers_request(ctx, req.sender, req.infohash, req.noseed,
                                     req.scrape, req.n4, req.n6);
   }
   return false;
@@ -864,7 +864,7 @@ on_request(dht::MessageContext &ctx) noexcept {
       name_abr[127] = '\0';
     }
 
-    return handle_announce_peer_request(ctx, req.id, req.implied_port,
+    return handle_announce_peer_request(ctx, req.sender, req.implied_port,
                                         req.infohash, req.port, req.token,
                                         req.seed, name_abr);
   }
@@ -885,15 +885,15 @@ setup(dht::Module &module) noexcept {
 namespace sample_infohashes {
 static bool
 handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
-               const dht::Infohash &ih) noexcept {
+               const dht::Key &target) noexcept {
   logger::receive::req::sample_infohashes(ctx);
 
-  message(ctx, sender, [&ctx, &ih](auto &) {
+  message(ctx, sender, [&ctx, &target](auto &) {
     dht::DHT &self = ctx.dht;
     constexpr std::size_t capacity = 8;
 
     dht::Node *nodes[capacity] = {nullptr};
-    dht::multiple_closest(self, ih, nodes);
+    dht::multiple_closest(self, target, nodes);
 
     std::uint32_t num = self.db.length_lookup_table;
     sp::UinStaticArray<dht::Infohash, 20> &samples =
@@ -957,7 +957,7 @@ static bool
 on_request(dht::MessageContext &ctx) noexcept {
   krpc::SampleInfohashesRequest req;
   if (krpc::parse_sample_infohashes_request(ctx, req)) {
-    return handle_request(ctx, req.sender, req.ih);
+    return handle_request(ctx, req.sender, req.target);
   }
   return false;
 }

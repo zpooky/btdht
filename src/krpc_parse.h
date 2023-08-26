@@ -23,7 +23,7 @@ parse_ping_response(dht::MessageContext &ctx, PingResponse &out);
 
 // ========================================
 struct FindNodeRequest {
-  dht::NodeId id;
+  dht::NodeId sender;
   dht::NodeId target;
 
   bool n4 = false;
@@ -44,10 +44,11 @@ parse_find_node_response(dht::MessageContext &ctx, FindNodeResponse &out);
 
 // ========================================
 struct GetPeersRequest {
-  dht::NodeId id;
+  dht::NodeId sender;
   dht::Infohash infohash;
   sp::maybe<bool> noseed{};
   bool scrape = false;
+  bool bootstrap = false; // TODO do something with it.
 
   bool n4 = false;
   bool n6 = false;
@@ -69,7 +70,7 @@ parse_get_peers_response(dht::MessageContext &ctx, GetPeersResponse &out);
 
 // ========================================
 struct AnnouncePeerRequest {
-  dht::NodeId id;
+  dht::NodeId sender;
   bool implied_port = false;
   dht::Infohash infohash;
   Port port = 0;
@@ -96,7 +97,10 @@ parse_announce_peer_response(dht::MessageContext &ctx,
 // ========================================
 struct SampleInfohashesRequest {
   dht::NodeId sender;
-  dht::Infohash ih;
+  dht::Key target;
+
+  bool n4 = false;
+  bool n6 = false;
 };
 
 struct SampleInfohashesResponse {

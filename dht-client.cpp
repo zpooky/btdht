@@ -3,6 +3,7 @@
 #include <bencode_print.h>
 #include <dht.h>
 #include <encode/hex.h>
+#include <errno.h>
 #include <getopt.h>
 #include <krpc.h>
 #include <krpc_parse.h>
@@ -11,6 +12,7 @@
 #include <prng/util.h>
 #include <signal.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/epoll.h>    //epoll
 #include <sys/signalfd.h> //signalfd
 #include <tcp.h>
@@ -551,14 +553,17 @@ Lretry:
   });
   return true;
 }
-//
+
 static bool
-send_sample_infohashes(DHTClient &client, const Contact &to) noexcept {
+send_sample_infohashes(DHTClient &client) noexcept {
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
-  krpc::request::sample_infohashes(client.out, tx, client.self, client.self.id);
+  bool n4 = true;
+  bool n6 = false;
+  krpc::request::sample_infohashes(client.out, tx, client.self, client.self.id,
+                                   n4, n6);
   flip(client.out);
   std::size_t pos = client.out.pos;
   bencode_print(client.out);
@@ -588,24 +593,27 @@ handle_sample_infohashes(DHTClient &client) {
     return EXIT_FAILURE;
   }
 
-  fd udp = udp::bind(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
+  fd udp = udp::connect(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
   if (!udp) {
-    fprintf(stderr, "failed connect: %s\n", to_string(to));
+    fprintf(stderr, "failed connect: %s (%s)\n", to_string(to),
+            strerror(errno));
     return EXIT_FAILURE;
   }
   swap(client.udp, udp);
 
-  if (!send_sample_infohashes(client, to)) {
+  if (!send_sample_infohashes(client)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
   }
 
+#if 0
   if (!sample_infohashes_receive(client.udp, client.in)) {
     return EXIT_FAILURE;
   }
-  // if (!generic_receive(client.udp, client.in)) {
-  //   return EXIT_FAILURE;
-  // }
+#endif
+  if (!generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
 
   return 0;
 }

@@ -103,6 +103,7 @@ raw_compact_contact_v4(sp::Buffer &buf, Contact &contact) noexcept {
   contact.port = ntohs(contact.port);
 
   if (contact.port == 0 || contact.ip.ipv4 == 0) {
+#if 0
     // buf.pos = 0;
     Contact peer;
     // bencode_print(buf);
@@ -113,11 +114,28 @@ raw_compact_contact_v4(sp::Buffer &buf, Contact &contact) noexcept {
     fprintf(stderr,"%s\n", bx);
     // return false;
     buf.pos = pos;
+#endif
     return false;
   }
 
   return true;
 } // bencode::d::raw_compact_contact_v4()
+
+static bool
+raw_compact_contact_v4_ignore(sp::Buffer &buf) noexcept {
+  Contact dummy;
+  const std::size_t pos = buf.pos;
+
+  constexpr std::size_t cmp(sizeof(dummy.ip.ipv4) + sizeof(dummy.port));
+  if (sp::remaining_read(buf) < cmp) {
+    buf.pos = pos;
+    assertx(false);
+    return false;
+  }
+  buf.pos += sizeof(dummy.ip.ipv4);
+  buf.pos += sizeof(dummy.port);
+  return true;
+}
 
 static bool
 raw_compact_idcontact(sp::Buffer &buf, dht::IdContact &value) noexcept {
@@ -133,14 +151,41 @@ raw_compact_idcontact(sp::Buffer &buf, dht::IdContact &value) noexcept {
   std::memcpy(value.id.id, buf.raw + buf.pos, sizeof(value.id.id));
   buf.pos += sizeof(value.id.id);
 
+  if (!is_valid(value.id)) {
+    buf.pos = pos;
+    return false;
+  }
+
   if (!raw_compact_contact_v4(buf, contact)) {
     buf.pos = pos;
     return false;
   }
 
   return true;
-} // bencode::d::value()
+}
+static bool
+raw_compact_idcontact_ignore(sp::Buffer &buf) noexcept {
+  const std::size_t pos = buf.pos;
+  dht::IdContact dummy;
 
+  constexpr std::size_t cmp(sizeof(dummy.id.id));
+  if (sp::remaining_read(buf) < cmp) {
+    buf.pos = pos;
+    assertx(false);
+    return false;
+  }
+
+  buf.pos += sizeof(dummy.id.id);
+  if (!raw_compact_contact_v4_ignore(buf)) {
+    buf.pos = pos;
+    assertx(false);
+    return false;
+  }
+
+  return true;
+}
+
+#if 0
 static bool
 raw_compact_contact(sp::Buffer &buf, Contact &value) noexcept {
   const std::size_t pos = buf.pos;
@@ -152,6 +197,7 @@ raw_compact_contact(sp::Buffer &buf, Contact &value) noexcept {
 
   return true;
 } // bencode::d::value()
+#endif
 
 template <typename ListType>
 static bool
@@ -182,6 +228,11 @@ raw_compact_node_list(sp::Buffer &d, ListType &result) noexcept {
       typename ListType::value_type n;
 
       if (!raw_compact_idcontact(val_buf, n)) {
+        bool b = raw_compact_idcontact_ignore(val_buf);
+        assertx(b);
+        // TODO since one entry in the response is not valid maybe mark all
+        // entries in $result as questionable
+#if 0
         //   d.pos = 0;
         //   dht::print_hex(d.raw, d.length);
         //   printf("\n");
@@ -193,9 +244,10 @@ raw_compact_node_list(sp::Buffer &d, ListType &result) noexcept {
         clear(result);
         d.pos = pos;
         return false;
+#endif
+      } else {
+        insert(result, n);
       }
-
-      insert(result, n);
     } // while
   }
 

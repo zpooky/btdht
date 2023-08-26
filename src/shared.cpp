@@ -61,7 +61,8 @@ TxContext::handle(dht::MessageContext &ctx) noexcept {
 TxContext::TxContext(TxHandle h, TxCancelHandle ch, void *c) noexcept
     : int_handle(h)
     , int_cancel(ch)
-    , closure(c) {
+    , closure(c)
+    , latency(0) {
 }
 
 TxContext::TxContext() noexcept

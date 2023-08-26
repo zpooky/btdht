@@ -913,6 +913,12 @@ multiple_closest(DHT &dht, const NodeId &id, Node **result,
                  std::size_t length) noexcept {
   return multiple_closest_nodes(dht, id.id, result, length);
 } // dht::multiple_closest()
+  //
+void
+multiple_closest(DHT &dht, const Key &id, Node **result,
+                 std::size_t length) noexcept {
+  return multiple_closest_nodes(dht, id, result, length);
+} // dht::multiple_closest()
 
 void
 multiple_closest(DHT &dht, const Infohash &id, Node **result,

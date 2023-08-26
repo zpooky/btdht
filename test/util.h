@@ -34,27 +34,36 @@ print_hex(const sp::byte *arr, std::size_t length) {
 template <typename SizeType>
 bool
 FromHex(sp::byte *theDest, const char *theSource, /*IN/OUT*/ SizeType &i) {
+  fprintf(stderr, "%s:%d\n", __func__, (int)'f');
   // TODO ('F'+1)-'0'
   SizeType size = i;
   i = 0;
   const char *it = theSource;
   std::uint8_t lookup['f' + 1];
-  lookup['0'] = 0x0;
-  lookup['1'] = 0x1;
-  lookup['2'] = 0x2;
-  lookup['3'] = 0x3;
-  lookup['4'] = 0x4;
-  lookup['5'] = 0x5;
-  lookup['6'] = 0x6;
-  lookup['7'] = 0x7;
-  lookup['8'] = 0x8;
-  lookup['9'] = 0x9;
-  lookup['a'] = 0xA;
-  lookup['b'] = 0xB;
-  lookup['c'] = 0xC;
-  lookup['d'] = 0xD;
-  lookup['e'] = 0xE;
-  lookup['f'] = 0xF;
+  lookup[int('0')] = 0x0;
+  lookup[int('1')] = 0x1;
+  lookup[int('2')] = 0x2;
+  lookup[int('3')] = 0x3;
+  lookup[int('4')] = 0x4;
+  lookup[int('5')] = 0x5;
+  lookup[int('6')] = 0x6;
+  lookup[int('7')] = 0x7;
+  lookup[int('8')] = 0x8;
+  lookup[int('9')] = 0x9;
+
+  lookup[int('A')] = 0xA;
+  lookup[int('B')] = 0xB;
+  lookup[int('C')] = 0xC;
+  lookup[int('D')] = 0xD;
+  lookup[int('E')] = 0xE;
+  lookup[int('F')] = 0xF;
+
+  lookup[int('a')] = 0xA;
+  lookup[int('b')] = 0xB;
+  lookup[int('c')] = 0xC;
+  lookup[int('d')] = 0xD;
+  lookup[int('e')] = 0xE;
+  lookup[int('f')] = 0xF;
 
   while (*it) {
     if (i > size) {
@@ -62,12 +71,14 @@ FromHex(sp::byte *theDest, const char *theSource, /*IN/OUT*/ SizeType &i) {
     }
 
     char idx = *it++;
-    assert(idx >= '0' && idx <= 'f');
+    assert((idx >= '0' && idx <= '9') || (idx >= 'a' && idx <= 'f') ||
+           (idx >= 'A' && idx <= 'F'));
     sp::byte f = lookup[int(idx)];
     f = sp::byte(f << 4);
 
     idx = *it++;
-    assert(idx >= '0' && idx <= 'f');
+    assert((idx >= '0' && idx <= '9') || (idx >= 'a' && idx <= 'f') ||
+           (idx >= 'A' && idx <= 'F'));
     sp::byte s = lookup[int(idx)];
     theDest[i++] = f | s;
   }
@@ -166,19 +177,21 @@ nodeId(dht::NodeId &id) {
 }
 
 inline static void
-rand_nodeId(dht::NodeId &id) {
-  memset(id.id, 0, sizeof(id.id));
-  for (std::size_t i = 0; i < sizeof(id.id) - 1; ++i) {
-    id.id[i] = (sp::byte)rand();
+rand_key(dht::Key &id) {
+  memset(id, 0, sizeof(id));
+  for (std::size_t i = 0; i < sizeof(id) - 1; ++i) {
+    id[i] = (sp::byte)rand();
   }
 }
 
 inline static void
+rand_nodeId(dht::NodeId &id) {
+  rand_key(id.id);
+}
+
+inline static void
 rand_infohash(dht::Infohash &id) {
-  memset(id.id, 0, sizeof(id.id));
-  for (std::size_t i = 0; i < sizeof(id.id) - 1; ++i) {
-    id.id[i] = (sp::byte)rand();
-  }
+  rand_key(id.id);
 }
 
 static inline void

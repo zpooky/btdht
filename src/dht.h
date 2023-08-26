@@ -47,6 +47,15 @@ multiple_closest(DHT &dht, const NodeId &id, Node *(&result)[SIZE]) noexcept {
 }
 
 void
+multiple_closest(DHT &, const Key &, Node **, std::size_t) noexcept;
+
+template <std::size_t SIZE>
+void
+multiple_closest(DHT &dht, const Key &id, Node *(&result)[SIZE]) noexcept {
+  return multiple_closest(dht, id, result, SIZE);
+}
+
+void
 multiple_closest(DHT &, const Infohash &, Node **, std::size_t) noexcept;
 
 template <std::size_t SIZE>

@@ -194,6 +194,7 @@ static Tx *
 search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
   Tx *const result = (Tx *)find(tree, needle);
   if (!result) {
+    assertx(false);
     // TODO only assert
     in_order_for_each(tree, [&needle](auto &current) {
       if (current == needle) {
@@ -228,8 +229,9 @@ move_front(Client &self, Tx *tx) noexcept {
 }
 
 bool
-consume(Client &self, const krpc::Transaction &needle,
-        /*OUT*/ TxContext &out) noexcept {
+consume_transaction(dht::DHT &dht, const krpc::Transaction &needle,
+                    /*OUT*/ TxContext &out) noexcept {
+  dht::Client &self = dht.client;
 
   assertx(debug_count(self) == Client::tree_capacity);
 
@@ -238,8 +240,11 @@ consume(Client &self, const krpc::Transaction &needle,
     Tx *const tx = search(self.tree, needle);
 
     if (tx) {
-      if (*tx == needle) {
+      // Note: we compare prefix in tree, and here we compare both prefix and
+      // suffix
+      if (tx->operator==(needle)) {
         out = tx->context;
+        out.latency = dht.now - tx->sent;
 
         reset(*tx);
         move_front(self, tx);
@@ -248,11 +253,13 @@ consume(Client &self, const krpc::Transaction &needle,
 
         return true;
       }
+    } else {
+      assertx(false);
     }
   }
 
   return false;
-} // dht::consume()
+} // dht::consume_transaction()
 
 //=====================================
 static Timestamp
@@ -332,7 +339,7 @@ add_back(Client &client, Tx *t) noexcept {
 }
 
 bool
-mint(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
+mint_transaction(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
   bool is_exp = false;
   bool is_snt = false;
   assertx(debug_count(dht) == Client::tree_capacity);

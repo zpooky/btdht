@@ -75,6 +75,8 @@ struct TxContext {
   TxCancelHandle int_cancel;
   void *closure;
 
+  sp::Timestamp latency;
+
   TxContext(TxHandle, TxCancelHandle, void *) noexcept;
   TxContext() noexcept;
 

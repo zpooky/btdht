@@ -52,15 +52,15 @@ Lrestart:
         ASSERT_TRUE(tx::is_valid(dht, ts[k]));
       }
       tx::TxContext h;
-      ASSERT_TRUE(tx::mint(dht, ts[i], h));
-      // printf("Mint_Tx: %c%c\n", ts[i].id[0], ts[i].id[1]);
+      ASSERT_TRUE(tx::mint_transaction(dht, ts[i], h));
+      // printf("mint_transaction: %c%c\n", ts[i].id[0], ts[i].id[1]);
       ASSERT_TRUE(tx::is_valid(dht, ts[i]));
     } // for
 
     {
       krpc::Transaction tx;
       tx::TxContext h;
-      ASSERT_FALSE(tx::mint(dht, tx, h));
+      ASSERT_FALSE(tx::mint_transaction(dht, tx, h));
     }
     test_unique(ts);
 
@@ -76,7 +76,7 @@ Lrestart:
       tx::TxContext h;
       // printf("i: %zu\n", i);
       ASSERT_TRUE(tx::is_valid(dht, ts[i]));
-      ASSERT_TRUE(tx::consume(dht.client, ts[i], h));
+      ASSERT_TRUE(tx::consume_transaction(dht, ts[i], h));
       ASSERT_FALSE(tx::is_valid(dht, ts[i]));
     }
     goto Lrestart;

@@ -3,9 +3,14 @@
 #include <cstdio>
 #include <cstring>
 // #include <exception>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <string.h>
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h> //close
 
@@ -36,7 +41,7 @@ namespace udp {
 //=====================================
 fd
 bind(Ipv4 ip, Port port, Mode mode) noexcept {
-  int type = SOCK_DGRAM;
+  int type = SOCK_DGRAM | SOCK_CLOEXEC;
   if (mode == Mode::NONBLOCKING) {
     type |= SOCK_NONBLOCK;
   }
@@ -142,6 +147,52 @@ fd
 connect_unix_seq(const char *file, Mode m) noexcept {
   int type = SOCK_SEQPACKET;
   return do_connect_unix(file, m, type);
+}
+
+fd
+connect(Ipv4 ip, Port port, Mode m) noexcept {
+  int type = SOCK_DGRAM | SOCK_CLOEXEC;
+  if (m == Mode::NONBLOCKING) {
+    type |= SOCK_NONBLOCK;
+  }
+
+  fd udp{::socket(AF_INET, type, IPPROTO_UDP)};
+  if (!udp) {
+    fprintf(stderr, "socket: %s\n", strerror(errno));
+    return udp;
+  }
+
+  /*For source address*/
+#if 0
+  ::addrinfo hints{0};
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM; // UDP communication
+  hints.ai_flags = AI_PASSIVE;    // fill in my IP for me
+#endif
+
+  ::sockaddr_in local{};
+  local.sin_family = AF_INET;
+  local.sin_port = htons(0);
+  local.sin_addr.s_addr = htonl(0);
+
+  /*Bind this datagram socket to source address info */
+  if (::bind(int(udp), (::sockaddr *)&local, sizeof(local)) < 0) {
+    fprintf(stderr, "bind: %s\n", strerror(errno));
+    return fd{-1};
+  }
+
+  ::sockaddr_in remote{};
+  remote.sin_family = AF_INET;
+  remote.sin_port = htons(uint16_t{port});
+  remote.sin_addr.s_addr = htonl(ip);
+  // ::sockaddr *meaddr = (::sockaddr *)&remote;
+
+  if (::connect(int(udp), (::sockaddr *)&remote, sizeof(remote)) < 0) {
+    fprintf(stderr, "%s: 2: %s\n", __func__, strerror(errno));
+    return fd{-1};
+  }
+
+  return udp;
 }
 
 fd

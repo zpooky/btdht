@@ -110,7 +110,8 @@ mint_token(dht::DHT &self, const Contact &remote, dht::Token &t) noexcept {
 
 //=====================================
 bool
-is_valid_token(dht::DHT &self, dht::Node &node, const dht::Token &token) noexcept {
+is_valid_token(dht::DHT &self, dht::Node &node,
+               const dht::Token &token) noexcept {
   if (is_valid(token)) {
     dht::Token cmp = ee(self.db.key[1], node.contact);
     if (cmp == token) {
@@ -160,8 +161,9 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
 sp::UinStaticArray<dht::Infohash, 20> &
 randomize_samples(dht::DHT &self) noexcept {
   if (!is_empty(self.db.lookup_table)) {
-    if ((self.db.last_generated + self.config.db_samples_refresh_interval) <=
-        self.now) {
+    sp::Timestamp next_generated =
+        self.db.last_generated + self.config.db_samples_refresh_interval;
+    if (next_generated <= self.now) {
       clear(self.db.random_samples);
       binary::rec::inorder(self.db.lookup_table, [&](dht::KeyValue &cur) {
         if (!is_full(self.db.random_samples)) {
@@ -185,10 +187,10 @@ next_randomize_samples(const dht::DHT &self) noexcept {
   Timestamp next_refresh =
       self.db.last_generated + self.config.db_samples_refresh_interval;
   if (next_refresh <= self.now) {
-    return sp::Seconds(self.config.db_samples_refresh_interval).value;
+    return (uint32_t)sp::Seconds(self.config.db_samples_refresh_interval).value;
   }
   Timestamp delta = next_refresh - self.now;
-  return sp::Seconds(delta).value;
+  return (uint32_t)sp::Seconds(delta).value;
 }
 
 //=====================================

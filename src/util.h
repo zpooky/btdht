@@ -224,7 +224,8 @@ struct Transaction {
 
   template <std::size_t N1, std::size_t N2>
   Transaction(sp::byte (&one)[N1], sp::byte (&two)[N2]) noexcept
-      : Transaction() {
+      : id{0}
+      , length{0} {
     static_assert((N1 + N2) <= sizeof(id), "");
     std::memcpy(id + length, one, N1);
     length += N1;
@@ -233,7 +234,8 @@ struct Transaction {
     length += N2;
   }
 
-  Transaction(const Transaction &o) noexcept {
+  Transaction(const Transaction &o) noexcept
+      : Transaction() {
     memcpy(id, o.id, sizeof(id));
     length = o.length;
   }

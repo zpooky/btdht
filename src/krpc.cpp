@@ -147,17 +147,31 @@ request::announce_peer(sp::Buffer &buffer, const Transaction &t,
 //=====================================
 bool
 request::sample_infohashes(sp::Buffer &b, const Transaction &t,
-                           const dht::NodeId &self,
-                           const dht::Key &target) noexcept {
-  return req(b, t, "sample_infohashes", [&self, &target](sp::Buffer &buf) { //
-    if (!bencode::e::pair(buf, "id", self.id, sizeof(self.id))) {
-      return false;
-    }
-    if (!bencode::e::pair(buf, "target", target, sizeof(target))) {
-      return false;
-    }
-    return true;
-  });
+                           const dht::NodeId &self, const dht::Key &target,
+                           bool n4, bool n6) noexcept {
+  return req(b, t, "sample_infohashes",
+             [&self, &target, n4, n6](sp::Buffer &buf) { //
+               if (!bencode::e::pair(buf, "id", self.id, sizeof(self.id))) {
+                 return false;
+               }
+               if (!bencode::e::pair(buf, "target", target, sizeof(target))) {
+                 return false;
+               }
+
+               sp::UinStaticArray<std::string, 2> want;
+               if (n4) {
+                 insert(want, "n4");
+               }
+
+               if (n6) {
+                 insert(want, "n6");
+               }
+
+               if (!sp::bencode::e<sp::Buffer>::pair(buf, "want", want)) {
+                 return false;
+               }
+               return true;
+             });
 }
 
 //=====================================
@@ -296,37 +310,38 @@ response::announce_peer(sp::Buffer &buf, const Transaction &t,
 
 //=====================================
 bool
-response::sample_infohashes(
-    sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
-    std::uint32_t interval, const dht::Node **nodes, size_t l_nodes,
-    std::uint32_t num,
-    const sp::UinStaticArray<dht::Infohash, 20> &samples) noexcept {
-  return resp(buf, t,
-              [&id, &interval, &nodes, l_nodes, &num, &samples](auto &b) { //
-                if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
-                  return false;
-                }
+response::sample_infohashes(sp::Buffer &buf, const Transaction &t,
+                            const dht::NodeId &id, std::uint32_t interval,
+                            const dht::Node **nodes, size_t l_nodes,
+                            std::uint32_t num, const dht::Infohash *samples,
+                            std::size_t n_samples) noexcept {
+  return resp(
+      buf, t,
+      [&id, &interval, &nodes, l_nodes, &num, samples, n_samples](auto &b) { //
+        if (!bencode::e::pair(b, "id", id.id, sizeof(id.id))) {
+          return false;
+        }
 
-                if (!bencode::e::pair(b, "interval", interval)) {
-                  return false;
-                }
+        if (!bencode::e::pair(b, "interval", interval)) {
+          return false;
+        }
 
-                if (!sp::bencode::e<sp::Buffer>::pair_id_contact_compact(
-                        b, "target", nodes, l_nodes)) {
-                  return false;
-                }
+        if (!sp::bencode::e<sp::Buffer>::pair_id_contact_compact(
+                b, "nodes", nodes, l_nodes)) {
+          return false;
+        }
 
-                if (!bencode::e::pair(b, "num", num)) {
-                  return false;
-                }
+        if (!bencode::e::pair(b, "num", num)) {
+          return false;
+        }
 
-                if (!sp::bencode::e<sp::Buffer>::pair_compact(
-                        b, "samples", samples.data(), samples.length)) {
-                  return false;
-                }
+        if (!sp::bencode::e<sp::Buffer>::pair_compact(b, "samples", samples,
+                                                      n_samples)) {
+          return false;
+        }
 
-                return true;
-              });
+        return true;
+      });
 }
 
 //=====================================

@@ -347,7 +347,7 @@ bencode_d<Buffer>::value_compact(Buffer &buf,
   if (!read_numeric(buf, l_raw, ':')) {
     return false;
   }
-  for (std::size_t i = 0; i < l_raw; i += sizeof(dht::Infohash)) {
+  for (std::size_t i = 0; i < l_raw; i += sizeof(dht::Infohash::id)) {
     dht::Infohash ih{};
     size_t len = pop_front(buf, ih.id, sizeof(ih.id));
     if (len != sizeof(ih.id)) {
@@ -368,7 +368,9 @@ bencode_d<Buffer>::value_compact(
     return false;
   }
 
-  for (std::size_t i = 0; i < l_raw; i += sizeof(dht::Key) + sizeof(Contact)) {
+  for (std::size_t i = 0; i < l_raw;
+       i +=
+       sizeof(dht::Key) + sizeof(Contact::ip.ipv4) + sizeof(Contact::port)) {
     dht::NodeId id{};
     size_t len = pop_front(buf, id.id, sizeof(id.id));
     if (len != sizeof(id.id)) {

@@ -43,9 +43,7 @@
 // TODO log explicit error response (error module)
 // XXX ipv6
 // XXX client: multiple receiver for the same search
-// down
 // TODO replace bad node
-// find_node resp str['nodes': 5, hex[5B6DE2312AC3E07DB60A817386C60DD0B1BB0894710E80C4000032F6241660065E63B9322F94AC009832A5872FC90A17028F1AE2000000000000000000000000000000000000000071F8EBA7A27C563C4077E4CC6849D51633F4723D2FF31A6899DF0A17065973488847A82753116BD3EFD179D9FD66C4458D89D32E0A17065CD2598410C59465C7D14BB4AA28D7B8F2300FACE5A3E20A1702D21AE1C614CFAC364DA7B2C16F95F70946D184665E7DE60A1702D81AE2DBAB11A6AA4DBD3842F6F70821F19CB9B79FD2170A17065D9198]([m_1*__}___s________q_____2_$_`_^c_2/____2__/___________________________q____|V<@w__hI__3_r=/__h_____YsH_G_'S_k___y__f_E___.___\_Y____e__K__(___0_______________6M___o___F__f^}____________M_8B___!__________]__)]
 //
 static void
 die(const char *s) {
@@ -147,9 +145,9 @@ parse(dht::Domain dom, dht::DHT &dht, dht::Modules &modules,
     } else if (std::strcmp(pctx.msg_type, "r") == 0) { /*response*/
       tx::TxContext tctx;
       std::size_t cnt = dht.client.active;
-      if (tx::consume(dht.client, pctx.tx, tctx)) {
+      if (tx::consume_transaction(dht, pctx.tx, tctx)) {
         assertx((cnt - 1) == dht.client.active);
-        logger::receive::res::known_tx(mctx);
+        logger::receive::res::known_tx(mctx, tctx);
         return tctx.handle(mctx);
       } else {
         logger::receive::res::unknown_tx(mctx, in);
@@ -157,14 +155,15 @@ parse(dht::Domain dom, dht::DHT &dht, dht::Modules &modules,
       }
     } else if (std::strcmp(pctx.msg_type, "e") == 0) { /*error*/
       tx::TxContext tctx;
-      if (tx::consume(dht.client, pctx.tx, tctx)) {
-        logger::receive::res::known_tx(mctx);
+      if (tx::consume_transaction(dht, pctx.tx, tctx)) {
+        logger::receive::res::known_tx(mctx, tctx);
       } else {
         logger::receive::res::unknown_tx(mctx, in);
       }
       bencode_print_out(stderr);
       sp::Buffer copy(in);
       copy.pos = 0;
+      // TODO print which request type that generated the error
       if (!bencode_print(copy)) {
         hex::encode_print(copy.raw, copy.length, stderr);
       }

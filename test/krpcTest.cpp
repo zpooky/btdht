@@ -177,7 +177,7 @@ TEST(krpcTest, test_find_node_static) {
     dht::NodeId id{"abcdefghij0123456789"};
     dht::NodeId target{"mnopqrstuvwxyz123456"};
 
-    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.sender == id);
     ASSERT_TRUE(req.target == target);
     ASSERT_TRUE(req.n4);
     ASSERT_FALSE(req.n6);
@@ -270,7 +270,7 @@ TEST(krpcTest, test_find_node) {
       return krpc::parse_find_node_request(mctx, req);
     }));
 
-    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.sender == id);
     ASSERT_TRUE(req.target == target);
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     ASSERT_TRUE(std::string("find_node") == ctx.query);
@@ -358,7 +358,7 @@ TEST(krpcTest, test_get_peers_static) {
     dht::NodeId id{"abcdefghij0123456789"};
     dht::Infohash infohash{"mnopqrstuvwxyz123456"};
 
-    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.sender == id);
     ASSERT_TRUE(req.infohash == infohash);
     ASSERT_FALSE(bool(req.noseed));
     ASSERT_FALSE(req.scrape);
@@ -515,7 +515,7 @@ TEST(krpcTest, test_get_peers) {
       return parse_get_peers_request(mctx, req);
     }));
 
-    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.sender == id);
     ASSERT_TRUE(req.infohash == infohash);
     ASSERT_FALSE(bool(req.noseed));
     ASSERT_FALSE(req.scrape);
@@ -649,7 +649,7 @@ TEST(krpcTest, test_anounce_peer_static) {
     dht::Infohash infohash{"mnopqrstuvwxyz123456"};
     dht::Token token{"aoeusnth"};
 
-    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.sender == id);
     ASSERT_TRUE(req.implied_port);
     ASSERT_TRUE(req.infohash == infohash);
     ASSERT_TRUE(req.port == 6881);
@@ -726,7 +726,7 @@ TEST(krpcTest, test_anounce_peer) {
       return parse_announce_peer_request(mctx, req);
     });
 
-    ASSERT_TRUE(req.id == id);
+    ASSERT_TRUE(req.sender == id);
     ASSERT_TRUE(req.implied_port);
     ASSERT_TRUE(req.infohash == infohash);
     ASSERT_TRUE(req.port == port);
@@ -754,6 +754,221 @@ TEST(krpcTest, test_anounce_peer) {
       return parse_announce_peer_response(mctx, res);
     }));
     ASSERT_TRUE(res.id == id);
+
+    ASSERT_TRUE(sp::remaining_read(buff) == 0);
+    ASSERT_TRUE(std::string("r") == ctx.msg_type);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_EQ(std::size_t(0), std::strlen(ctx.query));
+  }
+}
+
+TEST(krpcTest, test_sample_infohashes_static) {
+  sp::byte b[1024 * 4] = {0};
+
+  krpc::Transaction t{"aa"};
+
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, udp, listen, r, sp::now());
+
+#if 0
+  {
+    sp::Buffer buf{b};
+    const char *bencode_req =
+        "d1:ad2:id20:abcdefghij012345678912:implied_porti1e9:info_hash20:"
+        "mnopqrstuvwxyz1234564:porti6881e5:token8:aoeusnthe1:q13:announce_"
+        "peer1:t2:aa1:y1:qe";
+    ASSERT_TRUE(write(buf, bencode_req, strlen(bencode_req)));
+    sp::flip(buf);
+
+    krpc::AnnouncePeerRequest req;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_announce_peer_request(mctx, req);
+    }));
+
+    dht::NodeId id{"abcdefghij0123456789"};
+    dht::Infohash infohash{"mnopqrstuvwxyz123456"};
+    dht::Token token{"aoeusnth"};
+
+    ASSERT_TRUE(req.sender == id);
+    ASSERT_TRUE(req.implied_port);
+    ASSERT_TRUE(req.infohash == infohash);
+    ASSERT_TRUE(req.port == 6881);
+    ASSERT_TRUE(req.token == token);
+    ASSERT_FALSE(req.seed);
+
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(std::string("announce_peer") == ctx.query);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("q") == ctx.msg_type);
+  }
+#endif
+  {
+    const char *hex =
+        "64323A6970363AC0A80046B1A8313A7264323A696432303A2C70A1ABB21FCAC09CF11F"
+        "28B88E2109EADECB21383A696E74657276616C69323136303065353A6E6F6465733230"
+        "383A073565E934D292A4E4D4D945ADA5B1B3142119CD05B71D3E1B5F0735D4DEDFE07E"
+        "B12419FDF74DEFCCDDE19ACE896DFB340B5E5905E59163884D305C5571E9E525F7C561"
+        "7CFA31AABCDADECB1AE905E41707664820FB910333D391E44BB1CD4BFE0002E521771A"
+        "E105F85919150E5477FFD36242273AA55925900EED5FA8A2B9ED5E038836279BF32930"
+        "59D35134527CB4BABB7284D9699EC0CAACD202428862676D4A57FAA22597FD85F20E45"
+        "EC42183E10F067E3A70242C2D6AE529049F1F1BBE9EBB3A6DB3C870CE1BCA328476BD7"
+        "333A6E756D6931323865313A7069343534383065373A73616D706C65733430303A2C70"
+        "65B49CE69D57EB034608B065E023DC8A2EBF2C70834FCE234114BC9EDFD70CDE17E7B0"
+        "FFB86A2C70A040AC40CD8F4F4B28F4A31EC66E9A153AA92C70A08DCCBE28895F81C38B"
+        "72A971A221FBC1612C70A104F40598D6D4BB9F12DA794D05C748E4652C70A1B7A56860"
+        "45727F83C95C8D1D675A7F74F12C70A2939B904A73492C886ABCA2971F135D59942C70"
+        "A2D2737AAF010E2E0E18DC00F78E799F82472C70A4BC873672916023BB657DD5AA56D1"
+        "662A862C70A609249B0B5B8F1E22977F090AE5CF6A5EBE2C70A69AEF07BD3E99CB2678"
+        "23DC908B2646E51D2C70AAA7D7A627FE1143972781C3FA1129A687102C70AEAA3867B2"
+        "92F6A6EC2FB6D2B3DAD6E7AC8B2C70B4F86DAEB158F88A4237C138D028F21A21262C70"
+        "B594288920F11C2C7E26311C1C12CCCC573D2C70B652F7742406125B7A9DC4B93954EA"
+        "D0958E2C75695B26D43A9F30E5D6C114C1D889A50D1BE42C77A9F3D2BF8729C1CEE570"
+        "3921365473ECFCD42C77BAA5123740BE059DA1A3D322EB363E8D67592E89A9C6B4165B"
+        "BF7F228857AA5C07786261F38365313A74353AD3B2786DA0313A76343A4C540209313A"
+        "79313A7265";
+    size_t l = strlen(hex);
+    ASSERT_TRUE(FromHex(b, hex, l));
+    sp::Buffer in(b);
+    in.length = l;
+
+    // bencode_print(in);
+    // sp::flip(in);
+
+    krpc::SampleInfohashesResponse res;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, in);
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      fprintf(stderr, "%s:k\n", __func__);
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_sample_infohashes_response(mctx, res);
+    }));
+
+    dht::NodeId id{};
+    from_hex(id, "2C70A1ABB21FCAC09CF11F28B88E2109EADECB21");
+
+    ASSERT_TRUE(res.id == id);
+    ASSERT_EQ(res.interval, 21600);
+    ASSERT_EQ(res.num, 128);
+
+    ASSERT_EQ(length(res.nodes), 8);    // TODO
+    ASSERT_EQ(length(res.samples), 20); // TODO
+
+    // ASSERT_TRUE(res.p == 128);
+    ASSERT_TRUE(sp::remaining_read(in) == 0);
+    // ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("r") == ctx.msg_type);
+  }
+}
+
+TEST(krpcTest, test_sample_infohashes) {
+  sp::byte b[2048] = {0};
+  dht::NodeId id;
+  nodeId(id);
+
+  fd udp{-1};
+  Contact listen;
+  prng::xorshift32 r(1);
+  dht::DHT dht(udp, udp, listen, r, sp::now());
+
+  krpc::Transaction t;
+  transaction(t);
+
+  {
+    sp::Buffer buf{b};
+
+    dht::Key key;
+    rand_key(key);
+
+    ASSERT_TRUE(krpc::request::sample_infohashes(buf, t, id, key, true, false));
+    sp::flip(buf);
+
+    krpc::SampleInfohashesRequest req;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buf);
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      return parse_sample_infohashes_request(mctx, req);
+    }));
+
+    ASSERT_TRUE(req.sender == id);
+    ASSERT_TRUE(std::memcmp(req.target, key, sizeof(key)) == 0);
+    ASSERT_TRUE(req.n4);
+    ASSERT_FALSE(req.n6);
+    ASSERT_TRUE(sp::remaining_read(buf) == 0);
+    ASSERT_TRUE(std::string("sample_infohashes") == ctx.query);
+    ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("q") == ctx.msg_type);
+  }
+  /*response Nodes*/
+  {
+    constexpr std::size_t NODE_SIZE = 32;
+    dht::Node node[NODE_SIZE];
+    const dht::Node *in[NODE_SIZE];
+    sp::UinStaticArray<std::tuple<dht::NodeId, Contact>, 128> nodes_cmp;
+    for (std::size_t i = 0; i < NODE_SIZE; ++i) {
+      rand_nodeId(node[i].id);
+      node[i].contact.ip.ipv4 = (Ipv4)rand();
+      node[i].contact.ip.type = IpType::IPV4;
+      node[i].contact.port = (Port)rand();
+      in[i] = &node[i];
+      insert(nodes_cmp, std::make_tuple(node[i].id, node[i].contact));
+    }
+
+    sp::UinStaticArray<dht::Infohash, 128> samples;
+    constexpr std::size_t SAMPLES = 20;
+    for (std::size_t i = 0; i < SAMPLES; ++i) {
+      dht::Infohash ih;
+      rand_infohash(ih);
+      insert(samples, ih);
+    }
+
+    std::uint32_t num = 1337;
+    std::uint32_t interval = 7331;
+
+    sp::Buffer buff{b};
+
+    dht::Infohash infohash;
+    ASSERT_TRUE(krpc::response::sample_infohashes(buff, t, id, interval,
+                                                  (const dht::Node **)&in,
+                                                  NODE_SIZE, num, samples));
+    sp::flip(buff);
+
+    // bencode_print(p);
+    // printf("asd\n\n\n\n\n");
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, buff);
+
+    krpc::SampleInfohashesResponse res;
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf{b2};
+      dht::MessageContext mctx(dht, pctx, buf, remote);
+      return krpc::parse_sample_infohashes_response(mctx, res);
+    }));
+    ASSERT_TRUE(res.id == id.id);
+    ASSERT_TRUE(res.num == 1337);
+    ASSERT_TRUE(res.interval == 7331);
+
+    ASSERT_TRUE(res.nodes == nodes_cmp);
+    ASSERT_EQ(length(res.nodes), NODE_SIZE);
+
+    ASSERT_EQ(length(res.samples), SAMPLES);
+    ASSERT_TRUE(res.samples == samples);
 
     ASSERT_TRUE(sp::remaining_read(buff) == 0);
     ASSERT_TRUE(std::string("r") == ctx.msg_type);

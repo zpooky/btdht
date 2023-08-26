@@ -22,6 +22,9 @@ bind_unix_seq(const char *file, Mode) noexcept;
 fd
 connect_unix_seq(const char *file, Mode) noexcept;
 
+fd
+connect(Ipv4, Port, Mode) noexcept;
+
 fd bind(Ipv6, Port, Mode) noexcept;
 
 fd bind_v6(Port, Mode) noexcept;

@@ -193,7 +193,7 @@ krpc::parse_find_node_request(dht::MessageContext &ctx,
 
     sp::UinStaticArray<std::string, 2> want;
   Lstart:
-    if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
+    if (!b_id && bencode::d::pair(p, "id", out.sender.id)) {
       b_id = true;
       goto Lstart;
     }
@@ -209,6 +209,8 @@ krpc::parse_find_node_request(dht::MessageContext &ctx,
           out.n4 = true;
         } else if (w == "n6") {
           out.n6 = true;
+        } else {
+          fprintf(stderr, "%s:w[%s]\n", __func__, w.c_str());
         }
       }
       goto Lstart;
@@ -317,12 +319,13 @@ krpc::parse_get_peers_request(dht::MessageContext &ctx,
     bool b_ih = false;
     bool b_ns = false;
     bool b_sc = false;
+    bool b_bs = false;
     bool b_want = false;
 
     sp::UinStaticArray<std::string, 2> want;
 
   Lstart:
-    if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
+    if (!b_id && bencode::d::pair(p, "id", out.sender.id)) {
       b_id = true;
       goto Lstart;
     }
@@ -351,8 +354,15 @@ krpc::parse_get_peers_request(dht::MessageContext &ctx,
           out.n4 = true;
         } else if (w == "n6") {
           out.n6 = true;
+        } else {
+          fprintf(stderr, "%s:w[%s]\n", __func__, w.c_str());
         }
       }
+      goto Lstart;
+    }
+
+    if (!b_bs && bencode::d::pair(p, "bs", out.bootstrap)) {
+      b_bs = true;
       goto Lstart;
     }
 
@@ -464,7 +474,7 @@ krpc::parse_announce_peer_request(dht::MessageContext &ctx,
     bool b_n = false;
 
   Lstart:
-    if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
+    if (!b_id && bencode::d::pair(p, "id", out.sender.id)) {
       b_id = true;
       goto Lstart;
     }
@@ -544,6 +554,9 @@ krpc::parse_sample_infohashes_request(dht::MessageContext &ctx,
   return bencode::d::dict(ctx.in, [&out](auto &p) { //
     bool b_id = false;
     bool b_target = false;
+    bool b_want = false;
+
+    sp::UinStaticArray<std::string, 2> want;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", out.sender.id)) {
@@ -551,13 +564,31 @@ krpc::parse_sample_infohashes_request(dht::MessageContext &ctx,
       goto Lstart;
     }
 
-    if (!b_target && bencode::d::pair(p, "target", out.ih.id)) {
+    if (!b_target && bencode::d::pair(p, "target", out.target)) {
       b_target = true;
+      goto Lstart;
+    }
+
+    if (!b_want && bencode_d<sp::Buffer>::pair(p, "want", want)) {
+      b_want = true;
+      for (std::string &w : want) {
+        if (w == "n4") {
+          out.n4 = true;
+        } else if (w == "n6") {
+          out.n6 = true;
+        } else {
+          fprintf(stderr, "%s:w[%s]\n", __func__, w.c_str());
+        }
+      }
       goto Lstart;
     }
 
     if (bencode_any(p, "sample_infohashes req")) {
       goto Lstart;
+    }
+
+    if (!b_want) {
+      out.n4 = true;
     }
 
     if (b_id) {
@@ -574,31 +605,46 @@ krpc::parse_sample_infohashes_response(dht::MessageContext &ctx,
                                        krpc::SampleInfohashesResponse &out) {
 
   return bencode::d::dict(ctx.in, [&](sp::Buffer &p) {
-    if (!bencode::d::pair(p, "id", out.id.id)) {
-      return false;
+    bool b_id = false;
+    bool b_interval = false;
+    bool b_nodes = false;
+    bool b_num = false;
+    bool b_samples = false;
+  Lstart:
+    if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
+      b_id = true;
+      goto Lstart;
     }
-    if (!bencode::d::pair(p, "interval", out.interval)) {
-      return false;
-    }
-
-    if (!bencode::d::value(p, "nodes")) {
-      return false;
-    }
-    // TODO
-    if (!bencode_d<sp::Buffer>::value_compact(p, out.nodes)) {
-      return false;
-    }
-
-    if (!bencode::d::pair(p, "num", out.num)) {
-      return false;
+    if (!b_interval && bencode::d::pair(p, "interval", out.interval)) {
+      b_interval = true;
+      goto Lstart;
     }
 
-    if (!bencode::d::value(p, "samples")) {
-      return false;
+    if (!b_nodes && bencode::d::value(p, "nodes")) {
+      if (!bencode_d<sp::Buffer>::value_compact(p, out.nodes)) {
+        return false;
+      }
+      b_nodes = true;
+      goto Lstart;
     }
-    // TODO
-    if (!bencode_d<sp::Buffer>::value_compact(p, out.samples)) {
-      return false;
+
+    if (!b_num && bencode::d::pair(p, "num", out.num)) {
+      b_num = true;
+      goto Lstart;
+    }
+
+    if (!b_samples && bencode::d::value(p, "samples")) {
+
+      if (!bencode_d<sp::Buffer>::value_compact(p, out.samples)) {
+        return false;
+      }
+
+      b_samples = true;
+      goto Lstart;
+    }
+
+    if (bencode_any(p, "sample_infohashes req")) {
+      goto Lstart;
     }
 
     return true;

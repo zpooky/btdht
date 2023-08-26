@@ -55,7 +55,7 @@ void
 error(dht::MessageContext &) noexcept;
 
 void
-known_tx(dht::MessageContext &) noexcept;
+known_tx(dht::MessageContext &, const tx::TxContext &tctx) noexcept;
 
 void
 unknown_tx(dht::MessageContext &, const sp::Buffer &) noexcept;

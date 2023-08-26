@@ -42,7 +42,7 @@ announce_peer(sp::Buffer &, const Transaction &, const dht::NodeId &self,
 
 bool
 sample_infohashes(sp::Buffer &, const Transaction &, const dht::NodeId &self,
-                  const dht::Key &) noexcept;
+                  const dht::Key &, bool n4, bool n6) noexcept;
 } // namespace request
 
 //=====================================
@@ -78,7 +78,17 @@ bool
 sample_infohashes(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
                   std::uint32_t interval, const dht::Node **nodes,
                   size_t l_nodes, std::uint32_t num,
-                  const sp::UinStaticArray<dht::Infohash, 20> &) noexcept;
+                  const dht::Infohash *samples, std::size_t n_samples) noexcept;
+
+template <std::size_t SAMPLES>
+bool
+sample_infohashes(sp::Buffer &buf, const Transaction &t, const dht::NodeId &id,
+                  std::uint32_t interval, const dht::Node **nodes,
+                  size_t l_nodes, std::uint32_t num,
+                  const sp::UinStaticArray<dht::Infohash, SAMPLES> &samples) noexcept {
+  return sample_infohashes(buf, t, id, interval, nodes, l_nodes, num,
+                           samples.data(), samples.length);
+}
 
 bool
 error(sp::Buffer &, const Transaction &, Error, const char *) noexcept;

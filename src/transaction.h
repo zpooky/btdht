@@ -10,8 +10,8 @@ init(dht::Client &) noexcept;
 
 //=====================================
 bool
-consume(dht::Client &, const krpc::Transaction &,
-        /*OUT*/ TxContext &) noexcept;
+consume_transaction(dht::DHT &, const krpc::Transaction &,
+                    /*OUT*/ TxContext &) noexcept;
 
 //=====================================
 /* Keep tracks of active outgoing transactions and what module should handle the
@@ -20,7 +20,7 @@ consume(dht::Client &, const krpc::Transaction &,
  * handle the response.
  */
 bool
-mint(dht::DHT &, /*OUT*/ krpc::Transaction &, TxContext &) noexcept;
+mint_transaction(dht::DHT &, /*OUT*/ krpc::Transaction &, TxContext &) noexcept;
 
 //=====================================
 bool
