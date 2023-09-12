@@ -461,5 +461,150 @@ bool
 xdg_runtime_dir(char (&directory)[PATH_MAX]) noexcept;
 
 //=====================================
+namespace dht {
+struct KContact {
+  /* number of common prefix bits */
+  std::size_t common;
+  Contact contact;
+
+  KContact() noexcept
+      : common(~std::size_t(0))
+      , contact() {
+  }
+
+  KContact(std::size_t c, Contact con) noexcept
+      : common(c)
+      , contact(con) {
+  }
+
+  KContact(const Key &in, const Contact &c, const Key &search) noexcept
+      : common(rank(in, search))
+      , contact(c) {
+  }
+
+  KContact(const dht::IdContact &in, const Key &search) noexcept
+      : common(rank(in.id, search))
+      , contact(in.contact) {
+  }
+
+  KContact(const dht::IdContact &in, const NodeId &search) noexcept
+      : KContact(in, search.id) {
+  }
+
+  explicit operator bool() const noexcept {
+    return common != ~std::size_t(0);
+  }
+
+  bool
+  operator>(const KContact &o) const noexcept {
+    assertx(o.common != ~std::size_t(0));
+    assertx(common != ~std::size_t(0));
+    return common > o.common;
+  }
+};
+
+//=====================================
+// dht::Peer
+struct Peer {
+  Contact contact;
+  Timestamp activity;
+  bool seed;
+  // // {
+  // Peer *next;
+  // // }
+  // {
+  Peer *timeout_priv;
+  Peer *timeout_next;
+  // }
+  Peer(Ipv4, Port, Timestamp, bool) noexcept;
+  Peer(const Contact &, Timestamp, bool) noexcept;
+  // Peer() noexcept;
+
+  // Peer(const Peer &) = delete;
+  // Peer(const Peer &&) = delete;
+
+  // Peer &
+  // operator=(const Peer &) = delete;
+  // Peer &
+  // operator=(const Peer &&) = delete;
+
+  bool
+  operator==(const Contact &) const noexcept;
+
+  bool
+  operator>(const Contact &) const noexcept;
+
+  bool
+  operator>(const Peer &) const noexcept;
+};
+
+bool
+operator>(const Contact &, const Peer &) noexcept;
+
+Timestamp
+activity(const Node &) noexcept;
+
+Timestamp
+activity(const Peer &) noexcept;
+
+//=====================================
+// dht::Config
+struct Config {
+  /* Minimum Node refresh await timeout
+   */
+  sp::Minutes min_timeout_interval;
+  /* Node refresh interval
+   */
+  sp::Milliseconds refresh_interval;
+  /* the max age of a peer db entry before it gets evicted */
+  sp::Minutes peer_age_refresh;
+  sp::Minutes token_max_age;
+  /* Max age of transaction created for outgoing request. Used when reclaiming
+   * transaction id. if age is greater than max age then we can reuse the
+   * transaction.
+   */
+  sp::Minutes transaction_timeout;
+  /* the generation of find_node request sent to bootstrap our routing table.
+   * When max generation is reached we start from zero again. when generation is
+   * zero we send find_node(self) otherwise we randomize node id
+   */
+  std::uint8_t bootstrap_generation_max;
+  /* A low water mark indecating when we need to find_nodes to supplement nodes
+   * present in our RoutingTable. Is used when comparing active with total
+   * nodes if there are < percentage active nodes than /percentage_seek/ we
+   * start a search for more nodes.
+   */
+  std::size_t percentage_seek;
+  /* The interval of when a bucket can be used again to send find_node request
+   * during the 'look_for_nodes' stage.
+   */
+  sp::Minutes bucket_find_node_spam;
+  /* the number of times during 'look_for_nodes' stage a random bucket is
+   * selected and was not used to perform find_node because either it did not
+   * contain any good nodes or the bucket where too recently used by
+   * 'look_for_nodes'
+   */
+  std::size_t max_bucket_not_find_node;
+
+  sp::Minutes db_samples_refresh_interval;
+
+  /*  */
+  sp::Minutes token_key_refresh;
+  /*  */
+  sp::Minutes bootstrap_reset;
+
+  Config() noexcept;
+  Config(const Config &) = delete;
+};
+
+// ========================================
+struct TokenKey {
+  uint32_t key;
+  Timestamp created;
+  TokenKey() noexcept;
+};
+
+// ========================================
+} // namespace dht
 
 #endif

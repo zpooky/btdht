@@ -53,3 +53,16 @@ sample_infohashes: invalid node id[0000000000000000000000000000000000000000]
 get_peers: invalid node id[0000000000000000000000000000000000000000]
 
 -------------------------------------------------------------------------------
+statistic keep track of how long it takes for response to request
+
+-------------------------------------------------------------------------------
+detect when having network access
+
+-------------------------------------------------------------------------------
+separate routing table
+
+-------------------------------------------------------------------------------
+debug spam detection (eep track of outgoing sent request to not spam the same node (ip))
+
+-------------------------------------------------------------------------------
+serialize routing table

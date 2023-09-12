@@ -2,9 +2,17 @@
 #include <util/assert.h>
 
 namespace timeout {
+
+//=====================================
+Timeout::Timeout(Timestamp &n) noexcept
+    : timeout_next(0)
+    , timeout_node(nullptr)
+    , now(n) {
+}
+
 //=====================================
 std::size_t
-debug_count_nodes(const dht::DHT &self) noexcept {
+debug_count_nodes(const Timeout &self) noexcept {
   std::size_t result = 0;
   auto it = self.timeout_node;
 
@@ -21,7 +29,7 @@ debug_count_nodes(const dht::DHT &self) noexcept {
 
 //=====================================
 const dht::Node *
-debug_find_node(const dht::DHT &self, const dht::Node *needle) noexcept {
+debug_find_node(const Timeout &self, const dht::Node *needle) noexcept {
   dht::Node *it = self.timeout_node;
   dht::Node *const head = it;
   while (it) {
@@ -115,7 +123,7 @@ unlink(dht::Node *&head, dht::Node *contact) noexcept {
 } // timeout::unlink()
 
 void
-unlink(dht::DHT &self, dht::Node *contact) noexcept {
+unlink(Timeout &self, dht::Node *contact) noexcept {
   assertx(debug_is_cycle(self.timeout_node));
 
   unlink(self.timeout_node, contact);
@@ -161,7 +169,7 @@ internal_append_all(T *&head, T *const node) noexcept {
 }
 
 void
-append_all(dht::DHT &self, dht::Node *node) noexcept {
+append_all(Timeout &self, dht::Node *node) noexcept {
   assertx(debug_is_cycle(self.timeout_node));
 
   internal_append_all(self.timeout_node, node);
@@ -201,7 +209,7 @@ internal_insert(T *priv, T *subject, T *next) noexcept {
 }
 
 void
-prepend(dht::DHT &self, dht::Node *subject) noexcept {
+prepend(Timeout &self, dht::Node *subject) noexcept {
   assertx(debug_is_cycle(self.timeout_node));
 
   assertx(subject);
@@ -217,9 +225,8 @@ prepend(dht::DHT &self, dht::Node *subject) noexcept {
 
 //=====================================
 void
-insert_new(
-    dht::DHT &dht,
-    dht::Node *ret) noexcept { // TODO why is this inserted into the front?
+insert_new(Timeout &dht, dht::Node *ret) noexcept {
+  // TODO why is this inserted into the front?
   return prepend(dht, ret);
 }
 
@@ -253,7 +260,7 @@ internal_take(Timestamp now, sp::Milliseconds timeout, T *&head) noexcept {
 } // timeout::take()
 
 dht::Node *
-take_node(dht::DHT &self, sp::Milliseconds timeout) noexcept {
+take_node(Timeout &self, sp::Milliseconds timeout) noexcept {
   assertx(debug_is_cycle(self.timeout_node));
 
   Timestamp now = self.now;
@@ -264,7 +271,7 @@ take_node(dht::DHT &self, sp::Milliseconds timeout) noexcept {
 }
 
 dht::Peer *
-take_peer(dht::DHT &dht, dht::KeyValue &self,
+take_peer(db::DHTMetaDatabase &dht, dht::KeyValue &self,
           sp::Milliseconds timeout) noexcept {
   dht::Peer *head = self.timeout_peer;
 

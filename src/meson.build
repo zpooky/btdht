@@ -33,5 +33,6 @@ spdht_src = files([
   'priv_krpc.cpp',
   'krpc_parse.cpp',
   'core.cpp',
+  'routing_table.cpp',
 ])
 

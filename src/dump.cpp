@@ -71,7 +71,7 @@ dump(const dht::DHT &dht, const char *path) noexcept {
 
   Sink sink(b, /*closure*/ &file, flush);
 
-  if (!do_dump(sink, dht, dht.root)) {
+  if (!do_dump(sink, dht, dht.routing_table.root)) {
     return false;
   }
 

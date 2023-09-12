@@ -194,7 +194,6 @@ static Tx *
 search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
   Tx *const result = (Tx *)find(tree, needle);
   if (!result) {
-    assertx(false);
     // TODO only assert
     in_order_for_each(tree, [&needle](auto &current) {
       if (current == needle) {
@@ -253,8 +252,6 @@ consume_transaction(dht::DHT &dht, const krpc::Transaction &needle,
 
         return true;
       }
-    } else {
-      assertx(false);
     }
   }
 

@@ -38,11 +38,11 @@ bencode_any(sp::Buffer &p, const char *ctx) noexcept {
     std::size_t vlen = 0;
 
     if (bencode::d::pair_ref(p, kit, klen, vit, vlen)) {
-      fprintf(f, "%s str[", ctx);
+      fprintf(f, "%s str[[len:%zu]", ctx, klen);
       print_raw(f, kit, klen);
-      fprintf(f, ", ");
+      fprintf(f, ",[len:%zu] ", vlen);
       print_raw(f, (const char *)vit, vlen);
-      fprintf(f, "] \n");
+      fprintf(f, "]\n");
       return true;
     }
   }

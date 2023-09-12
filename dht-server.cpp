@@ -472,7 +472,8 @@ main(int argc, char **argv) {
 
   auto r = prng::seed<prng::xorshift32>();
   fprintf(stderr, "sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
-  auto mdht = std::make_unique<dht::DHT>(udp_fd, priv_fd, listen, r, sp::now());
+  Timestamp now = sp::now();
+  auto mdht = std::make_unique<dht::DHT>(udp_fd, priv_fd, listen, r, now);
   if (!dht::init(*mdht)) {
     die("failed to init dht");
     return 4;

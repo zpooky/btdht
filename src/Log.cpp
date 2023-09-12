@@ -1,8 +1,10 @@
 #include "Log.h"
-#include <bencode_print.h>
+
 #include <cstring>
-#include <encode/hex.h>
 #include <inttypes.h>
+
+#include <bencode_print.h>
+#include <encode/hex.h>
 #include <io/file.h>
 #include <string/ascii.h>
 #include <util.h>
@@ -48,6 +50,16 @@ print_time(const dht::DHT &dht) noexcept {
 static void
 print_time(const dht::MessageContext &ctx) noexcept {
   return print_time(ctx.dht);
+}
+
+static void
+print_time(const dht::DHTMetaRoutingTable &ctx) noexcept {
+  return print_time(stdout, ctx.now);
+}
+
+static void
+print_time(const db::DHTMetaDatabase &ctx) noexcept {
+  return print_time(stdout, ctx.now);
 }
 
 namespace receive {
@@ -121,9 +133,25 @@ error(dht::MessageContext &ctx) noexcept {
           std::size_t wl = fs::write(fd, (unsigned char *)buf, buf_len);
           assertxs(wl == buf_len, wl, buf_len);
         }
+        std::size_t wl;
+        wl = fs::write(fd, "\t", 1);
+        assertxs(wl == 1, wl, 1);
 
+        const char *con = to_string(ctx.remote);
+        wl = fs::write(fd, con, strlen(con));
+        assertxs(wl == strlen(con), wl, strlen(con));
+
+        size_t l_ver = strnlen((char *)ctx.pctx.remote_version,
+                               sizeof(ctx.pctx.remote_version));
+        if (l_ver > 0) {
+          wl = fs::write(fd, "\t", 1);
+          assertxs(wl == 1, wl, 1);
+
+          wl = fs::write(fd, ctx.pctx.remote_version, l_ver);
+          assertxs(wl == l_ver, wl, l_ver);
+        }
         const unsigned char nl = '\n';
-        std::size_t wl = fs::write(fd, &nl, 1);
+        wl = fs::write(fd, &nl, 1);
         assertxs(wl == 1, wl, 1);
       }
     }
@@ -497,7 +525,7 @@ sample_infohashes_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 namespace routing {
 /*logger::routing*/
 void
-split(const dht::DHT &ctx, const dht::RoutingTable &,
+split(const dht::DHTMetaRoutingTable &ctx, const dht::RoutingTable &,
       const dht::RoutingTable &) noexcept {
 #ifdef LOG_ROUTING_SPLIT
   print_time(ctx);
@@ -507,7 +535,7 @@ split(const dht::DHT &ctx, const dht::RoutingTable &,
 }
 
 void
-insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
+insert(const dht::DHTMetaRoutingTable &ctx, const dht::Node &d) noexcept {
 #ifdef LOG_ROUTING_INSERT
   print_time(ctx);
   printf("routing table insert nodeId[");
@@ -519,7 +547,8 @@ insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
 }
 
 void
-can_not_insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
+can_not_insert(const dht::DHTMetaRoutingTable &ctx,
+               const dht::Node &d) noexcept {
 #ifdef LOG_ROUTING_CAN_NOT_INSERT
   print_time(ctx);
   printf("routing table can not insert nodeId[");
@@ -535,7 +564,8 @@ can_not_insert(const dht::DHT &ctx, const dht::Node &d) noexcept {
 namespace peer_db {
 /*logger::peer_db*/
 void
-insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
+insert(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
+       const Contact &) noexcept {
 #ifdef LOG_PEER_DB
   print_time(ctx);
   printf("peer db insert infohash[");
@@ -547,7 +577,7 @@ insert(const dht::DHT &ctx, const dht::Infohash &h, const Contact &) noexcept {
 }
 
 void
-update(const dht::DHT &ctx, const dht::Infohash &h,
+update(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
        const dht::Peer &) noexcept {
 #ifdef LOG_PEER_DB
   print_time(ctx);

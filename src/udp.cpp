@@ -265,7 +265,6 @@ int
 receive(int fd, /*OUT*/ Contact &other, sp::Buffer &buf) noexcept {
   sp::BytesViewMark mrk = mark(buf);
   ::sockaddr_in remote{};
-  memset(&remote, 0, sizeof(remote));
 
   int res = receive(fd, remote, buf);
   if (res == 0) {

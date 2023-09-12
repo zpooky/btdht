@@ -1,6 +1,8 @@
 #ifndef SP_MAINLINE_DHT_LOG_H
 #define SP_MAINLINE_DHT_LOG_H
 
+#include "db.h"
+#include "routing_table.h"
 #include "shared.h"
 
 // ===============================================================================
@@ -141,23 +143,25 @@ sample_infohashes_response_timeout(dht::DHT &, const krpc::Transaction &,
 namespace routing {
 /*logger::routing*/
 void
-split(const dht::DHT &, const dht::RoutingTable &,
+split(const dht::DHTMetaRoutingTable &, const dht::RoutingTable &,
       const dht::RoutingTable &) noexcept;
 void
-insert(const dht::DHT &, const dht::Node &) noexcept;
+insert(const dht::DHTMetaRoutingTable &, const dht::Node &) noexcept;
 
 void
-can_not_insert(const dht::DHT &, const dht::Node &) noexcept;
+can_not_insert(const dht::DHTMetaRoutingTable &, const dht::Node &) noexcept;
 } // namespace routing
 
 // ========================================
 namespace peer_db {
 /*logger::peer_db*/
 void
-insert(const dht::DHT &, const dht::Infohash &, const Contact &) noexcept;
+insert(const db::DHTMetaDatabase &, const dht::Infohash &,
+       const Contact &) noexcept;
 
 void
-update(const dht::DHT &, const dht::Infohash &, const dht::Peer &) noexcept;
+update(const db::DHTMetaDatabase &, const dht::Infohash &,
+       const dht::Peer &) noexcept;
 } // namespace peer_db
 
 // ========================================

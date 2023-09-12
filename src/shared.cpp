@@ -1,5 +1,5 @@
 #include "shared.h"
-#include "search.h"
+
 #include <algorithm>
 #include <cstring>
 #include <util/assert.h>
@@ -144,185 +144,6 @@ Client::~Client() noexcept {
 
 //=====================================
 namespace dht {
-/*dht::Config*/
-Config::Config() noexcept
-    // seconds
-    : min_timeout_interval(1)
-    , refresh_interval(sp::Minutes(15))
-    , peer_age_refresh(45)
-    , token_max_age(15)
-    , transaction_timeout(2)
-    //
-    , bootstrap_generation_max(16)
-    , percentage_seek(40)
-    //
-    , bucket_find_node_spam(1)
-    , max_bucket_not_find_node(5)
-    //
-    , db_samples_refresh_interval(60)
-    //
-    , token_key_refresh(15)
-    //
-    , bootstrap_reset(60)
-//
-{
-}
-
-/*dht::Peer*/
-Peer::Peer(Ipv4 i, Port p, Timestamp n, bool s) noexcept
-    : contact(i, p)
-    , activity(n)
-    , seed(s)
-    //{
-    , timeout_priv(nullptr)
-    , timeout_next(nullptr)
-//}
-{
-}
-
-Peer::Peer(const Contact &c, Timestamp a, bool s) noexcept
-    : contact(c)
-    , activity(a)
-    , seed(s)
-    //{
-    , timeout_priv(nullptr)
-    , timeout_next(nullptr)
-//}
-{
-}
-
-// Peer::Peer() noexcept
-//     : Peer(0, 0, Timestamp(0), false) {
-// }
-
-bool
-Peer::operator==(const Contact &c) const noexcept {
-  return contact.operator==(c);
-}
-
-bool
-Peer::operator>(const Contact &p) const noexcept {
-  return contact > p;
-}
-
-bool
-Peer::operator>(const Peer &p) const noexcept {
-  return operator>(p.contact);
-}
-
-bool
-operator>(const Contact &f, const Peer &s) noexcept {
-  return f > s.contact;
-}
-
-Timestamp
-activity(const Node &head) noexcept {
-  return head.remote_activity;
-}
-
-Timestamp
-activity(const Peer &peer) noexcept {
-  return peer.activity;
-}
-
-//=====================================
-/*dht::Bucket*/
-Bucket::Bucket() noexcept
-    : contacts() {
-}
-
-Bucket::~Bucket() noexcept {
-}
-
-//=====================================
-/*dht::RoutingTable*/
-RoutingTable::RoutingTable(ssize_t d) noexcept
-    : depth(d)
-    , in_tree()
-    , bucket()
-    , next(nullptr) {
-}
-
-RoutingTable::~RoutingTable() noexcept {
-  if (in_tree) {
-    delete in_tree;
-    in_tree = nullptr;
-  }
-}
-
-bool
-is_empty(const RoutingTable &root) noexcept {
-  for (std::size_t i = 0; i < Bucket::K; ++i) {
-    const auto &current = root.bucket.contacts[i];
-    if (is_valid(current)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-#if 0
-bool
-operator<(const RoutingTable &f, std::size_t depth) noexcept {
-  return f.depth < depth;
-}
-
-bool
-operator<(const RoutingTable &f, const RoutingTable &s) noexcept {
-  return f.depth < s.depth;
-}
-#endif
-
-bool
-RoutingTableLess::operator()(const RoutingTable *f,
-                             std::size_t depth) const noexcept {
-  assertx(f);
-  if (f->depth < 0) {
-    return true;
-  }
-
-  return f->depth < depth;
-}
-
-bool
-RoutingTableLess::operator()(const RoutingTable *f,
-                             const RoutingTable *s) const noexcept {
-  assertx(f);
-  assertx(s);
-  return f->depth < s->depth;
-}
-
-//=====================================
-// dht::KeyValue
-KeyValue::KeyValue(const Infohash &pid) noexcept
-    : id(pid)
-    , peers{}
-    , timeout_peer{nullptr}
-    , name{nullptr} {
-}
-
-KeyValue::~KeyValue() {
-  if (name) {
-    free(name);
-    name = nullptr;
-  }
-}
-
-bool
-operator>(const KeyValue &self, const Infohash &o) noexcept {
-  return self.id > o.id;
-}
-
-bool
-operator>(const KeyValue &self, const KeyValue &o) noexcept {
-  return self.id > o.id.id;
-}
-
-bool
-operator>(const Infohash &f, const KeyValue &s) noexcept {
-  return f > s.id.id;
-}
-
 //=====================================
 // dht::Log
 Log::Log() noexcept
@@ -351,112 +172,9 @@ Stat::Stat() noexcept
     , unknown_tx() {
 }
 
-SearchContext::SearchContext(const Infohash &s) noexcept
-    : ref_cnt(1)
-    , search(s)
-    , is_dead(false) {
-}
-
-//=====================================
-Search::Search(const Infohash &s) noexcept
-    : ctx(new SearchContext(s))
-    , search(s)
-    , hashers()
-    , searched(hashers)
-    , timeout(0)
-    , queue()
-    , result()
-    , next(nullptr)
-    , priv(nullptr)
-    , fail(0) {
-
-  auto djb_f = [](const NodeId &id) -> std::size_t {
-    return djb2::encode32(id.id, sizeof(id.id));
-  };
-
-  auto fnv_f = [](const NodeId &id) -> std::size_t {
-    return fnv_1a::encode64(id.id, sizeof(id.id));
-  };
-
-  assertx_n(insert(hashers, djb_f));
-  assertx_n(insert(hashers, fnv_f));
-}
-
-#if 0
-Search::Search(Search &&o) noexcept
-    : ctx(nullptr)
-    , search()
-    , remote()
-    , hashers()
-    , searched()
-    , timeout()
-    , queue()
-    , result()
-    , search_next(nullptr) {
-
-  using std::swap;
-  swap(ctx, o.ctx);
-  swap(search, o.search);
-  swap(remote, o.remote);
-  swap(hashers, o.hashers);
-  swap(searched, o.searched);
-  swap(timeout, o.timeout);
-  swap(queue, o.queue);
-  swap(result, o.result);
-  swap(search_next, o.search_next);
-}
-#endif
-
-Search::~Search() noexcept {
-  if (ctx) {
-    ctx->is_dead = true;
-    search_decrement(ctx);
-  }
-}
-
-bool
-operator>(const Infohash &f, const Search &o) noexcept {
-  return f > o.search;
-}
-
-bool
-operator>(const Search &f, const Search &s) noexcept {
-  return f.search > s.search;
-}
-
-bool
-operator>(const Search &f, const Infohash &s) noexcept {
-  return f.search > s;
-}
-
-//=====================================
-#if 0
-Search::Search(Search &&o) noexcept
-    : ctx(nullptr)
-    , search(o.search)
-    , remote(o.remote)
-    , hashers()
-    , searched(hashers)
-    , timeout(0)
-    , raw_queue(nullptr)
-    , queue(nullptr, 0) {
-  using sp::swap;
-
-  swap(ctx, o.ctx);
-  insert_all(hashers, o.hashers);
-  swap(searched, o.searched);
-  swap(timeout, o.timeout);
-}
-#endif
-
-TokenKey::TokenKey() noexcept
-    : key{}
-    , created{0} {
-}
-
 // dht::DHT
 DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
-         Timestamp n) noexcept
+         Timestamp &n) noexcept
     // self {{{
     : id()
     , client(udp)
@@ -470,18 +188,9 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , core()
     , should_exit(false)
     //}}}
-    // peer-lookup db {{{
-    // , db::lookup_table()
-    // , db::key{} //}}}
-    // routing-table {{{
-    , root(nullptr)
-    , root_limit(4)
-    , rt_reuse()
-    , root_extra()
-    //}}}
-    // timeout{{{
-    , timeout_next(0)
-    , timeout_node(nullptr)
+    , db{config, r, n}
+    , routing_table(r, n, this->id, config, true)
+    , timeout(n)
     //}}}
     // recycle contact list {{{
     , recycle_contact_list()
@@ -490,8 +199,6 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     /*timestamp of received request&response*/
     , last_activity(0)
     /*total nodes present in the routing table*/
-    , total_nodes(0)
-    , bad_nodes(0)
     , now(n)
     // boostrap {{{
     , bootstrap_last_reset(0)
@@ -500,11 +207,7 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , bootstrap()
     , active_find_nodes(0)
     // }}}
-    // searches{{{
-    , search_root(nullptr)
-    , searches()
-    //}}}
-    // upnp{{{
+    , searches{}
     , upnp_sent{0} {
 
   assertx_n(insert(bootstrap_hashers, djb_ip));

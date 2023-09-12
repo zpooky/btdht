@@ -145,17 +145,17 @@ response::dump(sp::Buffer &buf, const Transaction &t,
       return false;
     }
 
-    if (!bencode::e::pair(b, "root", dht.root)) {
+    if (!bencode::e::pair(b, "root", dht.routing_table.root)) {
       return false;
     }
     std::uint64_t la(dht.last_activity);
     if (!bencode::e::pair(b, "last_activity", la)) {
       return false;
     }
-    if (!bencode::e::pair(b, "total_nodes", dht.total_nodes)) {
+    if (!bencode::e::pair(b, "total_nodes", dht.routing_table.total_nodes)) {
       return false;
     }
-    if (!bencode::e::pair(b, "bad_nodes", dht.bad_nodes)) {
+    if (!bencode::e::pair(b, "bad_nodes", dht.routing_table.bad_nodes)) {
       return false;
     }
     // if (!bencode::e::priv::pair(b, "boostrap", dht.bootstrap)) {

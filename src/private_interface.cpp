@@ -53,9 +53,9 @@ search_dequeue(dht::DHT &dht, dht::Search *current) noexcept {
   dht::Search *next = current->next;
   dht::Search *priv = current->priv;
 
-  if (dht.search_root == current) {
+  if (dht.searches.search_root == current) {
     assertx(!priv);
-    dht.search_root = next;
+    dht.searches.search_root = next;
   }
 
   if (next) {
@@ -75,7 +75,7 @@ search_remove(dht::DHT &dht, dht::Search *current) noexcept {
   assertx(current);
   logger::search::retire(dht, *current);
   search_dequeue(dht, current);
-  bool res = remove(dht.searches, *current);
+  bool res = remove(dht.searches.searches, *current);
   assertx(res);
 }
 
@@ -85,20 +85,20 @@ search_enqueue(dht::DHT &dht, dht::Search *current) noexcept {
   assertx(!current->next);
   assertx(!current->priv);
 
-  current->next = dht.search_root;
+  current->next = dht.searches.search_root;
   if (current->next) {
     assertx(!current->next->priv);
     current->next->priv = current;
   }
 
   current->priv = nullptr;
-  dht.search_root = current;
+  dht.searches.search_root = current;
 }
 
 template <typename F>
 static void
 search_for_all(dht::DHT &dht, F f) noexcept {
-  dht::Search *it = dht.search_root;
+  dht::Search *it = dht.searches.search_root;
 Lit:
   if (it) {
     dht::Search *const next = it->next;
@@ -113,7 +113,7 @@ Lit:
 template <typename K, typename F>
 static K *
 search_reduce(dht::DHT &dht, K *result, F f) noexcept {
-  dht::Search *it = dht.search_root;
+  dht::Search *it = dht.searches.search_root;
 Lit:
   if (it) {
     dht::Search *const next = it->next;
@@ -264,7 +264,7 @@ static bool
 handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
                sp::Seconds timeout) {
   dht::DHT &dht = ctx.dht;
-  auto res = emplace(dht.searches, search, search);
+  auto res = emplace(dht.searches.searches, search, search);
   if (std::get<1>(res)) {
     dht::Search *const ins = std::get<0>(res);
     assertx(ins);
@@ -272,7 +272,7 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search,
     search_enqueue(dht, ins);
 
     /* Bootstrap search with content of routing table */
-    for_all_node(dht.root, [&](const dht::Node &n) {
+    for_all_node(dht.routing_table.root, [&](const dht::Node &n) {
       insert_eager(ins->queue, dht::KContact(n.id.id, n.contact, search.id));
       return true;
     });
@@ -315,7 +315,7 @@ handle_request(dht::MessageContext &ctx, const dht::Infohash &search) noexcept {
   // XXX stop by searchid. if multiple receivers just remove sender as a
   // receiver
 
-  dht::Search *const result = find(dht.searches, search);
+  dht::Search *const result = find(dht.searches.searches, search);
   if (result) {
     search_remove(dht, result);
   }

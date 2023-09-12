@@ -27,13 +27,6 @@
 // XXX ipv6
 namespace sp {
 //========================
-static void
-on_retire_good(dht::DHT &ctx, Contact in) noexcept;
-
-static void
-on_topup_bootstrap(dht::DHT &) noexcept;
-
-//========================
 struct CacheHeader {
   // [magic][version][count][ipv4/ipv6][[4byte:2byte]...]
   uint32_t magic;
@@ -80,6 +73,13 @@ struct Cache {
   Cache &
   operator=(const Cache &&) = delete;
 };
+
+//========================
+static void
+on_retire_good(void *, Contact in) noexcept;
+
+static void
+on_topup_bootstrap(dht::DHT &) noexcept;
 
 //========================
 template <size_t SIZE>
@@ -197,8 +197,8 @@ filename_extract(const char *fname, uint32_t &idx) noexcept {
 bool
 init_cache(dht::DHT &ctx) noexcept {
   auto self = new Cache;
-  ctx.cache = self;
-  ctx.retire_good = on_retire_good;
+  ctx.routing_table.cache = self;
+  ctx.routing_table.retire_good = on_retire_good;
   ctx.topup_bootstrap = on_topup_bootstrap;
 
   char root[PATH_MAX];
@@ -358,14 +358,15 @@ cache_write_contact(Cache &self, const Contact &in) noexcept {
 void
 deinit_cache(dht::DHT &ctx) noexcept {
 
-  if (ctx.cache) {
-    auto self = (Cache *)ctx.cache;
+  if (ctx.routing_table.cache) {
+    auto self = (Cache *)ctx.routing_table.cache;
     /*drain*/
-    auto cb = [](void *, dht::DHT &ctx2, const dht::Node &current) {
-      auto s = (Cache *)ctx2.cache;
+    auto cb = [](void *ctx2, dht::DHTMetaRoutingTable &,
+                 const dht::Node &current) {
+      auto s = (Cache *)((dht::DHT *)ctx2)->routing_table.cache;
       cache_write_contact(*s, current.contact);
     };
-    debug_for_each(ctx, nullptr, cb);
+    debug_for_each(ctx.routing_table, &ctx, cb);
 
     if (self->contacts < (2 * 1024)) { // XXX configurable
       for_each(ctx.bootstrap, [&](const dht::KContact &boot) {
@@ -375,7 +376,7 @@ deinit_cache(dht::DHT &ctx) noexcept {
 
     cache_finalize(*self);
     delete self;
-    ctx.cache = nullptr;
+    ctx.routing_table.cache = nullptr;
   }
 }
 
@@ -397,8 +398,8 @@ take_next_read_cache(Cache &self, char (&file)[SIZE]) noexcept {
 }
 
 static void
-on_retire_good(dht::DHT &ctx, Contact in) noexcept {
-  Cache *self = (Cache *)ctx.cache;
+on_retire_good(void *tmp, Contact in) noexcept {
+  Cache *self = (Cache *)tmp;
   if (!test(self->seen, in)) {
     insert(self->seen, in);
     cache_write_contact(*self, in);
@@ -465,7 +466,7 @@ setup_static_bootstrap(dht::DHT &self) noexcept {
 
 static void
 on_topup_bootstrap(dht::DHT &ctx) noexcept {
-  Cache &self = *((Cache *)ctx.cache);
+  Cache &self = *((Cache *)ctx.routing_table.cache);
   char fname[FILENAME_MAX]{0};
   bool cont = true;
 
@@ -517,25 +518,25 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
 
 size_t
 cache_read_min_idx(const dht::DHT &ctx) noexcept {
-  auto self = (Cache *)ctx.cache;
+  auto self = (Cache *)ctx.routing_table.cache;
   return self->read_min_idx;
 }
 
 size_t
 cache_read_max_idx(const dht::DHT &ctx) noexcept {
-  auto self = (Cache *)ctx.cache;
+  auto self = (Cache *)ctx.routing_table.cache;
   return self->read_max_idx;
 }
 
 size_t
 cache_contacts(const dht::DHT &ctx) noexcept {
-  auto self = (Cache *)ctx.cache;
+  auto self = (Cache *)ctx.routing_table.cache;
   return self->contacts;
 }
 
 size_t
 cache_write_idx(const dht::DHT &ctx) noexcept {
-  auto self = (Cache *)ctx.cache;
+  auto self = (Cache *)ctx.routing_table.cache;
   return self->cur_idx;
 }
 

@@ -249,6 +249,7 @@ to_contact(const ::sockaddr_in &src, Contact &dest) noexcept {
     Port port = ntohs(src.sin_port);
     return to_contact(ipv4, port, dest);
   } else if (src.sin_family == AF_INET6) {
+    assertx(false);
   } else if (src.sin_family == AF_UNIX) {
     return true;
   }
@@ -873,6 +874,97 @@ is_valid(const Node &n) noexcept {
 
   return res;
 }
+
+// ========================================
+/*dht::Peer*/
+Peer::Peer(Ipv4 i, Port p, Timestamp n, bool s) noexcept
+    : contact(i, p)
+    , activity(n)
+    , seed(s)
+    //{
+    , timeout_priv(nullptr)
+    , timeout_next(nullptr)
+//}
+{
+}
+
+Peer::Peer(const Contact &c, Timestamp a, bool s) noexcept
+    : contact(c)
+    , activity(a)
+    , seed(s)
+    //{
+    , timeout_priv(nullptr)
+    , timeout_next(nullptr)
+//}
+{
+}
+
+// Peer::Peer() noexcept
+//     : Peer(0, 0, Timestamp(0), false) {
+// }
+
+bool
+Peer::operator==(const Contact &c) const noexcept {
+  return contact.operator==(c);
+}
+
+bool
+Peer::operator>(const Contact &p) const noexcept {
+  return contact > p;
+}
+
+bool
+Peer::operator>(const Peer &p) const noexcept {
+  return operator>(p.contact);
+}
+
+bool
+operator>(const Contact &f, const Peer &s) noexcept {
+  return f > s.contact;
+}
+
+Timestamp
+activity(const Node &head) noexcept {
+  return head.remote_activity;
+}
+
+Timestamp
+activity(const Peer &peer) noexcept {
+  return peer.activity;
+}
+
+// ========================================
+/*dht::Config*/
+Config::Config() noexcept
+    // seconds
+    : min_timeout_interval(5)
+    , refresh_interval(sp::Minutes(15))
+    , peer_age_refresh(45)
+    , token_max_age(15)
+    , transaction_timeout(5)
+    //
+    , bootstrap_generation_max(16)
+    , percentage_seek(40)
+    //
+    , bucket_find_node_spam(1)
+    , max_bucket_not_find_node(5)
+    //
+    , db_samples_refresh_interval(60)
+    //
+    , token_key_refresh(15)
+    //
+    , bootstrap_reset(60)
+//
+{
+}
+
+// ========================================
+TokenKey::TokenKey() noexcept
+    : key{}
+    , created{0} {
+}
+
+//=====================================
 
 } // namespace dht
 

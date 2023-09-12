@@ -509,7 +509,8 @@ sample_infohashes_receive(fd &u, sp::Buffer &b) noexcept {
   fd priv{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, priv, listen, r, sp::now());
+  Timestamp now = sp::now();
+  dht::DHT dht(udp, priv, listen, r, now);
   Contact remote;
 
 Lretry:
@@ -640,7 +641,8 @@ search_event_receive(fd &u, sp::Buffer &b) noexcept {
   fd priv{-1};
   Contact listen;
   prng::xorshift32 r(1);
-  dht::DHT dht(udp, priv, listen, r, sp::now());
+  Timestamp now = sp::now();
+  dht::DHT dht(udp, priv, listen, r, now);
   Contact remote;
 
 Lretry:

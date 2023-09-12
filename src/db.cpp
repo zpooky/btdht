@@ -6,15 +6,63 @@
 #include <tree/bst_extra.h>
 
 #include <prng/util.h>
+namespace dht {
+//=====================================
+// dht::KeyValue
+KeyValue::KeyValue(const dht::Infohash &pid) noexcept
+    : id(pid)
+    , peers{}
+    , timeout_peer{nullptr}
+    , name{nullptr} {
+}
+
+KeyValue::~KeyValue() {
+  if (name) {
+    free(name);
+    name = nullptr;
+  }
+}
+
+bool
+operator>(const KeyValue &self, const dht::Infohash &o) noexcept {
+  return self.id > o.id;
+}
+
+bool
+operator>(const KeyValue &self, const KeyValue &o) noexcept {
+  return self.id > o.id.id;
+}
+
+bool
+operator>(const dht::Infohash &f, const KeyValue &s) noexcept {
+  return f > s.id.id;
+}
+
+//=====================================
+} // namespace dht
 
 // TODO !! store peers using ip as key not ip:port
 namespace db {
 //=====================================
+DHTMetaDatabase::DHTMetaDatabase(dht::Config &cfg, prng::xorshift32 &rnd,
+                                 Timestamp &n)
+    : lookup_table()
+    , key{}
+    , activity{0}
+    , length_lookup_table{0}
+    , last_generated{0}
+    , random_samples{}
+    , config{cfg}
+    , random{rnd}
+    , now{n} {
+}
+//}}}
+//=====================================
 dht::KeyValue *
-lookup(dht::DHT &self, const dht::Infohash &infohash) noexcept {
+lookup(DHTMetaDatabase &self, const dht::Infohash &infohash) noexcept {
   dht::KeyValue *needle;
 
-  if ((needle = find(self.db.lookup_table, infohash))) {
+  if ((needle = find(self.lookup_table, infohash))) {
 
     if (!is_empty(needle->peers)) {
       return needle;
@@ -26,18 +74,18 @@ lookup(dht::DHT &self, const dht::Infohash &infohash) noexcept {
 
 //=====================================
 bool
-insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
-       bool seed, const char *name) noexcept {
-  auto new_table = [](dht::DHT &self, const dht::Infohash &ih) {
-    auto ires = insert(self.db.lookup_table, ih);
-    self.db.activity++;
-    self.db.length_lookup_table++;
+insert(DHTMetaDatabase &self, const dht::Infohash &infohash,
+       const Contact &contact, bool seed, const char *name) noexcept {
+  auto new_table = [](DHTMetaDatabase &self, const dht::Infohash &ih) {
+    auto ires = insert(self.lookup_table, ih);
+    self.activity++;
+    self.length_lookup_table++;
     return std::get<0>(ires);
   };
 
   dht::KeyValue *table;
-  if (!(table = lookup(dht, infohash))) {
-    table = new_table(dht, infohash);
+  if (!(table = lookup(self, infohash))) {
+    table = new_table(self, infohash);
   }
 
   if (table) {
@@ -52,18 +100,18 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
 
     if ((existing = find(table->peers, contact))) {
       timeout::unlink(*table, existing);
-      existing->activity = dht.now;
+      existing->activity = self.now;
       timeout::append_all(*table, existing);
 
       existing->seed = seed;
       existing->contact.port = contact.port;
 
-      logger::peer_db::update(dht, infohash, *existing);
+      logger::peer_db::update(self, infohash, *existing);
     } else {
-      existing = insert(table->peers, dht::Peer(contact, dht.now, seed));
+      existing = insert(table->peers, dht::Peer(contact, self.now, seed));
       if (existing) {
         timeout::append_all(*table, existing);
-        logger::peer_db::insert(dht, infohash, contact);
+        logger::peer_db::insert(self, infohash, contact);
       }
     }
   }
@@ -73,66 +121,66 @@ insert(dht::DHT &dht, const dht::Infohash &infohash, const Contact &contact,
 
 //=====================================
 static dht::TokenKey &
-get_token_key(dht::DHT &self) noexcept {
+get_token_key(DHTMetaDatabase &self) noexcept {
   dht::Config &conf = self.config;
-  if (self.now > (self.db.key[1].created + conf.token_key_refresh)) {
-    self.db.key[0] = self.db.key[1];
+  if (self.now > (self.key[1].created + conf.token_key_refresh)) {
+    self.key[0] = self.key[1];
 
-    fill(self.random, &self.db.key[1].key, sizeof(self.db.key[1].key));
-    self.db.key[1].created = self.now;
+    fill(self.random, &self.key[1].key, sizeof(self.key[1].key));
+    self.key[1].created = self.now;
   }
 
-  return self.db.key[1];
+  return self.key[1];
 }
 
 static dht::Token
-ee(dht::TokenKey &key, const Contact &remote) noexcept {
+create_token(dht::TokenKey &key, const Contact &remote) noexcept {
   dht::Token t;
-  uint32_t hash = fnv_1a::encode32(&key.key, sizeof(key.key));
+  uint32_t h = fnv_1a::encode32(&key.key, sizeof(key.key));
   if (remote.ip.type == IpType::IPV4) {
-    hash = fnv_1a::encode(&remote.ip.ipv4, sizeof(remote.ip.ipv4), hash);
+    h = fnv_1a::encode(&remote.ip.ipv4, sizeof(remote.ip.ipv4), h);
   } else {
-    hash = fnv_1a::encode(&remote.ip.ipv6, sizeof(remote.ip.ipv6), hash);
+    h = fnv_1a::encode(&remote.ip.ipv6, sizeof(remote.ip.ipv6), h);
   }
-  hash = fnv_1a::encode(&remote.port, sizeof(remote.port), hash);
+  h = fnv_1a::encode(&remote.port, sizeof(remote.port), h);
 
-  t.length = sizeof(hash);
-  memcpy(t.id, &hash, t.length);
+  t.length = sizeof(h);
+  memcpy(t.id, &h, t.length);
 
   return t;
 }
 
 void
-mint_token(dht::DHT &self, const Contact &remote, dht::Token &t) noexcept {
+mint_token(DHTMetaDatabase &self, const Contact &remote,
+           dht::Token &t) noexcept {
   dht::TokenKey &key = get_token_key(self);
-  t = ee(key, remote);
+  t = create_token(key, remote);
 }
 
-//=====================================
 bool
-is_valid_token(dht::DHT &self, dht::Node &node,
+is_valid_token(DHTMetaDatabase &self, dht::Node &node,
                const dht::Token &token) noexcept {
   if (is_valid(token)) {
-    dht::Token cmp = ee(self.db.key[1], node.contact);
+    dht::Token cmp = create_token(self.key[1], node.contact);
     if (cmp == token) {
       return true;
     }
 
-    cmp = ee(self.db.key[0], node.contact);
+    cmp = create_token(self.key[0], node.contact);
     return cmp == token;
   }
 
   return false;
-} // db::valid()
+} // db::is_valid_token()
 
 //=====================================
 Timestamp
-on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
+on_awake_peer_db(DHTMetaDatabase &self, sp::Buffer &) noexcept {
   const sp::Milliseconds timeout(self.config.peer_age_refresh);
   sp::StaticArray<dht::KeyValue *, 16> empty;
   Timestamp next{self.now};
 
-  binary::rec::inorder(self.db.lookup_table, [&](dht::KeyValue &cur) {
+  binary::rec::inorder(self.lookup_table, [&](dht::KeyValue &cur) {
     dht::Peer *peer;
     while ((peer = timeout::take_peer(self, cur, timeout))) {
       assertx_n(remove(cur.peers, *peer));
@@ -148,9 +196,9 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
   });
 
   for_each(empty, [&](auto cur) { //
-    assertx_n(remove(self.db.lookup_table, cur->id));
-    self.db.length_lookup_table--;
-    self.db.activity++;
+    assertx_n(remove(self.lookup_table, cur->id));
+    self.length_lookup_table--;
+    self.activity++;
   });
 
   assertx((next + timeout) > self.now);
@@ -159,37 +207,37 @@ on_awake_peer_db(dht::DHT &self, sp::Buffer &) noexcept {
 
 //=====================================
 sp::UinStaticArray<dht::Infohash, 20> &
-randomize_samples(dht::DHT &self) noexcept {
-  if (!is_empty(self.db.lookup_table)) {
+randomize_samples(DHTMetaDatabase &self) noexcept {
+  if (!is_empty(self.lookup_table)) {
     sp::Timestamp next_generated =
-        self.db.last_generated + self.config.db_samples_refresh_interval;
+        self.last_generated + self.config.db_samples_refresh_interval;
     if (next_generated <= self.now) {
-      clear(self.db.random_samples);
-      binary::rec::inorder(self.db.lookup_table, [&](dht::KeyValue &cur) {
-        if (!is_full(self.db.random_samples)) {
-          insert(self.db.random_samples, dht::Infohash(cur.id));
+      clear(self.random_samples);
+      binary::rec::inorder(self.lookup_table, [&](dht::KeyValue &cur) {
+        if (!is_full(self.random_samples)) {
+          insert(self.random_samples, dht::Infohash(cur.id));
         } else {
-          auto idx = random(self.random) % self.db.length_lookup_table;
-          if (idx < capacity(self.db.random_samples)) {
-            insert_at(self.db.random_samples, idx, dht::Infohash(cur.id));
+          auto idx = random(self.random) % self.length_lookup_table;
+          if (idx < capacity(self.random_samples)) {
+            insert_at(self.random_samples, idx, dht::Infohash(cur.id));
           }
         }
       });
-      self.db.last_generated = self.now;
+      self.last_generated = self.now;
     }
   }
-  return self.db.random_samples;
+  return self.random_samples;
 }
 
 //=====================================
 std::uint32_t
-next_randomize_samples(const dht::DHT &self) noexcept {
+next_randomize_samples(DHTMetaDatabase &self, const Timestamp now) noexcept {
   Timestamp next_refresh =
-      self.db.last_generated + self.config.db_samples_refresh_interval;
-  if (next_refresh <= self.now) {
+      self.last_generated + self.config.db_samples_refresh_interval;
+  if (next_refresh <= now) {
     return (uint32_t)sp::Seconds(self.config.db_samples_refresh_interval).value;
   }
-  Timestamp delta = next_refresh - self.now;
+  Timestamp delta = next_refresh - now;
   return (uint32_t)sp::Seconds(delta).value;
 }
 
