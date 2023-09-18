@@ -17,6 +17,22 @@ to_ipv4(const char *str, Ipv4 &result) noexcept {
 
 //=====================================
 bool
+Ipv6::operator==(const Ipv6 &o) const noexcept {
+  return std::memcmp(raw, o.raw, sizeof(raw)) == 0;
+}
+
+bool
+Ipv6::operator<(const Ipv6 &o) const noexcept {
+  return std::memcmp(raw, o.raw, sizeof(raw)) < 0;
+}
+
+bool
+Ipv6::operator>(const Ipv6 &o) const noexcept {
+  return std::memcmp(raw, o.raw, sizeof(raw)) > 0;
+}
+
+//=====================================
+bool
 to_ipv6(const char *str, Ipv6 &result) noexcept {
   static_assert(sizeof(result.raw) == sizeof(struct in6_addr), "");
   bool ret = inet_pton(AF_INET6, str, &result) == 1;
@@ -30,12 +46,14 @@ Ip::Ip(Ipv4 v4)
     , type(IpType::IPV4) {
 }
 
+#ifdef IP_IPV6
 Ip::Ip(const Ipv6 &v6)
     : ipv6()
     , type(IpType::IPV6) {
 
   std::memcpy(ipv6.raw, v6.raw, sizeof(ipv6));
 }
+#endif
 
 Ip &
 Ip::operator=(const Ipv4 &ip) noexcept {
@@ -44,30 +62,42 @@ Ip::operator=(const Ipv4 &ip) noexcept {
   return *this;
 }
 
+#ifdef IP_IPV6
 Ip &
 Ip::operator=(const Ipv6 &ip) noexcept {
   ipv6 = ip;
   type = IpType::IPV6;
   return *this;
 }
+#endif
 
 bool
-Ip::operator==(const Ip &ip) const noexcept {
-  if (ip.type != type) {
+Ip::operator==(const Ip &o) const noexcept {
+  if (o.type != type) {
     return false;
   }
 
-  if (ip.type == IpType::IPV4) {
-    return ipv4 == ip.ipv4;
+  if (o.type == IpType::IPV4) {
+    return ipv4 == o.ipv4;
   }
-  return std::memcmp(ipv6.raw, ip.ipv6.raw, sizeof(ipv6.raw)) == 0;
+#ifdef IP_IPV6
+  return ipv6 == o.ipv6;
+#else
+  assertx(false);
+  return false;
+#endif
 }
 
 bool
 Ip::operator<(const Ip &o) const noexcept {
   if (type == o.type) {
     if (type == IpType::IPV6) {
-      return std::memcmp(ipv6.raw, o.ipv6.raw, sizeof(ipv6)) < 0;
+#ifdef IP_IPV6
+  return ipv6 < o.ipv6;
+#else
+      assertx(false);
+      return false;
+#endif
     } else {
       return ipv4 < o.ipv4;
     }
@@ -81,7 +111,12 @@ bool
 Ip::operator>(const Ip &o) const noexcept {
   if (type == o.type) {
     if (type == IpType::IPV6) {
-      return std::memcmp(ipv6.raw, o.ipv6.raw, sizeof(ipv6)) > 0;
+#ifdef IP_IPV6
+  return ipv6 > o.ipv6;
+#else
+      assertx(false);
+      return false;
+#endif
     } else {
       return ipv4 > o.ipv4;
     }
@@ -122,7 +157,11 @@ fnv_ip(const Ip &c) noexcept {
   if (c.type == IpType::IPV4) {
     return fnv_ipv4(c.ipv4);
   } else if (c.type == IpType::IPV6) {
+#ifdef IP_IPV6
     return fnv_ipv6(c.ipv6);
+#else
+    assertx(false);
+#endif
   }
 
   assertxs(false, (uint8_t)c.type);
@@ -144,7 +183,11 @@ djb_ip(const Ip &c) noexcept {
   if (c.type == IpType::IPV4) {
     return djb_ipv4(c.ipv4);
   } else if (c.type == IpType::IPV6) {
+#ifdef IP_IPV6
     return djb_ipv6(c.ipv6);
+#else
+    assertx(false);
+#endif
   }
 
   assertxs(false, (uint8_t)c.type);
@@ -166,10 +209,12 @@ Contact::Contact(Ipv4 v4, Port p) noexcept
     , port(p) {
 }
 
+#ifdef IP_IPV6
 Contact::Contact(const Ipv6 &v6, Port p) noexcept
     : ip(v6)
     , port(p) {
 }
+#endif
 
 Contact::Contact(const Ip &i, Port p) noexcept
     : ip(i)

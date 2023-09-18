@@ -12,7 +12,11 @@ ip_election::ip_election() noexcept
 
   auto djb = [](const Ip &ip) -> std::size_t {
     if (ip.type == IpType::IPV6) {
+#ifdef IP_IPV6
       return djb2a::encode32(&ip.ipv6, sizeof(ip.ipv6));
+#else
+      assertx(false);
+#endif
     } else {
       return djb2a::encode32(&ip.ipv4, sizeof(ip.ipv4));
     }
@@ -20,7 +24,11 @@ ip_election::ip_election() noexcept
 
   auto fnv1a = [](const Ip &ip) -> std::size_t {
     if (ip.type == IpType::IPV6) {
+#ifdef IP_IPV6
       return fnv_1a::encode64(&ip.ipv6, sizeof(ip.ipv6));
+#else
+      assertx(false);
+#endif
     } else {
       return fnv_1a::encode64(&ip.ipv4, sizeof(ip.ipv4));
     }

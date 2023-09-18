@@ -40,6 +40,15 @@ to_ipv4(const char *, Ipv4 &) noexcept;
 //=====================================
 struct Ipv6 {
   sp::byte raw[16];
+
+  bool
+  operator==(const Ipv6 &) const noexcept;
+
+  bool
+  operator<(const Ipv6 &) const noexcept;
+
+  bool
+  operator>(const Ipv6 &) const noexcept;
 };
 
 bool
@@ -56,20 +65,27 @@ struct Hasher<Ipv6> {
 //=====================================
 enum class IpType : uint8_t { IPV4, IPV6 };
 
+#define IP_IPV6
 struct Ip {
   union {
     Ipv4 ipv4;
+#ifdef IP_IPV6
     Ipv6 ipv6;
+#endif
   };
   IpType type;
 
   explicit Ip(Ipv4);
+#ifdef IP_IPV6
   explicit Ip(const Ipv6 &);
+#endif
 
   Ip &
   operator=(const Ipv4 &) noexcept;
+#ifdef IP_IPV6
   Ip &
   operator=(const Ipv6 &) noexcept;
+#endif
 
   bool
   operator==(const Ip &) const noexcept;
@@ -101,7 +117,9 @@ struct Contact {
   Port port;
 
   Contact(Ipv4, Port) noexcept;
+#ifdef IP_IPV6
   Contact(const Ipv6 &, Port) noexcept;
+#endif
   Contact(const Ip &, Port) noexcept;
   // Contact(const Contact &) noexcept;
   Contact() noexcept;

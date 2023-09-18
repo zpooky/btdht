@@ -140,7 +140,11 @@ create_token(dht::TokenKey &key, const Contact &remote) noexcept {
   if (remote.ip.type == IpType::IPV4) {
     h = fnv_1a::encode(&remote.ip.ipv4, sizeof(remote.ip.ipv4), h);
   } else {
+#ifdef IP_IPV6
     h = fnv_1a::encode(&remote.ip.ipv6, sizeof(remote.ip.ipv6), h);
+#else
+    assertx(false);
+#endif
   }
   h = fnv_1a::encode(&remote.port, sizeof(remote.port), h);
 

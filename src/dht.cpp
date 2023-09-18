@@ -28,6 +28,7 @@ node_id_prefix(const Ip &addr, std::uint32_t seed) noexcept {
   sp::byte octets[8] = {0};
   std::uint32_t size = 0;
   if (addr.type == IpType::IPV6) {
+#ifdef IP_IPV6
     // our external IPv6 address (network byte order)
     std::memcpy(octets, &addr.ipv6, sizeof(octets));
     // If IPV6
@@ -37,6 +38,9 @@ node_id_prefix(const Ip &addr, std::uint32_t seed) noexcept {
       octets[i] &= mask[i];
     }
     size = sizeof(octets);
+#else
+    assertx(false);
+#endif
   } else {
     // our external IPv4 address (network byte order)
     // TODO hton
