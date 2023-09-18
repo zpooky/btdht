@@ -471,11 +471,10 @@ rank(const Key &id, const Key &o) noexcept {
 bool
 bit(const sp::byte (&key)[20], std::size_t idx) noexcept {
   assertxs(idx < NodeId::bits, idx, NodeId::bits);
-
-  std::size_t byte = idx / 8;
-  std::uint8_t bit = idx % 8;
-  std::uint8_t high_bit(1 << 7);
-  std::uint8_t bitMask = std::uint8_t(high_bit >> bit);
+  constexpr std::uint8_t high_bit(1 << 7);
+  const std::size_t byte = idx / 8;
+  const std::uint8_t bit = idx % 8;
+  const std::uint8_t bitMask(high_bit >> bit);
   return key[byte] & bitMask;
 }
 } // namespace dht
@@ -819,7 +818,7 @@ Node::Node(const NodeId &nid, const Contact &p) noexcept
 }
 
 /*Node*/
-Node::Node(const NodeId &nid, const Contact &p, Timestamp act) noexcept
+Node::Node(const NodeId &nid, const Contact &p, const Timestamp &act) noexcept
     // timeout{{{
     : timeout_next(nullptr)
     , timeout_priv(nullptr)
@@ -877,7 +876,7 @@ is_valid(const Node &n) noexcept {
 
 // ========================================
 /*dht::Peer*/
-Peer::Peer(Ipv4 i, Port p, Timestamp n, bool s) noexcept
+Peer::Peer(Ipv4 i, Port p, const Timestamp &n, bool s) noexcept
     : contact(i, p)
     , activity(n)
     , seed(s)
@@ -888,7 +887,7 @@ Peer::Peer(Ipv4 i, Port p, Timestamp n, bool s) noexcept
 {
 }
 
-Peer::Peer(const Contact &c, Timestamp a, bool s) noexcept
+Peer::Peer(const Contact &c, const Timestamp &a, bool s) noexcept
     : contact(c)
     , activity(a)
     , seed(s)
@@ -925,12 +924,12 @@ operator>(const Contact &f, const Peer &s) noexcept {
 
 Timestamp
 activity(const Node &head) noexcept {
-  return head.remote_activity;
+  return Timestamp(head.remote_activity);
 }
 
 Timestamp
 activity(const Peer &peer) noexcept {
-  return peer.activity;
+  return Timestamp(peer.activity);
 }
 
 // ========================================

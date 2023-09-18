@@ -101,7 +101,6 @@ struct DHTMetaRoutingTable {
   std::size_t root_limit;
   // TODO dynamic
   heap::StaticBinary<RoutingTable *, 1024, RoutingTableLess> rt_reuse;
-  sp::dstack<RoutingTable *> root_extra;
 
   prng::xorshift32 &random;
   const dht::NodeId &id;
@@ -119,8 +118,7 @@ struct DHTMetaRoutingTable {
 
   DHTMetaRoutingTable(prng::xorshift32 &, Timestamp &, const dht::NodeId &,
                       const dht::Config &, bool timeout);
-  ~DHTMetaRoutingTable() {
-  }
+  ~DHTMetaRoutingTable();
 };
 
 void
@@ -132,6 +130,9 @@ debug_levels(const DHTMetaRoutingTable &) noexcept;
 
 bool
 debug_assert_all(const DHTMetaRoutingTable &);
+
+void
+debug_timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact);
 
 bool
 is_good(const DHTMetaRoutingTable &dht, const Node &contact) noexcept;

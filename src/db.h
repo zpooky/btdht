@@ -86,7 +86,7 @@ randomize_samples(DHTMetaDatabase &) noexcept;
 
 //=====================================
 std::uint32_t
-next_randomize_samples(DHTMetaDatabase &, const Timestamp now) noexcept;
+next_randomize_samples(DHTMetaDatabase &, const Timestamp& now) noexcept;
 
 //=====================================
 

@@ -38,6 +38,8 @@ on_awake_eager_tx_timeout(DHT &, sp::Buffer &) noexcept;
 
 static Timestamp
 on_awake_peer_db_glue(DHT &self, sp::Buffer &buf) noexcept {
+  assertxs(self.now == self.db.now, std::uint64_t(self.now),
+           std::uint64_t(self.db.now));
   return db::on_awake_peer_db(self.db, buf);
 }
 } // namespace dht
@@ -55,10 +57,12 @@ setup(dht::Modules &modules, bool setup_cb) noexcept {
   error::setup(modules.modules[i++]);
 
   if (setup_cb) {
+#if 1
+    insert(modules.awake.on_awake, &dht::on_awake_peer_db_glue);
+#endif
+    insert(modules.awake.on_awake, &dht::on_awake_bootstrap_reset);
     insert(modules.awake.on_awake, &dht::on_awake);
     insert(modules.awake.on_awake, &dht::on_awake_ping);
-    insert(modules.awake.on_awake, &dht::on_awake_peer_db_glue);
-    insert(modules.awake.on_awake, &dht::on_awake_bootstrap_reset);
     insert(modules.awake.on_awake, &dht::on_awake_eager_tx_timeout);
   }
 
@@ -199,6 +203,7 @@ on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
   /* Only reset if there is a small amount of nodes in self.bootstrap since we
    * are starved for potential contacts
    */
+  assertx(self.now == self.routing_table.now);
   if (self.now >= next) {
     // XXX if_empty(bootstrap) try to fetch more nodes from dump.file
     if (is_empty(self.bootstrap) || nodes_good(self.routing_table) < 100) {
@@ -208,6 +213,7 @@ on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
     self.bootstrap_last_reset = self.now;
     next = self.bootstrap_last_reset + cfg.bootstrap_reset;
   }
+  assertx(next > self.now);
 
   return next;
 }
@@ -292,37 +298,40 @@ awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
 } // awake_look_for_nodes()
 
 static Timestamp
-on_awake(DHT &dht, sp::Buffer &out) noexcept {
-  Timestamp result(dht.now + dht.config.refresh_interval);
+on_awake(DHT &self, sp::Buffer &out) noexcept {
+  Timestamp result(self.now + self.config.refresh_interval);
 
   auto percentage = [](std::uint32_t t, std::uint32_t c) {
     return double(c) / (double(t) / 100.);
   };
 
-  auto good = nodes_good(dht.routing_table);
-  const uint32_t all = dht::max_routing_nodes(dht.routing_table);
+  assertx(self.now == self.routing_table.now);
+  assertx(self.now == self.db.now);
+
+  auto good = nodes_good(self.routing_table);
+  const uint32_t all = dht::max_routing_nodes(self.routing_table);
   uint32_t look_for = all - good;
 
   const auto cur = percentage(all, good);
 #if 0
   printf("good[%u], total[%u], bad[%u], look_for[%u], "
          "config.seek[%zu%s], "
-         "cur[%.2f%s], max[%u], dht.root[%zd], bootstraps[%zu]\n",
-         good, nodes_total(dht), nodes_bad(dht), look_for, //
-         dht.config.percentage_seek, "%",                  //
-         cur, "%", all, dht.root ? dht.root->depth : 0, length(dht.bootstrap));
+         "cur[%.2f%s], max[%u], self.root[%zd], bootstraps[%zu]\n",
+         good, nodes_total(self), nodes_bad(self), look_for, //
+         self.config.percentage_seek, "%",                  //
+         cur, "%", all, self.root ? self.root->depth : 0, length(self.bootstrap));
 #endif
 
-  if (cur < (double)dht.config.percentage_seek) {
+  if (cur < (double)self.config.percentage_seek) {
     // TODO if we can't mint new tx then next should be calculated base on when
     // soonest next tx timesout is so we can directly reuse it. (it should not
     // be the config.refresh_interval of 15min if we are under conf.p_seek)
-    auto awake_next = awake_look_for_nodes(dht, out, look_for);
+    auto awake_next = awake_look_for_nodes(self, out, look_for);
     result = std::min(result, awake_next);
-    logger::awake::contact_scan(dht);
+    logger::awake::contact_scan(self);
   }
 
-  assertxs(result > dht.now, uint64_t(result), uint64_t(dht.now));
+  assertxs(result > self.now, uint64_t(result), uint64_t(self.now));
   return result;
 }
 
@@ -458,7 +467,7 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 static void
-on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
+on_timeout(dht::DHT &dht, const krpc::Transaction &tx, const Timestamp &sent,
            void *arg) noexcept {
   logger::transmit::error::ping_response_timeout(dht, tx, sent);
   assertx(arg == nullptr);
@@ -534,7 +543,7 @@ handle_response_timeout(dht::DHT &dht, void *&closure) noexcept {
 }
 
 static void
-on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
+on_timeout(dht::DHT &dht, const krpc::Transaction &tx, const Timestamp &sent,
            void *closure) noexcept {
   logger::transmit::error::find_node_response_timeout(dht, tx, sent);
   if (closure) {
@@ -754,7 +763,7 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 } // namespace get_peers
 
 static void
-on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
+on_timeout(dht::DHT &dht, const krpc::Transaction &tx, const Timestamp &sent,
            void *ctx) noexcept {
   logger::transmit::error::get_peers_response_timeout(dht, tx, sent);
   auto search = (dht::SearchContext *)ctx;
@@ -968,7 +977,7 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 static void
-on_timeout(dht::DHT &dht, const krpc::Transaction &tx, Timestamp sent,
+on_timeout(dht::DHT &dht, const krpc::Transaction &tx, const Timestamp &sent,
            void *arg) noexcept {
   logger::transmit::error::sample_infohashes_response_timeout(dht, tx, sent);
   assertx(arg == nullptr);

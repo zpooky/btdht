@@ -66,3 +66,36 @@ debug spam detection (eep track of outgoing sent request to not spam the same no
 
 -------------------------------------------------------------------------------
 serialize routing table
+
+-------------------------------------------------------------------------------
+# sample_infohashes
+- LT support
+```
+d
+ 2:ip
+ 6:hex[C0A80046D502]: 6(___F__)
+ 1:r
+ d
+  2:id
+  20:hex[D576317D8BAD26FED8BEB013C2DB93BEEFCE4DC7]: 20(_v1}__&___________M_)
+  8:interval
+  i21600e
+  5:nodes
+  208:hex[0372A664278962B16787351D541B170CD1848D90AC532F4921F009096AA89392A4725B5A9AAF5D5657CFBEB57FB85EE37BCBC8D509348F1C6E99D0955A4CB5657033A8827EBF5864521C0980C8D509F92CF6390F10A0F4FED7FEDE464A69D7B9DA0B54F72B2D24D60FA8ED7D63F81A7C1F6B9F80A086B96F9728C3EC4D26B448CFBE0C1E71AC7FC880170097F2DE1EFB686714ACB4883DEF23ABB09513E21747239F3D299D91A8FF2F5A964A5510B346AF9C7718F89415D6896976674F4B919399A48B0758305B7BB59E7C4E0D11C8D5]: 208(_r_d'_b_g_5_T________S/I!___j____r[Z__]VW_____^_{____4__n___ZL_ep3__~_XdR_______,_9________FJi____T_+-$____}c__|_k_____o_(__M&_H____q___________hg____=_#______G#_=)____/Z_JU__F__w______ivgOK______X0[{__|N____)
+  3:num
+  i0e
+  1:p
+  i54530e
+  7:samples
+  0:
+ e
+ 1:t
+ 5:hex[184F352FA6]: 5(_O5/_)
+ 1:v
+ 4:hex[4C540209]: 4(LT__)
+ 1:y
+ 1:r
+e
+```
+
+-------------------------------------------------------------------------------

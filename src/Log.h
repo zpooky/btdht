@@ -87,13 +87,13 @@ self_sender(dht::MessageContext &ctx) noexcept;
 namespace awake {
 /* logger::awake */
 void
-timeout(const dht::DHT &, Timestamp) noexcept;
+timeout(const dht::DHT &, const Timestamp &) noexcept;
 
 void
-contact_ping(const dht::DHT &, Timestamp) noexcept;
+contact_ping(const dht::DHT &, const Timestamp &) noexcept;
 
 void
-peer_db(const dht::DHT &, Timestamp) noexcept;
+peer_db(const dht::DHT &, const Timestamp &) noexcept;
 
 void
 contact_scan(const dht::DHT &) noexcept;
@@ -122,19 +122,19 @@ udp(const dht::DHT &) noexcept;
 
 void
 ping_response_timeout(dht::DHT &, const krpc::Transaction &,
-                      Timestamp) noexcept;
+                      const Timestamp &) noexcept;
 
 void
 find_node_response_timeout(dht::DHT &, const krpc::Transaction &,
-                           Timestamp) noexcept;
+                           const Timestamp &) noexcept;
 
 void
 get_peers_response_timeout(dht::DHT &, const krpc::Transaction &,
-                           Timestamp) noexcept;
+                           const Timestamp &) noexcept;
 
 void
 sample_infohashes_response_timeout(dht::DHT &, const krpc::Transaction &,
-                                   Timestamp) noexcept;
+                                   const Timestamp &) noexcept;
 } // namespace error
 // ====================
 } // namespace transmit

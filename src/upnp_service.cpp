@@ -251,7 +251,7 @@ scheduled_upnp(dht::DHT &self, sp::Buffer &) noexcept {
   }
 
   assertx(expiry > self.now);
-  return expiry;
+  return Timestamp(expiry);
 }
 
 bool

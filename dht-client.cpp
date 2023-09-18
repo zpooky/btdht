@@ -306,17 +306,18 @@ handle_ping(DHTClient &client) {
     client.argv++;
   }
 
-  fd udp = udp::bind(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
-  if (!udp) {
-    fprintf(stderr, "failed connect: %s\n", to_string(to));
-    return EXIT_FAILURE;
-  }
-  swap(client.udp, udp);
-
   if (!has) {
     fprintf(stderr, "dht-client ping ip:port\n");
     return EXIT_FAILURE;
   }
+
+  fd udp = udp::connect(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
+  if (!udp) {
+    fprintf(stderr, "failed connect: %s (%s)\n", to_string(to),
+            strerror(errno));
+    return EXIT_FAILURE;
+  }
+  swap(client.udp, udp);
 
   if (!send_ping(client)) {
     fprintf(stderr, "failed to send\n");
@@ -347,12 +348,6 @@ handle_find_node(DHTClient &client) {
     client.argc--;
     client.argv++;
   }
-  fd udp = udp::bind(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
-  if (!udp) {
-    fprintf(stderr, "failed connect: %s\n", to_string(to));
-    return EXIT_FAILURE;
-  }
-  swap(client.udp, udp);
 
   while (1) {
     int opt;
@@ -402,6 +397,13 @@ handle_find_node(DHTClient &client) {
     fprintf(stderr, "dht-client find_node ip:port search [--self=hex]\n");
     return EXIT_FAILURE;
   }
+
+  fd udp = udp::connect(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
+  if (!udp) {
+    fprintf(stderr, "failed connect: %s\n", to_string(to));
+    return EXIT_FAILURE;
+  }
+  swap(client.udp, udp);
 
   if (!send_find_node(client, search)) {
     fprintf(stderr, "failed to send\n");

@@ -34,6 +34,10 @@ unlink(dht::KeyValue &, dht::Peer *) noexcept;
 
 //=====================================
 void
+move(Timeout &self, dht::Node *from, dht::Node *to) noexcept;
+
+//=====================================
+void
 append_all(Timeout &, dht::Node *) noexcept;
 
 void
@@ -46,10 +50,6 @@ prepend(Timeout &, dht::Node *) noexcept;
 //=====================================
 void
 insert_new(Timeout &, dht::Node *) noexcept;
-
-//=====================================
-void
-insert(dht::Peer *priv, dht::Peer *subject, dht::Peer *next) noexcept;
 
 //=====================================
 dht::Node *

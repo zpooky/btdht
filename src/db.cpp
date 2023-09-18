@@ -76,10 +76,10 @@ lookup(DHTMetaDatabase &self, const dht::Infohash &infohash) noexcept {
 bool
 insert(DHTMetaDatabase &self, const dht::Infohash &infohash,
        const Contact &contact, bool seed, const char *name) noexcept {
-  auto new_table = [](DHTMetaDatabase &self, const dht::Infohash &ih) {
-    auto ires = insert(self.lookup_table, ih);
-    self.activity++;
-    self.length_lookup_table++;
+  auto new_table = [](DHTMetaDatabase &selfx, const dht::Infohash &ih) {
+    auto ires = insert(selfx.lookup_table, ih);
+    selfx.activity++;
+    selfx.length_lookup_table++;
     return std::get<0>(ires);
   };
 
@@ -201,8 +201,9 @@ on_awake_peer_db(DHTMetaDatabase &self, sp::Buffer &) noexcept {
     self.activity++;
   });
 
-  assertx((next + timeout) > self.now);
-  return next + timeout;
+  Timestamp tmp(next + timeout);
+  assertx(tmp > self.now);
+  return tmp;
 }
 
 //=====================================
@@ -231,7 +232,7 @@ randomize_samples(DHTMetaDatabase &self) noexcept {
 
 //=====================================
 std::uint32_t
-next_randomize_samples(DHTMetaDatabase &self, const Timestamp now) noexcept {
+next_randomize_samples(DHTMetaDatabase &self, const Timestamp &now) noexcept {
   Timestamp next_refresh =
       self.last_generated + self.config.db_samples_refresh_interval;
   if (next_refresh <= now) {

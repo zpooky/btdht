@@ -276,6 +276,97 @@ assert_count(DHT &dht) {
   printf("added contacts: %zu\n", v_contacts);
 }
 
+TEST(dhtTest, test_find_node) {
+  fd sock(-1);
+  Contact c(0, 0);
+  prng::xorshift32 r(1);
+  Timestamp now = sp::now();
+  dht::DHT dht(sock, sock, c, r, now);
+  dht::init(dht);
+
+  fprintf(stderr, "sizeof(Ip):%zu\n", sizeof(Ip));
+  fprintf(stderr, "sizeof(Port):%zu\n", sizeof(Port));
+  fprintf(stderr, "sizeof(Contact):%zu\n", sizeof(Contact));
+  fprintf(stderr, "sizeof(dht::Node):%zu\n", sizeof(dht::Node));
+  fprintf(stderr, "sizeof(dht::Bucket):%zu\n", sizeof(dht::Bucket));
+  fprintf(stderr, "sizeof(dht::RoutingTable):%zu\n", sizeof(dht::RoutingTable));
+  // ASSERT_FALSE(true);
+
+  std::uint32_t m = max_routing_nodes(dht.routing_table);
+  fprintf(stderr, "%s:m[%u]\n", __func__, m);
+  const std::uint32_t max = 64;
+  for (std::size_t i = 0; i < max; ++i) {
+    dht::NodeId sender;
+    Contact con;
+
+    rand_contact(con);
+    rand_nodeId(sender);
+
+    dht::Node in(sender, con);
+    dht::Node *result = NULL;
+
+    result = find_contact(dht.routing_table, in.id);
+    ASSERT_FALSE(result);
+
+    result = dht::insert(dht.routing_table, in);
+    // fprintf(stderr, "i[%zu]\n", i);
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(in.contact == result->contact);
+    ASSERT_TRUE(in.id == result->id);
+
+    result = find_contact(dht.routing_table, in.id);
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(in.contact == result->contact);
+    ASSERT_TRUE(in.id == result->id);
+  }
+
+  std::size_t cnt = 0;
+  auto t = std::make_tuple(&dht, &cnt);
+
+  dht::debug_for_each(
+      dht.routing_table, &t,
+      [](void *ctx, dht::DHTMetaRoutingTable &, const auto &current) {
+        auto in = (std::tuple<dht::DHT *, std::size_t &> *)ctx;
+        auto ctx2 = std::get<0>(*in);
+        auto &cntx = std::get<1>(*in);
+        ++cntx;
+
+        dht::Node *result = NULL;
+        result = find_contact(ctx2->routing_table, current.id);
+        ASSERT_TRUE(result);
+        ASSERT_TRUE(current.contact == result->contact);
+        ASSERT_TRUE(current.id == result->id);
+      });
+  ASSERT_TRUE(cnt == nodes_total(dht.routing_table));
+
+  size_t dummy = 0;
+  while (nodes_total(dht.routing_table) > 0) {
+    Infohash ih;
+    rand_infohash(ih);
+    dht::Node *result[8] = {0};
+    printf("-%zu\n", dummy);
+    ++dummy;
+    multiple_closest(dht.routing_table, ih, result);
+
+    assertxs(result[0], nodes_total(dht.routing_table),
+             nodes_good(dht.routing_table), nodes_bad(dht.routing_table));
+
+    for (std::size_t i = 0; i < 8; ++i) {
+      if (result[i]) {
+        dht::Node *tmp = find_contact(dht.routing_table, result[i]->id);
+        ASSERT_TRUE(tmp);
+        ASSERT_TRUE(result[i]->contact == tmp->contact);
+        ASSERT_TRUE(result[i]->id == tmp->id);
+
+        debug_timeout_unlink_reset(dht.routing_table, *result[i]);
+
+        tmp = find_contact(dht.routing_table, result[i]->id);
+        ASSERT_FALSE(tmp);
+      }
+    }
+  }
+}
+
 TEST(dhtTest, test) {
   fd sock(-1);
   Contact c(0, 0);

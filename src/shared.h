@@ -72,7 +72,7 @@ namespace tx {
 struct Tx;
 
 using TxCancelHandle = void (*)(dht::DHT &, const krpc::Transaction &,
-                                Timestamp, void *);
+                                const Timestamp &, void *);
 using TxHandle = bool (*)(dht::MessageContext &, void *);
 // dht::TxContext
 struct TxContext {
@@ -254,7 +254,7 @@ struct DHT {
   // stuff {{{
   Timestamp last_activity;
 
-  Timestamp now;
+  Timestamp &now;
   // }}}
 
   // boostrap {{{

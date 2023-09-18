@@ -30,9 +30,28 @@
 // #define LOG_KNOWN_TX
 
 namespace logger {
+static void
+print_raw(FILE *_f, const sp::byte *val, std::size_t len) noexcept {
+  if (ascii::is_printable(val, len)) {
+    fprintf(_f, "%.*s", int(len), val);
+  } else {
+    fprintf(_f, "hex[");
+    dht::print_hex(_f, (const sp::byte *)val, len);
+    fprintf(_f, "]: %zu(", len);
+    for (std::size_t i = 0; i < len; ++i) {
+      if (ascii::is_printable(val[i])) {
+        fprintf(_f, "%c", val[i]);
+      } else {
+        fprintf(_f, "_");
+      }
+    }
+    fprintf(_f, ")");
+  }
+}
+
 /*logger*/
 static void
-print_time(FILE *f, Timestamp now) noexcept {
+print_time(FILE *f, const Timestamp &now) noexcept {
   char buff[32] = {0};
 
   sp::Seconds sec(sp::Milliseconds(now), sp::RoundMode::UP);
@@ -164,6 +183,14 @@ sample_infohashes(dht::MessageContext &ctx) noexcept {
   print_time(ctx);
   printf("receive sample_infohashes\n");
   ++s.received.request.sample_infohashes;
+
+  auto f = stderr;
+  fprintf(f, "sample_infohashes");
+  fprintf(f, " version[");
+  print_raw(f, ctx.pctx.remote_version,
+            strnlen((char *)ctx.pctx.remote_version,
+                    sizeof(ctx.pctx.remote_version)));
+  fprintf(f, "]\n");
 }
 
 void
@@ -280,25 +307,6 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
   bencode_print_out(stdout);
 }
 
-static void
-print_raw(FILE *_f, const sp::byte *val, std::size_t len) noexcept {
-  if (ascii::is_printable(val, len)) {
-    fprintf(_f, "%.*s", int(len), val);
-  } else {
-    fprintf(_f, "hex[");
-    dht::print_hex(_f, (const sp::byte *)val, len);
-    fprintf(_f, "]: %zu(", len);
-    for (std::size_t i = 0; i < len; ++i) {
-      if (ascii::is_printable(val[i])) {
-        fprintf(_f, "%c", val[i]);
-      } else {
-        fprintf(_f, "_");
-      }
-    }
-    fprintf(_f, ")");
-  }
-}
-
 void
 invalid_node_id(dht::MessageContext &ctx, const char *query,
                 const sp::byte *version, std::size_t l_version,
@@ -322,7 +330,7 @@ self_sender(dht::MessageContext &ctx) noexcept {
 namespace awake {
 /*logger::awake*/
 void
-timeout(const dht::DHT &ctx, Timestamp timeout) noexcept {
+timeout(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
 #ifdef LOG_AWAKE_TIMEOUT
   print_time(ctx);
   Timestamp awake(timeout - ctx.now);
@@ -336,7 +344,7 @@ timeout(const dht::DHT &ctx, Timestamp timeout) noexcept {
 }
 
 void
-contact_ping(const dht::DHT &ctx, Timestamp timeout) noexcept {
+contact_ping(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
   print_time(ctx);
   // TODO fix better print
   Timestamp awake(timeout - ctx.now);
@@ -347,7 +355,7 @@ contact_ping(const dht::DHT &ctx, Timestamp timeout) noexcept {
 }
 
 void
-peer_db(const dht::DHT &ctx, Timestamp timeout) noexcept {
+peer_db(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
 #ifdef LOG_PEER_DB
   print_time(ctx);
   // TODO fix better print
@@ -464,7 +472,7 @@ static std::size_t tout = 0;
 
 void
 ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
-                      Timestamp sent) noexcept {
+                      const Timestamp &sent) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.ping;
 
@@ -478,7 +486,7 @@ ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
 void
 find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
-                           Timestamp sent) noexcept {
+                           const Timestamp &sent) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.find_node;
 
@@ -492,7 +500,7 @@ find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
 void
 get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
-                           Timestamp sent) noexcept {
+                           const Timestamp &sent) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.get_peers;
 
@@ -506,7 +514,7 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
 void
 sample_infohashes_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
-                                   Timestamp sent) noexcept {
+                                   const Timestamp &sent) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.sample_infohashes;
 

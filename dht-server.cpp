@@ -508,10 +508,10 @@ main(int argc, char **argv) {
 
   auto on_awake = [&mdht, &modulesAwake](sp::Buffer &out) -> sp::Milliseconds {
     // print_result(mdht->election);
-    Timestamp next = mdht->now + mdht->config.refresh_interval;
+    Timestamp next{mdht->now + mdht->config.refresh_interval};
     auto cb = [&mdht, &out](auto acum, auto callback) {
       Timestamp cr = callback(*mdht, out);
-      assertx(cr > mdht->now);
+      assertxs(cr > mdht->now, std::uint64_t(cr), std::uint64_t(mdht->now));
       if (cr > mdht->now)
         return std::min(cr, acum);
       else

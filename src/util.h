@@ -413,7 +413,7 @@ struct Node {
 
   Node() noexcept;
   Node(const NodeId &, const Contact &) noexcept;
-  Node(const NodeId &, const Contact &, Timestamp) noexcept;
+  Node(const NodeId &, const Contact &, const Timestamp &) noexcept;
   Node(const IdContact &, Timestamp) noexcept;
 
 #if 0
@@ -516,8 +516,8 @@ struct Peer {
   Peer *timeout_priv;
   Peer *timeout_next;
   // }
-  Peer(Ipv4, Port, Timestamp, bool) noexcept;
-  Peer(const Contact &, Timestamp, bool) noexcept;
+  Peer(Ipv4, Port, const Timestamp &, bool) noexcept;
+  Peer(const Contact &, const Timestamp &, bool) noexcept;
   // Peer() noexcept;
 
   // Peer(const Peer &) = delete;

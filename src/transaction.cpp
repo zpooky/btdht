@@ -266,7 +266,7 @@ expire_time(const Tx &tx) {
 }
 
 static bool
-is_expired(const Tx &tx, Timestamp now) noexcept {
+is_expired(const Tx &tx, const Timestamp &now) noexcept {
   if (is_sent(tx)) {
     if (expire_time(tx) > now) {
       return false;
@@ -277,7 +277,7 @@ is_expired(const Tx &tx, Timestamp now) noexcept {
 }
 
 static Tx *
-unlink_free(DHT &dht, Timestamp now) noexcept {
+unlink_free(DHT &dht, const Timestamp &now) noexcept {
   Client &client = dht.client;
   Tx *const head = client.timeout_head;
   Tx *result = nullptr;

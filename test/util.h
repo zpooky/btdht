@@ -185,6 +185,13 @@ rand_key(dht::Key &id) {
 }
 
 inline static void
+rand_contact(Contact &c) {
+  c.port = (Port)rand();
+  c.ip.ipv4 = (Ipv4)rand();
+  c.ip.type = IpType::IPV4;
+}
+
+inline static void
 rand_nodeId(dht::NodeId &id) {
   rand_key(id.id);
 }
