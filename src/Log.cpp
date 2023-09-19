@@ -62,23 +62,23 @@ print_time(FILE *f, const Timestamp &now) noexcept {
 }
 
 static void
-print_time(const dht::DHT &dht) noexcept {
-  return print_time(stdout, dht.now);
+print_time(FILE *f, const dht::DHT &dht) noexcept {
+  return print_time(f, dht.now);
 }
 
 static void
-print_time(const dht::MessageContext &ctx) noexcept {
-  return print_time(ctx.dht);
+print_time(FILE *f, const dht::MessageContext &ctx) noexcept {
+  return print_time(f, ctx.dht);
 }
 
 static void
-print_time(const dht::DHTMetaRoutingTable &ctx) noexcept {
-  return print_time(stdout, ctx.now);
+print_time(FILE *f, const dht::DHTMetaRoutingTable &ctx) noexcept {
+  return print_time(f, ctx.now);
 }
 
 static void
-print_time(const db::DHTMetaDatabase &ctx) noexcept {
-  return print_time(stdout, ctx.now);
+print_time(FILE *f, const db::DHTMetaDatabase &ctx) noexcept {
+  return print_time(f, ctx.now);
 }
 
 namespace receive {
@@ -90,8 +90,9 @@ ping(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.request.ping;
 
-  print_time(ctx);
-  printf("receive request ping\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive request ping\n");
 }
 
 void
@@ -99,8 +100,9 @@ find_node(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.request.find_node;
 
-  print_time(ctx);
-  printf("receive request find_node\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive request find_node\n");
 }
 
 void
@@ -108,8 +110,9 @@ get_peers(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.request.get_peers;
 
-  print_time(ctx);
-  printf("receive request get_peers\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive request get_peers\n");
 }
 
 void
@@ -117,8 +120,9 @@ announce_peer(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.request.announce_peer;
 
-  print_time(ctx);
-  printf("receive request announce_peer\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive request announce_peer\n");
 }
 
 void
@@ -126,8 +130,9 @@ error(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.request.error;
 
-  print_time(ctx);
-  printf("unknow request query type %s\n", ctx.query);
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "unknow request query type %s\n", ctx.query);
 
   auto query_len = std::strlen(ctx.query);
 
@@ -180,11 +185,13 @@ error(dht::MessageContext &ctx) noexcept {
 void
 sample_infohashes(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
-  print_time(ctx);
-  printf("receive sample_infohashes\n");
+
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive sample_infohashes\n");
   ++s.received.request.sample_infohashes;
 
-  auto f = stderr;
+  f = stderr;
   fprintf(f, "sample_infohashes");
   fprintf(f, " version[");
   print_raw(f, ctx.pctx.remote_version,
@@ -195,8 +202,9 @@ sample_infohashes(dht::MessageContext &ctx) noexcept {
 
 void
 dump(dht::MessageContext &ctx) noexcept {
-  print_time(ctx);
-  printf("receive dump\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive dump\n");
 }
 } // namespace req
 
@@ -208,8 +216,9 @@ ping(dht::MessageContext &ctx) noexcept {
   ++s.received.response.ping;
 
 #ifdef LOG_RES_PING
-  print_time(ctx);
-  printf("receive response ping\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive response ping\n");
 #endif
 }
 
@@ -219,8 +228,9 @@ find_node(dht::MessageContext &ctx) noexcept {
   ++s.received.response.find_node;
 
 #ifdef LOG_RES_FIND_NODE
-  print_time(ctx);
-  printf("receive response find_node\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive response find_node\n");
 #endif
 }
 
@@ -230,8 +240,9 @@ get_peers(dht::MessageContext &ctx) noexcept {
   ++s.received.response.get_peers;
 
 #ifdef LOG_RES_GET_PEERS
-  print_time(ctx);
-  printf("receive response get_peers\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive response get_peers\n");
 #endif
 }
 
@@ -241,8 +252,9 @@ announce_peer(dht::MessageContext &ctx) noexcept {
   ++s.received.response.announce_peer;
 
 #ifdef LOG_RES_ANNOUNCE_PEER
-  print_time(ctx);
-  printf("receive response announce_peer\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "receive response announce_peer\n");
 #endif
 }
 
@@ -251,8 +263,9 @@ error(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.response.error;
 
-  print_time(ctx);
-  printf("unknow response query type %s\n", ctx.query);
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "unknow response query type %s\n", ctx.query);
 }
 
 void
@@ -263,11 +276,12 @@ known_tx(dht::MessageContext &ctx, const tx::TxContext &tctx) noexcept {
   ++s.known_tx;
 
 #ifdef LOG_KNOWN_TX
-  print_time(ctx);
-  printf("known transaction[");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "known transaction[");
   auto &tx = ctx.transaction;
-  dht::print_hex(stdout, tx.id, tx.length);
-  printf("]\n");
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "]\n");
 #endif
 }
 
@@ -277,14 +291,14 @@ unknown_tx(dht::MessageContext &ctx, const sp::Buffer &in) noexcept {
   ++s.unknown_tx;
   auto f = stderr;
 
-  print_time(ctx);
+  print_time(f, ctx);
   fprintf(f, "unknow transaction[");
   auto &tx = ctx.transaction;
   dht::print_hex(f, tx.id, tx.length);
   fprintf(f, "]\n");
 
   if (!bencode_print(in)) {
-    hex::encode_print(in.raw, in.length, stderr);
+    hex::encode_print(in.raw, in.length, f);
   }
 }
 } // namespace res
@@ -299,10 +313,11 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.received.parse_error;
 
-  print_time(stderr, ctx.now);
-  fprintf(stderr, "parse error|%s|\n", msg);
+  auto f = stderr;
+  print_time(f, ctx.now);
+  fprintf(f, "parse error|%s|\n", msg);
   // dht::print_hex(copy.raw + copy.pos, copy.length);
-  bencode_print_out(stderr);
+  bencode_print_out(f);
   bencode_print(copy);
   bencode_print_out(stdout);
 }
@@ -312,7 +327,7 @@ invalid_node_id(dht::MessageContext &ctx, const char *query,
                 const sp::byte *version, std::size_t l_version,
                 const dht::NodeId &id) noexcept {
   auto f = stderr;
-  print_time(ctx);
+  print_time(f, ctx);
   fprintf(f, "%s: invalid node id[", query);
   dht::print_hex(f, id.id, sizeof(id.id));
   fprintf(f, "] version[");
@@ -332,11 +347,12 @@ namespace awake {
 void
 timeout(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
 #ifdef LOG_AWAKE_TIMEOUT
-  print_time(ctx);
+  auto f = stdout;
+  print_time(f, ctx);
   Timestamp awake(timeout - ctx.now);
-  printf("awake next timeout[%" PRIu64 "ms] ", std::uint64_t(awake));
-  print_time(stdout, timeout);
-  printf("\n");
+  fprintf(f, "awake next timeout[%" PRIu64 "ms] ", std::uint64_t(awake));
+  print_time(f, timeout);
+  fprintf(f, "\n");
 #else
   (void)ctx;
   (void)timeout;
@@ -345,24 +361,26 @@ timeout(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
 
 void
 contact_ping(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
-  print_time(ctx);
+  auto f = stdout;
+  print_time(f, ctx);
   // TODO fix better print
   Timestamp awake(timeout - ctx.now);
-  printf("awake contact_ping vote timeout[%" PRIu64 "ms] next date:",
-         std::uint64_t(awake));
-  print_time(stdout, timeout);
+  fprintf(f, "awake contact_ping vote timeout[%" PRIu64 "ms] next date:",
+          std::uint64_t(awake));
+  print_time(f, timeout);
   printf("\n");
 }
 
 void
 peer_db(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
 #ifdef LOG_PEER_DB
-  print_time(ctx);
+  auto f = stdout;
+  print_time(f, ctx);
   // TODO fix better print
   // printf("awake peer_db vote timeout[%" PRIu64 "ms] next date:",
   //        std::uint64_t(timeout));
   // print_time(stdout, ctx.timeout_peer_next);
-  printf("\n");
+  fprintf(f, "\n");
 #endif
   (void)ctx;
   (void)timeout;
@@ -371,8 +389,9 @@ peer_db(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
 void
 contact_scan(const dht::DHT &ctx) noexcept {
 #if 0
-  print_time(ctx);
-  printf("awake contact_scan\n");
+  auto f = stdout;
+  print_time(f,ctx);
+  fprintf(f,"awake contact_scan\n");
 #endif
   (void)ctx;
 }
@@ -401,12 +420,13 @@ ping(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   ++s.sent.request.ping;
 
 #ifdef LOG_REQ_PING
-  print_time(ctx);
+  auto f = stdout;
+  print_time(f, ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
 
-  printf("transmit ping[%s],res[%s],count[%zu]\n", remote, to_string(result),
-         s.sent.request.ping);
+  fprintf(f, "transmit ping[%s],res[%s],count[%zu]\n", remote,
+          to_string(result), s.sent.request.ping);
 #endif
   (void)contact;
   (void)result;
@@ -418,15 +438,16 @@ find_node(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   ++s.sent.request.find_node;
 
 #ifdef LOG_REQ_FIND_NODE
-  print_time(ctx);
+  auto f = stdout;
+  print_time(f, ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
 
   // auto &tx = ctx.transaction;
   // dht::print_hex(tx.id, tx.length);
 
-  printf("transmit find_node[%s],res[%s],count[%zu]\n", remote,
-         to_string(result), s.sent.request.find_node);
+  fprintf(f, "transmit find_node[%s],res[%s],count[%zu]\n", remote,
+          to_string(result), s.sent.request.find_node);
 #endif
   (void)contact;
   (void)result;
@@ -438,15 +459,16 @@ get_peers(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   ++s.sent.request.get_peers;
 
 #ifdef LOG_REQ_GET_PEERS
-  print_time(ctx);
+  auto f = stdout;
+  print_time(f, ctx);
   char remote[30] = {0};
   to_string(contact, remote, sizeof(remote));
 
   // auto &tx = ctx.transaction;
   // dht::print_hex(tx.id, tx.length);
 
-  printf("transmit get_peers[%s],res[%s],count[%zu]\n", remote,
-         to_string(result), s.sent.request.get_peers);
+  fprintf(f, "transmit get_peers[%s],res[%s],count[%zu]\n", remote,
+          to_string(result), s.sent.request.get_peers);
 #endif
 }
 
@@ -455,17 +477,19 @@ namespace error {
 void
 mint_transaction(const dht::DHT &ctx) noexcept {
 #ifdef LOG_ERROR_MINT_TX
-  print_time(ctx);
-  printf("\033[91mtransmit error mint_transaction\033[0m, acitve tx: %zu\n",
-         ctx.client.active);
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "\033[91mtransmit error mint_transaction\033[0m, acitve tx: %zu\n",
+          ctx.client.active);
 #endif
   (void)ctx;
 }
 
 void
 udp(const dht::DHT &ctx) noexcept {
-  print_time(ctx);
-  printf("\033[91mtransmit error udp\033[0m\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "\033[91mtransmit error udp\033[0m\n");
 }
 
 static std::size_t tout = 0;
@@ -476,12 +500,13 @@ ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.ping;
 
-  print_time(ctx);
-  printf("\033[91mping response timeout\033[0m transaction[");
-  dht::print_hex(stdout, tx);
-  printf("] sent: ");
-  print_time(stdout, sent);
-  printf("seq[%zu]\n", tout++);
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "\033[91mping response timeout\033[0m transaction[");
+  dht::print_hex(f, tx);
+  fprintf(f, "] sent: ");
+  print_time(f, sent);
+  fprintf(f, "seq[%zu]\n", tout++);
 }
 
 void
@@ -490,12 +515,13 @@ find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.find_node;
 
-  print_time(ctx);
-  printf("\033[91mfind_node response timeout\033[0m transaction[");
-  dht::print_hex(stdout, tx);
-  printf("] sent: ");
-  print_time(stdout, sent);
-  printf("seq[%zu]\n", tout++);
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "\033[91mfind_node response timeout\033[0m transaction[");
+  dht::print_hex(f, tx);
+  fprintf(f, "] sent: ");
+  print_time(f, sent);
+  fprintf(f, "seq[%zu]\n", tout++);
 }
 
 void
@@ -504,12 +530,13 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.get_peers;
 
-  print_time(ctx);
-  printf("\033[91mget_peers response timeout\033[0m transaction[");
-  dht::print_hex(stdout, tx);
-  printf("] sent: ");
-  print_time(stdout, sent);
-  printf("seq[%zu]\n", tout++);
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "\033[91mget_peers response timeout\033[0m transaction[");
+  dht::print_hex(f, tx);
+  fprintf(f, "] sent: ");
+  print_time(f, sent);
+  fprintf(f, "seq[%zu]\n", tout++);
 }
 
 void
@@ -518,12 +545,13 @@ sample_infohashes_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   dht::Stat &s = ctx.statistics;
   ++s.sent.response_timeout.sample_infohashes;
 
-  print_time(ctx);
-  printf("\033[91msample_infohashes response timeout\033[0m transaction[");
-  dht::print_hex(stdout, tx);
-  printf("] sent: ");
-  print_time(stdout, sent);
-  printf("seq[%zu]\n", tout++);
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "\033[91msample_infohashes response timeout\033[0m transaction[");
+  dht::print_hex(f, tx);
+  fprintf(f, "] sent: ");
+  print_time(f, sent);
+  fprintf(f, "seq[%zu]\n", tout++);
 }
 
 } // namespace error
@@ -536,8 +564,9 @@ void
 split(const dht::DHTMetaRoutingTable &ctx, const dht::RoutingTable &,
       const dht::RoutingTable &) noexcept {
 #ifdef LOG_ROUTING_SPLIT
-  print_time(ctx);
-  printf("routing table split node\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "routing table split node\n");
 #endif
   (void)ctx;
 }
@@ -545,10 +574,11 @@ split(const dht::DHTMetaRoutingTable &ctx, const dht::RoutingTable &,
 void
 insert(const dht::DHTMetaRoutingTable &ctx, const dht::Node &d) noexcept {
 #ifdef LOG_ROUTING_INSERT
-  print_time(ctx);
-  printf("routing table insert nodeId[");
-  dht::print_hex(stdout, d.id.id, sizeof(d.id.id));
-  printf("]\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "routing table insert nodeId[");
+  dht::print_hex(f, d.id.id, sizeof(d.id.id));
+  fprintf(f, "]\n");
 #endif
   (void)ctx;
   (void)d;
@@ -558,10 +588,11 @@ void
 can_not_insert(const dht::DHTMetaRoutingTable &ctx,
                const dht::Node &d) noexcept {
 #ifdef LOG_ROUTING_CAN_NOT_INSERT
-  print_time(ctx);
-  printf("routing table can not insert nodeId[");
-  dht::print_hex(stdout, d.id.id, sizeof(d.id.id));
-  printf("]\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "routing table can not insert nodeId[");
+  dht::print_hex(f, d.id.id, sizeof(d.id.id));
+  fprintf(f, "]\n");
 #endif
   (void)ctx;
   (void)d;
@@ -575,10 +606,11 @@ void
 insert(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
        const Contact &) noexcept {
 #ifdef LOG_PEER_DB
-  print_time(ctx);
-  printf("peer db insert infohash[");
-  dht::print_hex(stdout, h.id, sizeof(h.id));
-  printf("]\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "peer db insert infohash[");
+  dht::print_hex(f, h.id, sizeof(h.id));
+  fprintf(f, "]\n");
 #endif
   (void)ctx;
   (void)h;
@@ -588,10 +620,11 @@ void
 update(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
        const dht::Peer &) noexcept {
 #ifdef LOG_PEER_DB
-  print_time(ctx);
-  printf("peer db update infohash[");
-  dht::print_hex(stdout, h.id, sizeof(h.id));
-  printf("]\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "peer db update infohash[");
+  dht::print_hex(f, h.id, sizeof(h.id));
+  fprintf(f, "]\n");
 #endif
   (void)ctx;
   (void)h;
@@ -603,10 +636,11 @@ namespace search {
 
 void
 retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
-  print_time(ctx);
-  printf("retire search[");
-  dht::print_hex(stdout, current.search.id, sizeof(current.search.id));
-  printf("]\n");
+  auto f = stdout;
+  print_time(f, ctx);
+  fprintf(f, "retire search[");
+  dht::print_hex(f, current.search.id, sizeof(current.search.id));
+  fprintf(f, "]\n");
 }
 
 } // namespace search
