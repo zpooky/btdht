@@ -369,11 +369,11 @@ take_peer(db::DHTMetaDatabase &dht, dht::KeyValue &self,
       return head;
     }
   } else {
-    assertx(debug_is_cycle(self.timeout_peer, after_length));
     assertx(after_length == 0);
   }
+  assertx(debug_is_cycle(self.timeout_peer, after_length));
 
-  assertx(after_length == length);
+  assertxs(after_length == length, after_length, length);
   return nullptr;
 }
 

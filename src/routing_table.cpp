@@ -16,7 +16,8 @@ namespace dht {
 //=====================================
 /*dht::Bucket*/
 Bucket::Bucket() noexcept
-    : contacts() {
+    : contacts()
+    , length(0) {
 }
 
 Bucket::~Bucket() noexcept {
@@ -40,15 +41,23 @@ RoutingTable::~RoutingTable() noexcept {
 #endif
 }
 
-bool
-is_empty(const RoutingTable &root) noexcept {
+static std::size_t
+debug_bucket_count(const Bucket &b) {
+  std::size_t result = 0;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
-    const auto &current = root.bucket.contacts[i];
+    const auto &current = b.contacts[i];
     if (is_valid(current)) {
-      return false;
+      ++result;
     }
   }
-  return true;
+
+  return result;
+}
+
+bool
+is_empty(const RoutingTable &root) noexcept {
+  assertx(debug_bucket_count(root.bucket) == root.bucket.length);
+  return root.bucket.length == 0;
 }
 
 #if 0
@@ -112,6 +121,7 @@ DHTMetaRoutingTable::~DHTMetaRoutingTable() {
       RoutingTable *it_next = it->next;
 
       // fprintf(stderr, "it[%p]\n", (void *)it);
+      assertx(debug_bucket_count(it->bucket) == it->bucket.length);
       if (this->timeout) {
         for (std::size_t i = 0; i < Bucket::K; ++i) {
           Node &node = it->bucket.contacts[i];
@@ -133,8 +143,8 @@ DHTMetaRoutingTable::~DHTMetaRoutingTable() {
 
 // ========================================
 void
-debug_for_each(DHTMetaRoutingTable &self, void *closure,
-               void (*f)(void *, DHTMetaRoutingTable &,
+debug_for_each(const DHTMetaRoutingTable &self, void *closure,
+               void (*f)(void *, const DHTMetaRoutingTable &,
                          const Node &)) noexcept {
   const RoutingTable *it = self.root;
   while (it) {
@@ -142,6 +152,7 @@ debug_for_each(DHTMetaRoutingTable &self, void *closure,
     const RoutingTable *it_next = it;
     while (it_next) {
 
+      assertx(debug_bucket_count(it_next->bucket) == it_next->bucket.length);
       for (std::size_t i = 0; i < Bucket::K; ++i) {
         const Node &node = it_next->bucket.contacts[i];
         if (is_valid(node)) {
@@ -154,6 +165,22 @@ debug_for_each(DHTMetaRoutingTable &self, void *closure,
 
     it = it->in_tree;
   } // while
+}
+
+static std::size_t
+debug_count_good(const DHTMetaRoutingTable &self) {
+  std::size_t result = 0;
+
+  auto xx = [](void *res, const DHTMetaRoutingTable &self, const Node &node) {
+    if (is_valid(node) && is_good(self, node)) {
+      std::size_t *r = (std::size_t *)res;
+      (*r)++;
+    }
+  };
+
+  debug_for_each(self, &result, xx);
+
+  return result;
 }
 
 std::size_t
@@ -188,6 +215,8 @@ prefix_compare(const NodeId &id, const Key &cmp, std::size_t length) noexcept {
 static bool
 debug_bucket_is_valid(const RoutingTable *it) {
   const auto &b = it->bucket;
+  assertxs(debug_bucket_count(it->bucket) == it->bucket.length,
+           debug_bucket_count(it->bucket), it->bucket.length);
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     is_valid(b.contacts[i]);
   }
@@ -262,6 +291,7 @@ debug_correct_level(const DHTMetaRoutingTable &self) noexcept {
       while (it_next) {
         assertxs(it_next->depth == depth, it_next->depth, depth,
                  length(self.rt_reuse), capacity(self.rt_reuse), n);
+        assertx(debug_bucket_count(it_next->bucket) == it_next->bucket.length);
 
         for (std::size_t i = 0; i < Bucket::K; ++i) {
           auto &contact = it_next->bucket.contacts[i];
@@ -407,7 +437,7 @@ reset(DHTMetaRoutingTable &self, Node &contact) noexcept {
   assertx(!is_valid(contact));
 }
 
-static void
+static bool
 timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
   if (is_valid(contact)) {
     if (self.timeout) {
@@ -421,13 +451,36 @@ timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
     }
 
     reset(self, contact);
+
+    return true;
   }
+
+  return false;
 }
-void
+
+bool
 debug_timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
+  bool inTree = false;
+  std::size_t idx = 0;
+
+  RoutingTable *root = find_closest(self, contact.id, inTree, idx);
   assertx(is_valid(contact));
-  timeout_unlink_reset(self, contact);
-  assertx(!is_valid(contact));
+
+  for (RoutingTable *it = root; it; it = it->next) {
+
+    for (std::size_t i = 0; i < Bucket::K; ++i) {
+      Node &tmp = it->bucket.contacts[i];
+
+      if (tmp.id == contact.id) {
+        timeout_unlink_reset(self, contact);
+        assertx(!is_valid(contact));
+        --it->bucket.length;
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 static bool
@@ -505,11 +558,10 @@ Lout:
   auto &bucket = needle->bucket;
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     auto &contact = bucket.contacts[i];
-    bool valid = is_valid(contact);
     auto tot = nodes_total(self);
 
-    timeout_unlink_reset(self, contact);
-    if (valid) {
+    if (timeout_unlink_reset(self, contact)) {
+      bucket.length--;
       assertxs(nodes_total(self) == tot - 1, nodes_total(self), tot - 1);
     }
   }
@@ -630,6 +682,7 @@ bucket_insert(DHTMetaRoutingTable &self, Bucket &bucket, const Node &c,
     Node &contact = bucket.contacts[i];
     if (!is_valid(contact)) {
       contact = c;
+      bucket.length++;
 
       return &contact;
     }
@@ -735,6 +788,7 @@ split_transfer(DHTMetaRoutingTable &self, RoutingTable *better, Bucket &subject,
     // return prefix_compare(self.id, n.id.id, level + 1);
   };
 
+  assertx(debug_bucket_count(subject) == subject.length);
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = subject.contacts[i];
     if (is_valid(contact)) {
@@ -757,6 +811,7 @@ split_transfer(DHTMetaRoutingTable &self, RoutingTable *better, Bucket &subject,
           }
           better_it = better_it->next;
         } // while
+        subject.length--;
 
       } // should_transfer
       else {
@@ -764,12 +819,14 @@ split_transfer(DHTMetaRoutingTable &self, RoutingTable *better, Bucket &subject,
       }
     } // if is_valid
   }   // for
+  assertx(debug_bucket_count(subject) == subject.length);
 
   return better_it;
 Lreset:
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     if (is_valid(subject.contacts[i])) {
       reset(self, subject.contacts[i]);
+      subject.length--;
     }
   }
 
@@ -778,26 +835,27 @@ Lreset:
 }
 
 static bool
-split(DHTMetaRoutingTable &self, RoutingTable *target_root) noexcept {
+split(DHTMetaRoutingTable &self, RoutingTable *const split_root) noexcept {
   debug_print("split-before", self);
-  assertx(target_root);
-  /* If there already is a target_root->in_tree node then we already have
+  assertx(split_root);
+  assertx(!split_root->in_tree);
+  /* If there already is a split_root->in_tree node then we already have
    * performed the split and should not get here again.
    */
-  // assertxs(target_root->depth == (level + 1), target_root->depth, level);
-  const auto target_depth = target_root->depth;
+  // assertxs(split_root->depth == (level + 1), split_root->depth, level);
+  const auto target_depth = split_root->depth;
 
   RoutingTable *better_root = nullptr;
   RoutingTable *better_it = nullptr;
 
-  RoutingTable *target_priv = nullptr;
-  RoutingTable *target_it = target_root;
+  RoutingTable *split_priv = nullptr;
+  RoutingTable *split_it = split_root;
 
-  // printf("id:%s, %zu\n", to_string(self.id), target_root->depth);
-  while (target_it) {
-    assertx(target_depth == target_it->depth);
-    assertx(target_it->in_tree == nullptr);
-    Bucket &bucket = target_it->bucket;
+  // printf("id:%s, %zu\n", to_string(self.id), split_root->depth);
+  while (split_it) {
+    assertx(target_depth == split_it->depth);
+    assertx(split_it->in_tree == nullptr);
+    Bucket &bucket = split_it->bucket;
 
     better_it =
         split_transfer(self, /*dest*/ better_it, /*src*/ bucket, target_depth);
@@ -805,39 +863,39 @@ split(DHTMetaRoutingTable &self, RoutingTable *target_root) noexcept {
       better_root = better_it;
     }
 
-    std::size_t present_cnt = 0;
-    /*compact with $target_priv if present*/
-    for (std::size_t i = 0; i < Bucket::K; ++i) {
-      Node &contact = bucket.contacts[i];
-      if (is_valid(contact)) {
-        if (target_priv) {
-          node_move(self, contact, target_priv->bucket);
+    if (split_priv) {
+      assertx(debug_bucket_count(bucket) == bucket.length);
+      /*compact with $split_priv if present*/
+      for (std::size_t i = 0; i < Bucket::K; ++i) {
+        Node &contact = bucket.contacts[i];
+        if (is_valid(contact)) {
+          if (node_move(self, contact, split_priv->bucket)) {
+            bucket.length--;
+            assertx(!is_valid(contact));
+          }
         }
-      }
-
-      if (is_valid(contact)) {
-        ++present_cnt;
-      }
+      } // for
     }
+    assertx(debug_bucket_count(bucket) == bucket.length);
 
-    RoutingTable *const t_next = target_it->next;
-    if (present_cnt > 0 || target_it == target_root) {
-      target_priv = target_it;
+    RoutingTable *const t_next = split_it->next;
+    if (bucket.length > 0 || split_it == split_root) {
+      split_priv = split_it;
     } else {
-      target_it->in_tree = nullptr;
-      target_it->next = nullptr;
-      dealloc_RoutingTable(self, target_it);
-      if (target_priv) {
-        target_priv->next = t_next;
+      split_it->in_tree = nullptr;
+      split_it->next = nullptr;
+      dealloc_RoutingTable(self, split_it);
+      if (split_priv) {
+        split_priv->next = t_next;
       }
     }
 
-    target_it = t_next;
+    split_it = t_next;
   }
   assertx(better_root);
-  assertx(!target_root->in_tree);
+  assertx(!split_root->in_tree);
 
-  target_root->in_tree = better_root;
+  split_root->in_tree = better_root;
 
   // TODO log::routing::split(dht, *higher, *lower);
   return true;
@@ -872,7 +930,9 @@ multiple_closest_nodes(DHTMetaRoutingTable &self, const Key &search,
     assertx(result[i] == nullptr);
   }
 
-  RoutingTable *raw[Bucket::K] = {nullptr}; // XXX arbitrary
+  constexpr std::size_t capacity = Bucket::K;
+
+  RoutingTable *raw[capacity] = {nullptr}; // XXX arbitrary
   sp::CircularBuffer<RoutingTable *> best(raw);
 
   /* Fill buffer */
@@ -884,12 +944,11 @@ multiple_closest_nodes(DHTMetaRoutingTable &self, const Key &search,
   const std::size_t max = rank(self.id, search);
 Lstart:
   if (root) {
-    auto it = root;
-    while (it) {
-      sp::push_back(best, it);
-      debug_bucket_is_valid(it);
-      it = it->next;
-    }
+    assertx(root->depth >= 0);
+    assertx(idx == (std::size_t)root->depth);
+    sp::push_back(best, root);
+    debug_bucket_is_valid(root);
+
     if (idx++ < max) {
       root = root->in_tree;
       goto Lstart;
@@ -898,13 +957,12 @@ Lstart:
 
   std::size_t res_idx = 0;
   auto merge = [&](RoutingTable &table) -> bool {
-    RoutingTable *it = &table;
-
-    while (it) {
+    for (RoutingTable *it = &table; it; it = it->next) {
       auto &b = it->bucket;
 
       // printf("[%p]\n", &table);
-      for (std::size_t i = 0; i < Bucket::K && res_idx < res_length; ++i) {
+      assertx(debug_bucket_count(b) == b.length);
+      for (std::size_t i = 0; i < capacity && res_idx < res_length; ++i) {
         Node &contact = b.contacts[i];
         if (is_valid(contact)) {
 
@@ -913,28 +971,25 @@ Lstart:
           }
         }
       } // for
-
-      it = it->next;
-    }
+    }   // for
 
     return res_idx == res_length;
   };
 
   {
-    RoutingTable *best_ordered[Bucket::K]{nullptr};
-    std::size_t best_idx = 0;
+    RoutingTable *best_ordered[capacity]{nullptr};
+    std::size_t best_length = 0;
 
     /* Reverse order */
     while (!is_empty(best)) {
-      sp::pop_back(best, best_ordered[best_idx++]);
+      sp::pop_back(best, best_ordered[best_length++]);
     } // while
 
-    for (std::size_t i = 0; i < Bucket::K; ++i) {
-      if (best_ordered[i]) {
+    for (std::size_t i = 0; i < best_length; ++i) {
+      assertx(best_ordered[i]);
 
-        if (merge(*best_ordered[i])) {
-          return;
-        }
+      if (merge(*best_ordered[i])) {
+        return;
       }
     } // for
   }
@@ -1192,7 +1247,9 @@ max_routing_nodes(const DHTMetaRoutingTable &) noexcept {
 
 std::uint32_t
 nodes_good(const DHTMetaRoutingTable &self) noexcept {
-  return nodes_total(self) - nodes_bad(self);
+  const std::uint32_t result = nodes_total(self) - nodes_bad(self);
+  assertx(debug_count_good(self) == result);
+  return result;
 }
 
 std::uint32_t

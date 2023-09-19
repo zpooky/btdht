@@ -65,7 +65,7 @@ struct Hasher<Ipv6> {
 //=====================================
 enum class IpType : uint8_t { IPV4, IPV6 };
 
-#define IP_IPV6
+// #define IP_IPV6
 struct Ip {
   union {
     Ipv4 ipv4;

@@ -325,7 +325,7 @@ TEST(dhtTest, test_find_node) {
 
   dht::debug_for_each(
       dht.routing_table, &t,
-      [](void *ctx, dht::DHTMetaRoutingTable &, const auto &current) {
+      [](void *ctx, const dht::DHTMetaRoutingTable &, const auto &current) {
         auto in = (std::tuple<dht::DHT *, std::size_t &> *)ctx;
         auto ctx2 = std::get<0>(*in);
         auto &cntx = std::get<1>(*in);
@@ -358,7 +358,7 @@ TEST(dhtTest, test_find_node) {
         ASSERT_TRUE(result[i]->contact == tmp->contact);
         ASSERT_TRUE(result[i]->id == tmp->id);
 
-        debug_timeout_unlink_reset(dht.routing_table, *result[i]);
+        ASSERT_TRUE(debug_timeout_unlink_reset(dht.routing_table, *result[i]));
 
         tmp = find_contact(dht.routing_table, result[i]->id);
         ASSERT_FALSE(tmp);
@@ -386,7 +386,7 @@ TEST(dhtTest, test) {
   // print_id(dht.id, 18, "");
   dht::debug_for_each(
       dht.routing_table, &dht,
-      [](void *ctx, dht::DHTMetaRoutingTable &, const auto &current) {
+      [](void *ctx, const dht::DHTMetaRoutingTable &, const auto &current) {
         dht::DHT *ctx2 = (dht::DHT *)ctx;
         assert_present(*ctx2, current);
       });
@@ -425,7 +425,7 @@ TEST(dhtTest, test_link) {
   // print_id(dht.id, 18, "");
   dht::debug_for_each(
       dht.routing_table, &dht,
-      [](void *ctx, dht::DHTMetaRoutingTable &, const auto &current) {
+      [](void *ctx, const dht::DHTMetaRoutingTable &, const auto &current) {
         dht::DHT *ctx2 = (dht::DHT *)ctx;
         assert_present(*ctx2, current);
       });

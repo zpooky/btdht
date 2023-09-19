@@ -17,6 +17,7 @@ namespace dht {
 struct Bucket {
   static constexpr std::size_t K = 32;
   Node contacts[K];
+  std::size_t length;
 
   Bucket() noexcept;
   ~Bucket() noexcept;
@@ -122,8 +123,9 @@ struct DHTMetaRoutingTable {
 };
 
 void
-debug_for_each(DHTMetaRoutingTable &, void *,
-               void (*)(void *, DHTMetaRoutingTable &, const Node &)) noexcept;
+debug_for_each(const DHTMetaRoutingTable &, void *,
+               void (*)(void *, const DHTMetaRoutingTable &,
+                        const Node &)) noexcept;
 
 std::size_t
 debug_levels(const DHTMetaRoutingTable &) noexcept;
@@ -131,7 +133,7 @@ debug_levels(const DHTMetaRoutingTable &) noexcept;
 bool
 debug_assert_all(const DHTMetaRoutingTable &);
 
-void
+bool
 debug_timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact);
 
 bool

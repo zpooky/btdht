@@ -40,6 +40,8 @@ TEST(dumpTest, test) {
       // dummy
       current.timeout_next = &current;
       current.timeout_priv = &current;
+
+      dht.routing_table.root->bucket.length++;
     }
 
     std::size_t nodes = 0;

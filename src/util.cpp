@@ -93,7 +93,7 @@ Ip::operator<(const Ip &o) const noexcept {
   if (type == o.type) {
     if (type == IpType::IPV6) {
 #ifdef IP_IPV6
-  return ipv6 < o.ipv6;
+      return ipv6 < o.ipv6;
 #else
       assertx(false);
       return false;
@@ -112,7 +112,7 @@ Ip::operator>(const Ip &o) const noexcept {
   if (type == o.type) {
     if (type == IpType::IPV6) {
 #ifdef IP_IPV6
-  return ipv6 > o.ipv6;
+      return ipv6 > o.ipv6;
 #else
       assertx(false);
       return false;
@@ -133,8 +133,12 @@ Hasher<Ip>::operator()(const Ip &c) const noexcept {
     Hasher<Ipv4> h;
     return h(c.ipv4);
   } else if (c.type == IpType::IPV6) {
+#ifdef IP_IPV6
     Hasher<Ipv6> h;
     return h(c.ipv6);
+#else
+    assertx(false);
+#endif
   }
 
   assertxs(false, (uint8_t)c.type);
@@ -147,10 +151,12 @@ fnv_ipv4(const Ipv4 &c) noexcept {
   return fnv_1a::encode64(&c, sizeof(c));
 }
 
+#ifdef IP_IPV6
 static std::uint64_t
 fnv_ipv6(const Ipv6 &c) noexcept {
   return fnv_1a::encode64(c.raw, sizeof(c.raw));
 }
+#endif
 
 std::size_t
 fnv_ip(const Ip &c) noexcept {
