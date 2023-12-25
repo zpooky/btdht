@@ -474,7 +474,7 @@ main(int argc, char **argv) {
   fprintf(stderr, "sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
   Timestamp now = sp::now();
   auto mdht = std::make_unique<dht::DHT>(udp_fd, priv_fd, listen, r, now);
-  if (!dht::init(*mdht)) {
+  if (!dht::init(*mdht, options)) {
     die("failed to init dht");
     return 4;
   }

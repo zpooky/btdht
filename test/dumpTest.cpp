@@ -22,7 +22,7 @@ TEST(dumpTest, test) {
   Contact self = rand_contact(r);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, self, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
 
   const char *file = "/tmp/wasd.dump";
   {

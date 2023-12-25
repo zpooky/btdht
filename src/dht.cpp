@@ -2,6 +2,7 @@
 
 #include <hash/crc.h>
 #include <prng/xorshift.h>
+#include "bootstrap.h"
 
 namespace dht {
 
@@ -102,10 +103,15 @@ randomize(prng::xorshift32 &r, const Ip &addr, NodeId &id) noexcept {
 }
 
 bool
-init(dht::DHT &dht) noexcept {
+init(dht::DHT &dht, const Options &o) noexcept {
   if (!randomize(dht.random, dht.ip.ip, dht.id)) {
     return false;
   }
+
+  for_each(o.bootstrap, [&](const Contact &cur) {
+    bootstrap_insert(dht, dht::KContact(0, cur));
+  });
+
   if (!tx::init(dht.client)) {
     return false;
   }

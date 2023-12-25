@@ -282,7 +282,7 @@ TEST(dhtTest, test_find_node) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
 
   fprintf(stderr, "sizeof(Ip):%zu\n", sizeof(Ip));
   fprintf(stderr, "sizeof(Port):%zu\n", sizeof(Port));
@@ -373,7 +373,7 @@ TEST(dhtTest, test) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
 
   insert_self(dht);
 
@@ -414,7 +414,7 @@ TEST(dhtTest, test_link) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
 
   random_insert(dht, 1024);
 
@@ -453,7 +453,7 @@ TEST(dhtTest, test_append) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
 
   for (std::size_t i = 1; i <= 50; ++i) {
     // int i = 1;
@@ -533,7 +533,7 @@ TEST(dhtTest, test_node_id_strict) {
     Contact c(ip, 0);
     Timestamp now = sp::now();
     dht::DHT dht(sock, sock, c, r, now);
-    init(dht);
+    init(dht, dht::Options{});
     ASSERT_TRUE(is_strict(ip, dht.id));
   }
 }
@@ -556,7 +556,7 @@ TEST(dhtTest, test_full) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
   const char *id_hex = "B161DDEAF70A2485C32789B965CE62753B11CEFF";
   printf("%zu\n", std::strlen(id_hex));
   ASSERT_TRUE(from_hex(dht.id, id_hex));
@@ -725,7 +725,7 @@ TEST(dhtTest, test_first_full) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
   const char *id_hex = "FF61DDEAF70A2485C32789B965CE62753B11CEFF";
   ASSERT_TRUE(from_hex(dht.id, id_hex));
 
@@ -794,7 +794,7 @@ TEST(dhtTest, test_self_rand) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
   heap::StaticMaxBinary<RankNodeId, 1024> heap;
 
   // std::size_t count = 0;
@@ -845,7 +845,7 @@ TEST(dhtTest, test_assert_fail) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
   const char *id_hex = "B161DD0EAF70A2485C32789B965CE602753B11CE";
   ASSERT_TRUE(from_hex(dht.id, id_hex));
 
@@ -936,7 +936,7 @@ TEST(dhtTest, test_assert_fail2) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(sock, sock, c, r, now);
-  dht::init(dht);
+  dht::init(dht, dht::Options{});
   const char *id_hex = "B161DD0EAF70A2485C32789B965CE602753B11CE";
   ASSERT_TRUE(from_hex(dht.id, id_hex));
 
@@ -1900,7 +1900,7 @@ TEST(dhtTest, test_assert_fail2) {
 //   fd sock(-1);
 //   Contact c(0, 0);
 //   dht::DHT dht(sock, c);
-//   dht::init(dht);
+//   dht::init(dht, dht::Options{});
 //   std::list<dht::NodeId> added;
 //
 //   insert_self(dht, added);

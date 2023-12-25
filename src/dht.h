@@ -3,6 +3,7 @@
 
 #include "shared.h"
 #include "transaction.h"
+#include "Options.h"
 
 // # Terminology
 // - Peer implements Bittorrent protocol
@@ -16,7 +17,7 @@ bool
 is_strict(const Ip &, const NodeId &) noexcept;
 
 bool
-init(DHT &) noexcept;
+init(DHT &, const Options&) noexcept;
 
 bool
 is_good(const DHT &, const Node &) noexcept;

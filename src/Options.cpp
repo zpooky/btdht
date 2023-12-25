@@ -67,7 +67,15 @@ parse(Options &self, int argc, char **argv) noexcept {
       break;
 
     case 'o':
-      printf("option -o with value `%s'\n", optarg);
+      // printf("option -o with value `%s'\n", optarg);
+      {
+        Contact con;
+        if (!to_contact(optarg, con)) {
+          fprintf(stderr, "invalid bootstrap option '%s'", optarg);
+          return false;
+        }
+        insert(self.bootstrap, con);
+      }
       break;
 
     case 'd': {
