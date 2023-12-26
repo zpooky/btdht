@@ -295,30 +295,6 @@ handle_ping(DHTClient &client) {
   bool has = false;
   Contact to;
 
-  while (client.argc) {
-    const char *p = client.argv[0];
-    if (to_contact(p, to)) {
-      has = true;
-      break;
-    }
-
-    client.argc--;
-    client.argv++;
-  }
-
-  if (!has) {
-    fprintf(stderr, "dht-client ping ip:port\n");
-    return EXIT_FAILURE;
-  }
-
-  fd udp = udp::connect(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
-  if (!udp) {
-    fprintf(stderr, "failed connect: %s (%s)\n", to_string(to),
-            strerror(errno));
-    return EXIT_FAILURE;
-  }
-  swap(client.udp, udp);
-
   if (!send_ping(client)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
@@ -333,21 +309,8 @@ handle_ping(DHTClient &client) {
 
 int
 handle_find_node(DHTClient &client) {
-  bool has = false;
-  Contact to;
   dht::NodeId search;
   // printf("%s\n", client.argv[0]);
-
-  while (client.argc) {
-    const char *p = client.argv[0];
-    if (to_contact(p, to)) {
-      has = true;
-      break;
-    }
-
-    client.argc--;
-    client.argv++;
-  }
 
   while (1) {
     int opt;
@@ -358,21 +321,6 @@ handle_find_node(DHTClient &client) {
         {0, 0, 0, 0}
         //
     };
-
-    if (!has) {
-      auto argc = client.argc;
-      auto argv = client.argv;
-      if (parse_contact(client, to)) {
-        if (parse_id(client, search)) {
-          has = true;
-        }
-      }
-
-      if (!has) {
-        client.argc = argc;
-        client.argv = argv;
-      }
-    }
 
     opt = getopt_long(client.argc, client.argv, "s:h", loptions, &option_index);
     if (opt == -1) {
@@ -392,18 +340,6 @@ handle_find_node(DHTClient &client) {
       return EXIT_FAILURE;
     }
   }
-
-  if (!has) {
-    fprintf(stderr, "dht-client find_node ip:port search [--self=hex]\n");
-    return EXIT_FAILURE;
-  }
-
-  fd udp = udp::connect(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
-  if (!udp) {
-    fprintf(stderr, "failed connect: %s\n", to_string(to));
-    return EXIT_FAILURE;
-  }
-  swap(client.udp, udp);
 
   if (!send_find_node(client, search)) {
     fprintf(stderr, "failed to send\n");
@@ -420,21 +356,8 @@ handle_find_node(DHTClient &client) {
 //=====================================
 int
 handle_get_peers(DHTClient &client) {
-  bool has = false;
-  Contact to;
   dht::Infohash search;
   // printf("%s\n", client.argv[0]);
-
-  while (client.argc) {
-    const char *p = client.argv[0];
-    if (to_contact(p, to)) {
-      has = true;
-      break;
-    }
-
-    client.argc--;
-    client.argv++;
-  }
 
   while (1) {
     int opt;
@@ -445,21 +368,6 @@ handle_get_peers(DHTClient &client) {
         {0, 0, 0, 0}
         //
     };
-
-    if (!has) {
-      auto argc = client.argc;
-      auto argv = client.argv;
-      if (parse_contact(client, to)) {
-        if (parse_id(client, search)) {
-          has = true;
-        }
-      }
-
-      if (!has) {
-        client.argc = argc;
-        client.argv = argv;
-      }
-    }
 
     opt = getopt_long(client.argc, client.argv, "s:h", loptions, &option_index);
     if (opt == -1) {
@@ -478,11 +386,6 @@ handle_get_peers(DHTClient &client) {
     default:
       return EXIT_FAILURE;
     }
-  }
-
-  if (!has) {
-    fprintf(stderr, "dht-client get_peers ip:port search [--self=hex]\n");
-    return EXIT_FAILURE;
   }
 
   if (!send_get_peers(client, search)) {
@@ -577,32 +480,6 @@ send_sample_infohashes(DHTClient &client) noexcept {
 
 int
 handle_sample_infohashes(DHTClient &client) {
-  bool has = false;
-  Contact to;
-
-  while (client.argc) {
-    const char *p = client.argv[0];
-    if (to_contact(p, to)) {
-      has = true;
-      break;
-    }
-
-    client.argc--;
-    client.argv++;
-  }
-
-  if (!has) {
-    fprintf(stderr, "dht-client sample_infohashes ip:port\n");
-    return EXIT_FAILURE;
-  }
-
-  fd udp = udp::connect(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
-  if (!udp) {
-    fprintf(stderr, "failed connect: %s (%s)\n", to_string(to),
-            strerror(errno));
-    return EXIT_FAILURE;
-  }
-  swap(client.udp, udp);
 
   if (!send_sample_infohashes(client)) {
     fprintf(stderr, "failed to send\n");
@@ -812,8 +689,11 @@ handle_dump(DHTClient &client) {
 
 typedef int (*exe_cb)(DHTClient &);
 static int
-bind_exe(int argc, char **argv, exe_cb cb) noexcept {
+bind_exe(const char *exe, const char *command, int argc, char **argv,
+         exe_cb cb) noexcept {
   prng::URandom r;
+  bool has = false;
+  Contact to;
 
   constexpr std::size_t size = 12 * 1024 * 1024;
 
@@ -823,7 +703,28 @@ bind_exe(int argc, char **argv, exe_cb cb) noexcept {
   sp::Buffer inBuffer(in, size);
   sp::Buffer outBuffer(out, size);
 
-  fd udp{};
+  while (argc) {
+    const char *p = argv[0];
+    if (to_contact(p, to)) {
+      has = true;
+      break;
+    }
+
+    argc--;
+    argv++;
+  }
+
+  if (!has) {
+    fprintf(stderr, "%s %s ip:port\n", exe, command);
+    return EXIT_FAILURE;
+  }
+
+  fd udp = udp::connect(to.ip.ipv4, to.port, udp::Mode::BLOCKING);
+  if (!udp) {
+    fprintf(stderr, "failed connect: %s (%s)\n", to_string(to),
+            strerror(errno));
+    return EXIT_FAILURE;
+  }
   DHTClient client(argc, argv, inBuffer, outBuffer, r, udp);
   randomize(r, client.self);
   int res = cb(client);
@@ -835,7 +736,8 @@ bind_exe(int argc, char **argv, exe_cb cb) noexcept {
 }
 
 static int
-bind_priv_exe(int argc, char **argv, exe_cb cb) noexcept {
+bind_priv_exe(const char *exe, const char *command, int argc, char **argv,
+              exe_cb cb) noexcept {
   char local_socket[PATH_MAX]{0};
   if (!xdg_runtime_dir(local_socket)) {
     return 1;
@@ -911,28 +813,32 @@ handle_upnp(int, char **) noexcept {
 static int
 parse_command(int argc, char **argv) {
   if (argc >= 2) {
+    const char *exe = argv[0];
     const char *subcommand = argv[1];
 
     int subc = argc - 1 - 1;
     char **subv = argv + 1 + 1;
 
     if (std::strcmp(subcommand, "ping") == 0) {
-      return bind_exe(subc, subv, handle_ping);
+      return bind_exe(exe, subcommand, subc, subv, handle_ping);
     } else if (std::strcmp(subcommand, "find_node") == 0) {
-      return bind_exe(subc, subv, handle_find_node);
+      return bind_exe(exe, subcommand, subc, subv, handle_find_node);
     } else if (std::strcmp(subcommand, "get_peers") == 0) {
-      return bind_exe(subc, subv, handle_get_peers);
+      return bind_exe(exe, subcommand, subc, subv, handle_get_peers);
     } else if (std::strcmp(subcommand, "announce_peer") == 0) {
-      return bind_exe(subc, subv, handle_announce_peer);
+      return bind_exe(exe, subcommand, subc, subv, handle_announce_peer);
     } else if (std::strcmp(subcommand, "sample_infohashes") == 0) {
-      return bind_exe(subc, subv, handle_sample_infohashes);
+      return bind_exe(exe, subcommand, subc, subv, handle_sample_infohashes);
+    } else if (std::strcmp(subcommand, "priv_sample_infohashes") == 0) {
+      return bind_priv_exe(exe, subcommand, subc, subv,
+                           handle_sample_infohashes);
     } else if (std::strcmp(subcommand, "statistics") == 0 ||
                std::strcmp(subcommand, "stat") == 0) {
-      return bind_priv_exe(subc, subv, handle_statistics);
+      return bind_priv_exe(exe, subcommand, subc, subv, handle_statistics);
     } else if (std::strcmp(subcommand, "search") == 0) {
-      return bind_priv_exe(subc, subv, handle_search);
+      return bind_priv_exe(exe, subcommand, subc, subv, handle_search);
     } else if (std::strcmp(subcommand, "dump") == 0) {
-      return bind_priv_exe(subc, subv, handle_dump);
+      return bind_priv_exe(exe, subcommand, subc, subv, handle_dump);
     } else if (std::strcmp(subcommand, "upnp") == 0) {
       return handle_upnp(subc, subv);
     } else {

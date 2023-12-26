@@ -25,6 +25,8 @@ is_blacklisted(const DHT &, const Contact &) noexcept;
 bool
 should_mark_bad(const DHT &self, Node &contact) noexcept;
 
+dht::Node*
+dht_insert(DHT &self, const Node &contact) noexcept;
 } // namespace dht
 
 #endif

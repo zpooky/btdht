@@ -24,6 +24,7 @@ on_awake_scrape(DHT &dht, sp::Buffer &buf) noexcept {
     rand_key(dht.random, ih);
     auto *rt = emplace(self.routing_tables, dht.random, dht.now, ih, dht.config,
                        timeout);
+    // TODO seed scrape with main routing table
     assertx(rt);
     // auto *res = emplace(dht.routing_table.retire_good, on_retire_good, rt);
     // assertx(res);

@@ -336,22 +336,22 @@ on_awake(DHT &self, sp::Buffer &out) noexcept {
 }
 
 static Node *
-dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
+dht_activity(dht::MessageContext &ctx, const dht::NodeId &senderId) noexcept {
   DHT &self = ctx.dht;
 
-  Node *result = find_node(self.routing_table, sender);
+  Node *result = find_node(self.routing_table, senderId);
   if (result) {
     result->read_only = ctx.read_only;
     if (!result->good) {
       result->good = true;
-      result->outstanding = 0; // XXX
+      result->outstanding = 0;
       assertx(self.routing_table.bad_nodes > 0);
       self.routing_table.bad_nodes--;
     }
   } else {
     if (!ctx.read_only) {
-      Node contact(sender, ctx.remote, self.now);
-      result = dht::insert(self.routing_table, contact);
+      Node contact(senderId, ctx.remote, self.now);
+      result = dht::dht_insert(self, contact);
     }
   }
 

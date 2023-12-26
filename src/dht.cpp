@@ -1,8 +1,8 @@
 #include "dht.h"
 
+#include "bootstrap.h"
 #include <hash/crc.h>
 #include <prng/xorshift.h>
-#include "bootstrap.h"
 
 namespace dht {
 
@@ -130,4 +130,13 @@ should_mark_bad(const DHT &self, Node &contact) noexcept {
   return !is_good(self.routing_table, contact);
 }
 
+dht::Node *
+dht_insert(DHT &self, const Node &contact) noexcept {
+  dht::Node *result = dht::insert(self.routing_table, contact);
+  // seed scrape
+  for_each(self.scrape.routing_tables, [&contact](auto &rt) { //
+    dht::insert(rt, contact);
+  });
+  return result;
+}
 } // namespace dht

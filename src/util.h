@@ -410,17 +410,17 @@ struct Node {
   Node *timeout_priv;
   // }}}
 
-  //{{{
-  NodeId id;
-  Contact contact;
-  // }}}
-
   // activity {{{
-  /* When we received request & response from remote */
+  /* When we received request or response from remote */
   Timestamp remote_activity;
   /* When we sent a request to remote */
   Timestamp req_sent;
   //}}}
+
+  //{{{
+  Contact contact;
+  NodeId id;
+  // }}}
 
   //{{{
   std::uint8_t outstanding;
