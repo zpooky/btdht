@@ -76,7 +76,7 @@ struct Cache {
 
 //========================
 static void
-on_retire_good(void *, Contact in) noexcept;
+on_retire_good(void *, const Contact& in) noexcept;
 
 static void
 on_topup_bootstrap(dht::DHT &) noexcept;
@@ -198,7 +198,7 @@ bool
 init_cache(dht::DHT &ctx) noexcept {
   auto self = new Cache;
   ctx.routing_table.cache = self;
-  ctx.routing_table.retire_good = on_retire_good;
+  emplace(ctx.routing_table.retire_good, on_retire_good, self);
   ctx.topup_bootstrap = on_topup_bootstrap;
 
   char root[PATH_MAX];
@@ -376,7 +376,7 @@ deinit_cache(dht::DHT &ctx) noexcept {
 
     cache_finalize(*self);
     delete self;
-    ctx.routing_table.cache = nullptr;
+    ctx.routing_table.cache = nullptr; // TODO how to handle on_good_callback?
   }
 }
 
@@ -398,7 +398,7 @@ take_next_read_cache(Cache &self, char (&file)[SIZE]) noexcept {
 }
 
 static void
-on_retire_good(void *tmp, Contact in) noexcept {
+on_retire_good(void *tmp, const Contact &in) noexcept {
   Cache *self = (Cache *)tmp;
   if (!test(self->seen, in)) {
     insert(self->seen, in);
@@ -417,39 +417,8 @@ for_each(T (&arr)[SIZE], F f) noexcept {
 
 static bool
 setup_static_bootstrap(dht::DHT &self) noexcept {
-  /*boostrap*/
-  const char *bss[] = {
-      // "192.168.1.47:13596",
-      // "127.0.0.1:13596",
-      // "213.65.130.80:13596",
-      "192.168.1.49:51413",    //
-      "192.168.2.14:51413",    //
-      "109.228.170.47:51413",  //
-      "192.168.0.15:13596",    //
-      "127.0.0.1:13596",       //
-      "192.168.0.113:13596",   //
-      "192.168.1.49:13596",    //
-      "213.174.1.219:13680",   //
-      "90.243.184.9:6881",     //
-      "105.99.128.147:40189",  //
-      "79.160.16.63:6881",     //
-      "24.34.3.237:6881",      //
-      "2.154.168.153:6881",    //
-      "47.198.79.139:50321",   //
-      "94.181.155.240:47661",  //
-      "213.93.18.70:24896",    //
-      "173.92.231.220:6881",   //
-      "93.80.248.65:8999",     //
-      "95.219.168.133:50321",  //
-      "85.247.221.231:19743",  //
-      "62.14.189.18:57539",    //
-      "195.191.186.170:30337", //
-      "192.168.0.112:13596",   //
-      "51.68.37.227:28011",    //
-      "24.146.6.127:6881",     //
-      "109.107.81.218:38119",  //
-                               // "127.0.0.1:51413", "213.65.130.80:51413",
-  };
+#if 0
+  const char *bss[] = {"0.0.0.0:12456"};
 
   for_each(bss, [&self](const char *ip) {
     Contact bs;
@@ -460,6 +429,9 @@ setup_static_bootstrap(dht::DHT &self) noexcept {
 
     bootstrap_insert(self, dht::KContact(0, bs));
   });
+#else
+  (void)self;
+#endif
 
   return true;
 }
@@ -519,25 +491,25 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
 size_t
 cache_read_min_idx(const dht::DHT &ctx) noexcept {
   auto self = (Cache *)ctx.routing_table.cache;
-  return self->read_min_idx;
+  return self ? self->read_min_idx : 0;
 }
 
 size_t
 cache_read_max_idx(const dht::DHT &ctx) noexcept {
   auto self = (Cache *)ctx.routing_table.cache;
-  return self->read_max_idx;
+  return self ? self->read_max_idx : 0;
 }
 
 size_t
 cache_contacts(const dht::DHT &ctx) noexcept {
   auto self = (Cache *)ctx.routing_table.cache;
-  return self->contacts;
+  return self ? self->contacts : 0;
 }
 
 size_t
 cache_write_idx(const dht::DHT &ctx) noexcept {
   auto self = (Cache *)ctx.routing_table.cache;
-  return self->cur_idx;
+  return self ? self->cur_idx : 0;
 }
 
 } // namespace sp

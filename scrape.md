@@ -29,6 +29,23 @@ while 1:
 
 ```
 
+TODO what is the rules for get_peers again?
+```
+
+TODO we need better matches not just the nodes we happen to have
+- maintain multiple routing tables cuncurrently one main and multiple (rand_info_hash(2^160) that we cycle through)
+while 1:
+  needle = rand_info_hash(2^160)
+  heap = new_heap(closest=needle)
+  seed(local_routing_table, ih, last_sample_infohashes=<24h, /*out*/heap)
+  while cur = heap_dequeue(heap):
+    ih:s = sample_infohashes(cur)
+    for ih : ihs:
+      peers = get_peers(cur, ih)
+      enqueue(result, (ih, peers))
+```
+
+
 
 -------------------------------------------------------------------------------
 TODO

@@ -37,6 +37,7 @@ get_peers req int['bs': 2, 1]
 TODO
 
 find_node resp str[hex[6E6F6465730076](nodes_v), hex[6644C9C36ADE2052E163490D7A4473F09FC8073F9B0483AB3D1C](fD__j_ R_cI_zDs____?____=_)] 
+find_node resp str[[len:7]hex[6E6F6465730076](nodes_v),[len:26] hex[E3C114FC3A5EFCB899CB10B5A3C45D0ED0E1ACEA9B04832E2DD7](____:^________]________.-_)]
 
 -------------------------------------------------------------------------------
 TODO libtorrent
@@ -48,9 +49,10 @@ d
 e
 
 -------------------------------------------------------------------------------
-
-sample_infohashes: invalid node id[0000000000000000000000000000000000000000]
-get_peers: invalid node id[0000000000000000000000000000000000000000]
+TODO sample_infohashes: invalid node id[0000000000000000000000000000000000000000]
+- just return whatever infohashe
+TODO get_peers: invalid node id[0000000000000000000000000000000000000000]
+- ??? how it will know which peer it relates to?
 
 -------------------------------------------------------------------------------
 statistic keep track of how long it takes for response to request
@@ -99,3 +101,86 @@ e
 ```
 
 -------------------------------------------------------------------------------
+TODO when we dont't have peers for the requested ih return nodes?
+
+2023-12-25 23:29:38|unknow transaction[1363131D180F]
+d
+ 1:e
+ l
+  i203e
+  46:Neither nodes nor values in get_peers response
+ e
+ 1:t
+ 6:hex[1363131D180F]: 6(_c____)
+ 1:v
+ 4:hex[6D6C010B]: 4(ml__)
+ 1:y
+ 1:e
+e
+d
+ 1:e
+ l
+  i203e
+  46:Neither nodes nor values in get_peers response
+ e
+ 1:t
+ 6:hex[1363131D180F]: 6(_c____)
+ 1:v
+ 4:hex[6D6C010B]: 4(ml__)
+ 1:y
+ 1:e
+e
+2023-12-25 23:29:40|unknow transaction[3AF39F177196]
+d
+ 1:e
+ l
+  i203e
+  46:Neither nodes nor values in get_peers response
+ e
+ 1:t
+ 6:hex[3AF39F177196]: 6(:___q_)
+ 1:v
+ 4:hex[6D6C010B]: 4(ml__)
+ 1:y
+ 1:e
+e
+d
+ 1:e
+ l
+  i203e
+  46:Neither nodes nor values in get_peers response
+ e
+ 1:t
+ 6:hex[3AF39F177196]: 6(:___q_)
+ 1:v
+ 4:hex[6D6C010B]: 4(ml__)
+ 1:y
+ 1:e
+e
+2023-12-25 23:29:40|unknow transaction[F74922654C14]
+d
+ 1:e
+ l
+  i203e
+  46:Neither nodes nor values in get_peers response
+ e
+ 1:t
+ 6:hex[F74922654C14]: 6(_I"eL_)
+ 1:v
+ 4:hex[6D6C010B]: 4(ml__)
+ 1:y
+ 1:e
+e
+d
+ 1:e
+ l
+  i203e
+  46:Neither nodes nor values in get_peers response
+ e
+ 1:t
+ 6:hex[F74922654C14]: 6(_I"eL_)
+ 1:v
+ 4:hex[6D6C010B]: 4(ml__)
+ 1:y
+ 1:e
+e

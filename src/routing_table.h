@@ -104,7 +104,7 @@ struct DHTMetaRoutingTable {
   heap::StaticBinary<RoutingTable *, 1024, RoutingTableLess> rt_reuse;
 
   prng::xorshift32 &random;
-  const dht::NodeId &id;
+  const dht::NodeId id;
   const Timestamp &now;
   const dht::Config &config;
 
@@ -114,7 +114,8 @@ struct DHTMetaRoutingTable {
   timeout::Timeout dummy;
   timeout::Timeout *timeout;
 
-  void (*retire_good)(void *ctx, Contact) noexcept = nullptr;
+  sp::UinArray<std::tuple<void (*)(void *ctx, const Contact&) noexcept, void *>>
+      retire_good;
   void *cache{nullptr};
 
   DHTMetaRoutingTable(prng::xorshift32 &, Timestamp &, const dht::NodeId &,
@@ -177,7 +178,7 @@ multiple_closest(DHTMetaRoutingTable &self, const Infohash &id,
 // valid(DHTMetaRoutingTable &, const krpc::Transaction &) noexcept;
 
 Node *
-find_contact(DHTMetaRoutingTable &, const NodeId &) noexcept;
+find_node(DHTMetaRoutingTable &, const NodeId &) noexcept;
 
 const Bucket *
 bucket_for(DHTMetaRoutingTable &, const NodeId &) noexcept;

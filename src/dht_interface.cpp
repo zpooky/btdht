@@ -339,7 +339,7 @@ static Node *
 dht_activity(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept {
   DHT &self = ctx.dht;
 
-  Node *result = find_contact(self.routing_table, sender);
+  Node *result = find_node(self.routing_table, sender);
   if (result) {
     result->read_only = ctx.read_only;
     if (!result->good) {
@@ -893,8 +893,6 @@ setup(dht::Module &module) noexcept {
 }
 } // namespace announce_peer
 
-//===========================================================
-// sample_infohashes
 //===========================================================
 namespace sample_infohashes {
 static bool

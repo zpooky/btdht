@@ -220,6 +220,14 @@ struct Stat {
   }
 };
 
+struct DHTMetaScrape {
+  sp::UinStaticArray<dht::DHTMetaRoutingTable, 10> routing_tables;
+  int dumy;
+  DHTMetaScrape() noexcept;
+  virtual ~DHTMetaScrape() {
+  }
+};
+
 //=====================================
 // dht::DHT
 struct DHT {
@@ -266,6 +274,7 @@ struct DHT {
   // }}}
 
   DHTMetaSearch searches;
+  DHTMetaScrape scrape;
 
   // upnp {{{
   Timestamp upnp_sent;
@@ -276,7 +285,8 @@ struct DHT {
   // }}}
 
   DHT(fd &, fd &priv_fd, const Contact &self, prng::xorshift32 &,
-      Timestamp &now) noexcept;
+      Timestamp &now)
+  noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;

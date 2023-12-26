@@ -172,6 +172,9 @@ Stat::Stat() noexcept
     , unknown_tx() {
 }
 
+DHTMetaScrape::DHTMetaScrape() noexcept : routing_tables{}{
+}
+
 // dht::DHT
 DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
          Timestamp &n) noexcept
@@ -208,6 +211,7 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , active_find_nodes(0)
     // }}}
     , searches{}
+    , scrape{}
     , upnp_sent{0} {
 
   assertx_n(insert(bootstrap_hashers, djb_ip));

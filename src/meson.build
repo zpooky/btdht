@@ -34,5 +34,6 @@ spdht_src = files([
   'krpc_parse.cpp',
   'core.cpp',
   'routing_table.cpp',
+  'scrape.cpp',
 ])
 

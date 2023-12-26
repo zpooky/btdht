@@ -445,9 +445,10 @@ timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
     }
 
     if (contact.good) {
-      if (self.retire_good) {
-        self.retire_good(self.cache, contact.contact);
-      }
+      for_each(self.retire_good, [&contact](auto t) { //
+        auto retire_good = std::get<0>(t);
+        retire_good(std::get<1>(t), contact.contact);
+      });
     }
 
     reset(self, contact);
@@ -1034,7 +1035,7 @@ multiple_closest(DHTMetaRoutingTable &dht, const Infohash &id, Node **result,
 } // dht::multiple_closest()
 
 Node *
-find_contact(DHTMetaRoutingTable &self, const NodeId &search) noexcept {
+find_node(DHTMetaRoutingTable &self, const NodeId &search) noexcept {
   assertx(debug_assert_all(self));
 
   bool inTree = false;
@@ -1046,7 +1047,7 @@ find_contact(DHTMetaRoutingTable &self, const NodeId &search) noexcept {
   }
 
   return nullptr;
-} // dht::find_contact()
+} // dht::find_node()
 
 const Bucket *
 bucket_for(DHTMetaRoutingTable &dht, const NodeId &id) noexcept {

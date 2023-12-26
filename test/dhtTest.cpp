@@ -36,7 +36,7 @@ random_insert(dht::DHT &dht) {
     // printf("i%zu\n", i);
   }
 
-  const dht::Node *find_res = dht::find_contact(dht.routing_table, n.id);
+  const dht::Node *find_res = dht::find_node(dht.routing_table, n.id);
   if (res) {
     assertx(find_res);
     assertx(find_res->id == n.id);
@@ -241,7 +241,7 @@ assert_present(dht::DHT &dht, const Node &current) {
   }
 
   {
-    dht::Node *res = dht::find_contact(dht.routing_table, current.id);
+    dht::Node *res = dht::find_node(dht.routing_table, current.id);
     ASSERT_TRUE(res);
     ASSERT_EQ(res->id, current.id);
     ASSERT_TRUE(res->timeout_next);
@@ -305,7 +305,7 @@ TEST(dhtTest, test_find_node) {
     dht::Node in(sender, con);
     dht::Node *result = NULL;
 
-    result = find_contact(dht.routing_table, in.id);
+    result = find_node(dht.routing_table, in.id);
     ASSERT_FALSE(result);
 
     result = dht::insert(dht.routing_table, in);
@@ -314,7 +314,7 @@ TEST(dhtTest, test_find_node) {
     ASSERT_TRUE(in.contact == result->contact);
     ASSERT_TRUE(in.id == result->id);
 
-    result = find_contact(dht.routing_table, in.id);
+    result = find_node(dht.routing_table, in.id);
     ASSERT_TRUE(result);
     ASSERT_TRUE(in.contact == result->contact);
     ASSERT_TRUE(in.id == result->id);
@@ -332,7 +332,7 @@ TEST(dhtTest, test_find_node) {
         ++cntx;
 
         dht::Node *result = NULL;
-        result = find_contact(ctx2->routing_table, current.id);
+        result = find_node(ctx2->routing_table, current.id);
         ASSERT_TRUE(result);
         ASSERT_TRUE(current.contact == result->contact);
         ASSERT_TRUE(current.id == result->id);
@@ -353,14 +353,14 @@ TEST(dhtTest, test_find_node) {
 
     for (std::size_t i = 0; i < 8; ++i) {
       if (result[i]) {
-        dht::Node *tmp = find_contact(dht.routing_table, result[i]->id);
+        dht::Node *tmp = find_node(dht.routing_table, result[i]->id);
         ASSERT_TRUE(tmp);
         ASSERT_TRUE(result[i]->contact == tmp->contact);
         ASSERT_TRUE(result[i]->id == tmp->id);
 
         ASSERT_TRUE(debug_timeout_unlink_reset(dht.routing_table, *result[i]));
 
-        tmp = find_contact(dht.routing_table, result[i]->id);
+        tmp = find_node(dht.routing_table, result[i]->id);
         ASSERT_FALSE(tmp);
       }
     }
@@ -465,7 +465,7 @@ TEST(dhtTest, test_append) {
     }
 
     {
-      dht::Node *res = dht::find_contact(dht.routing_table, ins->id);
+      dht::Node *res = dht::find_node(dht.routing_table, ins->id);
       ASSERT_TRUE(res);
       ASSERT_EQ(res->id, ins->id);
       ASSERT_TRUE(res->timeout_next);
@@ -694,7 +694,7 @@ TEST(dhtTest, test_full) {
     ASSERT_TRUE(dht::from_hex(n.id, buf[i]));
     bool res = insert(dht.routing_table, n);
     ASSERT_TRUE(res);
-    auto out = find_contact(dht.routing_table, n.id);
+    auto out = find_node(dht.routing_table, n.id);
     ASSERT_TRUE(out);
     ASSERT_EQ(out->id, n.id);
   }
@@ -702,7 +702,7 @@ TEST(dhtTest, test_full) {
   for (std::size_t i = 0; i < sz; ++i) {
     dht::NodeId n;
     ASSERT_TRUE(dht::from_hex(n, buf[i]));
-    auto out = find_contact(dht.routing_table, n);
+    auto out = find_node(dht.routing_table, n);
     ASSERT_TRUE(out);
     ASSERT_EQ(out->id, n);
   }
@@ -830,7 +830,7 @@ TEST(dhtTest, test_self_rand) {
       if (kx < routing_capacity) {
         printf("%zu .%zu, [%zu]\n", i, kx, r4nk);
         ++kx;
-        Node *fres = find_contact(dht.routing_table, out.id);
+        Node *fres = find_node(dht.routing_table, out.id);
         ASSERT_TRUE(fres);
         ASSERT_EQ(fres->id, out.id);
       }
@@ -923,7 +923,7 @@ TEST(dhtTest, test_assert_fail) {
     ASSERT_TRUE(dht::from_hex(n.id, buf[i]));
     bool res = insert(dht.routing_table, n);
     ASSERT_TRUE(res);
-    auto out = find_contact(dht.routing_table, n.id);
+    auto out = find_node(dht.routing_table, n.id);
     ASSERT_TRUE(out);
     ASSERT_EQ(out->id, n.id);
   }
@@ -1883,7 +1883,7 @@ TEST(dhtTest, test_assert_fail2) {
       }
     }
 
-    auto out = find_contact(dht.routing_table, n.id);
+    auto out = find_node(dht.routing_table, n.id);
     if (res) {
       ASSERT_TRUE(out);
       ASSERT_EQ(out->id, n.id);
@@ -1911,7 +1911,7 @@ TEST(dhtTest, test_assert_fail2) {
 //     test.id.id[i] = !test.id.id[i];
 //
 //     {
-//       const dht::Node *fres = dht::find_contact(dht, test.id);
+//       const dht::Node *fres = dht::find_node(dht, test.id);
 //       ASSERT_FALSE(fres);
 //     }
 //
@@ -1921,7 +1921,7 @@ TEST(dhtTest, test_assert_fail2) {
 //       ASSERT_TRUE(res);
 //       added.push_back(res->id);
 //       {
-//         const dht::Node *fres = dht::find_contact(dht, res->id);
+//         const dht::Node *fres = dht::find_node(dht, res->id);
 //         ASSERT_TRUE(fres);
 //       }
 //     }
