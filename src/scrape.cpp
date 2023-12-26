@@ -15,22 +15,25 @@ rand_key(prng::xorshift32 &r, dht::NodeId &id) {
 // }
 
 static Timestamp
-on_awake_scrape(DHT &dht, sp::Buffer &buf) noexcept {
-  dht::DHTMetaScrape &self = dht.scrape;
+on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
   (void)buf;
-  while (!is_full(self.routing_tables)) {
+  while (!is_full(self.scrapes)) {
     dht::NodeId ih{};
-    const bool timeout = false;
-    rand_key(dht.random, ih);
-    auto *rt = emplace(self.routing_tables, dht.random, dht.now, ih, dht.config,
-                       timeout);
+    rand_key(self.random, ih);
+    auto *rt = emplace(self.scrapes, self, ih);
     // TODO seed scrape with main routing table
     assertx(rt);
-    // auto *res = emplace(dht.routing_table.retire_good, on_retire_good, rt);
-    // assertx(res);
   }
 
-  return dht.now + sp::Seconds(60);
+  // if the best bucket share prefix with its nodeid to 16bits points
+  //    and there are X amount of nodes in that bucket
+  //        which have gt 24h sample_infohashes
+  //        and support sample_infohashes (based on version that we store)
+  //    then we can:
+  //    1. send sample_infohashes
+  //    2. for each infohash that we have not seen before get_peers
+
+  return self.now + sp::Seconds(60);
 }
 } // namespace dht
 

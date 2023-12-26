@@ -134,8 +134,8 @@ dht::Node *
 dht_insert(DHT &self, const Node &contact) noexcept {
   dht::Node *result = dht::insert(self.routing_table, contact);
   // seed scrape
-  for_each(self.scrape.routing_tables, [&contact](auto &rt) { //
-    dht::insert(rt, contact);
+  for_each(self.scrapes, [&contact](auto &scrape) { //
+    dht::insert(scrape.routing_table, contact);
   });
   return result;
 }

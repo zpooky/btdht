@@ -221,9 +221,8 @@ struct Stat {
 };
 
 struct DHTMetaScrape {
-  sp::UinStaticArray<dht::DHTMetaRoutingTable, 10> routing_tables;
-  int dumy;
-  DHTMetaScrape() noexcept;
+  dht::DHTMetaRoutingTable routing_table;
+  DHTMetaScrape(dht::DHT &, const dht::NodeId &) noexcept;
   virtual ~DHTMetaScrape() {
   }
 };
@@ -274,7 +273,7 @@ struct DHT {
   // }}}
 
   DHTMetaSearch searches;
-  DHTMetaScrape scrape;
+  sp::UinStaticArray<DHTMetaScrape, 16> scrapes;
 
   // upnp {{{
   Timestamp upnp_sent;
