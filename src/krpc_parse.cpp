@@ -610,6 +610,8 @@ krpc::parse_sample_infohashes_response(dht::MessageContext &ctx,
     bool b_nodes = false;
     bool b_num = false;
     bool b_samples = false;
+    bool b_p = false;
+
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
       b_id = true;
@@ -630,6 +632,11 @@ krpc::parse_sample_infohashes_response(dht::MessageContext &ctx,
 
     if (!b_num && bencode::d::pair(p, "num", out.num)) {
       b_num = true;
+      goto Lstart;
+    }
+
+    if (!b_p && bencode::d::pair(p, "p", out.p)) {
+      b_p = true;
       goto Lstart;
     }
 

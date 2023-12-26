@@ -109,6 +109,7 @@ struct SampleInfohashesResponse {
   sp::UinStaticArray<std::tuple<dht::NodeId, Contact>, 128> nodes;
   std::uint32_t num = 0;
   sp::UinStaticArray<dht::Infohash, 128> samples;
+  std::uint32_t p = 0;
 };
 
 bool

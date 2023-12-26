@@ -507,6 +507,25 @@ Transaction::operator==(const Transaction &t) const noexcept {
 
 //=====================================
 namespace dht {
+
+const char *
+to_hex(const Key &id) noexcept {
+  constexpr std::size_t sz = (sizeof(Key) * 2) + 1;
+  assertx(sz == 41);
+  static char buf[sz];
+  memset(buf, 0, sz);
+
+  auto len = sz - 1;
+  auto res = hex::encode(id, sizeof(id), buf, len);
+  assertx(len < sz);
+  buf[len] = '\0';
+
+  assertx(res);
+  assertxs(len == sz - 1, len, sz - 1);
+  assertxs(std::strlen(buf) == sz - 1, std::strlen(buf), sz - 1);
+  return buf;
+}
+
 std::size_t
 rank(const Key &id, const Key &o) noexcept {
   std::size_t i = 0;
@@ -559,7 +578,7 @@ Infohash::operator>(const Infohash &o) const noexcept {
   return operator>(o.id);
 }
 
-static bool
+bool
 from_hex(Key &id, const char *b) noexcept {
   assertx(b);
 
@@ -682,21 +701,7 @@ from_hex(NodeId &id, const char *b) noexcept {
 
 const char *
 to_hex(const NodeId &id) noexcept {
-  constexpr std::size_t sz = (sizeof(Key) * 2) + 1;
-  assertx(sz == 41);
-  static char buf[sz];
-  memset(buf, 0, sz);
-
-  auto len = sz - 1;
-  auto res = hex::encode(id.id, sizeof(id.id), buf, len);
-  assertx(len < sz);
-  buf[len] = '\0';
-
-  assertx(res);
-  assertxs(len == sz - 1, len, sz - 1);
-  assertxs(std::strlen(buf) == sz - 1, std::strlen(buf), sz - 1);
-
-  return buf;
+  return to_hex(id.id);
 }
 
 const char *

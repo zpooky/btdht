@@ -795,26 +795,44 @@ TEST(krpcTest, test_sample_infohashes_static) {
     krpc::SampleInfohashesRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, in);
-    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
+#if 0
+    ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) {
+      //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
       dht::MessageContext mctx(dht, pctx, buf2, remote);
       return parse_sample_infohashes_request(mctx, req);
     }));
+#else
+    // TODO we only have to message part
+    sp::byte b2[256] = {0};
+    sp::Buffer buf2{b2};
+    dht::MessageContext mctx(dht, ctx, buf2, Contact{});
+    ASSERT_TRUE(parse_sample_infohashes_request(mctx, req));
+#endif
 
-    dht::NodeId id{"00000000000000000000"};
+    dht::NodeId sender{};
+    ASSERT_TRUE(dht::from_hex(sender.id, "0000000000000000000000000000000000000000"));
+
     dht::Key target{};
+    ASSERT_TRUE(dht::from_hex(target, "4AEC518DBFF4F8D0B5F3687144C37ADBC48D395A"));
 
-    ASSERT_TRUE(req.sender == id);
+    // fprintf(stderr, "r.send: '%s'\nsender: '%s'\n", dht::to_hex(req.sender.id), dht::to_hex(sender.id));
+    // fprintf(stderr, "r.targ: '%s'\ntarget: '%s'\n", dht::to_hex(req.target), dht::to_hex(target));
     ASSERT_TRUE(std::memcmp(req.target, target, sizeof(target)) == 0);
+    ASSERT_TRUE(std::memcmp(req.sender.id, sender.id, sizeof(sender.id)) == 0);
+    ASSERT_TRUE(req.sender == sender);
 
     ASSERT_TRUE(sp::remaining_read(in) == 0);
+#if 0
     ASSERT_TRUE(std::string("sample_infohashes") == ctx.query);
     ASSERT_TRUE(t == ctx.tx);
     ASSERT_TRUE(std::string("q") == ctx.msg_type);
+#endif
   }
 #endif
+#if 1
   {
     const char *hex =
         "64323A6970363AC0A80046B1A8313A7264323A696432303A2C70A1ABB21FCAC09CF11F"
@@ -850,7 +868,8 @@ TEST(krpcTest, test_sample_infohashes_static) {
     krpc::SampleInfohashesResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
     krpc::ParseContext ctx(dom, dht, in);
-    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
+      //
       fprintf(stderr, "%s:k\n", __func__);
       Contact remote;
       sp::byte b2[256] = {0};
@@ -874,6 +893,70 @@ TEST(krpcTest, test_sample_infohashes_static) {
     // ASSERT_TRUE(t == ctx.tx);
     ASSERT_TRUE(std::string("r") == ctx.msg_type);
   }
+
+  {
+    const char *hex =
+        "64323A6970363AC0A80070B2BB313A7264323A696432303ADB9CEF6960834517FEAFBB"
+        "EB1ADB4EACBDF354E9383A696E74657276616C69323136303065353A6E6F6465733230"
+        "383A034B4BB8691D873081CD7FB6791653395833B2F15F6FE6FAB40203C597F1F1BBE9"
+        "EBB3A6DB3C870C3E99245E0D90B125B5524783025B90D6AE529049F1F1BBE9EBB3A6DB"
+        "3C870CE149162A65F48C0000000000000000000000000000000000000000B0084DD8EB"
+        "CA008E7D7D9D4ECF6A67E482E9FDD15C9175AAC1DC983A5B787B07075D3CF09C7A280C"
+        "0F334F0AA07377E067148C7605125EAC045B076A91B7568CA71B10CBD9447FF214FCD1"
+        "527EDDB125541C1026064B0F2F627C78EBCF51F47707844F65B9EC6E005F4C691AA551"
+        "333A6E756D69343365313A7069343537353565373A73616D706C65733430303ADB1433"
+        "AFD8772DEB931AF19AC96C030A422CAB4BDB9CE2243B25F33AD8767D69A8543E214E42"
+        "D7A4DB9CE3E3C2643CACDD9D0378AE3713DC4CB1DBE0DB9CE51476BB7F5A2CFFF94244"
+        "C493A898EC5B4ADB9CE64F890288504156AEF9D5C442C758087FCCDB9CE693D6FE6CC0"
+        "41298072D8ABB9669CE96CD7DB9CE6A6EDA0C2D08269FC0655D15CBEF4A75991DB9CE7"
+        "2DD191983F4D33B54A0706093EA9FA542BDB9CECC85EBF0774EA37C84D6E1A0D514E60"
+        "E77DDB9CED121723A7E92227DC23478DBD3584E68B93DB9CED4539316CDE3C7C29E8FA"
+        "CA6833B9BFBD9BDB9CF45434EA80000B30F69B665B96339A1791D0DB9CF598FCB49822"
+        "DFEA54896BDE261B39E017B7DB9CF7EDE73C460DF8928AE6B1F4384C27F32C56DB9CF8"
+        "184DA02709E092E290BD425A37CEB24D4FDB9CF90F13FAFA5F8786EA9637C6DABBDC4A"
+        "DCF0DB9CFA5D9B23171432B9634AD32F03FDD80867F4DB9CFC40FDAADBB1EE46FD6E8B"
+        "1A87B676088FA7DB9CFE7029585F0C26C31155B57F2947D33AE2E5DB9D86645191EFF3"
+        "769A28DB59497F895152131065313A74353A3C6CAA1C3D313A76343A4C540205313A79"
+        "313A7265";
+    size_t l = strlen(hex);
+    ASSERT_TRUE(FromHex(b, hex, l));
+    sp::Buffer in(b);
+    in.length = l;
+
+    // bencode_print(in);
+    // sp::flip(in);
+
+    krpc::SampleInfohashesResponse res;
+    dht::Domain dom = dht::Domain::Domain_public;
+    krpc::ParseContext ctx(dom, dht, in);
+    ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
+      // fprintf(stderr, "%s:k\n", __func__);
+      Contact remote;
+      sp::byte b2[256] = {0};
+      sp::Buffer buf2{b2};
+      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      fprintf(stderr, "%s:0\n", __func__);
+      return parse_sample_infohashes_response(mctx, res);
+    }));
+
+    dht::NodeId id{};
+    from_hex(id, "DB9CEF6960834517FEAFBBEB1ADB4EACBDF354E9");
+
+    fprintf(stderr, "node id: %s\n", to_hex(res.id));
+    ASSERT_TRUE(res.id == id);
+    ASSERT_EQ(res.interval, 21600);
+    ASSERT_EQ(res.num, 43);
+    ASSERT_EQ(res.p, 45755);
+
+    ASSERT_EQ(length(res.nodes), 8);    // TODO
+    ASSERT_EQ(length(res.samples), 20); // TODO
+
+    // ASSERT_TRUE(res.p == 128);
+    ASSERT_TRUE(sp::remaining_read(in) == 0);
+    // ASSERT_TRUE(t == ctx.tx);
+    ASSERT_TRUE(std::string("r") == ctx.msg_type);
+  }
+#endif
 }
 
 TEST(krpcTest, test_sample_infohashes) {

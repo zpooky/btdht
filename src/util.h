@@ -271,6 +271,9 @@ struct Transaction {
 namespace dht {
 using Key = sp::byte[20];
 
+const char *
+to_hex(const Key &) noexcept;
+
 std::size_t
 rank(const Key &, const Key &) noexcept;
 
@@ -296,6 +299,9 @@ struct Infohash {
   bool
   operator>(const Infohash &) const noexcept;
 };
+
+bool
+from_hex(Key &id, const char *) noexcept;
 
 bool
 from_hex(dht::Infohash &, const char *) noexcept;
