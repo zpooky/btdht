@@ -620,6 +620,14 @@ to_string(const dht::Infohash &ih, char *buf, size_t len) noexcept {
   return false;
 }
 
+const char *
+to_string(const dht::Infohash &ih) noexcept {
+  static char buf[2 * sizeof(ih.id) + 1];
+  std::memset(buf, 0, sizeof(buf));
+  to_string(ih, buf, sizeof(buf));
+  return buf;
+}
+
 } // namespace dht
 
 //=====================================

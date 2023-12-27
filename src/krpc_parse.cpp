@@ -125,8 +125,8 @@ krpc::parse_ping_request(dht::MessageContext &ctx, krpc::PingRequest &out) {
     {
       Contact ip;
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-        ctx.ip_vote = ip;
-        assertx(bool(ctx.ip_vote));
+        ctx.pctx.ip_vote = ip;
+        assertx(bool(ctx.pctx.ip_vote));
         b_ip = true;
         goto Lstart;
       }
@@ -161,8 +161,8 @@ krpc::parse_ping_response(dht::MessageContext &ctx, krpc::PingResponse &out) {
     {
       Contact ip;
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-        ctx.ip_vote = ip;
-        assertx(bool(ctx.ip_vote));
+        ctx.pctx.ip_vote = ip;
+        assertx(bool(ctx.pctx.ip_vote));
         b_ip = true;
         goto Lstart;
       }
@@ -287,8 +287,8 @@ krpc::parse_find_node_response(dht::MessageContext &ctx,
     {
       Contact ip;
       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-        ctx.ip_vote = ip;
-        assertx(bool(ctx.ip_vote));
+        ctx.pctx.ip_vote = ip;
+        assertx(bool(ctx.pctx.ip_vote));
         b_ip = true;
         goto Lstart;
       } else {
@@ -415,8 +415,8 @@ krpc::parse_get_peers_response(dht::MessageContext &ctx,
     // {
     //   Contact ip;
     //   if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-    //     ctx.ip_vote = ip;
-    //     assertx(bool(ctx.ip_vote));
+    //     ctx.pctx.ip_vote = ip;
+    //     assertx(bool(ctx.pctx.ip_vote));
     //     b_ip = true;
     //     goto Lstart;
     //   } else {

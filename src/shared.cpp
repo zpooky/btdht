@@ -206,17 +206,22 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , now(n)
     // boostrap {{{
     , bootstrap_last_reset(0)
-    , bootstrap_hashers()
-    , bootstrap_filter(bootstrap_hashers)
+    , ip_hashers()
+    , bootstrap_filter(ip_hashers)
     , bootstrap()
     , active_find_nodes(0)
     // }}}
-    , searches{}
-    , scrapes{}
+    , searches()
+    // {{{
+    , scrapes()
+    , scrape_hour{}
+    , scrape_hour_i(0)
+    , scrape_hour_time(n)
+    // }}}
     , upnp_sent{0} {
 
-  assertx_n(insert(bootstrap_hashers, djb_ip));
-  assertx_n(insert(bootstrap_hashers, fnv_ip));
+  assertx_n(insert(ip_hashers, djb_ip));
+  assertx_n(insert(ip_hashers, fnv_ip));
 
   for (size_t i = 0; i < 2; ++i) {
     fill(r, &this->db.key[i].key, sizeof(this->db.key[i].key));
@@ -230,7 +235,7 @@ DHT::~DHT() {
 
 //=====================================
 /*dht::MessageContext*/
-MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
+MessageContext::MessageContext(DHT &p_dht, krpc::ParseContext &ctx,
                                sp::Buffer &p_out, Contact p_remote) noexcept
     : domain(ctx.domain)
     , query(ctx.query)
@@ -239,10 +244,8 @@ MessageContext::MessageContext(DHT &p_dht, const krpc::ParseContext &ctx,
     , out{p_out}
     , transaction{ctx.tx}
     , remote{p_remote}
-    , ip_vote(ctx.ip_vote)
     , read_only{ctx.read_only}
     , pctx{ctx} {
-  assertx(bool(ip_vote) == bool(ctx.ip_vote));
 }
 
 } // namespace dht

@@ -130,13 +130,64 @@ should_mark_bad(const DHT &self, Node &contact) noexcept {
   return !is_good(self.routing_table, contact);
 }
 
+static std::size_t
+shared_prefix(const dht::Key &a, const dht::Key &b) noexcept {
+  std::size_t result = 0;
+  for (std::size_t byte = 0; byte < sizeof(a); ++byte) {
+    if (a[byte] == b[byte]) {
+      result += 8;
+    } else {
+      for (std::size_t i = byte * 8; i < sizeof(a) * 8; ++i) {
+        if (bit(a, i) == bit(b, i)) {
+          ++result;
+        } else {
+          break;
+        }
+      }
+      break;
+    }
+  }
+  return result;
+}
+
+std::size_t
+shared_prefix(const dht::Key &a, const dht::NodeId &b) noexcept {
+  return shared_prefix(a, b.id);
+}
+
+std::size_t
+shared_prefix(const dht::NodeId &a, const dht::NodeId &b) noexcept {
+  return shared_prefix(a.id, b.id);
+}
+
+static bool
+support_sample_infohashes(const sp::byte *version) noexcept {
+  if (!version) {
+    return false;
+  }
+  if (std::memcmp(version, (const sp::byte *)"LT", 2) == 0) {
+    return true;
+  }
+
+  return false;
+}
+
 dht::Node *
-dht_insert(DHT &self, const Node &contact) noexcept {
+dht_insert(DHT &self, const sp::byte *version, const Node &contact) noexcept {
+  fprintf(stderr, "%s:version[%.*s]contact[%s]\n", __func__, 2,
+          (const char *)version, to_string(contact.contact));
   dht::Node *result = dht::insert(self.routing_table, contact);
-  // seed scrape
-  for_each(self.scrapes, [&contact](auto &scrape) { //
-    dht::insert(scrape.routing_table, contact);
-  });
+
+  if (support_sample_infohashes(version)) {
+    // seed scrape
+    for_each(self.scrapes, [&contact](auto &scrape) {
+      // TODO 4 is arbitrary
+      if (dht::shared_prefix(contact.id, scrape.routing_table.id) >= 4) {
+        dht::insert(scrape.routing_table, contact);
+      }
+    });
+  }
+
   return result;
 }
 } // namespace dht

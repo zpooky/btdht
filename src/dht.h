@@ -25,8 +25,13 @@ is_blacklisted(const DHT &, const Contact &) noexcept;
 bool
 should_mark_bad(const DHT &self, Node &contact) noexcept;
 
-dht::Node*
-dht_insert(DHT &self, const Node &contact) noexcept;
+std::size_t
+shared_prefix(const dht::Key &a, const dht::NodeId &b) noexcept;
+std::size_t
+shared_prefix(const dht::NodeId &a, const dht::NodeId &b) noexcept;
+
+dht::Node *
+dht_insert(DHT &self, const sp::byte *version, const Node &contact) noexcept;
 } // namespace dht
 
 #endif

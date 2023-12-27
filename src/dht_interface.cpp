@@ -351,7 +351,7 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &senderId) noexcept {
   } else {
     if (!ctx.read_only) {
       Node contact(senderId, ctx.remote, self.now);
-      result = dht::dht_insert(self, contact);
+      result = dht::dht_insert(self, ctx.pctx.remote_version, contact);
     }
   }
 
@@ -363,9 +363,9 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &senderId) noexcept {
 static void
 handle_ip_election(dht::MessageContext &ctx, const dht::NodeId &) noexcept {
   // TODO?
-  if (bool(ctx.ip_vote)) {
+  if (bool(ctx.pctx.ip_vote)) {
     // if (is_strict(ctx.remote.ip, sender)) {
-    const Contact &v = ctx.ip_vote.get();
+    const Contact &v = ctx.pctx.ip_vote.get();
     auto &dht = ctx.dht;
     vote(dht.election, ctx.remote, v);
     // } else {

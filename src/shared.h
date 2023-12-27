@@ -266,14 +266,19 @@ struct DHT {
 
   // boostrap {{{
   Timestamp bootstrap_last_reset;
-  sp::StaticArray<sp::hasher<Ip>, 2> bootstrap_hashers;
+  sp::StaticArray<sp::hasher<Ip>, 2> ip_hashers;
   sp::BloomFilter<Ip, 8 * 1024> bootstrap_filter;
   heap::StaticMaxBinary<KContact, 128> bootstrap;
   std::uint32_t active_find_nodes;
   // }}}
 
   DHTMetaSearch searches;
+  // struct {
   sp::UinStaticArray<DHTMetaScrape, 16> scrapes;
+  sp::UinStaticArray<sp::BloomFilter<Ip, 8 * 1024>, 24> scrape_hour;
+  std::size_t scrape_hour_i;
+  Timestamp scrape_hour_time;
+  // } scrape;
 
   // upnp {{{
   Timestamp upnp_sent;
@@ -311,13 +316,12 @@ struct MessageContext {
 
   const krpc::Transaction &transaction;
   Contact remote;
-  sp::maybe<Contact> ip_vote;
+  // sp::maybe<Contact> ip_vote;
   bool read_only;
 
-  const krpc::ParseContext &pctx;
+  krpc::ParseContext &pctx;
 
-  MessageContext(DHT &, const krpc::ParseContext &, sp::Buffer &,
-                 Contact) noexcept;
+  MessageContext(DHT &, krpc::ParseContext &, sp::Buffer &, Contact) noexcept;
 
   MessageContext(const MessageContext &) = delete;
   MessageContext(const MessageContext &&) = delete;

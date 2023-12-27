@@ -2,6 +2,7 @@
 #include <bencode_offset.h>
 #include <bencode_print.h>
 #include <decode_bencode.h>
+#include <dht.h>
 
 #include <krpc_parse.h>
 
@@ -813,13 +814,17 @@ TEST(krpcTest, test_sample_infohashes_static) {
 #endif
 
     dht::NodeId sender{};
-    ASSERT_TRUE(dht::from_hex(sender.id, "0000000000000000000000000000000000000000"));
+    ASSERT_TRUE(
+        dht::from_hex(sender.id, "0000000000000000000000000000000000000000"));
 
     dht::Key target{};
-    ASSERT_TRUE(dht::from_hex(target, "4AEC518DBFF4F8D0B5F3687144C37ADBC48D395A"));
+    ASSERT_TRUE(
+        dht::from_hex(target, "4AEC518DBFF4F8D0B5F3687144C37ADBC48D395A"));
 
-    // fprintf(stderr, "r.send: '%s'\nsender: '%s'\n", dht::to_hex(req.sender.id), dht::to_hex(sender.id));
-    // fprintf(stderr, "r.targ: '%s'\ntarget: '%s'\n", dht::to_hex(req.target), dht::to_hex(target));
+    // fprintf(stderr, "r.send: '%s'\nsender: '%s'\n",
+    // dht::to_hex(req.sender.id), dht::to_hex(sender.id)); fprintf(stderr,
+    // "r.targ: '%s'\ntarget: '%s'\n", dht::to_hex(req.target),
+    // dht::to_hex(target));
     ASSERT_TRUE(std::memcmp(req.target, target, sizeof(target)) == 0);
     ASSERT_TRUE(std::memcmp(req.sender.id, sender.id, sizeof(sender.id)) == 0);
     ASSERT_TRUE(req.sender == sender);
@@ -950,6 +955,10 @@ TEST(krpcTest, test_sample_infohashes_static) {
 
     ASSERT_EQ(length(res.nodes), 8);    // TODO
     ASSERT_EQ(length(res.samples), 20); // TODO
+    for (auto &s : res.samples) {
+      printf("- %s prefix[%zu]\n", to_string(s),
+             dht::shared_prefix(s.id, res.id));
+    }
 
     // ASSERT_TRUE(res.p == 128);
     ASSERT_TRUE(sp::remaining_read(in) == 0);

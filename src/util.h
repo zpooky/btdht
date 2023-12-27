@@ -317,6 +317,8 @@ bool
 to_string(const dht::Infohash &ih, char (&buf)[SIZE]) noexcept {
   return to_string(ih, buf, SIZE);
 }
+
+const char * to_string(const dht::Infohash &ih) noexcept;
 } // namespace dht
 
 //=====================================
