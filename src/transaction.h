@@ -14,6 +14,10 @@ consume_transaction(dht::DHT &, const krpc::Transaction &,
                     /*OUT*/ TxContext &) noexcept;
 
 //=====================================
+bool
+has_free_transaction(const dht::DHT &);
+
+//=====================================
 /* Keep tracks of active outgoing transactions and what module should handle the
  * response for an eventual response. Client maintains a tree of active
  * transactions together with function pointer for the module which should

@@ -276,8 +276,23 @@ is_expired(const Tx &tx, const Timestamp &now) noexcept {
   return true;
 }
 
+bool
+has_free_transaction(const DHT &dht) {
+  const Client &client = dht.client;
+  const Tx *const head = client.timeout_head;
+  if (head) {
+    if (is_expired(*head, dht.now)) {
+      return true;
+    }
+  } else {
+    assertx(false);
+  }
+  return false;
+}
+
+//=====================================
 static Tx *
-unlink_free(DHT &dht, const Timestamp &now) noexcept {
+unlink_free(DHT &dht) noexcept {
   Client &client = dht.client;
   Tx *const head = client.timeout_head;
   Tx *result = nullptr;
@@ -288,26 +303,21 @@ unlink_free(DHT &dht, const Timestamp &now) noexcept {
   // printf("cnt %zu\n", cnt);
   assertx(debug_is_ordered(dht, NULL, is_exp, is_snt));
 
-  if (head) {
-    if (is_expired(*head, now)) {
-      is_exp = true;
-      if (is_sent(*head)) {
-        is_snt = true;
-        assertx(client.active > 0);
-        --client.active;
+  if (has_free_transaction(dht)) {
+    is_exp = true;
+    if (is_sent(*head)) {
+      is_snt = true;
+      assertx(client.active > 0);
+      --client.active;
 
-        head->context.cancel(dht, head);
-        reset(*head);
-      }
+      head->context.cancel(dht, head);
+      reset(*head);
+    }
 
-      assertx(debug_find(dht.client, head));
-      result = unlink(client, head);
-      assertx(!debug_find(dht.client, head));
-    } // if is_expired
-
-  } else {
-    assertx(false);
-  }
+    assertx(debug_find(dht.client, head));
+    result = unlink(client, head);
+    assertx(!debug_find(dht.client, head));
+  } // if is_expired
 
   assertx(debug_is_ordered(dht, head, is_exp, is_snt));
 
@@ -344,7 +354,7 @@ mint_transaction(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
 
   Client &client = dht.client;
 
-  Tx *const tx = unlink_free(dht, dht.now);
+  Tx *const tx = unlink_free(dht);
   if (tx) {
     ++client.active;
     make(*tx);
