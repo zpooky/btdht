@@ -161,9 +161,6 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     // if (!bencode::e::priv::pair(b, "boostrap", dht.bootstrap)) {
     //   return false;
     // }
-    if (!bencode::e::pair(b, "active_find_nodes", dht.active_find_nodes)) {
-      return false;
-    }
     return true;
   });
 } // response::dump()

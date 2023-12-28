@@ -209,7 +209,6 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , ip_hashers()
     , bootstrap_filter(ip_hashers)
     , bootstrap()
-    , active_find_nodes(0)
     // }}}
     , searches()
     // {{{

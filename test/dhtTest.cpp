@@ -534,7 +534,7 @@ TEST(dhtTest, test_node_id_strict) {
     Timestamp now = sp::now();
     dht::DHT dht(sock, sock, c, r, now);
     init(dht, dht::Options{});
-    ASSERT_TRUE(is_strict(ip, dht.id));
+    ASSERT_TRUE(is_valid_strict_id(ip, dht.id));
   }
 }
 
@@ -546,7 +546,7 @@ TEST(dhtTest, test_node_id_not_strict) {
     Ip ip(i);
     Contact c(ip, 0);
     fill(r, id.id);
-    ASSERT_FALSE(is_strict(ip, id));
+    ASSERT_FALSE(is_valid_strict_id(ip, id));
   }
 }
 
@@ -802,7 +802,7 @@ TEST(dhtTest, test_self_rand) {
   for (std::size_t i = 1; i < 1024; ++i) {
     sp::HashSetProbing<NodeId> set;
     std::size_t routing_capacity =
-        std::max(dht.routing_table.root_limit * Bucket::K,
+        std::max(capacity(dht.routing_table.rt_reuse) * Bucket::K,
                  length(dht.routing_table.rt_reuse) * Bucket::K);
 
     for (std::size_t x = 0; x < routing_capacity; ++x) {

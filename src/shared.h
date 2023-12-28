@@ -269,7 +269,6 @@ struct DHT {
   sp::StaticArray<sp::hasher<Ip>, 2> ip_hashers;
   sp::BloomFilter<Ip, 8 * 1024> bootstrap_filter;
   heap::StaticMaxBinary<KContact, 128> bootstrap;
-  std::uint32_t active_find_nodes;
   // }}}
 
   DHTMetaSearch searches;

@@ -940,7 +940,6 @@ TEST(krpcTest, test_sample_infohashes_static) {
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
       dht::MessageContext mctx(dht, pctx, buf2, remote);
-      fprintf(stderr, "%s:0\n", __func__);
       return parse_sample_infohashes_response(mctx, res);
     }));
 

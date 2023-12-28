@@ -74,7 +74,7 @@ setup(dht::Modules &modules, bool setup_cb) noexcept {
 
 namespace timeout {
 template <typename F>
-bool
+static bool
 for_all_node(dht::DHT &self, sp::Milliseconds timeout, F f) {
   const dht::Node *start = nullptr;
   assertx(debug_assert_all(self.routing_table));
@@ -242,7 +242,6 @@ awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
   auto inc_active_searches = [&self, &missing_contacts, &now_sent]() {
     std::size_t K = dht::Bucket::K;
     missing_contacts -= std::min(missing_contacts, K);
-    self.active_find_nodes++;
     now_sent++;
   };
 
@@ -361,16 +360,14 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &senderId) noexcept {
 } // namespace dht
 
 static void
-handle_ip_election(dht::MessageContext &ctx, const dht::NodeId &) noexcept {
-  // TODO?
+handle_ip_election(dht::MessageContext &ctx,
+                   const dht::NodeId &remote_id) noexcept {
   if (bool(ctx.pctx.ip_vote)) {
-    // if (is_strict(ctx.remote.ip, sender)) {
-    const Contact &v = ctx.pctx.ip_vote.get();
-    auto &dht = ctx.dht;
-    vote(dht.election, ctx.remote, v);
-    // } else {
-    //   // assertx(false);
-    // }
+    if (is_valid_strict_id(ctx.remote.ip, remote_id)) {
+      const Contact &v = ctx.pctx.ip_vote.get();
+      auto &dht = ctx.dht;
+      vote(dht.election, ctx.remote, v);
+    }
   }
 }
 
@@ -537,9 +534,6 @@ handle_response_timeout(dht::DHT &dht, void *&closure) noexcept {
     bootstrap_reclaim(dht, (dht::KContact *)closure);
     closure = nullptr;
   }
-
-  assertx(dht.active_find_nodes > 0);
-  dht.active_find_nodes--;
 }
 
 static void

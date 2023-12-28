@@ -58,9 +58,9 @@ node_id_prefix(const Ip &addr, std::uint32_t seed) noexcept {
   return crc32c::encode(octets, size);
 }
 
-// // See http://www.rasterbar.com/products/libtorrent/dht_sec.html
+// http://www.rasterbar.com/products/libtorrent/dht_sec.html
 bool
-is_strict(const Ip &addr, const NodeId &id) noexcept {
+is_valid_strict_id(const Ip &addr, const NodeId &id) noexcept {
   // TODO ipv4
   /*
    * TODO

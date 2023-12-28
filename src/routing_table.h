@@ -99,9 +99,7 @@ for_all_node(const RoutingTable *it, F f) noexcept;
 //=====================================
 struct DHTMetaRoutingTable {
   RoutingTable *root;
-  std::size_t root_limit;
-  // TODO dynamic
-  heap::StaticBinary<RoutingTable *, 1024, RoutingTableLess> rt_reuse;
+  heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
 
   prng::xorshift32 &random;
   const dht::NodeId id;
@@ -114,7 +112,8 @@ struct DHTMetaRoutingTable {
   timeout::Timeout dummy;
   timeout::Timeout *timeout;
 
-  sp::UinArray<std::tuple<void (*)(void *ctx, const Contact&) noexcept, void *>>
+  sp::UinArray<
+      std::tuple<void (*)(void *ctx, const Contact &) noexcept, void *>>
       retire_good;
   void *cache{nullptr};
 

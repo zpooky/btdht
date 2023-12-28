@@ -11,7 +11,7 @@
 
 namespace dht {
 bool
-is_strict(const Ip &, const NodeId &) noexcept;
+is_valid_strict_id(const Ip &, const NodeId &) noexcept;
 
 bool
 init(DHT &, const Options &) noexcept;

@@ -48,7 +48,8 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
   }
 
   size_t search_index = random(self.random) % length(self.scrapes);
-  // TODO timeout is needed for this one as well (separate/shared)
+  // TODO timeout is needed for this one as well (separate)
+  // 1. timeout find_node
 
   // if the best bucket share prefix with its nodeid to 16bits points
   //    and there are X amount of nodes in that bucket
@@ -57,9 +58,6 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
   //    then we can:
   //    1. send sample_infohashes
   //    2. for each infohash that we have not seen before get_peers
-  //
-  // bloomfilter[24] circular where each hour the id is incremnted and the last
-  // circular index is cleared
 
   return self.now + sp::Seconds(60);
 }

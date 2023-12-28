@@ -97,8 +97,7 @@ DHTMetaRoutingTable::DHTMetaRoutingTable(prng::xorshift32 &r, Timestamp &n,
                                          const dht::NodeId &i,
                                          const dht::Config &c, bool to)
     : root(nullptr)
-    , root_limit(160)
-    , rt_reuse()
+    , rt_reuse(160)
     , random{r}
     , id{i}
     , now{n}
@@ -611,7 +610,7 @@ alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth,
       return h;
     }
 
-    if (length(self.rt_reuse) < self.root_limit) {
+    if (!is_full(self.rt_reuse)) {
       goto Lbah;
     }
 
@@ -658,7 +657,7 @@ alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth,
   }
 
 Lbah:
-  if (length(self.rt_reuse) < self.root_limit) {
+  if (!is_full(self.rt_reuse)) {
     auto result = new RoutingTable((ssize_t)depth);
     if (result) {
       auto r = insert(self.rt_reuse, result);
@@ -837,7 +836,7 @@ Lreset:
 
 static bool
 split(DHTMetaRoutingTable &self, RoutingTable *const split_root) noexcept {
-  debug_print("split-before", self);
+  // debug_print("split-before", self);
   assertx(split_root);
   assertx(!split_root->in_tree);
   /* If there already is a split_root->in_tree node then we already have
@@ -1084,6 +1083,7 @@ can_split(const RoutingTable &table, std::size_t idx) {
   return false;
 }
 
+#if 0
 static void
 compact_RoutingTable(dht::DHTMetaRoutingTable &self) {
   while (self.root && length(self.rt_reuse) > self.root_limit &&
@@ -1102,7 +1102,8 @@ compact_RoutingTable(dht::DHTMetaRoutingTable &self) {
     root->in_tree = nullptr;
     dealloc_RoutingTable(self, root);
   } // while
-} // namespace dht
+}
+#endif
 
 Node *
 insert(DHTMetaRoutingTable &self, const Node &contact) noexcept {
@@ -1174,7 +1175,7 @@ Lstart:
       }
       // XXX calc can_split when inserting into bucket
       if (can_split(*leaf, leaf->depth)) {
-        printf("split[depth:%zd]\n", leaf->depth);
+        // printf("split[depth:%zd]\n", leaf->depth);
         // printf("split[%zu]\n", leaf->depth);
         assertx(!leaf->in_tree);
 
@@ -1194,7 +1195,7 @@ Lstart:
         auto next = alloc_RoutingTable(self, nxt_depth, AllocType::PLAIN);
         if (next) {
           assertx(next != leaf);
-          printf("next[depth: %zu]\n", nxt_depth);
+          // printf("next[depth: %zu]\n", nxt_depth);
           assertx(!debug_find(self, next));
 
           // printf("=====next[%zu]\n", leaf->depth);
@@ -1223,7 +1224,7 @@ Lstart:
     }
 
     assertx(debug_assert_all(self));
-    compact_RoutingTable(self);
+    // compact_RoutingTable(self);
 
     assertx(debug_assert_all(self));
     return inserted;
