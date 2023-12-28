@@ -166,6 +166,19 @@ support_sample_infohashes(const sp::byte *version) noexcept {
     return false;
   }
   if (std::memcmp(version, (const sp::byte *)"LT", 2) == 0) {
+/* # yes
+ * 0x0207
+ * 0x0206
+ * 0x0102
+ * 0x012F
+ * 0x012B
+ * 0x0102
+ * # not
+ * 0x0102
+ * 0x0101
+ * 0x0100
+ * 0x0010
+ */
     return true;
   }
 

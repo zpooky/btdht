@@ -8,7 +8,7 @@ static const char *default_dump_path = "./dht_db.dump";
 
 namespace dht {
 Options::Options()
-    : port(0)
+    : port(34329)
     , bootstrap()
     , dump_file{0}
     , local_socket{0} {
