@@ -19,17 +19,132 @@ test_unique(krpc::Transaction (&arr)[SIZE]) {
 
 template <std::size_t SIZE>
 static void
-shuffle_tx(krpc::Transaction (&)[SIZE]) {
-  // TODO
+shuffle_tx(prng::xorshift32 &r, krpc::Transaction (&vec)[SIZE]) {
+  shuffle_array(r, vec, SIZE);
 }
 
-TEST(transactionTest, test_valid_tree) {
+TEST(transactionTest, test_mint_consume) {
   fd s(-1);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(s, s, Contact(0, 0), r, now);
-  assert(tx::init(dht.client));
-  // TODO
+  fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
+
+  krpc::Transaction ts[Client::tree_capacity] = {};
+
+  for (size_t i = 0; i < Client::tree_capacity; ++i) {
+    tx::TxContext h;
+    ASSERT_TRUE(tx::has_free_transaction(dht));
+    ASSERT_TRUE(tx::mint_transaction(dht, ts[i], h));
+  }
+  ASSERT_FALSE(tx::has_free_transaction(dht));
+  {
+    krpc::Transaction dummy;
+    tx::TxContext h;
+    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+  }
+  shuffle_tx(r, ts);
+  for (size_t i = 0; i < Client::tree_capacity; ++i) {
+    tx::TxContext h;
+    ASSERT_TRUE(tx::consume_transaction(dht, ts[i], h));
+    ASSERT_FALSE(tx::consume_transaction(dht, ts[i], h));
+    ASSERT_TRUE(tx::has_free_transaction(dht));
+  }
+}
+
+static size_t global_count = 0;
+
+TEST(transactionTest, test_mint_timeout) {
+  fd s(-1);
+  prng::xorshift32 r(1);
+  Timestamp now = sp::now();
+  dht::DHT dht(s, s, Contact(0, 0), r, now);
+  fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
+
+  krpc::Transaction ts[Client::tree_capacity] = {};
+  tx::TxContext h;
+  global_count = 0;
+  h.int_timeout = [](dht::DHT &, const krpc::Transaction &, const Timestamp &,
+                     void *) { //
+    global_count++;
+  };
+  for (size_t i = 0; i < Client::tree_capacity; ++i) {
+    ASSERT_TRUE(tx::has_free_transaction(dht));
+    ASSERT_TRUE(tx::mint_transaction(dht, ts[i], h));
+  }
+  ASSERT_EQ(0, global_count);
+  {
+    krpc::Transaction dummy;
+    ASSERT_FALSE(tx::has_free_transaction(dht));
+    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+  }
+  ASSERT_EQ(0, global_count);
+
+  Config config;
+  now = now + config.transaction_timeout;
+  size_t i = 0;
+  for (; i < Client::tree_capacity; ++i) {
+    ASSERT_TRUE(tx::has_free_transaction(dht));
+    ASSERT_EQ(i, global_count);
+    ASSERT_TRUE(tx::mint_transaction(dht, ts[i], h));
+  }
+  ASSERT_EQ(i, global_count);
+  {
+    krpc::Transaction dummy;
+    ASSERT_FALSE(tx::has_free_transaction(dht));
+    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+  }
+  ASSERT_EQ(i, global_count);
+}
+
+TEST(transactionTest, test_mint_timeout2) {
+  fd s(-1);
+  prng::xorshift32 r(1);
+  Timestamp now = sp::now();
+  Timestamp before = now;
+  dht::DHT dht(s, s, Contact(0, 0), r, now);
+  fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
+
+  global_count = 0;
+  tx::TxContext h;
+  h.int_timeout = [](dht::DHT &, const krpc::Transaction &, const Timestamp &,
+                     void *) { //
+    global_count++;
+  };
+  for (size_t i = 0; i < Client::tree_capacity; ++i) {
+    krpc::Transaction dummy;
+    ASSERT_TRUE(tx::has_free_transaction(dht));
+    ASSERT_TRUE(tx::mint_transaction(dht, dummy, h));
+    dht.now = dht.now + sp::Seconds(1);
+  }
+  ASSERT_EQ(0, global_count);
+  {
+    krpc::Transaction dummy;
+    ASSERT_FALSE(tx::has_free_transaction(dht));
+    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+  }
+
+  Config config;
+  size_t i = 0;
+
+  for (; i < Client::tree_capacity; ++i) {
+    ASSERT_EQ(i, global_count);
+
+    ASSERT_FALSE(tx::has_free_transaction(dht));
+    dht.now = before + config.transaction_timeout + sp::Seconds(i);
+    ASSERT_TRUE(tx::has_free_transaction(dht));
+    {
+      krpc::Transaction dummy;
+      ASSERT_TRUE(tx::mint_transaction(dht, dummy, h));
+    }
+    ASSERT_FALSE(tx::has_free_transaction(dht));
+    {
+      krpc::Transaction dummy;
+      ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+    }
+  } // for
+
+  ASSERT_EQ(i, global_count);
 }
 
 TEST(transactionTest, test_valid) {
@@ -38,7 +153,6 @@ TEST(transactionTest, test_valid) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   dht::DHT dht(s, s, Contact(0, 0), r, now);
-  ASSERT_TRUE(tx::init(dht.client));
 
 Lrestart:
   if (test_it++ < 100) {
@@ -64,7 +178,7 @@ Lrestart:
     }
     test_unique(ts);
 
-    shuffle_tx(ts);
+    shuffle_tx(r, ts);
     for (std::size_t i = 0; i < IT; ++i) {
       for (std::size_t k = 0; k < i; ++k) {
         ASSERT_FALSE(tx::is_valid(dht, ts[k]));

@@ -71,13 +71,12 @@ struct ParseContext {
 namespace tx {
 struct Tx;
 
-using TxCancelHandle = void (*)(dht::DHT &, const krpc::Transaction &,
-                                const Timestamp &, void *);
+using TxCancelHandle = void (*)(dht::DHT &, const krpc::Transaction &, const Timestamp &, void *);
 using TxHandle = bool (*)(dht::MessageContext &, void *);
 // dht::TxContext
 struct TxContext {
   TxHandle int_handle;
-  TxCancelHandle int_cancel;
+  TxCancelHandle int_timeout;
   void *closure;
 
   sp::Timestamp latency;
@@ -97,7 +96,7 @@ struct TxContext {
   handle(dht::MessageContext &) noexcept;
 
   void
-  cancel(dht::DHT &, Tx *) noexcept;
+  timeout(dht::DHT &, Tx *) noexcept;
 };
 
 void
@@ -273,7 +272,7 @@ struct DHT {
 
   DHTMetaSearch searches;
   // struct {
-  sp::UinStaticArray<DHTMetaScrape, 16> scrapes;
+  sp::UinStaticArray<DHTMetaScrape, 8> scrapes;
   sp::UinStaticArray<sp::BloomFilter<Ip, 8 * 1024>, 24> scrape_hour;
   std::size_t scrape_hour_i;
   Timestamp scrape_hour_time;

@@ -14,24 +14,32 @@ namespace client {
 template <typename F>
 static Res
 send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, F request,
-     krpc::Transaction &tx) noexcept {
+     dht::Module &module, void *closure) noexcept {
+  Res result = Res::ERR_TOKEN;
   sp::reset(out);
 
   dht::Client &client = dht.client;
 
-  Res result = request(out, tx) ? Res::OK : Res::ERR;
-  if (result == Res::OK) {
-    sp::flip(out);
-    result = udp::send(client.udp, remote, out) ? Res::OK : Res::ERR;
-  }
+  krpc::Transaction tx;
+  tx::TxContext ctx{module.response, module.response_timeout, closure};
 
-  if (result != Res::OK) {
-    logger::transmit::error::udp(dht);
-    // since we fail to send request, we clear the transaction
-    tx::TxContext dummy;
-    if (!tx::consume_transaction(dht, tx, dummy)) {
-      assertx(false);
+  if (tx::mint_transaction(dht, /*OUT*/ tx, ctx)) {
+    result = request(out, tx) ? Res::OK : Res::ERR;
+    if (result == Res::OK) {
+      sp::flip(out);
+      result = udp::send(client.udp, remote, out) ? Res::OK : Res::ERR;
     }
+
+    if (result != Res::OK) {
+      logger::transmit::error::udp(dht);
+      // since we fail to send request, we clear the transaction
+      tx::TxContext dummy;
+      if (!tx::consume_transaction(dht, tx, dummy, 0)) {
+        assertx(false);
+      }
+    }
+  } else {
+    logger::transmit::error::mint_transaction(dht);
   }
 
   return result;
@@ -40,7 +48,6 @@ send(dht::DHT &dht, const Contact &remote, sp::Buffer &out, F request,
 //=====================================
 Res
 ping(dht::DHT &dht, sp::Buffer &buf, const dht::Node &node) noexcept {
-  Res result = Res::ERR_TOKEN;
   dht::Module ping;
   ping::setup(ping);
 
@@ -48,14 +55,9 @@ ping(dht::DHT &dht, sp::Buffer &buf, const dht::Node &node) noexcept {
     return krpc::request::ping(out, t, dht.id);
   };
 
-  krpc::Transaction tx;
-  tx::TxContext ctx{ping.response, ping.response_timeout, nullptr};
-
-  if (tx::mint_transaction(dht, /*OUT*/ tx, ctx)) {
-    result = send(dht, node.contact, buf, serialize, tx);
-    logger::transmit::ping(dht, node.contact, result); // TODO log tx
-  } else {
-    logger::transmit::error::mint_transaction(dht);
+  Res result = send(dht, node.contact, buf, serialize, ping, nullptr);
+  if (result == Res::OK) {
+    logger::transmit::ping(dht, node.contact, result); // TODO log tx}
   }
   return result;
 }
@@ -64,7 +66,6 @@ ping(dht::DHT &dht, sp::Buffer &buf, const dht::Node &node) noexcept {
 Res
 find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
           const dht::NodeId &search, void *closure) noexcept {
-  Res result = Res::ERR_TOKEN;
   dht::Module find_node;
   find_node::setup(find_node);
 
@@ -74,14 +75,9 @@ find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
     return krpc::request::find_node(o, t, dht.id, search, n4, n6);
   };
 
-  krpc::Transaction tx;
-  tx::TxContext ctx{find_node.response, find_node.response_timeout, closure};
-
-  if (tx::mint_transaction(dht, /*OUT*/ tx, ctx)) {
-    result = send(dht, dest, buf, serialize, tx);
+  Res result = send(dht, dest, buf, serialize, find_node, closure);
+  if (result == Res::OK) {
     logger::transmit::find_node(dht, dest, result); // TODO log tx
-  } else {
-    logger::transmit::error::mint_transaction(dht);
   }
   return result;
 }
@@ -90,7 +86,6 @@ find_node(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
 Res
 get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
           const dht::Infohash &search, void *closure) noexcept {
-  Res result = Res::ERR_TOKEN;
   dht::Module get_peers;
   get_peers::setup(get_peers);
 
@@ -100,20 +95,36 @@ get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
     return krpc::request::get_peers(o, t, dht.id, search, n4, n6);
   };
 
-  krpc::Transaction tx;
-  tx::TxContext ctx{get_peers.response, get_peers.response_timeout, closure};
-
-  if (tx::mint_transaction(dht, /*OUT*/ tx, ctx)) {
-    result = send(dht, dest, buf, serialize, tx);
+  Res result = send(dht, dest, buf, serialize, get_peers, closure);
+  if (result == Res::OK) {
     logger::transmit::get_peers(dht, dest, result); // TODO log tx
-  } else {
-    logger::transmit::error::mint_transaction(dht);
   }
   return result;
 }
 
-namespace priv {
 //=====================================
+Res
+sample_infohashes(dht::DHT &self, sp::Buffer &buf, const Contact &dest,
+                  const dht::Key &target, void *closure) noexcept {
+  dht::Module s_ih;
+  sample_infohashes::setup(s_ih);
+
+  auto serialize = [&self, &target](sp::Buffer &o, const krpc::Transaction &t) {
+    bool n4 = true;
+    bool n6 = false;
+    return krpc::request::sample_infohashes(o, t, self.id, target, n4, n6);
+  };
+
+  Res result = send(self, dest, buf, serialize, s_ih, closure);
+  if (result == Res::OK) {
+    // TODO logger::transmit::sample_infohashes(self, dest, result); // TODO log
+    // tx
+  }
+  return result;
+}
+
+//=====================================
+namespace priv {
 template <typename Contacts>
 Res
 found(dht::DHT &dht, sp::Buffer &out, const dht::Infohash &search,

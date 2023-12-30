@@ -48,16 +48,20 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
   }
 
   size_t search_index = random(self.random) % length(self.scrapes);
-  // TODO timeout is needed for this one as well (separate)
-  // 1. timeout find_node
+  // TODO timeout is needed for scrape as well
+  // - use the same system as for original routing_table
+  // - use reference counted Node which are shared between all routing tables
+  // 1. foreach.timeout find_node(nodeId)
+  //    TODO which nodeId
+  // 2. if there are X amount of nodes in that routing table
+  //    which have gt 24h sample_infohashes
+  //    and support sample_infohashes (based on version that we store)
+  // then we can:
+  // 1. send sample_infohashes
+  // 2. for each infohash that we have not seen before get_peers
 
-  // if the best bucket share prefix with its nodeid to 16bits points
-  //    and there are X amount of nodes in that bucket
-  //        which have gt 24h sample_infohashes
-  //        and support sample_infohashes (based on version that we store)
-  //    then we can:
-  //    1. send sample_infohashes
-  //    2. for each infohash that we have not seen before get_peers
+  // TODO sample_infohashes.on_response
+
 
   return self.now + sp::Seconds(60);
 }

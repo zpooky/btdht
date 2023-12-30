@@ -347,7 +347,7 @@ send(fd &fd, const Contact &dest, sp::Buffer &buf) noexcept {
 namespace net {
 //=====================================
 bool
-local(fd &listen, Contact &out) noexcept {
+local(const fd &listen, Contact &out) noexcept {
   sockaddr_in addr{};
   std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);
@@ -362,7 +362,7 @@ local(fd &listen, Contact &out) noexcept {
 }
 
 bool
-remote(fd &listen, Contact &out) noexcept {
+remote(const fd &listen, Contact &out) noexcept {
   sockaddr_in addr{};
   std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);

@@ -92,7 +92,7 @@ ping(dht::MessageContext &ctx) noexcept {
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive request ping\n");
+  fprintf(f, "receive request ping (%s)\n", to_string(ctx.remote));
 }
 
 void
@@ -102,7 +102,7 @@ find_node(dht::MessageContext &ctx) noexcept {
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive request find_node\n");
+  fprintf(f, "receive request find_node (%s)\n", to_string(ctx.remote));
 }
 
 void
@@ -112,7 +112,7 @@ get_peers(dht::MessageContext &ctx) noexcept {
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive request get_peers\n");
+  fprintf(f, "receive request get_peers (%s)\n", to_string(ctx.remote));
 }
 
 void
@@ -122,7 +122,7 @@ announce_peer(dht::MessageContext &ctx) noexcept {
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive request announce_peer\n");
+  fprintf(f, "receive request announce_peer (%s)\n", to_string(ctx.remote));
 }
 
 void
@@ -132,7 +132,7 @@ error(dht::MessageContext &ctx) noexcept {
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "unknow request query type %s\n", ctx.query);
+  fprintf(f, "unknow request query type %s (%s)\n", ctx.query, to_string(ctx.remote));
 
   auto query_len = std::strlen(ctx.query);
 
@@ -197,7 +197,7 @@ sample_infohashes(dht::MessageContext &ctx) noexcept {
   print_raw(f, ctx.pctx.remote_version,
             strnlen((char *)ctx.pctx.remote_version,
                     sizeof(ctx.pctx.remote_version)));
-  fprintf(f, "]\n");
+  fprintf(f, "] (%s)\n", to_string(ctx.remote));
 }
 
 void
@@ -218,7 +218,7 @@ ping(dht::MessageContext &ctx) noexcept {
 #ifdef LOG_RES_PING
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive response ping\n");
+  fprintf(f, "receive response ping (%s)\n", to_string(ctx.remote));
 #endif
 }
 
@@ -230,7 +230,7 @@ find_node(dht::MessageContext &ctx) noexcept {
 #ifdef LOG_RES_FIND_NODE
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive response find_node\n");
+  fprintf(f, "receive response find_node (%s)\n", to_string(ctx.remote));
 #endif
 }
 
@@ -242,7 +242,7 @@ get_peers(dht::MessageContext &ctx) noexcept {
 #ifdef LOG_RES_GET_PEERS
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive response get_peers\n");
+  fprintf(f, "receive response get_peers (%s)\n", to_string(ctx.remote));
 #endif
 }
 
@@ -254,7 +254,7 @@ announce_peer(dht::MessageContext &ctx) noexcept {
 #ifdef LOG_RES_ANNOUNCE_PEER
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive response announce_peer\n");
+  fprintf(f, "receive response announce_peer (%s)\n", to_string(ctx.remote));
 #endif
 }
 
@@ -265,7 +265,7 @@ error(dht::MessageContext &ctx) noexcept {
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "unknow response query type %s\n", ctx.query);
+  fprintf(f, "unknow response query type %s (%s)\n", ctx.query, to_string(ctx.remote));
 }
 
 void

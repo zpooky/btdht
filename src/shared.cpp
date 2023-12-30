@@ -44,11 +44,11 @@ ParseContext::ParseContext(ParseContext &ictx, sp::Buffer &d) noexcept
 //=====================================
 namespace tx {
 void
-TxContext::cancel(dht::DHT &dht, Tx *tx) noexcept {
+TxContext::timeout(dht::DHT &dht, Tx *tx) noexcept {
   assertx(tx);
-  if (int_cancel) {
+  if (int_timeout) {
     krpc::Transaction t(tx->prefix, tx->suffix);
-    int_cancel(dht, t, tx->sent, closure);
+    int_timeout(dht, t, tx->sent, closure);
   }
 }
 
@@ -60,7 +60,7 @@ TxContext::handle(dht::MessageContext &ctx) noexcept {
 
 TxContext::TxContext(TxHandle h, TxCancelHandle ch, void *c) noexcept
     : int_handle(h)
-    , int_cancel(ch)
+    , int_timeout(ch)
     , closure(c)
     , latency(0) {
 }
@@ -72,7 +72,7 @@ TxContext::TxContext() noexcept
 void
 reset(TxContext &ctx) noexcept {
   ctx.int_handle = nullptr;
-  ctx.int_cancel = nullptr;
+  ctx.int_timeout = nullptr;
   ctx.closure = nullptr;
 }
 
@@ -123,24 +123,6 @@ operator>(const Tx &self, const Tx &tx) noexcept {
 } // namespace tx
 
 //=====================================
-namespace dht {
-/*dht::Client*/
-Client::Client(fd &fd) noexcept
-    : udp(fd)
-    , timeout_head(nullptr)
-    , buffer{}
-    , tree{buffer}
-    , active(0)
-    , deinit(nullptr) {
-}
-
-Client::~Client() noexcept {
-  if (deinit) {
-    deinit(*this);
-  }
-}
-
-} // namespace dht
 
 //=====================================
 namespace dht {

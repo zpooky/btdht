@@ -258,7 +258,9 @@ struct Transaction {
     length = o.length;
   }
 
-  Transaction(const Transaction &&) = delete;
+  Transaction(Transaction &&o) noexcept
+      : Transaction(o) {
+  }
 
   Transaction &
   operator=(const Transaction &) noexcept;
@@ -318,7 +320,8 @@ to_string(const dht::Infohash &ih, char (&buf)[SIZE]) noexcept {
   return to_string(ih, buf, SIZE);
 }
 
-const char * to_string(const dht::Infohash &ih) noexcept;
+const char *
+to_string(const dht::Infohash &ih) noexcept;
 } // namespace dht
 
 //=====================================

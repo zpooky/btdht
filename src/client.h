@@ -21,6 +21,11 @@ get_peers(dht::DHT &, sp::Buffer &, const Contact &, const dht::Infohash &,
           void *) noexcept;
 
 //=====================================
+Res
+sample_infohashes(dht::DHT &, sp::Buffer &, const Contact &,
+                  const dht::Key &, void *) noexcept;
+
+//=====================================
 namespace priv {
 template <typename Contacts>
 Res

@@ -4,6 +4,8 @@
 #include "encode_bencode.h"
 #include "krpc_shared.h"
 #include <tree/bst_extra.h>
+#include <udp.h>
+#include <unistd.h>
 
 namespace krpc {
 namespace priv {
@@ -58,6 +60,20 @@ response::dump(sp::Buffer &buf, const Transaction &t,
                const dht::DHT &dht) noexcept {
   return resp(buf, t, [&dht](auto &b) {
     if (!bencode::e::pair(b, "id", dht.id.id, sizeof(dht.id.id))) {
+      return false;
+    }
+
+    uint64_t pid = (uint64_t)getpid();
+    if (!bencode::e::pair(b, "pid", pid)) {
+      return false;
+    }
+    Contact bind;
+    net::local(dht.client.udp, bind);
+    if (!bencode::e::pair(b, "bind_port", bind.port)) {
+      return false;
+    }
+
+    if (!bencode::e::pair(b, "pid", pid)) {
       return false;
     }
 

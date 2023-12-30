@@ -4,10 +4,10 @@
 #include "shared.h"
 
 namespace tx {
-//=====================================
-bool
-init(dht::Client &) noexcept;
-
+/*
+ * inactive transaction cones first in the list, then transactions which are
+ * closest to timeout in order of sent timestamp
+ */
 //=====================================
 bool
 consume_transaction(dht::DHT &, const krpc::Transaction &,
@@ -36,7 +36,7 @@ next_available(const dht::DHT &) noexcept;
 
 //=====================================
 void
-eager_tx_timeout(dht::DHT &, sp::Milliseconds) noexcept;
+eager_tx_timeout(dht::DHT &) noexcept;
 
 //=====================================
 const Tx *

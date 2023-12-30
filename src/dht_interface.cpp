@@ -25,7 +25,7 @@
 
 namespace dht {
 static Timestamp
-on_awake(DHT &dht, sp::Buffer &out) noexcept;
+on_awake_find_nodes(DHT &dht, sp::Buffer &out) noexcept;
 
 static Timestamp
 on_awake_ping(DHT &, sp::Buffer &) noexcept;
@@ -61,7 +61,7 @@ setup(dht::Modules &modules, bool setup_cb) noexcept {
     insert(modules.awake.on_awake, &dht::on_awake_peer_db_glue);
 #endif
     insert(modules.awake.on_awake, &dht::on_awake_bootstrap_reset);
-    insert(modules.awake.on_awake, &dht::on_awake);
+    insert(modules.awake.on_awake, &dht::on_awake_find_nodes);
     insert(modules.awake.on_awake, &dht::on_awake_ping);
     insert(modules.awake.on_awake, &dht::on_awake_eager_tx_timeout);
   }
@@ -153,8 +153,8 @@ inc_outstanding(Node &node) noexcept {
 
 /*pings*/
 static Timestamp
-on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
-  Config &cfg = ctx.config;
+on_awake_ping(DHT &self, sp::Buffer &out) noexcept {
+  Config &cfg = self.config;
 
   /* Send ping to nodes */
   auto f = [&out](auto &dht, auto &node) {
@@ -174,26 +174,26 @@ on_awake_ping(DHT &ctx, sp::Buffer &out) noexcept {
 
     return result;
   };
-  timeout::for_all_node(ctx, cfg.refresh_interval, f);
+  timeout::for_all_node(self, cfg.refresh_interval, f);
 
   /* Calculate next timeout based on the head if the timeout list which is in
    * sorted order where to oldest node is first in the list.
    */
-  Node *const tHead = ctx.timeout.timeout_node;
+  Node *const tHead = self.timeout.timeout_node;
   if (tHead) {
-    ctx.timeout.timeout_next = tHead->req_sent + cfg.refresh_interval;
+    self.timeout.timeout_next = tHead->req_sent + cfg.refresh_interval;
 
-    if (ctx.now >= ctx.timeout.timeout_next) {
-      ctx.timeout.timeout_next = ctx.now + cfg.min_timeout_interval;
+    if (self.now >= self.timeout.timeout_next) {
+      self.timeout.timeout_next = self.now + cfg.min_timeout_interval;
     }
 
   } else {
     /* timeout queue is empty */
-    ctx.timeout.timeout_next = ctx.now + cfg.refresh_interval;
+    self.timeout.timeout_next = self.now + cfg.refresh_interval;
   }
 
-  assertx(ctx.timeout.timeout_next > ctx.now);
-  return ctx.timeout.timeout_next;
+  assertx(self.timeout.timeout_next > self.now);
+  return self.timeout.timeout_next;
 }
 
 static Timestamp
@@ -221,45 +221,43 @@ on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
 static Timestamp
 on_awake_eager_tx_timeout(DHT &self, sp::Buffer &) noexcept {
   Config &cfg = self.config;
-  const auto timeout = cfg.refresh_interval;
 
-  tx::eager_tx_timeout(self, timeout);
+  tx::eager_tx_timeout(self);
   auto head = tx::next_timeout(self.client);
   if (!head) {
-    return self.now + timeout;
+    return self.now + cfg.refresh_interval;
   }
-
-  assertxs((head->sent + timeout) > self.now, uint64_t(head->sent),
-           uint64_t(timeout), uint64_t(self.now));
-  return head->sent + timeout;
+  auto next = head->sent + cfg.transaction_timeout;
+  assertxs(next > self.now, uint64_t(head->sent), uint64_t(self.now));
+  return next;
 }
 
 static Timestamp
-awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
+awake_look_for_nodes(dht::DHT &self, DHTMetaRoutingTable &rt, sp::Buffer &out,
+                     std::size_t missing_contacts, bool use_bootstrap) {
   Config &cfg = self.config;
   std::size_t now_sent = 0;
+  auto now = self.now;
 
-  auto inc_active_searches = [&self, &missing_contacts, &now_sent]() {
-    std::size_t K = dht::Bucket::K;
-    missing_contacts -= std::min(missing_contacts, K);
+  auto inc_active_searches = [&missing_contacts, &now_sent]() {
+    missing_contacts -= std::min(missing_contacts, dht::Bucket::K);
     now_sent++;
   };
 
   // XXX self should not be in bootstrap list
   // XXX if no good node is available try bad/questionable nodes
 
-  auto result = client::Res::OK;
-
-  auto f = [&](auto &ctx, Node &remote) {
-    // if (dht::is_good(ctx, remote)) {
+  auto f = [inc_active_searches, &out, &now](auto &self, Node &remote) {
+    auto result = client::Res::OK;
+    // if (dht::is_good(self, remote)) {
     const Contact &c = remote.contact;
     dht::NodeId &sid = self.id;
 
-    result = client::find_node(ctx, out, c, /*search*/ sid, nullptr);
+    result = client::find_node(self, out, c, /*search*/ sid, nullptr);
     if (result == client::Res::OK) {
       inc_outstanding(remote);
       inc_active_searches();
-      remote.req_sent = self.now;
+      remote.req_sent = now;
     }
     // }
 
@@ -267,12 +265,11 @@ awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
   };
   timeout::for_all_node(self, cfg.refresh_interval, f);
 
-  if (result != client::Res::ERR_TOKEN) {
-    /* Bootstrap contacts */
+  if (use_bootstrap) {
     dht::KContact cur;
-    while (bootstrap_take_head(self, cur)) {
+    while (tx::has_free_transaction(self) && bootstrap_take_head(self, cur)) {
       auto closure = bootstrap_alloc(self, cur);
-      result = client::find_node(self, out, cur.contact, self.id, closure);
+      auto result = client::find_node(self, out, cur.contact, rt.id, closure);
       if (result == client::Res::OK) {
         inc_active_searches();
       } else {
@@ -285,19 +282,18 @@ awake_look_for_nodes(DHT &self, sp::Buffer &out, std::size_t missing_contacts) {
 
   if (missing_contacts > 0) {
     Timestamp next = tx::next_available(self);
-    if (next > self.now) {
+    if (next > now) {
       return next;
     } else {
-      // arbritary?
-      return self.now + cfg.transaction_timeout;
+      return now + cfg.transaction_timeout;
     }
   }
 
-  return self.now + cfg.refresh_interval;
-} // awake_look_for_nodes()
+  return now + cfg.refresh_interval;
+}
 
 static Timestamp
-on_awake(DHT &self, sp::Buffer &out) noexcept {
+on_awake_find_nodes(DHT &self, sp::Buffer &out) noexcept {
   Timestamp result(self.now + self.config.refresh_interval);
 
   auto percentage = [](std::uint32_t t, std::uint32_t c) {
@@ -325,7 +321,8 @@ on_awake(DHT &self, sp::Buffer &out) noexcept {
     // TODO if we can't mint new tx then next should be calculated base on when
     // soonest next tx timesout is so we can directly reuse it. (it should not
     // be the config.refresh_interval of 15min if we are under conf.p_seek)
-    auto awake_next = awake_look_for_nodes(self, out, look_for);
+    auto awake_next =
+        awake_look_for_nodes(self, self.routing_table, out, look_for, true);
     result = std::min(result, awake_next);
     logger::awake::contact_scan(self);
   }
@@ -915,48 +912,24 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
   return true;
 }
 
-// static bool
-// handle_response(dht::MessageContext &ctx, const dht::NodeId &sender) noexcept
-// {
-//   return true;
-// }
+static bool
+handle_response(dht::MessageContext &ctx,
+                const krpc::SampleInfohashesResponse &res) noexcept {
+  // TODO logger::receive::res::sample_infohashes(ctx);
+
+  // message(ctx, res.sender, [](auto &node) { //
+  // });
+
+  return true;
+}
 
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
-  //   return bencode::d::dict(ctx.in, [&ctx](auto &p) {
-  //     bool b_id = false;
-  //     bool b_ip = false;
-  //
-  //     dht::NodeId sender;
-  //
-  //   Lstart:
-  //     if (!b_id && bencode::d::pair(p, "id", sender.id)) {
-  //       b_id = true;
-  //       goto Lstart;
-  //     }
-  //
-  //     {
-  //       Contact ip;
-  //       if (!b_ip && bencode::d::pair(p, "ip", ip)) {
-  //         ctx.ip_vote = ip;
-  //         assertx(bool(ctx.ip_vote));
-  //         b_ip = true;
-  //         goto Lstart;
-  //       }
-  //     }
-  //
-  //     if (bencode_any(p, "ping resp")) {
-  //       goto Lstart;
-  //     }
-  //
-  //     if (b_id) {
-  //       return handle_response(ctx, sender);
-  //     }
-  //
-  // logger::receive::parse::error(ctx.dht, p, "'ping' response missing 'id'");
-  //     return false;
-  // });
-  return true;
+  krpc::SampleInfohashesResponse res;
+  if (krpc::parse_sample_infohashes_response(ctx, res)) {
+    return handle_response(ctx, res);
+  }
+  return false;
 }
 
 static bool

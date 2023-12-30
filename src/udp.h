@@ -51,10 +51,10 @@ send(fd &, const Contact &, /*OUT*/ sp::Buffer &) noexcept;
 namespace net {
 //=====================================
 bool
-local(fd &, Contact &) noexcept;
+local(const fd &, Contact &) noexcept;
 
 bool
-remote(fd &, Contact &) noexcept;
+remote(const fd &, Contact &) noexcept;
 
 //=====================================
 int

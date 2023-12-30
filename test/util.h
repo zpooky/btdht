@@ -227,4 +227,16 @@ static inline void
 print(const char *prefix, const sp::Buffer &buffer) noexcept {
   print(prefix, buffer.raw, buffer.length);
 }
+
+template <typename RANDOM, typename T>
+static inline void
+shuffle_array(RANDOM &r, T *array, size_t length) noexcept {
+  for (size_t idx = 0; idx < length; ++idx) {
+    auto replace = uniform_dist(r, std::uint32_t(0), std::uint32_t(length));
+    if (idx != replace) {
+      using std::swap;
+      swap(array[idx], array[replace]);
+    }
+  }
+}
 #endif

@@ -483,9 +483,10 @@ Transaction::Transaction() noexcept
 Transaction::Transaction(const char *str) noexcept
     : Transaction() {
   size_t l = strlen(str);
-  assertx(l < sizeof(id));
+  assertx(l < sizeof(id));//TODO
   memcpy(id, str, l);
   length = l;
+  id[length]='\0';
 }
 
 Transaction &
@@ -999,12 +1000,11 @@ activity(const Peer &peer) noexcept {
 // ========================================
 /*dht::Config*/
 Config::Config() noexcept
-    // seconds
     : min_timeout_interval(5)
     , refresh_interval(sp::Minutes(15))
     , peer_age_refresh(45)
     , token_max_age(15)
-    , transaction_timeout(5)
+    , transaction_timeout(1)
     //
     , bootstrap_generation_max(16)
     , percentage_seek(40)

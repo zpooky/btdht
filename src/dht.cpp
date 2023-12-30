@@ -112,9 +112,6 @@ init(dht::DHT &dht, const Options &o) noexcept {
     bootstrap_insert(dht, dht::KContact(0, cur));
   });
 
-  if (!tx::init(dht.client)) {
-    return false;
-  }
   return true;
 }
 
@@ -169,8 +166,8 @@ support_sample_infohashes(const sp::byte *version) noexcept {
     /* # yes
      * 0x0207
      * 0x0206
-     * 0x0102
      * 0x012F
+     * 0x012E
      * 0x012B
      * 0x0102
      * # not
@@ -178,6 +175,7 @@ support_sample_infohashes(const sp::byte *version) noexcept {
      * 0x0101
      * 0x0100
      * 0x0010
+     * 0x000f
      */
     return true;
   }
@@ -190,8 +188,6 @@ support_sample_infohashes(const sp::byte *version) noexcept {
 
 dht::Node *
 dht_insert(DHT &self, const sp::byte *version, const Node &contact) noexcept {
-  fprintf(stderr, "%s:version[%.*s]contact[%s]\n", __func__, 2,
-          (const char *)version, to_string(contact.contact));
   dht::Node *result = dht::insert(self.routing_table, contact);
 
   if (support_sample_infohashes(version)) {

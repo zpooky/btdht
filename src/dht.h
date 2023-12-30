@@ -17,9 +17,6 @@ bool
 init(DHT &, const Options &) noexcept;
 
 bool
-is_good(const DHT &, const Node &) noexcept;
-
-bool
 is_blacklisted(const DHT &, const Contact &) noexcept;
 
 bool

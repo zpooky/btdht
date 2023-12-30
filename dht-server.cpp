@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <Log.h>
 #include <Options.h>
 #include <algorithm>
@@ -428,8 +429,10 @@ main_loop(dht::DHT &self, Awake on_awake) noexcept {
 // echo "asd" | netcat --udp 127.0.0.1 45058
 int
 main(int argc, char **argv) {
-  fprintf(stderr, "sizeof(DHT): %zuB %zuKB\n", sizeof(dht::DHT),
-          sizeof(dht::DHT) / 1024);
+  fprintf(stderr, "sizeof(DHT): %zuB %zuKB %zuMB\n", sizeof(dht::DHT),
+          sizeof(dht::DHT) / 1024, sizeof(dht::DHT) / 1024 * 1024);
+  pid_t pid = getpid();
+  fprintf(stderr, "pid: %lu\n", (unsigned long)pid);
   dht::Options options;
   if (!dht::parse(options, argc, argv)) {
     return 1;
