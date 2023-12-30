@@ -71,7 +71,8 @@ struct ParseContext {
 namespace tx {
 struct Tx;
 
-using TxCancelHandle = void (*)(dht::DHT &, const krpc::Transaction &, const Timestamp &, void *);
+using TxCancelHandle = void (*)(dht::DHT &, const krpc::Transaction &,
+                                const Timestamp &, void *);
 using TxHandle = bool (*)(dht::MessageContext &, void *);
 // dht::TxContext
 struct TxContext {

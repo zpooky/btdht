@@ -219,14 +219,15 @@ consume_transaction(dht::DHT &dht, const krpc::Transaction &needle,
     if (tx) {
       // Note: compare prefix in tree, here compare both prefix and suffix
       if (tx->operator==(needle)) {
+        assertx(self.active > 0);
+        --self.active;
+
         out = tx->context;
         out.latency = dht.now - tx->sent;
 
         reset(*tx);
         assertx(!is_sent(*tx));
         move_front(self, tx);
-        assertx(self.active > 0);
-        --self.active;
 
         return true;
       }
@@ -332,13 +333,13 @@ mint_transaction(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
   assertx(debug_count(dht) == Client::tree_capacity);
   assertx(debug_is_ordered(dht, NULL, is_exp, is_snt));
 
-  Client &client = dht.client;
+  Client &self = dht.client;
 
-  Tx *const tx = client.timeout_head;
+  Tx *const tx = self.timeout_head;
   if (tx) {
     if (is_sent(*tx) && is_expired(*tx, dht.now)) {
-      assertx(client.active > 0);
-      --client.active;
+      assertx(self.active > 0);
+      --self.active;
 
       tx->context.timeout(dht, tx);
       reset(*tx);
@@ -346,7 +347,7 @@ mint_transaction(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
     }
 
     if (!is_sent(*tx)) {
-      ++client.active;
+      ++self.active;
       make(*tx);
 
       out = krpc::Transaction(tx->prefix, tx->suffix);
@@ -355,8 +356,8 @@ mint_transaction(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
       assertx(dht.now > sp::Timestamp(0));
       tx->sent = dht.now;
 
-      unlink(client, tx);
-      add_back(client, tx);
+      unlink(self, tx);
+      add_back(self, tx);
 
       assertx(debug_is_ordered(dht, tx, is_exp, is_snt));
 
@@ -411,23 +412,23 @@ next_available(const dht::DHT &self) noexcept {
 
 //=====================================
 void
-eager_tx_timeout(dht::DHT &self) noexcept {
-  dht::Client &client = self.client;
+eager_tx_timeout(dht::DHT &dht) noexcept {
+  dht::Client &self = dht.client;
 
-  assertx(debug_count(self) == Client::tree_capacity);
-  assertx(debug_is_ordered(self, NULL, false, false));
+  assertx(debug_count(dht) == Client::tree_capacity);
+  assertx(debug_is_ordered(dht, NULL, false, false));
 
-  Tx *it = client.timeout_head;
+  Tx *it = self.timeout_head;
   while (it) {
     Tx *const next = it->timeout_next;
-    if (is_expired(*it, self.now)) {
-      assertx(client.active > 0);
-      --client.active;
+    if (is_sent(*it) && is_expired(*it, dht.now)) {
+      assertx(self.active > 0);
+      --self.active;
 
-      it->context.timeout(self, it);
+      it->context.timeout(dht, it);
       reset(*it);
 
-      assertx(debug_is_ordered(self, it, true, true));
+      assertx(debug_is_ordered(dht, it, true, true));
     } else if (is_sent(*it)) {
       break;
     } else {
@@ -435,8 +436,8 @@ eager_tx_timeout(dht::DHT &self) noexcept {
     it = next;
   } // while
 
-  assertx(debug_count(self) == Client::tree_capacity);
-  assertx(debug_is_ordered(self, NULL, false, false));
+  assertx(debug_count(dht) == Client::tree_capacity);
+  assertx(debug_is_ordered(dht, NULL, false, false));
 }
 
 //=====================================
