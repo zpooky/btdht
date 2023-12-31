@@ -444,7 +444,9 @@ eager_tx_timeout(dht::DHT &dht) noexcept {
 
 //=====================================
 const Tx *
-next_timeout(const dht::Client &client) noexcept {
+next_timeout(const dht::DHT &self) noexcept {
+  const dht::Client &client = self.client;
+  const Config &cfg = self.config;
   Tx *const head = client.timeout_head;
   Tx *it = head;
   if (it) {
@@ -452,6 +454,9 @@ next_timeout(const dht::Client &client) noexcept {
       assertx(it->timeout_next);
       assertx(it->timeout_priv);
       if (is_sent(*it)) {
+        assertxs(!is_expired(*it, self.now), uint64_t(it->sent),
+                 uint64_t(it->sent + cfg.transaction_timeout),
+                 uint64_t(self.now));
         return it;
       }
 

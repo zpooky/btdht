@@ -7,7 +7,8 @@ spdht_test_src = files([
   'timout_test.cpp',
   'upnpTest.cpp',
   'transactionTest.cpp',
-  'mainlineTest.cpp'
+  'mainlineTest.cpp',
+  'utilTest.cpp',
 ])
 
 spdht_test_deps = spdht_deps

@@ -548,11 +548,11 @@ ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "\033[91mping response timeout\033[0m transaction[");
+  fprintf(f, "\033[91mping response timeout\033[0m tx[");
   dht::print_hex(f, tx);
   fprintf(f, "] sent: ");
   print_time(f, sent);
-  fprintf(f, "seq[%zu]\n", tout++);
+  fprintf(f, "#[%zu]\n", tout++);
 }
 
 void
@@ -563,11 +563,11 @@ find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "\033[91mfind_node response timeout\033[0m transaction[");
+  fprintf(f, "\033[91mfind_node response timeout\033[0m tx[");
   dht::print_hex(f, tx);
   fprintf(f, "] sent: ");
   print_time(f, sent);
-  fprintf(f, "seq[%zu]\n", tout++);
+  fprintf(f, "#[%zu]\n", tout++);
 }
 
 void
@@ -578,11 +578,11 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "\033[91mget_peers response timeout\033[0m transaction[");
+  fprintf(f, "\033[91mget_peers response timeout\033[0m tx[");
   dht::print_hex(f, tx);
   fprintf(f, "] sent: ");
   print_time(f, sent);
-  fprintf(f, "seq[%zu]\n", tout++);
+  fprintf(f, "#[%zu]\n", tout++);
 }
 
 void
@@ -593,11 +593,11 @@ sample_infohashes_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "\033[91msample_infohashes response timeout\033[0m transaction[");
+  fprintf(f, "\033[91msample_infohashes response timeout\033[0m tx[");
   dht::print_hex(f, tx);
   fprintf(f, "] sent: ");
   print_time(f, sent);
-  fprintf(f, "seq[%zu]\n", tout++);
+  fprintf(f, "#[%zu]\n", tout++);
 }
 
 } // namespace error

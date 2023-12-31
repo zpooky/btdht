@@ -155,7 +155,7 @@ Stat::Stat() noexcept
 }
 
 DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &ih) noexcept
-    : routing_table{self.random, self.now, ih, self.config, false} {
+    : routing_table{self.random, self.tb, self.now, ih, self.config} {
 }
 
 // dht::DHT
@@ -175,8 +175,8 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , should_exit(false)
     //}}}
     , db{config, r, n}
-    , routing_table(r, n, this->id, config, true)
-    , timeout(n)
+    , routing_table(r, this->tb, n, this->id, config)
+    , tb(n)
     //}}}
     // recycle contact list {{{
     , recycle_contact_list()
@@ -230,4 +230,5 @@ MessageContext::MessageContext(DHT &p_dht, krpc::ParseContext &ctx,
 }
 
 } // namespace dht
-  //=====================================
+
+//=====================================

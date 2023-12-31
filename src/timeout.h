@@ -14,6 +14,14 @@ struct Timeout {
   Timeout(const Timeout &) = delete;
 };
 
+struct TimeoutBox {
+  Timeout dummy;
+  Timeout *timeout;
+  explicit TimeoutBox(Timestamp &) noexcept;
+  virtual ~TimeoutBox() noexcept {
+  }
+};
+
 //=====================================
 std::size_t
 debug_count_nodes(const Timeout &) noexcept;

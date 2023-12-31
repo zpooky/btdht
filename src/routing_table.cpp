@@ -93,22 +93,19 @@ RoutingTableLess::operator()(const RoutingTable *f,
 }
 
 // ========================================
-DHTMetaRoutingTable::DHTMetaRoutingTable(prng::xorshift32 &r, Timestamp &n,
+DHTMetaRoutingTable::DHTMetaRoutingTable(prng::xorshift32 &r,
+                                         timeout::TimeoutBox &_tb, Timestamp &n,
                                          const dht::NodeId &i,
-                                         const dht::Config &c, bool to)
+                                         const dht::Config &c)
     : root(nullptr)
     , rt_reuse(160)
     , random{r}
+    , tb{_tb}
     , id{i}
     , now{n}
     , config(c)
     , total_nodes(0)
-    , bad_nodes(0)
-    , dummy{n}
-    , timeout(NULL) {
-  if (to) {
-    timeout = &dummy;
-  }
+    , bad_nodes(0) {
 }
 
 DHTMetaRoutingTable::~DHTMetaRoutingTable() {
@@ -121,11 +118,11 @@ DHTMetaRoutingTable::~DHTMetaRoutingTable() {
 
       // fprintf(stderr, "it[%p]\n", (void *)it);
       assertx(debug_bucket_count(it->bucket) == it->bucket.length);
-      if (this->timeout) {
+      if (this->tb.timeout) {
         for (std::size_t i = 0; i < Bucket::K; ++i) {
           Node &node = it->bucket.contacts[i];
           if (is_valid(node)) {
-            timeout::unlink(*this->timeout, &node);
+            timeout::unlink(*this->tb.timeout, &node);
           }
         } // for
       }
@@ -326,10 +323,12 @@ debug_correct_level(const DHTMetaRoutingTable &self) noexcept {
   }
 
   assertxs(node_cnt == nodes_total(self), node_cnt, nodes_total(self));
+#if 0
   if (self.timeout) {
     assertxs(node_cnt == timeout::debug_count_nodes(*self.timeout), node_cnt,
              timeout::debug_count_nodes(*self.timeout));
   }
+#endif
   assertxs(nodes_good(self) <= nodes_total(self), nodes_good(self),
            nodes_total(self));
 
@@ -439,8 +438,8 @@ reset(DHTMetaRoutingTable &self, Node &contact) noexcept {
 static bool
 timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
   if (is_valid(contact)) {
-    if (self.timeout) {
-      timeout::unlink(*self.timeout, &contact);
+    if (self.tb.timeout) {
+      timeout::unlink(*self.tb.timeout, &contact);
     }
 
     if (contact.good) {
@@ -763,7 +762,7 @@ node_move(DHTMetaRoutingTable &self, Node &subject, Bucket &dest) noexcept {
     *nc = subject;
     nc->timeout_next = nc->timeout_priv = nullptr;
 
-    timeout::move(*self.timeout, &subject, nc);
+    timeout::move(*self.tb.timeout, &subject, nc);
     assertx(is_valid(*nc));
 
     // reset
@@ -1157,8 +1156,8 @@ Lstart:
     if (inserted) {
       assertxs(prefix_compare(self.id, inserted->id.id, leaf->depth), xx,
                leaf->depth);
-      if (self.timeout) {
-        timeout::insert_new(*self.timeout, inserted);
+      if (self.tb.timeout) {
+        timeout::insert_new(*self.tb.timeout, inserted);
       }
 
       logger::routing::insert(self, *inserted);

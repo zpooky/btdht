@@ -74,16 +74,17 @@ static bool
 for_all_node(dht::DHT &self, sp::Milliseconds timeout, F f) {
   const dht::Node *start = nullptr;
   assertx(debug_assert_all(self.routing_table));
+  assertx(self.tb.timeout);
   bool result = true;
 Lstart : {
-  dht::Node *const node = timeout::take_node(self.timeout, timeout);
+  dht::Node *const node = timeout::take_node(*self.tb.timeout, timeout);
   if (node) {
     if (node == start) {
-      assertx(!timeout::debug_find_node(self.timeout, node));
-      timeout::prepend(self.timeout, node);
+      assertx(!timeout::debug_find_node(*self.tb.timeout, node));
+      timeout::prepend(*self.tb.timeout, node);
       assertx(node->timeout_next);
       assertx(node->timeout_priv);
-      assertx(timeout::debug_find_node(self.timeout, node) == node);
+      assertx(timeout::debug_find_node(*self.tb.timeout, node) == node);
       assertx(debug_assert_all(self.routing_table));
       return true;
     }
@@ -91,7 +92,7 @@ Lstart : {
     if (!start) {
       start = node;
     }
-    assertx(!timeout::debug_find_node(self.timeout, node));
+    assertx(!timeout::debug_find_node(*self.tb.timeout, node));
 
     // printf("node: %s\n", to_hex(node->id));
 
@@ -106,18 +107,18 @@ Lstart : {
     }
 
     if (f(self, *node)) {
-      timeout::append_all(self.timeout, node);
+      timeout::append_all(*self.tb.timeout, node);
       assertx(node->timeout_next);
       assertx(node->timeout_priv);
-      assertx(timeout::debug_find_node(self.timeout, node) == node);
+      assertx(timeout::debug_find_node(*self.tb.timeout, node) == node);
       assertx(debug_assert_all(self.routing_table));
 
       goto Lstart;
     } else {
-      timeout::prepend(self.timeout, node);
+      timeout::prepend(*self.tb.timeout, node);
       assertx(node->timeout_next);
       assertx(node->timeout_priv);
-      assertx(timeout::debug_find_node(self.timeout, node) == node);
+      assertx(timeout::debug_find_node(*self.tb.timeout, node) == node);
       assertx(debug_assert_all(self.routing_table));
 
       result = false;
@@ -175,21 +176,21 @@ on_awake_ping(DHT &self, sp::Buffer &out) noexcept {
   /* Calculate next timeout based on the head if the timeout list which is in
    * sorted order where to oldest node is first in the list.
    */
-  Node *const tHead = self.timeout.timeout_node;
+  Node *const tHead = self.tb.timeout->timeout_node;
   if (tHead) {
-    self.timeout.timeout_next = tHead->req_sent + cfg.refresh_interval;
+    self.tb.timeout->timeout_next = tHead->req_sent + cfg.refresh_interval;
 
-    if (self.now >= self.timeout.timeout_next) {
-      self.timeout.timeout_next = self.now + cfg.min_timeout_interval;
+    if (self.now >= self.tb.timeout->timeout_next) {
+      self.tb.timeout->timeout_next = self.now + cfg.min_timeout_interval;
     }
 
   } else {
     /* timeout queue is empty */
-    self.timeout.timeout_next = self.now + cfg.refresh_interval;
+    self.tb.timeout->timeout_next = self.now + cfg.refresh_interval;
   }
 
-  assertx(self.timeout.timeout_next > self.now);
-  return self.timeout.timeout_next;
+  assertx(self.tb.timeout->timeout_next > self.now);
+  return self.tb.timeout->timeout_next;
 }
 
 static Timestamp
@@ -197,12 +198,13 @@ on_awake_eager_tx_timeout(DHT &self, sp::Buffer &) noexcept {
   Config &cfg = self.config;
 
   tx::eager_tx_timeout(self);
-  auto head = tx::next_timeout(self.client);
+  auto head = tx::next_timeout(self);
   if (!head) {
     return self.now + cfg.refresh_interval;
   }
   auto next = head->sent + cfg.transaction_timeout;
-  assertxs(next > self.now, uint64_t(head->sent), uint64_t(self.now));
+  assertxs(next > self.now, uint64_t(head->sent),
+           uint64_t(head->sent + cfg.transaction_timeout), uint64_t(self.now));
   return next;
 }
 

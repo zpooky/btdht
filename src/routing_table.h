@@ -102,6 +102,7 @@ struct DHTMetaRoutingTable {
   heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
 
   prng::xorshift32 &random;
+  timeout::TimeoutBox &tb;
   const dht::NodeId id;
   const Timestamp &now;
   const dht::Config &config;
@@ -109,16 +110,13 @@ struct DHTMetaRoutingTable {
   std::uint32_t total_nodes;
   std::uint32_t bad_nodes;
 
-  timeout::Timeout dummy;
-  timeout::Timeout *timeout;
-
   sp::UinArray<
       std::tuple<void (*)(void *ctx, const Contact &) noexcept, void *>>
       retire_good;
   void *cache{nullptr};
 
-  DHTMetaRoutingTable(prng::xorshift32 &, Timestamp &, const dht::NodeId &,
-                      const dht::Config &, bool timeout);
+  DHTMetaRoutingTable(prng::xorshift32 &, timeout::TimeoutBox &tb, Timestamp &,
+                      const dht::NodeId &, const dht::Config &);
   ~DHTMetaRoutingTable();
 };
 

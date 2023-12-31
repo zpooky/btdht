@@ -40,7 +40,7 @@ eager_tx_timeout(dht::DHT &) noexcept;
 
 //=====================================
 const Tx *
-next_timeout(const dht::Client &) noexcept;
+next_timeout(const dht::DHT &dht) noexcept;
 
 //=====================================
 } // namespace tx

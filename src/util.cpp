@@ -483,10 +483,10 @@ Transaction::Transaction() noexcept
 Transaction::Transaction(const char *str) noexcept
     : Transaction() {
   size_t l = strlen(str);
-  assertx(l < sizeof(id));//TODO
+  assertx(l < sizeof(id)); // TODO
   memcpy(id, str, l);
   length = l;
-  id[length]='\0';
+  id[length] = '\0';
 }
 
 Transaction &

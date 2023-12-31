@@ -73,10 +73,6 @@ response::dump(sp::Buffer &buf, const Transaction &t,
       return false;
     }
 
-    if (!bencode::e::pair(b, "pid", pid)) {
-      return false;
-    }
-
     if (!bencode::e::value(b, "cache")) {
       return false;
     }

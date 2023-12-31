@@ -29,12 +29,12 @@
 #include "timeout.h"
 #include "util.h"
 
+//=====================================
 namespace dht {
 struct MessageContext;
 struct DHT;
 enum class Domain { Domain_public, Domain_private };
 } // namespace dht
-
 //=====================================
 namespace krpc {
 // krpc::ParseContext
@@ -249,7 +249,7 @@ struct DHT {
   dht::DHTMetaRoutingTable routing_table;
 
   // timeout {{{
-  timeout::Timeout timeout;
+  timeout::TimeoutBox tb;
   //}}}
 
   // recycle contact list {{{
@@ -274,7 +274,7 @@ struct DHT {
   DHTMetaSearch searches;
   // struct {
   sp::UinStaticArray<DHTMetaScrape, 8> scrapes;
-  sp::UinStaticArray<sp::BloomFilter<Ip, 8 * 1024>, 24> scrape_hour;
+  sp::UinStaticArray<sp::BloomFilter<Ip, 8 * 1024>, 8> scrape_hour;
   std::size_t scrape_hour_i;
   Timestamp scrape_hour_time;
   // } scrape;

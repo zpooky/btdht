@@ -247,11 +247,11 @@ assert_present(dht::DHT &dht, const Node &current) {
     ASSERT_TRUE(res->timeout_next);
     ASSERT_TRUE(res->timeout_priv);
 
-    timeout::unlink(dht.timeout, res);
+    timeout::unlink(*dht.tb.timeout, res);
     ASSERT_FALSE(res->timeout_next);
     ASSERT_FALSE(res->timeout_priv);
 
-    timeout::append_all(dht.timeout, res);
+    timeout::append_all(*dht.tb.timeout, res);
     ASSERT_TRUE(res->timeout_next);
     ASSERT_TRUE(res->timeout_priv);
   }
@@ -475,7 +475,7 @@ TEST(dhtTest, test_append) {
         std::list<dht::NodeId> unique;
 
         std::size_t number = 0;
-        for_each(dht.timeout.timeout_node, [&](Node *n) { //
+        for_each(dht.tb.timeout->timeout_node, [&](Node *n) { //
           ++number;
           insert(unique, n->id);
           // printf("NodeId: ");
@@ -487,14 +487,14 @@ TEST(dhtTest, test_append) {
         ASSERT_TRUE(is_unique(unique));
       }
 
-      timeout::unlink(dht.timeout, res);
+      timeout::unlink(*dht.tb.timeout, res);
       ASSERT_FALSE(res->timeout_next);
       ASSERT_FALSE(res->timeout_priv);
       {
         std::list<dht::NodeId> unique;
 
         std::size_t number = 0;
-        for_each(dht.timeout.timeout_node, [&](Node *n) { //
+        for_each(dht.tb.timeout->timeout_node, [&](Node *n) { //
           ++number;
           insert(unique, n->id);
         });
@@ -504,7 +504,7 @@ TEST(dhtTest, test_append) {
       }
 
       {
-        timeout::append_all(dht.timeout, res);
+        timeout::append_all(*dht.tb.timeout, res);
         ASSERT_TRUE(res->timeout_next);
         ASSERT_TRUE(res->timeout_priv);
       }
@@ -513,7 +513,7 @@ TEST(dhtTest, test_append) {
         std::list<dht::NodeId> unique;
 
         std::size_t number = 0;
-        for_each(dht.timeout.timeout_node, [&](Node *n) { //
+        for_each(dht.tb.timeout->timeout_node, [&](Node *n) { //
           ++number;
           insert(unique, n->id);
         });

@@ -11,6 +11,13 @@ Timeout::Timeout(Timestamp &n) noexcept
 }
 
 //=====================================
+TimeoutBox::TimeoutBox(Timestamp &now) noexcept
+    : dummy(now)
+    , timeout() {
+  timeout = &dummy;
+}
+
+//=====================================
 std::size_t
 debug_count_nodes(const Timeout &self) noexcept {
   std::size_t result = 0;
