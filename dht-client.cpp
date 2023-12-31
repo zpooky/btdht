@@ -826,6 +826,8 @@ parse_command(int argc, char **argv) {
       return bind_exe(exe, subcommand, subc, subv, handle_find_node);
     } else if (std::strcmp(subcommand, "get_peers") == 0) {
       return bind_exe(exe, subcommand, subc, subv, handle_get_peers);
+    } else if (std::strcmp(subcommand, "priv_get_peers") == 0) {
+      return bind_priv_exe(exe, subcommand, subc, subv, handle_get_peers);
     } else if (std::strcmp(subcommand, "announce_peer") == 0) {
       return bind_exe(exe, subcommand, subc, subv, handle_announce_peer);
     } else if (std::strcmp(subcommand, "sample_infohashes") == 0) {
