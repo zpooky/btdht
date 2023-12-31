@@ -182,6 +182,11 @@ support_sample_infohashes(const sp::byte *version) noexcept {
   if (std::memcmp(version, (const sp::byte *)"sp", 2) == 0) {
     return true;
   }
+  if (std::memcmp(version, (const sp::byte *)"ml", 2) == 0) {
+    // 4:hex[6D6C0109]: 4(ml__)
+    // 4:hex[6D6C010B]: 4(ml__)
+    return true;
+  }
 
   return false;
 }

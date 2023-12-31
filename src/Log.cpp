@@ -88,51 +88,75 @@ namespace req {
 void
 ping(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.request.ping;
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive request ping (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive request ping (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 }
 
 void
 find_node(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.request.find_node;
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive request find_node (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive request find_node (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 }
 
 void
 get_peers(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
   ++s.received.request.get_peers;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive request get_peers (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive request get_peers (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 }
 
 void
 announce_peer(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.request.announce_peer;
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive request announce_peer (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive request announce_peer (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 }
 
 void
 error(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.request.error;
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "unknow request query type %s (%s)\n", ctx.query, to_string(ctx.remote));
+  fprintf(f, "UNKNOWN request %s (%s) <", ctx.query, to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 
   auto query_len = std::strlen(ctx.query);
 
@@ -185,19 +209,16 @@ error(dht::MessageContext &ctx) noexcept {
 void
 sample_infohashes(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
+  ++s.received.request.sample_infohashes;
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive sample_infohashes\n");
-  ++s.received.request.sample_infohashes;
-
-  f = stderr;
-  fprintf(f, "sample_infohashes");
-  fprintf(f, " version[");
-  print_raw(f, ctx.pctx.remote_version,
-            strnlen((char *)ctx.pctx.remote_version,
-                    sizeof(ctx.pctx.remote_version)));
-  fprintf(f, "] (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive request sample_infohashes (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 }
 
 void
@@ -213,59 +234,84 @@ namespace res {
 void
 ping(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.response.ping;
 
 #ifdef LOG_RES_PING
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive response ping (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive response ping      (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 #endif
 }
 
 void
 find_node(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.response.find_node;
 
 #ifdef LOG_RES_FIND_NODE
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive response find_node (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive response find_node (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 #endif
 }
 
 void
 get_peers(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.response.get_peers;
 
 #ifdef LOG_RES_GET_PEERS
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive response get_peers (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive response get_peers (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 #endif
 }
 
 void
 announce_peer(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.response.announce_peer;
 
 #ifdef LOG_RES_ANNOUNCE_PEER
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "receive response announce_peer (%s)\n", to_string(ctx.remote));
+  fprintf(f, "receive response announce_peer (%s) <", to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 #endif
 }
 
 void
 error(dht::MessageContext &ctx) noexcept {
   dht::Stat &s = ctx.dht.statistics;
+  krpc::ParseContext &pctx = ctx.pctx;
+  const krpc::Transaction &tx = ctx.transaction;
+
   ++s.received.response.error;
 
   auto f = stdout;
   print_time(f, ctx);
-  fprintf(f, "unknow response query type %s (%s)\n", ctx.query, to_string(ctx.remote));
+  fprintf(f, "UNKNOWN response %s (%s) <", ctx.query, to_string(ctx.remote));
+  dht::print_hex(f, tx.id, tx.length);
+  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
 }
 
 void
@@ -292,7 +338,7 @@ unknown_tx(dht::MessageContext &ctx, const sp::Buffer &in) noexcept {
   auto f = stderr;
 
   print_time(f, ctx);
-  fprintf(f, "unknow transaction[");
+  fprintf(f, "unknown transaction[");
   auto &tx = ctx.transaction;
   dht::print_hex(f, tx.id, tx.length);
   fprintf(f, "]\n");
