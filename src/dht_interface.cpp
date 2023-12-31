@@ -31,9 +31,6 @@ static Timestamp
 on_awake_ping(DHT &, sp::Buffer &) noexcept;
 
 static Timestamp
-on_awake_bootstrap_reset(DHT &, sp::Buffer &) noexcept;
-
-static Timestamp
 on_awake_eager_tx_timeout(DHT &, sp::Buffer &) noexcept;
 
 static Timestamp
@@ -60,7 +57,6 @@ setup(dht::Modules &modules, bool setup_cb) noexcept {
 #if 1
     insert(modules.awake.on_awake, &dht::on_awake_peer_db_glue);
 #endif
-    insert(modules.awake.on_awake, &dht::on_awake_bootstrap_reset);
     insert(modules.awake.on_awake, &dht::on_awake_find_nodes);
     insert(modules.awake.on_awake, &dht::on_awake_ping);
     insert(modules.awake.on_awake, &dht::on_awake_eager_tx_timeout);
@@ -194,28 +190,6 @@ on_awake_ping(DHT &self, sp::Buffer &out) noexcept {
 
   assertx(self.timeout.timeout_next > self.now);
   return self.timeout.timeout_next;
-}
-
-static Timestamp
-on_awake_bootstrap_reset(DHT &self, sp::Buffer &) noexcept {
-  Config &cfg = self.config;
-  Timestamp next = self.bootstrap_last_reset + cfg.bootstrap_reset;
-  /* Only reset if there is a small amount of nodes in self.bootstrap since we
-   * are starved for potential contacts
-   */
-  assertx(self.now == self.routing_table.now);
-  if (self.now >= next) {
-    // XXX if_empty(bootstrap) try to fetch more nodes from dump.file
-    if (is_empty(self.bootstrap) || nodes_good(self.routing_table) < 100) {
-      bootstrap_reset(self);
-    }
-
-    self.bootstrap_last_reset = self.now;
-    next = self.bootstrap_last_reset + cfg.bootstrap_reset;
-  }
-  assertx(next > self.now);
-
-  return next;
 }
 
 static Timestamp

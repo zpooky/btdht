@@ -17,10 +17,6 @@ bootstrap_insert_force(DHT &, KContact &) noexcept;
 
 //==========================================
 void
-bootstrap_reset(DHT &) noexcept;
-
-//==========================================
-void
 bootstrap_reclaim(DHT &, dht::KContact *) noexcept;
 
 //==========================================
