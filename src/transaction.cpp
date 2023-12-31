@@ -418,23 +418,25 @@ eager_tx_timeout(dht::DHT &dht) noexcept {
   assertx(debug_count(dht) == Client::tree_capacity);
   assertx(debug_is_ordered(dht, NULL, false, false));
 
-  Tx *it = self.timeout_head;
-  while (it) {
-    Tx *const next = it->timeout_next;
-    if (is_sent(*it) && is_expired(*it, dht.now)) {
-      assertx(self.active > 0);
-      --self.active;
+  Tx *const head = self.timeout_head;
+  Tx *it = head;
+  if (it) {
+    do {
+      Tx *const next = it->timeout_next;
+      if (is_sent(*it) && is_expired(*it, dht.now)) {
+        assertx(self.active > 0);
+        --self.active;
 
-      it->context.timeout(dht, it);
-      reset(*it);
+        it->context.timeout(dht, it);
+        reset(*it);
 
-      assertx(debug_is_ordered(dht, it, true, true));
-    } else if (is_sent(*it)) {
-      break;
-    } else {
-    }
-    it = next;
-  } // while
+        assertx(debug_is_ordered(dht, it, true, true));
+      } else {
+        break;
+      }
+      it = next;
+    } while (it != head);
+  }
 
   assertx(debug_count(dht) == Client::tree_capacity);
   assertx(debug_is_ordered(dht, NULL, false, false));
