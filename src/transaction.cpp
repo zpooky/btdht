@@ -9,6 +9,31 @@ using dht::Client;
 using dht::Config;
 using dht::DHT;
 
+//=====================================
+static Timestamp
+expire_time(const Tx &tx) {
+  Config config;
+  return tx.sent + config.transaction_timeout;
+}
+
+static bool
+is_sent(const Tx &tx) noexcept {
+  return tx.sent != Timestamp(0);
+}
+
+static bool
+is_expired(const Tx &tx, const Timestamp &now) noexcept {
+  if (is_sent(tx)) {
+    if (expire_time(tx) > now) {
+      return false;
+    }
+    assertxs(expire_time(tx) <= now, uint64_t(expire_time(tx)), uint64_t(now));
+  }
+
+  return true;
+}
+
+//=====================================
 static bool
 debug_find(const Client &client, Tx *const needle) noexcept {
   assertx(needle);
@@ -56,6 +81,23 @@ Lit:
 static std::size_t
 debug_count(const DHT &dht) noexcept {
   return debug_count(dht.client);
+}
+
+static std::size_t
+debug_count_free_transactions(const DHT &dht) noexcept {
+  std::size_t result = 0;
+  const Client &client = dht.client;
+  const Tx *const head = client.timeout_head;
+  const Tx *it2 = head;
+  if (it2) {
+    do {
+      if (is_expired(*it2, dht.now)) {
+        ++result;
+      }
+      it2 = it2->timeout_next;
+    } while (it2 != head);
+  }
+  return result;
 }
 
 static void
@@ -171,11 +213,6 @@ unlink(Client &self, Tx *t) noexcept {
   return t;
 }
 
-static bool
-is_sent(const Tx &tx) noexcept {
-  return tx.sent != Timestamp(0);
-}
-
 static Tx *
 search(binary::StaticTree<Tx> &tree, const krpc::Transaction &needle) noexcept {
   Tx *const result = (Tx *)find(tree, needle);
@@ -238,31 +275,23 @@ consume_transaction(dht::DHT &dht, const krpc::Transaction &needle,
         move_front(self, tx);
 
         return true;
+      } else {
+        fprintf(stderr, "[]Suffix not found tx: %.*s\n", (int)needle.length,
+                (char *)needle.id);
       }
+    } else {
+      fprintf(stderr, "[]Missing tx: %.*s\n", (int)needle.length,
+              (char *)needle.id);
     }
+  } else {
+    fprintf(stderr, "[]Invalid length tx: %.*s (%zu)\n", (int)needle.length,
+            (char *)needle.id, needle.length);
   }
 
   return false;
 }
 
 //=====================================
-static Timestamp
-expire_time(const Tx &tx) {
-  Config config;
-  return tx.sent + config.transaction_timeout;
-}
-
-static bool
-is_expired(const Tx &tx, const Timestamp &now) noexcept {
-  if (is_sent(tx)) {
-    if (expire_time(tx) > now) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 bool
 has_free_transaction(const DHT &dht) {
   const Client &client = dht.client;
@@ -274,6 +303,7 @@ has_free_transaction(const DHT &dht) {
   } else {
     assertx(false);
   }
+  assertx(debug_count_free_transactions(dht) == 0);
   return false;
 }
 

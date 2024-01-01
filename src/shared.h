@@ -103,7 +103,6 @@ struct TxContext {
 void
 reset(TxContext &) noexcept;
 
-// dht::TxStore
 struct Tx {
   TxContext context;
 
