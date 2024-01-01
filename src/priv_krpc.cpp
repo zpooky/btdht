@@ -100,6 +100,25 @@ response::dump(sp::Buffer &buf, const Transaction &t,
       return false;
     }
 
+    if (!bencode::e::value(b, "bootstrap")) {
+      return false;
+    }
+
+    res = bencode::e::dict(b, [&dht](auto &b2) {
+      if (!bencode::e::pair(b2, "unique_inserts",
+                            dht.bootstrap_filter.unique_inserts)) {
+        return false;
+      }
+      if (!bencode::e::pair(b2, "candidates", length(dht.bootstrap))) {
+        return false;
+      }
+
+      return true;
+    });
+    if (!res) {
+      return false;
+    }
+
     if (!bencode::e::value(b, "db")) {
       return false;
     }
@@ -170,9 +189,6 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     if (!bencode::e::pair(b, "bad_nodes", dht.routing_table.bad_nodes)) {
       return false;
     }
-    // if (!bencode::e::priv::pair(b, "boostrap", dht.bootstrap)) {
-    //   return false;
-    // }
     return true;
   });
 } // response::dump()

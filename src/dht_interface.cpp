@@ -249,7 +249,7 @@ awake_look_for_nodes(dht::DHT &self, DHTMetaRoutingTable &rt, sp::Buffer &out,
       if (result == client::Res::OK) {
         inc_active_searches();
       } else {
-        insert_eager(self.bootstrap, cur);
+        bootstrap_insert_force(self, cur);
         bootstrap_reclaim(self, closure);
         break;
       }
@@ -349,12 +349,12 @@ static bool
 message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
   dht::DHT &self = ctx.dht;
 
-  if (!dht::is_valid(sender)) {
-    logger::receive::parse::invalid_node_id(
-        ctx, ctx.query, ctx.pctx.remote_version,
-        sizeof(ctx.pctx.remote_version), sender);
-    return false;
-  }
+  // if (!dht::is_valid(sender)) {
+  //   logger::receive::parse::invalid_node_id(
+  //       ctx, ctx.query, ctx.pctx.remote_version,
+  //       sizeof(ctx.pctx.remote_version), sender);
+  //   return false;
+  // }
 
   /*request from self*/
   if (self.id == sender.id) {
@@ -362,7 +362,10 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
     return false;
   }
 
-  if (ctx.domain == dht::Domain::Domain_private) {
+  if (!dht::is_valid(sender)) {
+    dht::Node dummy{};
+    f(dummy);
+  } else if (ctx.domain == dht::Domain::Domain_private) {
     dht::Node dummy{};
     f(dummy);
   } else {

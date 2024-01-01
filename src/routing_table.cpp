@@ -262,7 +262,7 @@ debug_print(const char *ctx, const DHTMetaRoutingTable &self) noexcept {
   while (it) {
     auto it_next = it;
     while (it_next) {
-      printf("%p[%zd]->", (void *)it_next, it_next->depth);
+      printf("%p[%zd, nodes(%zu)]->", (void *)it_next, it_next->depth, it_next->bucket.length);
       it_next = it_next->next;
     }
     printf("\n");

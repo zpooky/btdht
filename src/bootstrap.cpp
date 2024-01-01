@@ -8,8 +8,8 @@ maybe_bootstrap_reset(DHT &self) noexcept {
   Timestamp next = self.bootstrap_last_reset + cfg.bootstrap_reset;
   if ((self.now >= next) ||
       self.bootstrap_filter.unique_inserts >
-          size_t((double)theoretical_max_capacity(self.bootstrap_filter) /
-                 1.5)) {
+          size_t((double)theoretical_max_capacity(self.bootstrap_filter) *
+                 0.75)) {
     clear(self.bootstrap_filter);
     self.bootstrap_last_reset = self.now;
   }
@@ -36,6 +36,7 @@ bootstrap_insert(DHT &self, const IdContact &contact) noexcept {
 //==========================================
 void
 bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
+#if 0
   assertx(remote.contact.port != 0);
   if (remote.common > 0) {
     remote.common--;
@@ -45,6 +46,7 @@ bootstrap_insert_force(DHT &self, KContact &remote) noexcept {
   if (insert_eager(self.bootstrap, remote)) {
     insert(self.bootstrap_filter, remote.contact.ip);
   }
+#endif
 }
 
 //==========================================

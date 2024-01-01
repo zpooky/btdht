@@ -58,6 +58,18 @@ debug_count(const DHT &dht) noexcept {
   return debug_count(dht.client);
 }
 
+static void
+debug_print_list(const DHT &dht) {
+  const Client &client = dht.client;
+  const Tx *const head = client.timeout_head;
+  const Tx *it2 = head;
+  do {
+    printf("%p[sent:%lu]->", (void *)it2, std::uint64_t(it2->sent));
+    it2 = it2->timeout_next;
+  } while (it2 != head);
+  printf("\n");
+}
+
 static bool
 debug_is_ordered(const DHT &dht, Tx *const tout, bool is_exp,
                  bool is_snt) noexcept {
@@ -65,27 +77,23 @@ debug_is_ordered(const DHT &dht, Tx *const tout, bool is_exp,
   const Tx *const head = client.timeout_head;
   const Tx *it = head;
 
-  Timestamp priv = it ? it->sent : Timestamp(0);
+  const Tx *priv = nullptr;
 Lit:
   if (it) {
-    /* Current $it should have been sent later or at the same time as the
-     * previous.
-     */
-    if (!(it->sent >= priv)) {
-      const Tx *it2 = head;
-      do {
-        printf("%p[sent:%lu]->", (void *)it2, std::uint64_t(it2->sent));
-        it2 = it2->timeout_next;
-      } while (it2 != head);
-      printf("\n");
+    Timestamp priv_sent = priv ? priv->sent : Timestamp(0);
+    /* $it should have been sent later or the same time as the previous. */
+    if (!(it->sent >= priv_sent)) {
+      debug_print_list(dht);
 
-      assertxs(false, std::uint64_t(it->sent), std::uint64_t(priv), (void *)it,
-               (void *)tout, (void *)head, is_exp, is_snt);
+      assertxs(false, std::uint64_t(it->sent), std::uint64_t(priv_sent),
+               (void *)it, (void *)tout, (void *)head, is_exp, is_snt);
       return false;
     }
 
-    priv = it->sent;
+    priv = it;
     it = it->timeout_next;
+
+    assertx(it->timeout_priv == priv);
 
     if (it != head) {
       goto Lit;
@@ -418,6 +426,7 @@ eager_tx_timeout(dht::DHT &dht) noexcept {
   assertx(debug_count(dht) == Client::tree_capacity);
   assertx(debug_is_ordered(dht, NULL, false, false));
 
+  // [[sent=0], [sent=1, expired=true], [sent=1, expired=false]]
   Tx *const head = self.timeout_head;
   Tx *it = head;
   if (it) {
@@ -429,10 +438,13 @@ eager_tx_timeout(dht::DHT &dht) noexcept {
 
         it->context.timeout(dht, it);
         reset(*it);
+        assertx(!is_sent(*it));
+        assertx(is_expired(*it, dht.now));
 
         assertx(debug_is_ordered(dht, it, true, true));
-      } else {
+      } else if (is_sent(*it) && !is_expired(*it, dht.now)) {
         break;
+      } else {
       }
       it = next;
     } while (it != head);

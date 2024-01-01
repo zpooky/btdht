@@ -107,6 +107,7 @@ reset(TxContext &) noexcept;
 struct Tx {
   TxContext context;
 
+  // XXX index in Client.buffer array (in order to save memory)
   Tx *timeout_next;
   Tx *timeout_priv;
 
@@ -264,7 +265,7 @@ struct DHT {
   Timestamp &now;
   // }}}
 
-  // boostrap {{{
+  // bootstrap {{{
   Timestamp bootstrap_last_reset;
   sp::StaticArray<sp::hasher<Ip>, 2> ip_hashers;
   sp::BloomFilter<Ip, 8 * 1024> bootstrap_filter;

@@ -186,7 +186,7 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , last_activity(0)
     /*total nodes present in the routing table*/
     , now(n)
-    // boostrap {{{
+    // bootstrap {{{
     , bootstrap_last_reset(0)
     , ip_hashers()
     , bootstrap_filter(ip_hashers)
