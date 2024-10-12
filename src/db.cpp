@@ -46,7 +46,8 @@ namespace db {
 //=====================================
 DHTMetaDatabase::DHTMetaDatabase(dht::Config &cfg, prng::xorshift32 &rnd,
                                  Timestamp &n)
-    : lookup_table()
+    : scrape_client{}
+    , lookup_table()
     , key{}
     , activity{0}
     , length_lookup_table{0}
@@ -109,6 +110,7 @@ insert(DHTMetaDatabase &self, const dht::Infohash &infohash,
       logger::peer_db::update(self, infohash, *existing);
     } else {
       existing = insert(table->peers, dht::Peer(contact, self.now, seed));
+      spbt_scrape_client_send(self.scrape_client, infohash, contact);
       if (existing) {
         timeout::append_all(*table, existing);
         logger::peer_db::insert(self, infohash, contact);

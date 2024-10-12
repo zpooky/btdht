@@ -2,6 +2,7 @@
 #define SP_MAINLINE_DHT_DB_H
 
 // #include "shared.h"
+#include "spbt_scrape_client.h"
 #include "util.h"
 
 #include <collection/Array.h>
@@ -43,6 +44,7 @@ namespace db {
 
 //=====================================
 struct DHTMetaDatabase {
+  dht::DHTMeta_spbt_scrape_client scrape_client;
   avl::Tree<dht::KeyValue> lookup_table;
   dht::TokenKey key[2];
   uint32_t activity;
@@ -86,7 +88,7 @@ randomize_samples(DHTMetaDatabase &) noexcept;
 
 //=====================================
 std::uint32_t
-next_randomize_samples(DHTMetaDatabase &, const Timestamp& now) noexcept;
+next_randomize_samples(DHTMetaDatabase &, const Timestamp &now) noexcept;
 
 //=====================================
 

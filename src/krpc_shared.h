@@ -26,7 +26,7 @@ message(sp::Buffer &buf, const Transaction &t, const char *mt,
       return false;
     }
 
-    sp::byte version[4] = {'s', 'p', 0, 1};
+    sp::byte version[4] = {'s', 'p', '0', '2'};
     if (!bencode::e::pair(b, "v", version, sizeof(version))) {
       return false;
     }

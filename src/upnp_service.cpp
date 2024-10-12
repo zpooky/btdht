@@ -196,10 +196,11 @@ for_if_send(dht::DHT &self, const sp::Seconds &) noexcept {
     sprintf(pPort, "%d", current_listen.port);
 
     int error = 0;
-    upnp_dev = upnpDiscover(2000, NULL, NULL, 0, 0, 2, &error);
+    upnp_dev = upnpDiscover(2000, NULL, NULL, 0, 0, 20, &error);
+    printf("upnpDiscover: error:%d\n",error);
     // Retrieve a valid Internet Gateway Device
     int status = UPNP_GetValidIGD(upnp_dev, &upnp_urls, &upnp_data, aLanAddr,
-                                  sizeof(aLanAddr));
+                                  sizeof(aLanAddr), nullptr,0);
     printf("status=%d, lan_addr=%s\n", status, aLanAddr);
 
     if (status == 1 || status == 2) {

@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <cstdio>
 #include <cstring>
+#include <sys/stat.h>
 #include <dht.h>
 #include <dump.h>
 #include <errno.h>
@@ -218,16 +219,16 @@ on_dht_protocol_handle(void *callback, uint32_t events) {
 }
 
 static int
-on_priv_protocol_accept_callback(void *closure, uint32_t events);
+on_priv_protocol_ACCEPT_callback(void *closure, uint32_t events);
 
-struct priv_protocol_accept_callback {
+struct priv_protocol_ACCEPT_callback {
   sp::core_callback core_cb;
   dht::Modules modules;
   dht::DHT &dht;
   dht::Options &options;
   fd &priv_fd;
 
-  priv_protocol_accept_callback(dht::ModulesAwake &awake, dht::DHT &_dht,
+  priv_protocol_ACCEPT_callback(dht::ModulesAwake &awake, dht::DHT &_dht,
                                 dht::Options &_options, fd &_fd)
       : core_cb{}
       , modules{awake}
@@ -241,12 +242,13 @@ struct priv_protocol_accept_callback {
       die("priv interface_dht::setup(modules)");
     }
     core_cb.closure = this;
-    core_cb.callback = on_priv_protocol_accept_callback;
+    core_cb.callback = on_priv_protocol_ACCEPT_callback;
   }
 };
 
 static int
 on_priv_protocol_callback(void *closure, uint32_t events);
+
 struct priv_protocol_callback {
   sp::core_callback core_cb;
   dht::Modules &modules;
@@ -274,12 +276,27 @@ struct priv_protocol_callback {
 };
 
 static int
-on_priv_protocol_accept_callback(void *closure, uint32_t events) {
-  auto self = (priv_protocol_accept_callback *)closure;
+on_priv_protocol_ACCEPT_callback(void *closure, uint32_t events) {
+  struct ucred ucred {};
+  socklen_t len = sizeof(struct ucred);
+
+  auto self = (priv_protocol_ACCEPT_callback *)closure;
   int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
-  fd client_fd{::accept4(int(self->priv_fd), NULL, NULL, flags)};
+  sp::fd client_fd{::accept4(int(self->priv_fd), NULL, NULL, flags)};
+
+  if (!bool(client_fd)) {
+    printf("priv accept4: %s", strerror(errno));
+    return -1;
+  }
   auto client = new priv_protocol_callback{self->modules, self->dht,
                                            self->options, std::move(client_fd)};
+  if (getsockopt(int{client_fd}, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == 0) {
+    printf("pid:%u, uid:%u, gid:%u\n", (unsigned)ucred.pid, ucred.uid,
+           ucred.gid);
+  } else {
+    printf("%s\n", strerror(errno));
+  }
+
   int epoll_fd = self->dht.core.epoll_fd;
   if (!bool(client)) {
     die("accept");
@@ -377,7 +394,7 @@ void
 setup_epoll(dht::DHT &self, dht::ModulesAwake &awake, dht::Options &options,
             fd &udp_fd, fd &signal_fd, fd &priv_fd) noexcept {
   auto dp_cb = new dht_protocol_callback{awake, self, options, udp_fd};
-  auto pp_cb = new priv_protocol_accept_callback{awake, self, options, priv_fd};
+  auto pp_cb = new priv_protocol_ACCEPT_callback{awake, self, options, priv_fd};
   auto i_cb = new interrupt_callback{self, options, signal_fd};
   ::epoll_event ev{};
 
@@ -462,8 +479,13 @@ main(int argc, char **argv) {
   }
   unlink(options.local_socket);
 
-  fd priv_fd = udp::bind_unix_seq(options.local_socket, udp::Mode::NONBLOCKING);
-  if (!priv_fd) {
+  umask(077);
+
+  sp::fd priv_fd =
+      udp::bind_unix_seq(options.local_socket, udp::Mode::NONBLOCKING);
+
+  printf("%s (%d)\n", options.local_socket, int(priv_fd));
+  if (!bool(priv_fd)) {
     fprintf(stderr, "failed to bind: local %s\n", options.local_socket);
     return 3;
   }

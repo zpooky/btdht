@@ -15,10 +15,15 @@
 #include <util/conversions.h>
 
 #include <buffer/Sink.h>
+
+#include <netdb.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#define BUF_SIZE 500
 
 // TODO if no internet connection we will send out request for all nodes in
 // bootstrap, then we will read nodes from cache then it will recurse until
@@ -76,7 +81,7 @@ struct Cache {
 
 //========================
 static void
-on_retire_good(void *, const Contact& in) noexcept;
+on_retire_good(void *, const Contact &in) noexcept;
 
 static void
 on_topup_bootstrap(dht::DHT &) noexcept;
@@ -400,9 +405,11 @@ take_next_read_cache(Cache &self, char (&file)[SIZE]) noexcept {
 static void
 on_retire_good(void *tmp, const Contact &in) noexcept {
   Cache *self = (Cache *)tmp;
-  if (!test(self->seen, in)) {
-    insert(self->seen, in);
-    cache_write_contact(*self, in);
+  if (self) {
+    if (!test(self->seen, in)) {
+      insert(self->seen, in);
+      cache_write_contact(*self, in);
+    }
   }
 }
 
@@ -416,7 +423,39 @@ for_each(T (&arr)[SIZE], F f) noexcept {
 }
 
 static bool
+dns_lookup(dht::DHT &self, const char *hostname, uint16_t port) {
+  struct addrinfo *result = nullptr;
+  struct addrinfo hints = {};
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = 0;
+  hints.ai_protocol = 0;
+
+  if (::getaddrinfo(hostname, nullptr, &hints, &result) != 0) {
+    return false;
+  }
+
+  for (struct addrinfo *rp = result; rp != NULL; rp = rp->ai_next) {
+    if (rp->ai_family == AF_INET && rp->ai_addr) {
+      Contact contact;
+      struct sockaddr_in *ai_addr = (struct sockaddr_in *)rp->ai_addr;
+      to_contact(ai_addr->sin_addr, port, contact);
+
+      bootstrap_insert(self, dht::IdContact(dht::NodeId{}, contact));
+    }
+  }
+
+  ::freeaddrinfo(result);
+  return true;
+}
+
+static bool
 setup_static_bootstrap(dht::DHT &self) noexcept {
+  dns_lookup(self, "dht.libtorrent.org", 25401);
+  dns_lookup(self, "router.bittorrent.com", 6881);
+  dns_lookup(self, "router.utorrent.com", 6881);
+  dns_lookup(self, "dht.transmissionbt.com", 6881);
+  dns_lookup(self, "dht.aelitis.com", 6881);
 #if 0
   const char *bss[] = {"0.0.0.0:12456"};
 
@@ -427,7 +466,7 @@ setup_static_bootstrap(dht::DHT &self) noexcept {
     assertx(bs.ip.ipv4 > 0);
     assertx(bs.port > 0);
 
-    bootstrap_insert(self, dht::KContact(0, bs));
+    bootstrap_insert(self, dht::IdContact(dht::NodeId{},Contact(Ipv4(0), 22288)));
   });
 #else
   (void)self;
@@ -438,9 +477,12 @@ setup_static_bootstrap(dht::DHT &self) noexcept {
 
 static void
 on_topup_bootstrap(dht::DHT &ctx) noexcept {
-  Cache &self = *((Cache *)ctx.routing_table.cache);
   char fname[FILENAME_MAX]{0};
   bool cont = true;
+  if (!ctx.routing_table.cache) {
+    return;
+  }
+  Cache &self = *((Cache *)ctx.routing_table.cache);
 
   assertx(!is_full(ctx.bootstrap));
 
@@ -481,7 +523,7 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
     clear(self.seen);
   }
 
-  if (!is_full(ctx.bootstrap)) {
+  if (is_empty(ctx.bootstrap)) {
     setup_static_bootstrap(ctx);
   }
 }

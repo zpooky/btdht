@@ -151,6 +151,7 @@ krpc::parse_ping_response(dht::MessageContext &ctx, krpc::PingResponse &out) {
   return bencode::d::dict(ctx.in, [&ctx, &out](auto &p) {
     bool b_id = false;
     bool b_ip = false;
+    bool b_p = false;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", out.sender.id)) {
@@ -166,6 +167,13 @@ krpc::parse_ping_response(dht::MessageContext &ctx, krpc::PingResponse &out) {
         b_ip = true;
         goto Lstart;
       }
+    }
+
+    // optional
+    std::uint64_t p_param = 0; // TODO
+    if (!b_p && bencode::d::pair(p, "p", p_param)) {
+      b_p = true;
+      goto Lstart;
     }
 
     if (bencode_any(p, "ping resp")) {

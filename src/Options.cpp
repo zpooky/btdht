@@ -70,6 +70,7 @@ parse(Options &self, int argc, char **argv) noexcept {
       // printf("option -o with value `%s'\n", optarg);
       {
         Contact con;
+        // XXX support hostname
         if (!to_contact(optarg, con)) {
           fprintf(stderr, "invalid bootstrap option '%s'", optarg);
           return false;
