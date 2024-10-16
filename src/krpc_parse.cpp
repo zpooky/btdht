@@ -170,8 +170,8 @@ krpc::parse_ping_response(dht::MessageContext &ctx, krpc::PingResponse &out) {
     }
 
     // optional
-    std::uint64_t p_param = 0; // TODO
-    if (!b_p && bencode::d::pair(p, "p", p_param)) {
+    std::uint64_t port_param = 0; // TODO this is external port at rotuer
+    if (!b_p && bencode::d::pair(p, "p", port_param)) {
       b_p = true;
       goto Lstart;
     }
@@ -252,7 +252,7 @@ krpc::parse_find_node_response(dht::MessageContext &ctx,
     bool b_ip = false;
     bool b_t = false;
 
-    std::uint64_t p_param = 0; // TODO
+    std::uint64_t port_param = 0; // TODO this is external port at rotuer
 
   Lstart:
     const std::size_t pos = p.pos;
@@ -285,7 +285,7 @@ krpc::parse_find_node_response(dht::MessageContext &ctx,
     }
 
     // optional
-    if (!b_p && bencode::d::pair(p, "p", p_param)) {
+    if (!b_p && bencode::d::pair(p, "p", port_param)) {
       b_p = true;
       goto Lstart;
     } else {

@@ -214,11 +214,14 @@ sample_infohashes(dht::MessageContext &ctx) noexcept {
 
   ++s.received.request.sample_infohashes;
 
-  auto f = stdout;
-  print_time(f, ctx);
-  fprintf(f, "receive request sample_infohashes (%s) <", to_string(ctx.remote));
-  dht::print_hex(f, tx.id, tx.length);
-  fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
+  auto f = ctx.sample_infohashes;
+  if (f) {
+    // print_time(f, ctx);
+    fprintf(f, "receive request sample_infohashes (%s) <",
+            to_string(ctx.remote));
+    dht::print_hex(f, tx.id, tx.length);
+    fprintf(f, "> [%.*s]\n", 2, pctx.remote_version);
+  }
 }
 
 void

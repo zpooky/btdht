@@ -490,15 +490,15 @@ main(int argc, char **argv) {
     return 3;
   }
 
-  Contact listen;
-  if (!net::local(udp_fd, listen)) {
+  Contact local_ip;
+  if (!net::local(udp_fd, local_ip)) {
     return 3;
   }
 
   auto r = prng::seed<prng::xorshift32>();
   fprintf(stderr, "sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
   Timestamp now = sp::now();
-  auto mdht = std::make_unique<dht::DHT>(udp_fd, priv_fd, listen, r, now);
+  auto mdht = std::make_unique<dht::DHT>(udp_fd, priv_fd, local_ip, r, now);
   if (!dht::init(*mdht, options)) {
     die("failed to init dht");
     return 4;
@@ -517,10 +517,10 @@ main(int argc, char **argv) {
 
   {
     char str[256] = {0};
-    assertx(to_string(mdht->ip, str, sizeof(str)));
-    fprintf(stderr, "remote(%s)\n", str);
-    assertx(to_string(listen, str, sizeof(str)));
-    fprintf(stderr, "bind(%s)\n", str);
+    to_string(mdht->external_ip, str, sizeof(str));
+    fprintf(stderr, "external ip(%s)\n", str);
+    to_string(local_ip, str, sizeof(str));
+    fprintf(stderr, "local ip(%s)\n", str);
   }
 
   dht::ModulesAwake modulesAwake;

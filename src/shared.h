@@ -212,8 +212,11 @@ struct Stat {
   StatDirection sent;
   StatDirection received;
 
-  std::size_t known_tx;
-  std::size_t unknown_tx;
+
+  std::uint64_t db_unique_insert;
+
+  std::uint64_t known_tx;
+  std::uint64_t unknown_tx;
 
   Stat() noexcept;
   virtual ~Stat() {
@@ -235,7 +238,7 @@ struct DHT {
   Client client;
   sp::fd priv_fd;
   Log log;
-  Contact ip;
+  Contact external_ip;
   prng::xorshift32 &random;
   sp::ip_election election;
   Stat statistics;
@@ -310,6 +313,7 @@ struct MessageContext {
 
   DHT &dht;
 
+
   sp::Buffer &in;
   sp::Buffer &out;
 
@@ -319,6 +323,7 @@ struct MessageContext {
   bool read_only;
 
   krpc::ParseContext &pctx;
+  FILE *sample_infohashes;
 
   MessageContext(DHT &, krpc::ParseContext &, sp::Buffer &, Contact) noexcept;
 
@@ -329,6 +334,8 @@ struct MessageContext {
   operator=(const MessageContext &) = delete;
   MessageContext &
   operator=(const MessageContext &&) = delete;
+
+  ~MessageContext();
 };
 
 //=====================================

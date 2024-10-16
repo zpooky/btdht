@@ -20,7 +20,7 @@ do_dump(Buffer &sink, const dht::DHT &dht, dht::RoutingTable *t) noexcept {
       return false;
     }
 
-    Ip ip = dht.ip.ip;
+    Ip ip = dht.external_ip.ip;
     assertx(ip.type == IpType::IPV4);
 
     if (!bencode::e<Buffer>::pair(buffer, "ip", ip.ipv4)) {
@@ -94,7 +94,7 @@ restore(Buffer &thing, /*OUT*/ dht::DHT &dht) noexcept {
       return false;
     }
 
-    Ip &ip = dht.ip.ip;
+    Ip &ip = dht.external_ip.ip;
     assertx(!is_marked(buffer));
     if (!bencode_d<Buffer>::is_key(buffer, "ip")) {
       return false;

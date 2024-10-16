@@ -349,11 +349,9 @@ namespace net {
 bool
 local(const fd &listen, Contact &out) noexcept {
   sockaddr_in addr{};
-  std::memset(&addr, 0, sizeof(addr));
   socklen_t slen = sizeof(addr);
-  sockaddr *saddr = (sockaddr *)&addr;
 
-  int ret = ::getsockname(int(listen), saddr, &slen);
+  int ret = ::getsockname(int(listen), (sockaddr *)&addr, &slen);
   if (ret < 0) {
     return false;
   }

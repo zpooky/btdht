@@ -2,6 +2,12 @@
 https://www.bittorrent.org/beps/bep_0000.html
 
 -------------------------------------------------------------------------------
+TODO transaction id with 0 in it?!?!
+  - review const char*
+TODO add more statistic
+TODO handle if node id changes
+
+-------------------------------------------------------------------------------
 https://github.com/arvidn/libtorrent/blob/b82b350b38147ac7ddf6ec41027ebe07dc15f913/src/kademlia/node.cpp#L827
 
 TODO after 100 ip votes check if the ip is differet from the one used to

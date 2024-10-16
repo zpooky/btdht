@@ -79,8 +79,8 @@ is_valid_strict_id(const Ip &addr, const NodeId &id) noexcept {
 }
 
 // See http://www.rasterbar.com/products/libtorrent/dht_sec.html
-static bool
-randomize(prng::xorshift32 &r, const Ip &addr, NodeId &id) noexcept {
+bool
+randomize_NodeId(prng::xorshift32 &r, const Ip &addr, NodeId &id) noexcept {
   // Lstart:
   std::uint32_t seed = random(r) & 0xff;
   std::uint32_t hash = node_id_prefix(addr, seed);
@@ -104,7 +104,7 @@ randomize(prng::xorshift32 &r, const Ip &addr, NodeId &id) noexcept {
 
 bool
 init(dht::DHT &dht, const Options &o) noexcept {
-  if (!randomize(dht.random, dht.ip.ip, dht.id)) {
+  if (!randomize_NodeId(dht.random, dht.external_ip.ip, dht.id)) {
     return false;
   }
 

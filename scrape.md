@@ -1,7 +1,6 @@
 -------------------------------------------------------------------------------
 # scrape
 TODO sample_infohashes
-TODO collect peer version of clients that support sample_infohashes
 
 ```
 while 1:

@@ -165,7 +165,7 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     : id()
     , client(udp)
     , log()
-    , ip(self)
+    , external_ip(self)
     , random(r)
     , election()
     , statistics()
@@ -226,7 +226,15 @@ MessageContext::MessageContext(DHT &p_dht, krpc::ParseContext &ctx,
     , transaction{ctx.tx}
     , remote{p_remote}
     , read_only{ctx.read_only}
-    , pctx{ctx} {
+    , pctx{ctx}
+    , sample_infohashes{fopen("./sample_infohashes.log", "a")} {
+}
+
+MessageContext::~MessageContext() {
+  if (sample_infohashes) {
+    fclose(sample_infohashes);
+    sample_infohashes = nullptr;
+  }
 }
 
 } // namespace dht

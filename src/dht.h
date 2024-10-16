@@ -14,6 +14,9 @@ bool
 is_valid_strict_id(const Ip &, const NodeId &) noexcept;
 
 bool
+randomize_NodeId(prng::xorshift32 &r, const Ip &addr, NodeId &id) noexcept;
+
+bool
 init(DHT &, const Options &) noexcept;
 
 bool
