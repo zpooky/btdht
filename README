@@ -2,6 +2,7 @@
 https://www.bittorrent.org/beps/bep_0000.html
 
 -------------------------------------------------------------------------------
+TODO pings are not sent!?
 TODO transaction id with 0 in it?!?!
   - review const char*
 TODO add more statistic
