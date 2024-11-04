@@ -5,3 +5,6 @@
 	path = external/sputil
 	url = https://github.com/zpooky/sputil
 	branch = master
+[submodule "external/libcuckoofilter"]
+	path = external/libcuckoofilter
+	url = https://github.com/jonahharris/libcuckoofilter.git
