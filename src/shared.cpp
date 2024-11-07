@@ -155,7 +155,20 @@ Stat::Stat() noexcept
 }
 
 DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &ih) noexcept
-    : routing_table{self.random, self.tb, self.now, ih, self.config} {
+    : tb{self.now}
+    , routing_table{self.random, tb, self.now, ih, self.config}
+    , bootstrap{}
+    , bootstrap_filter(self.config, self.ip_hashers, self.now)
+    , now{self.now} {
+}
+
+DHTMetaBootstrap::DHTMetaBootstrap(Config &config,
+                                   sp::Array<sp::hasher<Ip>> &hashers,
+                                   Timestamp &n) noexcept
+    : bootstrap_filter(hashers)
+    , bootstrap_last_reset(0)
+    , config{config}
+    , now{n} {
 }
 
 // dht::DHT
@@ -187,19 +200,23 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     /*total nodes present in the routing table*/
     , now(n)
     // bootstrap {{{
-    , bootstrap_last_reset(0)
     , ip_hashers()
-    , bootstrap_filter(ip_hashers)
+    , bootstrap_meta{config, ip_hashers, now}
     , bootstrap()
     // }}}
     , searches()
     // {{{
-    , scrapes()
+    , active_scrapes()
     , scrape_hour{}
-    , scrape_hour_i(0)
+    , scrape_hour_idx(0)
     , scrape_hour_time(n)
+    , scrape_bootstrap_filter(ip_hashers)
     // }}}
     , upnp_sent{0} {
+
+  for (size_t i = 0; i < capacity(scrape_hour); ++i) {
+    assertx_n(emplace(scrape_hour, ip_hashers));
+  }
 
   assertx_n(insert(ip_hashers, djb_ip));
   assertx_n(insert(ip_hashers, fnv_ip));
@@ -237,6 +254,5 @@ MessageContext::~MessageContext() {
   }
 }
 
-} // namespace dht
-
 //=====================================
+} // namespace dht

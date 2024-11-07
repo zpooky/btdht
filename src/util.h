@@ -21,6 +21,9 @@ enum class Res { ERR, ERR_TOKEN, OK };
 }
 
 //=====================================
+#define DHT_VERSION_LEN 5
+
+//=====================================
 namespace sp {
 /*sp::byte*/
 using byte = unsigned char;
@@ -435,10 +438,13 @@ struct Node {
 
   //{{{
   std::uint8_t outstanding;
-  NodeIdValid valid_id;
-  bool good;
+
+  NodeIdValid valid_id; // TODO Bitmask flag
+  bool good;            // TODO Bitmask flag
+  bool read_only;       // TODO Bitmask flag
   // }}}
-  bool read_only;
+
+  sp::byte version[DHT_VERSION_LEN];
 
   Node() noexcept;
   Node(const NodeId &, const Contact &) noexcept;
@@ -520,7 +526,8 @@ struct KContact {
       : KContact(in, search.id) {
   }
 
-  explicit operator bool() const noexcept {
+  explicit
+  operator bool() const noexcept {
     return common != ~std::size_t(0);
   }
 
@@ -634,6 +641,18 @@ struct TokenKey {
 };
 
 // ========================================
+struct get_peers_context {
+  int dummy;
+  virtual ~get_peers_context();
+};
+
+struct ScrapeContext : get_peers_context {
+  dht::Infohash infohash;
+  ScrapeContext(const dht::Infohash &infohash);
+};
+
+//=====================================
+
 } // namespace dht
 
 #endif

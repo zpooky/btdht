@@ -1,11 +1,11 @@
 #define _GNU_SOURCE
+#define GNU_SOURCE
 #include <Log.h>
 #include <Options.h>
 #include <algorithm>
 #include <arpa/inet.h>
 #include <cstdio>
 #include <cstring>
-#include <sys/stat.h>
 #include <dht.h>
 #include <dump.h>
 #include <errno.h>
@@ -18,6 +18,7 @@
 #include <signal.h>
 #include <sys/epoll.h>    //epoll
 #include <sys/signalfd.h> //signalfd
+#include <sys/stat.h>
 #include <udp.h>
 #include <unistd.h> //read
 

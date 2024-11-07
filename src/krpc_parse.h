@@ -23,7 +23,9 @@ parse_ping_response(dht::MessageContext &ctx, PingResponse &out);
 
 // ========================================
 struct FindNodeRequest {
+  // "id" : "<querying nodes id>",
   dht::NodeId sender;
+  // "target" : "<id of target node>"
   dht::NodeId target;
 
   bool n4 = false;
@@ -31,8 +33,10 @@ struct FindNodeRequest {
 };
 
 struct FindNodeResponse {
+  // "id" : "<queried nodes id>",
   dht::NodeId id;
-  dht::Token token;
+  dht::Token token; // TODO?
+  // "nodes" : "<compact node info>"
   sp::UinStaticArray<dht::IdContact, 256> nodes;
 };
 
@@ -44,7 +48,9 @@ parse_find_node_response(dht::MessageContext &ctx, FindNodeResponse &out);
 
 // ========================================
 struct GetPeersRequest {
+  // "id" : "<querying nodes id>",
   dht::NodeId sender;
+  // "info_hash" : "<20-byte infohash of target torrent>"
   dht::Infohash infohash;
   sp::maybe<bool> noseed{};
   bool scrape = false;
@@ -55,10 +61,20 @@ struct GetPeersRequest {
 };
 
 struct GetPeersResponse {
+  // "id" : "<queried nodes id>"
   dht::NodeId id;
+  // The token value is a required argument for a future announce_peer query.
+  // "token" :"<opaque write token>"
   dht::Token token;
 
+
+  // peers for the queried infohash
+  //  - "compact" peer information
+  // "values" : ["<peer 1 info string>", "<peer 2 info string>"]
   sp::UinStaticArray<Contact, 256> values;
+   // If the queried node has no peers for the infohash
+  // - "nodes" is returned containing nodes from its routing table which is closest to the queried infohash
+  // "nodes" : "<compact node info>"
   sp::UinStaticArray<dht::IdContact, 256> nodes;
 };
 
@@ -106,8 +122,10 @@ struct SampleInfohashesRequest {
 struct SampleInfohashesResponse {
   dht::NodeId id;
   std::uint32_t interval = 0;
+  // "nodes": <nodes close to 'target'>,
   sp::UinStaticArray<std::tuple<dht::NodeId, Contact>, 128> nodes;
   std::uint32_t num = 0;
+  // "samples" : <subset of stored infohashes, N × 20 bytes(string)>
   sp::UinStaticArray<dht::Infohash, 128> samples;
   std::uint32_t p = 0;
 };

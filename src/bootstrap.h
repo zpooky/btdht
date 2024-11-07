@@ -2,11 +2,13 @@
 #define SP_MAINLINE_DHT_BOOTSTRAP_H
 
 #include "shared.h"
+#include <heap/binary.h>
 
 namespace dht {
 //==========================================
 void
-bootstrap_insert(DHT &, const KContact &) noexcept;
+bootstrap_insert(DHTMetaBootstrap &, heap::MaxBinary<KContact> &contacts,
+                 const KContact &) noexcept;
 
 void
 bootstrap_insert(DHT &, const IdContact &) noexcept;

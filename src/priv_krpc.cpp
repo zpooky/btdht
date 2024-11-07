@@ -105,11 +105,67 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     }
 
     res = bencode::e::dict(b, [&dht](auto &b2) {
-      if (!bencode::e::pair(b2, "unique_inserts",
-                            dht.bootstrap_filter.unique_inserts)) {
+      if (!bencode::e::pair(
+              b2, "unique_inserts",
+              dht.bootstrap_meta.bootstrap_filter.unique_inserts)) {
         return false;
       }
       if (!bencode::e::pair(b2, "candidates", length(dht.bootstrap))) {
+        return false;
+      }
+
+      return true;
+    });
+    if (!res) {
+      return false;
+    }
+
+    if (!bencode::e::value(b, "scrape")) {
+      return false;
+    }
+
+    res = bencode::e::dict(b, [&dht](auto &b2) {
+      if (!bencode::e::pair(b2, "active_scrapes", length(dht.active_scrapes))) {
+        return false;
+      }
+      std::size_t i = 0;
+      for (const auto &scrape : dht.active_scrapes) {
+        char key[64] = {0};
+        sprintf(key, "info_hash%zu", i);
+        if (!bencode::e::pair(b2, key, scrape.routing_table.id.id)) {
+          return false;
+        }
+        sprintf(key, "routing_table_nodes%zu", i);
+        if (!bencode::e::pair(b2, key, scrape.routing_table.total_nodes)) {
+          return false;
+        }
+        sprintf(key, "candidates%zu", i);
+        if (!bencode::e::pair(b2, key, length(dht.bootstrap))) {
+          return false;
+        }
+        ++i;
+      }
+      if (!bencode::e::pair(b2, "bootstrap_unique_inserts",
+                            dht.scrape_bootstrap_filter.unique_inserts)) {
+        return false;
+      }
+      i = 0;
+      for (const auto &sh : dht.scrape_hour) {
+        char key[64] = {0};
+        sprintf(key, "scrape_hour%zu", i);
+        if (!bencode::e::pair(b2, key, sh.unique_inserts)) {
+          return false;
+        }
+        ++i;
+      }
+
+      if (!bencode::e::pair(b2, "scrape_hour_current_idx",
+                            dht.scrape_hour_idx)) {
+        return false;
+      }
+
+      if (!bencode::e::pair(b2, "scrape_get_peers_ih",
+                            length(dht.scrape_get_peers_ih))) {
         return false;
       }
 
@@ -183,7 +239,8 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     if (!bencode::e::pair(b, "last_activity", la)) {
       return false;
     }
-    if (!bencode::e::pair(b, "total_nodes", dht.routing_table.total_nodes)) {
+    if (!bencode::e::pair(b, "routing_table_nodes",
+                          dht.routing_table.total_nodes)) {
       return false;
     }
     if (!bencode::e::pair(b, "bad_nodes", dht.routing_table.bad_nodes)) {

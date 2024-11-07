@@ -1,6 +1,7 @@
 #ifndef SP_MAINLINE_DHT_SHARED_H
 #define SP_MAINLINE_DHT_SHARED_H
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -47,7 +48,7 @@ struct ParseContext {
 
   char msg_type[16];
   char query[64];
-  sp::byte remote_version[16];
+  sp::byte remote_version[DHT_VERSION_LEN];
   bool read_only = false;
 
   sp::maybe<Contact> ip_vote;
@@ -128,7 +129,8 @@ struct Tx {
   bool
   operator==(const krpc::Transaction &) const noexcept;
 
-  explicit operator bool() const noexcept;
+  explicit
+  operator bool() const noexcept;
 };
 
 bool
@@ -212,7 +214,6 @@ struct Stat {
   StatDirection sent;
   StatDirection received;
 
-
   std::uint64_t db_unique_insert;
 
   std::uint64_t known_tx;
@@ -223,8 +224,21 @@ struct Stat {
   }
 };
 
+struct DHTMetaBootstrap {
+  sp::BloomFilter<Ip, 128 * 1024> bootstrap_filter;
+  Timestamp bootstrap_last_reset;
+  Config &config;
+  Timestamp &now;
+  DHTMetaBootstrap(Config &config, sp::Array<sp::hasher<Ip>> &,
+                   Timestamp &n) noexcept;
+};
+
 struct DHTMetaScrape {
+  timeout::TimeoutBox tb;
   dht::DHTMetaRoutingTable routing_table;
+  heap::StaticMaxBinary<KContact, 128> bootstrap;
+  DHTMetaBootstrap bootstrap_filter;
+  Timestamp &now;
   DHTMetaScrape(dht::DHT &, const dht::NodeId &) noexcept;
   virtual ~DHTMetaScrape() {
   }
@@ -268,18 +282,22 @@ struct DHT {
   // }}}
 
   // bootstrap {{{
-  Timestamp bootstrap_last_reset;
   sp::StaticArray<sp::hasher<Ip>, 2> ip_hashers;
-  sp::BloomFilter<Ip, 8 * 1024> bootstrap_filter;
+  DHTMetaBootstrap bootstrap_meta;
   heap::StaticMaxBinary<KContact, 128> bootstrap;
   // }}}
 
   DHTMetaSearch searches;
   // struct {
-  sp::UinStaticArray<DHTMetaScrape, 8> scrapes;
-  sp::UinStaticArray<sp::BloomFilter<Ip, 8 * 1024>, 8> scrape_hour;
-  std::size_t scrape_hour_i;
+  sp::UinStaticArray<DHTMetaScrape, 8> active_scrapes;
+  sp::UinStaticArray<sp::BloomFilter<Ip, 8 * 1024 * 1024>, 7>
+      scrape_hour; // (8 * 1024 * 1024 * sizeof(uint64_t) = 64MB) * 7 = 448MB
+  // TODO calculate bloomfitler fpp
+  std::size_t scrape_hour_idx;
   Timestamp scrape_hour_time;
+  sp::UinStaticArray<std::tuple<dht::Infohash, Contact>, 128>
+      scrape_get_peers_ih;
+  sp::BloomFilter<Ip, 8 * 1024 * 1024> scrape_bootstrap_filter; // TODO reset
   // } scrape;
 
   // upnp {{{
@@ -291,8 +309,7 @@ struct DHT {
   // }}}
 
   DHT(fd &, fd &priv_fd, const Contact &self, prng::xorshift32 &,
-      Timestamp &now)
-  noexcept;
+      Timestamp &now) noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;
@@ -312,7 +329,6 @@ struct MessageContext {
   const char *query;
 
   DHT &dht;
-
 
   sp::Buffer &in;
   sp::Buffer &out;

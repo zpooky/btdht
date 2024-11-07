@@ -110,7 +110,7 @@ insert(DHTMetaDatabase &self, const dht::Infohash &infohash,
       logger::peer_db::update(self, infohash, *existing);
     } else {
       existing = insert(table->peers, dht::Peer(contact, self.now, seed));
-      spbt_scrape_client_send(self.scrape_client, infohash, contact);
+      spbt_scrape_client_send(self.scrape_client, infohash.id, contact);
       if (existing) {
         timeout::append_all(*table, existing);
         logger::peer_db::insert(self, infohash, contact);

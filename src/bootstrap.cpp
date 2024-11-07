@@ -1,28 +1,30 @@
 #include "bootstrap.h"
+#include <heap/binary.h>
 
 namespace dht {
 //==========================================
 static void
-maybe_bootstrap_reset(DHT &self) noexcept {
+maybe_bootstrap_reset(DHTMetaBootstrap &self) noexcept {
   Config &cfg = self.config;
   Timestamp next = self.bootstrap_last_reset + cfg.bootstrap_reset;
   if ((self.now >= next) ||
       self.bootstrap_filter.unique_inserts >
           size_t((double)theoretical_max_capacity(self.bootstrap_filter) *
-                 0.75)) {
+                 0.85)) {
     clear(self.bootstrap_filter);
     self.bootstrap_last_reset = self.now;
   }
 }
 
 void
-bootstrap_insert(DHT &self, const KContact &remote) noexcept {
+bootstrap_insert(DHTMetaBootstrap &self, heap::MaxBinary<KContact> &contacts,
+                 const KContact &remote) noexcept {
   assertx(remote.contact.port != 0);
 
   maybe_bootstrap_reset(self);
 
   if (!test(self.bootstrap_filter, remote.contact.ip)) {
-    if (insert_eager(self.bootstrap, remote)) {
+    if (insert_eager(contacts, remote)) {
       insert(self.bootstrap_filter, remote.contact.ip);
     }
   }
@@ -30,7 +32,8 @@ bootstrap_insert(DHT &self, const KContact &remote) noexcept {
 
 void
 bootstrap_insert(DHT &self, const IdContact &contact) noexcept {
-  bootstrap_insert(self, dht::KContact(contact, self.id));
+  bootstrap_insert(self.bootstrap_meta, self.bootstrap,
+                   dht::KContact(contact, self.id));
 }
 
 //==========================================

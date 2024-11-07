@@ -109,7 +109,7 @@ init(dht::DHT &dht, const Options &o) noexcept {
   }
 
   for_each(o.bootstrap, [&](const Contact &cur) {
-    bootstrap_insert(dht, dht::KContact(0, cur));
+    bootstrap_insert(dht.bootstrap_meta, dht.bootstrap, dht::KContact(0, cur));
   });
 
   return true;
@@ -157,54 +157,4 @@ shared_prefix(const dht::NodeId &a, const dht::NodeId &b) noexcept {
   return shared_prefix(a.id, b.id);
 }
 
-static bool
-support_sample_infohashes(const sp::byte *version) noexcept {
-  if (!version) {
-    return false;
-  }
-  if (std::memcmp(version, (const sp::byte *)"LT", 2) == 0) {
-    /* # yes
-     * 0x0207
-     * 0x0206
-     * 0x012F
-     * 0x012E
-     * 0x012B
-     * 0x0102
-     * # not
-     * 0x0102
-     * 0x0101
-     * 0x0100
-     * 0x0010
-     * 0x000f
-     */
-    return true;
-  }
-  if (std::memcmp(version, (const sp::byte *)"sp", 2) == 0) {
-    return true;
-  }
-  if (std::memcmp(version, (const sp::byte *)"ml", 2) == 0) {
-    // 4:hex[6D6C0109]: 4(ml__)
-    // 4:hex[6D6C010B]: 4(ml__)
-    return true;
-  }
-
-  return false;
-}
-
-dht::Node *
-dht_insert(DHT &self, const sp::byte *version, const Node &contact) noexcept {
-  dht::Node *result = dht::insert(self.routing_table, contact);
-
-  if (support_sample_infohashes(version)) {
-    // seed scrape
-    for_each(self.scrapes, [&contact](auto &scrape) {
-      // TODO 4 is arbitrary
-      if (dht::shared_prefix(contact.id, scrape.routing_table.id) >= 4) {
-        dht::insert(scrape.routing_table, contact);
-      }
-    });
-  }
-
-  return result;
-}
 } // namespace dht

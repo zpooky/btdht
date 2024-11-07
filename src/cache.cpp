@@ -55,8 +55,9 @@ struct Cache {
   size_t read_min_idx{~size_t(0)};
   size_t read_max_idx{};
   size_t contacts{};
+  size_t write_idx{};
 
-  size_t cur_idx{};
+  // size_t cur_idx{};
   CacheHeader *cur_header{};
   sp::StaticCircularByteBuffer<128> cur_buf{};
   Sink_as cur_sink{};
@@ -242,13 +243,14 @@ init_cache(dht::DHT &ctx) noexcept {
     assertxs(self->read_max_idx == 0, self->read_min_idx, self->read_max_idx);
     self->read_min_idx = 0;
   }
-  if (self->read_max_idx > 0) {
-    self->cur_idx = self->read_max_idx + 1;
-  }
+  // if (self->read_max_idx > 0) {
+  //   self->cur_idx = self->read_max_idx + 1;
+  // }
+  self->write_idx = self->read_max_idx + 1;
 
   printf("self->read_min_idx: %zu\n", self->read_min_idx);
   printf("self->read_max_idx: %zu\n", self->read_max_idx);
-  printf("self->cur_idx: %zu\n", self->cur_idx);
+  // printf("self->cur_idx: %zu\n", self->cur_idx);
 
   return true;
 }
@@ -273,10 +275,10 @@ cache_finalize(Cache &self) noexcept {
     fd dummy{};
     swap(self.cur, dummy);
 
-    cache_filename(from, self.cur_idx);
+    cache_filename(from, self.write_idx);
     strcat(from, ".tmp");
-    cache_filename(to, self.cur_idx);
-    self.cur_idx++;
+    cache_filename(to, self.write_idx);
+    self.write_idx++;
 
     if (::renameat(int(self.dir), from, int(self.dir), to) < 0) {
       return false;
@@ -307,7 +309,7 @@ cache_write_contact(Cache &self, const Contact &in) noexcept {
     assertx(!bool(self.cur));
 
     char fname[FILENAME_MAX]{0};
-    cache_filename(fname, self.cur_idx);
+    cache_filename(fname, self.write_idx);
     strcat(fname, ".tmp");
 
     swap(self.cur, fs::open_trunc(self.dir, fname));
@@ -391,8 +393,8 @@ static bool
 take_next_read_cache(Cache &self, char (&file)[SIZE]) noexcept {
   assertx(self.dir);
   while (self.read_min_idx < self.read_max_idx) {
-    cache_filename(file, self.read_min_idx);
-    self.read_min_idx++;
+    cache_filename(file, self.read_max_idx);
+    self.read_min_idx--;
 
     if (::faccessat(int(self.dir), file, R_OK, 0) == 0) {
       return true;
@@ -497,7 +499,8 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
 
       if (!is_full(ctx.bootstrap)) {
         ++bi;
-        bootstrap_insert(ctx, dht::KContact(0, cur));
+        bootstrap_insert(ctx.bootstrap_meta, ctx.bootstrap,
+                         dht::KContact(0, cur));
       } else {
         ++cw;
         cont = false;
@@ -551,7 +554,7 @@ cache_contacts(const dht::DHT &ctx) noexcept {
 size_t
 cache_write_idx(const dht::DHT &ctx) noexcept {
   auto self = (Cache *)ctx.routing_table.cache;
-  return self ? self->cur_idx : 0;
+  return self ? self->write_idx : 0;
 }
 
 } // namespace sp

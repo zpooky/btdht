@@ -1028,7 +1028,14 @@ TokenKey::TokenKey() noexcept
 }
 
 //=====================================
+get_peers_context::~get_peers_context() {
+}
 
+ScrapeContext::ScrapeContext(const dht::Infohash &ih)
+    : infohash(ih) {
+}
+
+//=====================================
 } // namespace dht
 
 //=====================================

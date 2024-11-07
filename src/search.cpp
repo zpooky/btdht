@@ -140,11 +140,7 @@ search_increment(SearchContext *ctx) noexcept {
 //=====================================
 void
 search_insert(Search &self, const IdContact &contact) noexcept {
-  /*test bloomfilter*/
-  if (!test(self.searched, contact.id)) {
-    /*insert into bloomfilter*/
-    bool ires = insert(self.searched, contact.id);
-    assertx(ires);
+  if (insert(self.searched, contact.id)) {
     insert_eager(self.queue, KContact(contact, self.search.id));
   }
 }

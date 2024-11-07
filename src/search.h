@@ -10,7 +10,7 @@
 
 namespace dht {
 // ========================================
-struct SearchContext {
+struct SearchContext : public get_peers_context {
   // ref_cnt is ok since we are in a single threaded ctx
   // incremented for each successfull client::get_peers
   // decremented on receieve & on timeout

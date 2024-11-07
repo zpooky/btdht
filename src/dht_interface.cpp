@@ -1,4 +1,5 @@
 #include "dht_interface.h"
+#include <cmath>
 #include <inttypes.h>
 
 #include "Log.h"
@@ -10,8 +11,11 @@
 #include "dht.h"
 #include "krpc.h"
 #include "krpc_parse.h"
+#include "scrape.h"
 #include "search.h"
+#include "spbt_scrape_client.h"
 #include "timeout.h"
+#include "timeout_impl.h"
 #include "transaction.h"
 
 #include <sha1.h>
@@ -68,68 +72,6 @@ setup(dht::Modules &modules, bool setup_cb) noexcept {
 
 //=====================================
 
-namespace timeout {
-template <typename F>
-static bool
-for_all_node(dht::DHT &self, sp::Milliseconds timeout, F f) {
-  const dht::Node *start = nullptr;
-  assertx(debug_assert_all(self.routing_table));
-  assertx(self.tb.timeout);
-  bool result = true;
-Lstart : {
-  dht::Node *const node = timeout::take_node(*self.tb.timeout, timeout);
-  if (node) {
-    if (node == start) {
-      assertx(!timeout::debug_find_node(*self.tb.timeout, node));
-      timeout::prepend(*self.tb.timeout, node);
-      assertx(node->timeout_next);
-      assertx(node->timeout_priv);
-      assertx(timeout::debug_find_node(*self.tb.timeout, node) == node);
-      assertx(debug_assert_all(self.routing_table));
-      return true;
-    }
-
-    if (!start) {
-      start = node;
-    }
-    assertx(!timeout::debug_find_node(*self.tb.timeout, node));
-
-    // printf("node: %s\n", to_hex(node->id));
-
-    assertx(!node->timeout_next);
-    assertx(!node->timeout_priv);
-
-    if (node->good) {
-      if (dht::should_mark_bad(self, *node)) { // TODO ??
-        node->good = false;
-        self.routing_table.bad_nodes++;
-      }
-    }
-
-    if (f(self, *node)) {
-      timeout::append_all(*self.tb.timeout, node);
-      assertx(node->timeout_next);
-      assertx(node->timeout_priv);
-      assertx(timeout::debug_find_node(*self.tb.timeout, node) == node);
-      assertx(debug_assert_all(self.routing_table));
-
-      goto Lstart;
-    } else {
-      timeout::prepend(*self.tb.timeout, node);
-      assertx(node->timeout_next);
-      assertx(node->timeout_priv);
-      assertx(timeout::debug_find_node(*self.tb.timeout, node) == node);
-      assertx(debug_assert_all(self.routing_table));
-
-      result = false;
-    }
-  }
-}
-
-  return result;
-}
-} // namespace timeout
-
 namespace dht {
 template <typename F>
 static void
@@ -154,8 +96,8 @@ on_awake_ping(DHT &self, sp::Buffer &out) noexcept {
   Config &cfg = self.config;
 
   /* Send ping to nodes */
-  auto f = [&out](auto &dht, auto &node) {
-    bool result = client::ping(dht, out, node) == client::Res::OK;
+  auto f = [&out, &self](auto &, auto &node) {
+    bool result = client::ping(self, out, node) == client::Res::OK;
     if (result) {
       inc_outstanding(node);
       // timeout::update_send(dht, node);
@@ -166,12 +108,12 @@ on_awake_ping(DHT &self, sp::Buffer &out) noexcept {
        * since there is only 3 in the queue and we will
        * immediately awake and send ping  to the same 3 nodes
        */
-      node.req_sent = dht.now;
+      node.req_sent = self.now;
     }
 
     return result;
   };
-  timeout::for_all_node(self, cfg.refresh_interval, f);
+  timeout::for_all_node(self.routing_table, cfg.refresh_interval, f, &self);
 
   /* Calculate next timeout based on the head if the timeout list which is in
    * sorted order where to oldest node is first in the list.
@@ -223,7 +165,7 @@ awake_look_for_nodes(dht::DHT &self, DHTMetaRoutingTable &rt, sp::Buffer &out,
   // XXX self should not be in bootstrap list
   // XXX if no good node is available try bad/questionable nodes
 
-  auto f = [inc_active_searches, &out, &now](auto &self, Node &remote) {
+  auto f = [inc_active_searches, &out, &now, &self](auto &, Node &remote) {
     auto result = client::Res::OK;
     // if (dht::is_good(self, remote)) {
     const Contact &c = remote.contact;
@@ -239,7 +181,7 @@ awake_look_for_nodes(dht::DHT &self, DHTMetaRoutingTable &rt, sp::Buffer &out,
 
     return result == client::Res::OK;
   };
-  timeout::for_all_node(self, cfg.refresh_interval, f);
+  timeout::for_all_node(self.routing_table, cfg.refresh_interval, f, &self);
 
   if (use_bootstrap) {
     dht::KContact cur;
@@ -307,12 +249,25 @@ on_awake_find_nodes(DHT &self, sp::Buffer &out) noexcept {
   return result;
 }
 
+static dht::Node *
+dht_insert(DHT &self, sp::byte version[DHT_VERSION_LEN],
+           const Node &contact) noexcept {
+  dht::Node *result = dht::insert(self.routing_table, contact);
+  scrape::seed_insert(self, version, contact.contact, contact.id);
+
+  return result;
+}
+
 static Node *
 dht_activity(dht::MessageContext &ctx, const dht::NodeId &senderId) noexcept {
+  krpc::ParseContext &pctx = ctx.pctx;
   DHT &self = ctx.dht;
 
   Node *result = find_node(self.routing_table, senderId);
   if (result) {
+    if (pctx.remote_version[0] != '\0') {
+      memcpy(result->version, pctx.remote_version, sizeof(result->version));
+    }
     result->read_only = ctx.read_only;
     if (!result->good) {
       result->good = true;
@@ -323,7 +278,9 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &senderId) noexcept {
   } else {
     if (!ctx.read_only) {
       Node contact(senderId, ctx.remote, self.now);
-      result = dht::dht_insert(self, ctx.pctx.remote_version, contact);
+      static_assert(sizeof(contact.version) == sizeof(pctx.remote_version));
+      memcpy(contact.version, pctx.remote_version, sizeof(contact.version));
+      result = dht_insert(self, ctx.pctx.remote_version, contact);
     }
   }
 
@@ -342,6 +299,32 @@ handle_ip_election(dht::MessageContext &ctx,
       vote(dht.election, ctx.remote, v);
     }
   }
+}
+
+static void
+__bootstrap_insert(dht::DHT &self, const dht::NodeId &id,
+                   const Contact &remote) noexcept {
+  std::size_t max_rank = 4;
+  dht::DHTMetaScrape *max = nullptr;
+  for (auto &scrape : self.active_scrapes) {
+    auto tmp = rank(scrape.routing_table.id, id);
+    if (tmp >= max_rank) {
+      // XXX check boostrap heap if full and if last element is less than tmp
+      max_rank = tmp;
+      max = &scrape;
+    }
+  }
+  if (max) {
+    auto tmp = rank(self.routing_table.id, id);
+    if (max_rank > tmp) {
+      bootstrap_insert(max->bootstrap_filter, max->bootstrap,
+                       dht::KContact(max_rank, remote));
+      return;
+    }
+  }
+  max_rank = rank(self.routing_table.id, id);
+  bootstrap_insert(self.bootstrap_meta, self.bootstrap,
+                   dht::KContact(max_rank, remote));
 }
 
 template <typename F>
@@ -382,8 +365,7 @@ message(dht::MessageContext &ctx, const dht::NodeId &sender, F f) noexcept {
       f(*contact);
     } else {
       if (!ctx.read_only) {
-        bootstrap_insert(self,
-                         dht::KContact(sender.id, ctx.remote, self.id.id));
+        __bootstrap_insert(self, sender, ctx.remote);
       }
       dht::Node n{sender, ctx.remote};
       f(n);
@@ -494,10 +476,10 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   logger::receive::res::find_node(ctx);
 
   message(ctx, sender, [&](auto &) {
-    for_each(contacts, [&](const auto &contact) {
+    for_each(contacts, [&](const dht::IdContact &contact) {
       dht::DHT &dht = ctx.dht;
 
-      bootstrap_insert(dht, contact);
+      __bootstrap_insert(dht, contact.id, contact.contact);
     });
   });
 
@@ -700,11 +682,12 @@ handle_get_peers_request(dht::MessageContext &ctx, const dht::NodeId &id,
 
 template <typename ResultType, typename ContactType>
 static bool
-handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
-                const dht::Token &, // XXX store token to used for announce
-                const ResultType /*sp::list<Contact>*/ &result,
-                const ContactType /*sp::list<dht::Node>*/ &contacts,
-                dht::Search &search) noexcept {
+search_handle_response(
+    dht::MessageContext &ctx, const dht::NodeId &sender,
+    const dht::Token &, // XXX store token to used for announce
+    const ResultType /*sp::list<Contact>*/ &values,
+    const ContactType /*sp::list<dht::IdContact>*/ &nodes,
+    dht::Search &search) noexcept {
   static_assert(std::is_same<Contact, typename ResultType::value_type>::value,
                 "");
   static_assert(
@@ -715,17 +698,47 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
   dht::DHT &dht = ctx.dht;
 
   message(ctx, sender, [&](auto &) {
-    /* Sender returns the its closest contacts for search */
-    for_each(contacts, [&](const auto &contact) {
+    /* Sender returns the its closest nodes for search */
+    for_each(nodes, [&](const dht::IdContact &contact) {
       search_insert(search, contact);
 
-      bootstrap_insert(dht, contact);
+      __bootstrap_insert(dht, contact.id, contact.contact);
     });
 
     /* Sender returns matching values for search query */
-    for_each(result, [&search](const Contact &c) {
-      /**/
+    for_each(values, [&](const Contact &c) {
       search_insert_result(search, c);
+      spbt_scrape_client_send(dht.db.scrape_client, search.search.id, c);
+    });
+  });
+
+  return true;
+} // namespace get_peers
+
+template <typename ResultType, typename ContactType>
+static bool
+scrape_handle_response(
+    dht::MessageContext &ctx, const dht::NodeId &sender,
+    const dht::Token &, // XXX store token to used for announce
+    const ResultType /*sp::list<Contact>*/ &values,
+    const ContactType /*sp::list<dht::IdContact>*/ &nodes,
+    const dht::Infohash &ih) noexcept {
+  static_assert(std::is_same<Contact, typename ResultType::value_type>::value,
+                "");
+  static_assert(
+      std::is_same<dht::IdContact, typename ContactType::value_type>::value,
+      "");
+
+  logger::receive::res::get_peers(ctx);
+  dht::DHT &dht = ctx.dht;
+
+  message(ctx, sender, [&](auto &) {
+    /* Sender returns the its closest nodes for search */
+    scrape::get_peers_close_nodes(dht, nodes);
+
+    /* Sender returns matching values for search query */
+    for_each(values, [&](const Contact &c) {
+      spbt_scrape_client_send(dht.db.scrape_client, ih.id, c);
     });
   });
 
@@ -735,33 +748,49 @@ handle_response(dht::MessageContext &ctx, const dht::NodeId &sender,
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, const Timestamp &sent,
            void *ctx) noexcept {
+  auto closure = (dht::get_peers_context *)ctx;
   logger::transmit::error::get_peers_response_timeout(dht, tx, sent);
-  auto search = (dht::SearchContext *)ctx;
-  if (search) {
-    search_decrement(search);
+  if (auto sctx = dynamic_cast<dht::SearchContext *>(closure)) {
+    if (sctx) {
+      search_decrement(sctx);
+    }
+  } else if (auto sctx = dynamic_cast<dht::ScrapeContext *>(closure)) {
+    delete sctx;
+  } else {
+    assertx(false);
   }
 } // get_peers::on_timeout
 
 static bool
-on_response(dht::MessageContext &ctx, void *searchCtx) noexcept {
+on_response(dht::MessageContext &ctx, void *tmp) noexcept {
+  auto closure = (dht::get_peers_context *)tmp;
   krpc::GetPeersResponse res;
-  // assertx(searchCtx);
-  if (!searchCtx) {
-    return true;
-  }
-
-  auto search_ctx = (dht::SearchContext *)searchCtx;
-  dht::Search *search = search_find(ctx.dht.searches, search_ctx);
-  search_decrement(search_ctx);
-
-  // assertx(search);
-  if (!search) {
+  // assertx(closure);
+  if (!closure) {
     return true;
   }
 
   if (krpc::parse_get_peers_response(ctx, res)) {
-    return handle_response(ctx, res.id, res.token, res.values, res.nodes,
-                           *search);
+    if (auto sctx = dynamic_cast<dht::SearchContext *>(closure)) {
+      dht::Search *search = search_find(ctx.dht.searches, sctx);
+      search_decrement(sctx);
+
+      if (!search) {
+        return true;
+      }
+      return search_handle_response(ctx, res.id, res.token, res.values,
+                                    res.nodes, *search);
+    } else if (auto sctx = dynamic_cast<dht::ScrapeContext *>(closure)) {
+      if (!sctx) {
+        return true;
+      }
+      dht::Infohash ih = sctx->infohash;
+      delete sctx;
+      return scrape_handle_response(ctx, res.id, res.token, res.values,
+                                    res.nodes, ih);
+    } else {
+      assertx(false);
+    }
   }
 
   return false;
@@ -894,10 +923,17 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
 static bool
 handle_response(dht::MessageContext &ctx,
                 const krpc::SampleInfohashesResponse &res) noexcept {
+  dht::DHT &self = ctx.dht;
   // TODO logger::receive::res::sample_infohashes(ctx);
 
-  // message(ctx, res.sender, [](auto &node) { //
-  // });
+  for (const std::tuple<dht::NodeId, Contact> &e : res.nodes) {
+    const Contact &c = std::get<1>(e);
+    const auto &nodeId = std::get<0>(e);
+    __bootstrap_insert(self, nodeId, c);
+  }
+
+  uint32_t hours = (uint32_t)std::ceil((double)res.interval / 60. / 60.);
+  scrape::sample_infohashes(self, ctx.remote, hours, res.samples);
 
   return true;
 }
