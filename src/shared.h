@@ -224,8 +224,9 @@ struct Stat {
   }
 };
 
+template <std::size_t sz>
 struct DHTMetaBootstrap {
-  sp::BloomFilter<Ip, 128 * 1024> bootstrap_filter;
+  sp::BloomFilter<Ip, sz> bootstrap_filter;
   Timestamp bootstrap_last_reset;
   Config &config;
   Timestamp &now;
@@ -233,12 +234,23 @@ struct DHTMetaBootstrap {
                    Timestamp &n) noexcept;
 };
 
+template <std::size_t sz>
+DHTMetaBootstrap<sz>::DHTMetaBootstrap(Config &conf,
+                                       sp::Array<sp::hasher<Ip>> &hashers,
+                                       Timestamp &n) noexcept
+    : bootstrap_filter(hashers)
+    , bootstrap_last_reset(0)
+    , config{conf}
+    , now{n} {
+}
+
+#define SCRAPE_FILTER 8 * 1024 * 1024
 struct DHTMetaScrape {
   timeout::TimeoutBox tb;
   dht::DHTMetaRoutingTable routing_table;
   heap::StaticMaxBinary<KContact, 128> bootstrap;
-  DHTMetaBootstrap bootstrap_filter;
   Timestamp &now;
+  DHTMetaBootstrap<SCRAPE_FILTER> &bootstrap_filter;
   DHTMetaScrape(dht::DHT &, const dht::NodeId &) noexcept;
   virtual ~DHTMetaScrape() {
   }
@@ -283,7 +295,7 @@ struct DHT {
 
   // bootstrap {{{
   sp::StaticArray<sp::hasher<Ip>, 2> ip_hashers;
-  DHTMetaBootstrap bootstrap_meta;
+  DHTMetaBootstrap<128 * 1024> bootstrap_meta;
   heap::StaticMaxBinary<KContact, 128> bootstrap;
   // }}}
 
@@ -297,7 +309,7 @@ struct DHT {
   Timestamp scrape_hour_time;
   sp::UinStaticArray<std::tuple<dht::Infohash, Contact>, 128>
       scrape_get_peers_ih;
-  sp::BloomFilter<Ip, 8 * 1024 * 1024> scrape_bootstrap_filter; // TODO reset
+  DHTMetaBootstrap<SCRAPE_FILTER> scrape_bootstrap_filter;
   // } scrape;
 
   // upnp {{{

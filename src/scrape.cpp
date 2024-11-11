@@ -226,10 +226,7 @@ scrape::get_peers_close_nodes(dht::DHT &self,
 
     if (best_match) {
       for (const auto &value : values) {
-        dht::KContact kcon(rank(value.id, best_match->routing_table.id),
-                           value.contact);
-        bootstrap_insert(best_match->bootstrap_filter, best_match->bootstrap,
-                         kcon);
+        bootstrap_insert(*best_match, value);
       }
     }
   }

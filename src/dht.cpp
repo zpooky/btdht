@@ -108,8 +108,8 @@ init(dht::DHT &dht, const Options &o) noexcept {
     return false;
   }
 
-  for_each(o.bootstrap, [&](const Contact &cur) {
-    bootstrap_insert(dht.bootstrap_meta, dht.bootstrap, dht::KContact(0, cur));
+  for_each(o.bootstrap, [&](const Contact &cur) { //
+    bootstrap_insert(dht, cur);
   });
 
   return true;

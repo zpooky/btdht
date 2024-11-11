@@ -158,17 +158,8 @@ DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &ih) noexcept
     : tb{self.now}
     , routing_table{self.random, tb, self.now, ih, self.config}
     , bootstrap{}
-    , bootstrap_filter(self.config, self.ip_hashers, self.now)
-    , now{self.now} {
-}
-
-DHTMetaBootstrap::DHTMetaBootstrap(Config &config,
-                                   sp::Array<sp::hasher<Ip>> &hashers,
-                                   Timestamp &n) noexcept
-    : bootstrap_filter(hashers)
-    , bootstrap_last_reset(0)
-    , config{config}
-    , now{n} {
+    , now{self.now}
+    , bootstrap_filter(self.scrape_bootstrap_filter) {
 }
 
 // dht::DHT
@@ -210,7 +201,7 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , scrape_hour{}
     , scrape_hour_idx(0)
     , scrape_hour_time(n)
-    , scrape_bootstrap_filter(ip_hashers)
+    , scrape_bootstrap_filter(config, ip_hashers, now)
     // }}}
     , upnp_sent{0} {
 

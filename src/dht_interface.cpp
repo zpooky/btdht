@@ -317,14 +317,11 @@ __bootstrap_insert(dht::DHT &self, const dht::NodeId &id,
   if (max) {
     auto tmp = rank(self.routing_table.id, id);
     if (max_rank > tmp) {
-      bootstrap_insert(max->bootstrap_filter, max->bootstrap,
-                       dht::KContact(max_rank, remote));
+      bootstrap_insert(*max, dht::IdContact(id, remote));
       return;
     }
   }
-  max_rank = rank(self.routing_table.id, id);
-  bootstrap_insert(self.bootstrap_meta, self.bootstrap,
-                   dht::KContact(max_rank, remote));
+  bootstrap_insert(self, dht::IdContact(id, remote));
 }
 
 template <typename F>

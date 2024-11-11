@@ -146,7 +146,7 @@ response::dump(sp::Buffer &buf, const Transaction &t,
         ++i;
       }
       if (!bencode::e::pair(b2, "bootstrap_unique_inserts",
-                            dht.scrape_bootstrap_filter.unique_inserts)) {
+                            dht.scrape_bootstrap_filter.bootstrap_filter.unique_inserts)) {
         return false;
       }
       i = 0;

@@ -3,8 +3,9 @@
 
 namespace dht {
 //==========================================
+template <std::size_t sz>
 static void
-maybe_bootstrap_reset(DHTMetaBootstrap &self) noexcept {
+maybe_bootstrap_reset(DHTMetaBootstrap<sz> &self) noexcept {
   Config &cfg = self.config;
   Timestamp next = self.bootstrap_last_reset + cfg.bootstrap_reset;
   if ((self.now >= next) ||
@@ -16,9 +17,11 @@ maybe_bootstrap_reset(DHTMetaBootstrap &self) noexcept {
   }
 }
 
-void
-bootstrap_insert(DHTMetaBootstrap &self, heap::MaxBinary<KContact> &contacts,
-                 const KContact &remote) noexcept {
+template <std::size_t sz>
+static void
+__bootstrap_insert(DHTMetaBootstrap<sz> &self,
+                   heap::MaxBinary<KContact> &contacts,
+                   const KContact &remote) noexcept {
   assertx(remote.contact.port != 0);
 
   maybe_bootstrap_reset(self);
@@ -32,8 +35,26 @@ bootstrap_insert(DHTMetaBootstrap &self, heap::MaxBinary<KContact> &contacts,
 
 void
 bootstrap_insert(DHT &self, const IdContact &contact) noexcept {
-  bootstrap_insert(self.bootstrap_meta, self.bootstrap,
-                   dht::KContact(contact, self.id));
+  __bootstrap_insert(self.bootstrap_meta, self.bootstrap,
+                     dht::KContact(contact, self.id));
+}
+
+void
+bootstrap_insert(DHT &self, const Contact &contact) noexcept {
+  __bootstrap_insert(self.bootstrap_meta, self.bootstrap,
+                     dht::KContact(0, contact));
+}
+
+void
+bootstrap_insert(DHTMetaScrape &self, const IdContact &contact) noexcept {
+  __bootstrap_insert(self.bootstrap_filter, self.bootstrap,
+                     dht::KContact(contact, self.routing_table.id));
+}
+
+void
+bootstrap_insert(DHTMetaScrape &self, const Contact &contact) noexcept {
+  __bootstrap_insert(self.bootstrap_filter, self.bootstrap,
+                     dht::KContact(0, contact));
 }
 
 //==========================================

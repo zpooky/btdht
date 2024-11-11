@@ -443,7 +443,7 @@ dns_lookup(dht::DHT &self, const char *hostname, uint16_t port) {
       struct sockaddr_in *ai_addr = (struct sockaddr_in *)rp->ai_addr;
       to_contact(ai_addr->sin_addr, port, contact);
 
-      bootstrap_insert(self, dht::IdContact(dht::NodeId{}, contact));
+      bootstrap_insert(self, contact);
     }
   }
 
@@ -499,8 +499,7 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
 
       if (!is_full(ctx.bootstrap)) {
         ++bi;
-        bootstrap_insert(ctx.bootstrap_meta, ctx.bootstrap,
-                         dht::KContact(0, cur));
+        bootstrap_insert(ctx, cur);
       } else {
         ++cw;
         cont = false;

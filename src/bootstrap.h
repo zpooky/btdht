@@ -6,12 +6,18 @@
 
 namespace dht {
 //==========================================
-void
-bootstrap_insert(DHTMetaBootstrap &, heap::MaxBinary<KContact> &contacts,
-                 const KContact &) noexcept;
 
 void
 bootstrap_insert(DHT &, const IdContact &) noexcept;
+
+void
+bootstrap_insert(DHT &, const Contact &) noexcept;
+
+void
+bootstrap_insert(DHTMetaScrape &self, const IdContact &) noexcept;
+
+void
+bootstrap_insert(DHTMetaScrape &self, const Contact &) noexcept;
 
 //==========================================
 void
