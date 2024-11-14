@@ -117,9 +117,9 @@ ads(dht::DHT &dht, dht::RoutingTable *parent, std::size_t it) {
 }
 
 TEST(dhtTest, split) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
-  dht::DHT dht(sock, c);
+  dht::DHT dht(s, c);
 
   auto parent = new dht::RoutingTable;
   ads(dht, parent, 10);
@@ -192,7 +192,7 @@ Lstart:
           assert_empty(c);
         }
       }
-      it = it->next;
+      it = it->parallel;
     } // while
     root = root->in_tree;
     ++idx;
@@ -277,11 +277,13 @@ assert_count(DHT &dht) {
 }
 
 TEST(dhtTest, test_find_node) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
 
   fprintf(stderr, "sizeof(Ip):%zu\n", sizeof(Ip));
@@ -368,11 +370,13 @@ TEST(dhtTest, test_find_node) {
 }
 
 TEST(dhtTest, test) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
 
   insert_self(dht);
@@ -409,11 +413,13 @@ Lstart:
 }
 
 TEST(dhtTest, test_link) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
 
   random_insert(dht, 1024);
@@ -448,11 +454,13 @@ is_unique(std::list<NodeId> &l) {
 }
 
 TEST(dhtTest, test_append) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
 
   for (std::size_t i = 1; i <= 50; ++i) {
@@ -526,20 +534,22 @@ TEST(dhtTest, test_append) {
 }
 
 TEST(dhtTest, test_node_id_strict) {
-  fd sock(-1);
+  fd s(-1);
   prng::xorshift32 r(1);
   for (uint32_t i = 0; i < 10000; ++i) {
     Ip ip(i);
     Contact c(ip, 0);
     Timestamp now = sp::now();
-    dht::DHT dht(sock, sock, c, r, now);
+    dht::Client client{s, s};
+    dht::Options opt;
+    dht::DHT dht(c, client, r, now, opt);
     init(dht, dht::Options{});
     ASSERT_TRUE(is_valid_strict_id(ip, dht.id));
   }
 }
 
 TEST(dhtTest, test_node_id_not_strict) {
-  fd sock(-1);
+  fd s(-1);
   prng::xorshift32 r(1);
   dht::NodeId id;
   for (uint32_t i = 0; i < 500000; ++i) {
@@ -551,11 +561,13 @@ TEST(dhtTest, test_node_id_not_strict) {
 }
 
 TEST(dhtTest, test_full) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
   const char *id_hex = "B161DDEAF70A2485C32789B965CE62753B11CEFF";
   printf("%zu\n", std::strlen(id_hex));
@@ -720,11 +732,13 @@ TEST(dhtTest, test_full) {
 }
 
 TEST(dhtTest, test_first_full) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
   const char *id_hex = "FF61DDEAF70A2485C32789B965CE62753B11CEFF";
   ASSERT_TRUE(from_hex(dht.id, id_hex));
@@ -789,11 +803,13 @@ struct Hasher<RankNodeId> {
 } // namespace sp
 
 TEST(dhtTest, test_self_rand) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
   heap::StaticMaxBinary<RankNodeId, 1024> heap;
 
@@ -840,11 +856,13 @@ TEST(dhtTest, test_self_rand) {
 }
 
 TEST(dhtTest, test_assert_fail) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
   const char *id_hex = "B161DD0EAF70A2485C32789B965CE602753B11CE";
   ASSERT_TRUE(from_hex(dht.id, id_hex));
@@ -931,11 +949,13 @@ TEST(dhtTest, test_assert_fail) {
 }
 
 TEST(dhtTest, test_assert_fail2) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht::init(dht, dht::Options{});
   const char *id_hex = "B161DD0EAF70A2485C32789B965CE602753B11CE";
   ASSERT_TRUE(from_hex(dht.id, id_hex));
@@ -1897,9 +1917,9 @@ TEST(dhtTest, test_assert_fail2) {
 }
 
 // TEST(dhtTest, test2) {
-//   fd sock(-1);
+//   fd s(-1);
 //   Contact c(0, 0);
-//   dht::DHT dht(sock, c);
+//   dht::DHT dht(s, c);
 //   dht::init(dht, dht::Options{});
 //   std::list<dht::NodeId> added;
 //

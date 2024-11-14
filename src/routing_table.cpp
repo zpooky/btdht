@@ -1,6 +1,5 @@
 #include "routing_table.h"
 #include "Log.h"
-#include "timeout.h"
 #include <algorithm>
 #include <buffer/CircularBuffer.h>
 #include <cstdlib>
@@ -10,6 +9,9 @@
 #include <new>
 #include <prng/util.h>
 #include <util/assert.h>
+
+#include "timeout.h"
+#include "util.h"
 
 namespace dht {
 
@@ -29,7 +31,7 @@ RoutingTable::RoutingTable(ssize_t d) noexcept
     : depth(d)
     , in_tree()
     , bucket()
-    , next(nullptr) {
+    , parallel(nullptr) {
 }
 
 RoutingTable::~RoutingTable() noexcept {
@@ -93,12 +95,12 @@ RoutingTableLess::operator()(const RoutingTable *f,
 }
 
 // ========================================
-DHTMetaRoutingTable::DHTMetaRoutingTable(prng::xorshift32 &r,
+DHTMetaRoutingTable::DHTMetaRoutingTable(std::size_t cap, prng::xorshift32 &r,
                                          timeout::TimeoutBox &_tb, Timestamp &n,
                                          const dht::NodeId &i,
                                          const dht::Config &c)
     : root(nullptr)
-    , rt_reuse(160)
+    , rt_reuse(cap)
     , random{r}
     , tb{_tb}
     , id{i}
@@ -114,7 +116,7 @@ DHTMetaRoutingTable::~DHTMetaRoutingTable() {
     RoutingTable *in_tree = it->in_tree;
 
     while (it) {
-      RoutingTable *it_next = it->next;
+      RoutingTable *it_next = it->parallel;
 
       // fprintf(stderr, "it[%p]\n", (void *)it);
       assertx(debug_bucket_count(it->bucket) == it->bucket.length);
@@ -156,7 +158,7 @@ debug_for_each(const DHTMetaRoutingTable &self, void *closure,
         }
       } // for
 
-      it_next = it_next->next;
+      it_next = it_next->parallel;
     } // while
 
     it = it->in_tree;
@@ -226,7 +228,7 @@ debug_assert_all(const DHTMetaRoutingTable &self) {
     auto it_next = it;
     while (it_next) {
       assertx(debug_bucket_is_valid(it_next));
-      it_next = it_next->next;
+      it_next = it_next->parallel;
     }
     it = it->in_tree;
   }
@@ -234,17 +236,17 @@ debug_assert_all(const DHTMetaRoutingTable &self) {
 }
 
 static bool
-debug_find(const DHTMetaRoutingTable &self, RoutingTable *next) {
-  assertx(next);
+debug_find(const DHTMetaRoutingTable &self, RoutingTable *parallel) {
+  assertx(parallel);
 
   auto it = self.root;
   while (it) {
     auto it_next = it;
     while (it_next) {
-      if (it_next == next) {
+      if (it_next == parallel) {
         return true;
       }
-      it_next = it_next->next;
+      it_next = it_next->parallel;
     }
     it = it->in_tree;
   }
@@ -262,8 +264,9 @@ debug_print(const char *ctx, const DHTMetaRoutingTable &self) noexcept {
   while (it) {
     auto it_next = it;
     while (it_next) {
-      printf("%p[%zd, nodes(%zu)]->", (void *)it_next, it_next->depth, it_next->bucket.length);
-      it_next = it_next->next;
+      printf("%p[%zd, nodes(%zu)]->", (void *)it_next, it_next->depth,
+             it_next->bucket.length);
+      it_next = it_next->parallel;
     }
     printf("\n");
     it = it->in_tree;
@@ -308,7 +311,7 @@ debug_correct_level(const DHTMetaRoutingTable &self) noexcept {
         // TODO unique set of nodeid
 
         ++table_cnt;
-        it_next = it_next->next;
+        it_next = it_next->parallel;
         if (it_next) {
           assertx(!it_next->in_tree);
         }
@@ -339,7 +342,7 @@ static bool
 debug_routing_level_iscorrect(DHTMetaRoutingTable &self, RoutingTable *root) {
   assertx(root->depth >= 0);
 
-  for (RoutingTable *it = root; it; it = it->next) {
+  for (RoutingTable *it = root; it; it = it->parallel) {
     assertxs(it->depth == root->depth, it->depth, root->depth);
 
     for (std::size_t i = 0; i < Bucket::K; ++i) {
@@ -351,7 +354,7 @@ debug_routing_level_iscorrect(DHTMetaRoutingTable &self, RoutingTable *root) {
         // TODO compare prefix up to root->depth with self.id
       }
     } // for
-  }   // for
+  } // for
 
   return true;
 }
@@ -394,7 +397,7 @@ find_closest(DHTMetaRoutingTable &self, const NodeId &search,
 static void
 dealloc_RoutingTable(DHTMetaRoutingTable &self, RoutingTable *recycle) {
   assertx(recycle);
-  assertx(!recycle->next);
+  assertx(!recycle->parallel);
   assertx(!recycle->in_tree);
 
   auto &bucket = recycle->bucket;
@@ -465,7 +468,7 @@ debug_timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
   RoutingTable *root = find_closest(self, contact.id, inTree, idx);
   assertx(is_valid(contact));
 
-  for (RoutingTable *it = root; it; it = it->next) {
+  for (RoutingTable *it = root; it; it = it->parallel) {
 
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &tmp = it->bucket.contacts[i];
@@ -490,7 +493,7 @@ dequeue_root(DHTMetaRoutingTable &self, RoutingTable *const needle) noexcept {
 #if 0
   auto in_tree = self.root->in_tree;
   if (self.root == needle) {
-    self.root = needle->next;
+    self.root = needle->parallel;
     if (self.root == nullptr) {
       self.root = in_tree;
     } else {
@@ -499,11 +502,11 @@ dequeue_root(DHTMetaRoutingTable &self, RoutingTable *const needle) noexcept {
   } else {
     auto it = self.root;
     while (it) {
-      if (it->next == needle) {
-        it->next = needle->next;
+      if (it->parallel == needle) {
+        it->parallel = needle->parallel;
         break;
       }
-      it = it->next;
+      it = it->parallel;
     }
 
     if (it == nullptr) {
@@ -520,14 +523,14 @@ dequeue_root(DHTMetaRoutingTable &self, RoutingTable *const needle) noexcept {
     while (it) {
       if (it == needle) {
         if (paralell_priv) {
-          paralell_priv->next = needle->next;
-        } else if (needle->next) {
+          paralell_priv->parallel = needle->parallel;
+        } else if (needle->parallel) {
           if (parent) {
-            parent->in_tree = needle->next;
+            parent->in_tree = needle->parallel;
           } else {
-            self.root = needle->next;
+            self.root = needle->parallel;
           }
-          needle->next->in_tree = current_level->in_tree;
+          needle->parallel->in_tree = current_level->in_tree;
         } else {
           if (!parent) {
             self.root = needle->in_tree;
@@ -542,7 +545,7 @@ dequeue_root(DHTMetaRoutingTable &self, RoutingTable *const needle) noexcept {
         goto Lout;
       }
       paralell_priv = it;
-      it = it->next;
+      it = it->parallel;
     } // while
     parent = it;
     it = current_level->in_tree;
@@ -566,28 +569,28 @@ Lout:
   }
 
   needle->in_tree = nullptr;
-  needle->next = nullptr;
+  needle->parallel = nullptr;
 
   return true;
 }
 
 static void
-enqueue_level(RoutingTable *leaf, RoutingTable *next) noexcept {
+enqueue_level(RoutingTable *leaf, RoutingTable *parallel) noexcept {
   assertx(leaf);
-  assertx(next);
+  assertx(parallel);
 #if 0
   RoutingTable *it = leaf;
   while (it) {
-    if (!it->next) {
-      it->next = next;
+    if (!it->parallel) {
+      it->parallel = parallel;
       break;
     }
-    it = it->next;
+    it = it->parallel;
   }
 #endif
-  assertx(!next->next);
-  next->next = leaf->next;
-  leaf->next = next;
+  assertx(!parallel->parallel);
+  parallel->parallel = leaf->parallel;
+  leaf->parallel = parallel;
 }
 
 enum class AllocType { REC, PLAIN };
@@ -710,7 +713,7 @@ routing_table_level_insert(DHTMetaRoutingTable &self, RoutingTable &table,
                            const Node &c, bool eager,
                            /*OUT*/ bool &replaced) noexcept {
 
-  for (RoutingTable *it = &table; it; it = it->next) {
+  for (RoutingTable *it = &table; it; it = it->parallel) {
     Node *result = bucket_insert(self, it->bucket, c, eager, replaced);
     if (result) {
       return result;
@@ -738,7 +741,7 @@ routing_table_level_find_node(RoutingTable &table, const Key &id) noexcept {
       }
     }
 
-    it = it->next;
+    it = it->parallel;
   }
 
   return nullptr;
@@ -800,15 +803,16 @@ split_transfer(DHTMetaRoutingTable &self, RoutingTable *better, Bucket &subject,
           }
         }
 
-        assertx(!better_it->next);
+        assertx(!better_it->parallel);
         while (!node_move(self, /*src*/ contact, better_it->bucket)) {
-          assertx(!better_it->next);
+          assertx(!better_it->parallel);
 
-          better_it->next = alloc_RoutingTable(self, level + 1, AllocType::REC);
-          if (!better_it->next) {
+          better_it->parallel =
+              alloc_RoutingTable(self, level + 1, AllocType::REC);
+          if (!better_it->parallel) {
             goto Lreset;
           }
-          better_it = better_it->next;
+          better_it = better_it->parallel;
         } // while
         subject.length--;
 
@@ -817,7 +821,7 @@ split_transfer(DHTMetaRoutingTable &self, RoutingTable *better, Bucket &subject,
         // printf("\n");
       }
     } // if is_valid
-  }   // for
+  } // for
   assertx(debug_bucket_count(subject) == subject.length);
 
   return better_it;
@@ -877,15 +881,15 @@ split(DHTMetaRoutingTable &self, RoutingTable *const split_root) noexcept {
     }
     assertx(debug_bucket_count(bucket) == bucket.length);
 
-    RoutingTable *const t_next = split_it->next;
+    RoutingTable *const t_next = split_it->parallel;
     if (bucket.length > 0 || split_it == split_root) {
       split_priv = split_it;
     } else {
       split_it->in_tree = nullptr;
-      split_it->next = nullptr;
+      split_it->parallel = nullptr;
       dealloc_RoutingTable(self, split_it);
       if (split_priv) {
-        split_priv->next = t_next;
+        split_priv->parallel = t_next;
       }
     }
 
@@ -956,7 +960,7 @@ Lstart:
 
   std::size_t res_idx = 0;
   auto merge = [&](RoutingTable &table) -> bool {
-    for (RoutingTable *it = &table; it; it = it->next) {
+    for (RoutingTable *it = &table; it; it = it->parallel) {
       auto &b = it->bucket;
 
       // printf("[%p]\n", &table);
@@ -970,7 +974,7 @@ Lstart:
           }
         }
       } // for
-    }   // for
+    } // for
 
     return res_idx == res_length;
   };
@@ -1076,7 +1080,7 @@ can_split(const RoutingTable &table, std::size_t idx) {
       return true;
     }
 
-    it = it->next;
+    it = it->parallel;
   } // while
 
   return false;
@@ -1090,14 +1094,14 @@ compact_RoutingTable(dht::DHTMetaRoutingTable &self) {
     assertx(false);
     auto root = self.root;
     RoutingTable *const in_tree = root->in_tree;
-    self.root = root->next;
+    self.root = root->parallel;
     if (self.root) {
       self.root->in_tree = in_tree;
     } else {
       self.root = in_tree;
     }
 
-    root->next = nullptr;
+    root->parallel = nullptr;
     root->in_tree = nullptr;
     dealloc_RoutingTable(self, root);
   } // while
@@ -1114,8 +1118,31 @@ insert(DHTMetaRoutingTable &self, const Node &contact) noexcept {
     return nullptr;
   }
 
-  assertx(debug_assert_all(self));
+  {
+    std::size_t i = 0;
+    if (self.root) {
+      i = self.root->depth;
+    }
+    const auto r = rank(self.id, contact.id);
+    if (r < i) {
+      return nullptr;
+    }
 
+    auto priv = self.root;
+    for (; i < r; ++i) {
+      if (!priv) {
+        return nullptr;
+      }
+      assertx(priv->depth == i);
+      if (!priv->in_tree) {
+        priv->in_tree = alloc_RoutingTable(self, i + 1, AllocType::REC);
+      }
+      priv = priv->in_tree;
+    }
+  }
+
+  assertx(debug_assert_all(self));
+#if 1
   bool will_ins = false;
 
 Lstart:
@@ -1191,14 +1218,14 @@ Lstart:
       } else {
         assertx(debug_correct_level(self));
         auto nxt_depth = leaf->depth;
-        auto next = alloc_RoutingTable(self, nxt_depth, AllocType::PLAIN);
-        if (next) {
-          assertx(next != leaf);
-          // printf("next[depth: %zu]\n", nxt_depth);
-          assertx(!debug_find(self, next));
+        auto parallel = alloc_RoutingTable(self, nxt_depth, AllocType::PLAIN);
+        if (parallel) {
+          assertx(parallel != leaf);
+          // printf("parallel[depth: %zu]\n", nxt_depth);
+          assertx(!debug_find(self, parallel));
 
-          // printf("=====next[%zu]\n", leaf->depth);
-          enqueue_level(leaf, next);
+          // printf("=====parallel[%zu]\n", leaf->depth);
+          enqueue_level(leaf, parallel);
           assertx(debug_correct_level(self));
           will_ins = true;
           goto Lstart;
@@ -1239,6 +1266,7 @@ Lstart:
   }
 
   return nullptr;
+#endif
 } // dht::insert()
 
 std::uint32_t

@@ -1039,10 +1039,11 @@ ScrapeContext::ScrapeContext(const dht::Infohash &ih)
 } // namespace dht
 
 //=====================================
+// $XDG_CACHE_HOME default equal to $HOME/.cache
+
 bool
-xdg_cache_dir(char (&directory)[PATH_MAX]) noexcept {
+xdg_share_dir(char (&directory)[PATH_MAX]) noexcept {
   // read env $XDG_DATA_HOME default to $HOME/.local/share
-  // $XDG_CACHE_HOME default equal to $HOME/.cache
   const char *data = getenv("XDG_DATA_HOME");
   if (data == NULL || strcmp(data, "") == 0) {
     const char *home = getenv("HOME");

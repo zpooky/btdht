@@ -12,11 +12,13 @@ using namespace dht;
 
 TEST(krpc2Test, get_peers) {
 
-  fd sock(-1);
+  fd s(-1);
   Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   Infohash h;
   auto sctx_t = emplace(dht.searches.searches, h, h);
@@ -88,11 +90,13 @@ TEST(krpc2Test, get_peers) {
 }
 
 TEST(krpc2Test, get_peers_scrape) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -207,11 +211,13 @@ TEST(krpc2Test, get_peers2) {
 }
 
 TEST(krpc2Test, find_node) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -261,11 +267,13 @@ TEST(krpc2Test, find_node) {
 }
 
 TEST(krpc2Test, find_node2) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -317,11 +325,13 @@ TEST(krpc2Test, find_node2) {
 }
 
 TEST(krpc2Test, ping) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -359,11 +369,13 @@ TEST(krpc2Test, ping) {
 }
 
 TEST(krpc2Test, xxx) {
-  fd sock(-1);
+  fd s(-1);
   Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   unsigned char raw[1024];
   sp::Buffer out(raw);
@@ -415,11 +427,13 @@ TEST(krpc2Test, xxx) {
 
 TEST(krpc2Test, get_peers3) {
 
-  fd sock(-1);
+  fd s(-1);
   Contact c(Ipv4(12), Port(123));
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   unsigned char raw[1024];
   sp::Buffer out(raw);

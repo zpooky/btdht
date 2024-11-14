@@ -1,8 +1,10 @@
 #include "Options.h"
 #include <cstdio>
 #include <cstdlib>
+#include <fcntl.h>
 #include <getopt.h>
 #include <io/file.h>
+#include <unistd.h>
 
 static const char *default_dump_path = "./dht_db.dump";
 
@@ -11,7 +13,9 @@ Options::Options()
     : port(34329)
     , bootstrap()
     , dump_file{0}
-    , local_socket{0} {
+    , local_socket{0}
+    , publish_socket{0}
+    , db_path{0} {
   memcpy(dump_file, default_dump_path, strlen(default_dump_path));
 }
 
@@ -111,6 +115,47 @@ parse(Options &self, int argc, char **argv) noexcept {
 
   if (!fs::is_file(self.dump_file)) {
     fprintf(stderr, "Unexisting '%s'", self.dump_file);
+  }
+
+  if (strlen(self.local_socket) == 0) {
+    if (!xdg_runtime_dir(self.local_socket)) {
+      return false;
+    }
+    mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
+    if (!fs::mkdirs(self.local_socket, mode)) {
+      return false;
+    }
+    ::strcat(self.local_socket, "/spdht.socket");
+  }
+  unlink(self.local_socket);
+
+  if (strlen(self.publish_socket) == 0) {
+    if (!xdg_runtime_dir(self.publish_socket)) {
+      return false;
+    }
+    mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
+    if (!fs::mkdirs(self.publish_socket, mode)) {
+      return false;
+    }
+    ::strcat(self.publish_socket, "/spdht_publish.socket");
+  }
+  unlink(self.publish_socket);
+
+  if (strlen(self.db_path) == 0) {
+    if (!xdg_share_dir(self.db_path)) {
+      return false;
+    }
+    ::strcat(self.db_path, "spbt/torrent.db");
+  }
+
+  if (strlen(self.scrape_socket_path) == 0) {
+    if (!xdg_runtime_dir(self.scrape_socket_path)) {
+      return false;
+    }
+    mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
+    if (!fs::mkdirs(self.scrape_socket_path, mode)) {
+      return false;
+    }
   }
 
   return true;

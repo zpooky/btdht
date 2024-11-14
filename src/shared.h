@@ -150,6 +150,7 @@ namespace dht {
 struct Client {
   static constexpr std::size_t tree_capacity = 128;
   fd &udp;
+  fd &priv_fd;
   tx::Tx *timeout_head;
 
   tx::Tx buffer[tree_capacity];
@@ -159,7 +160,7 @@ struct Client {
 
   void (*deinit)(Client &);
 
-  explicit Client(fd &) noexcept;
+  Client(fd &udp_fd, fd &priv_fd) noexcept;
   ~Client() noexcept;
 
   Client(const Client &) = delete;
@@ -249,6 +250,7 @@ struct DHTMetaScrape {
   timeout::TimeoutBox tb;
   dht::DHTMetaRoutingTable routing_table;
   heap::StaticMaxBinary<KContact, 128> bootstrap;
+  const Timestamp started;
   Timestamp &now;
   DHTMetaBootstrap<SCRAPE_FILTER> &bootstrap_filter;
   DHTMetaScrape(dht::DHT &, const dht::NodeId &) noexcept;
@@ -261,8 +263,7 @@ struct DHTMetaScrape {
 struct DHT {
   // self {{{
   NodeId id;
-  Client client;
-  sp::fd priv_fd;
+  Client &client;
   Log log;
   Contact external_ip;
   prng::xorshift32 &random;
@@ -320,8 +321,8 @@ struct DHT {
   void (*topup_bootstrap)(DHT &) noexcept = nullptr;
   // }}}
 
-  DHT(fd &, fd &priv_fd, const Contact &self, prng::xorshift32 &,
-      Timestamp &now) noexcept;
+  DHT(const Contact &self, Client &client, prng::xorshift32 &, Timestamp &now,
+      const dht::Options &options) noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;

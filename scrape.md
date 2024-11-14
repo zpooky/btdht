@@ -61,4 +61,13 @@ RoutingTableNode[length, Array[...]]
 
 TODO no linear scans of RoutingTableNode
 
+TODO timeout queue verify the timestamp/date thing
+TODO spare routing_Table
+
+TODO
+  4:spbt
+  d
+   6:stored
+   i0e
+
 -------------------------------------------------------------------------------

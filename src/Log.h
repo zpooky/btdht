@@ -140,6 +140,9 @@ sample_infohashes_response_timeout(dht::DHT &, const krpc::Transaction &,
 } // namespace transmit
 
 // ========================================
+namespace misc {}
+
+// ========================================
 namespace routing {
 /*logger::routing*/
 void
@@ -150,6 +153,9 @@ insert(const dht::DHTMetaRoutingTable &, const dht::Node &) noexcept;
 
 void
 can_not_insert(const dht::DHTMetaRoutingTable &, const dht::Node &) noexcept;
+
+void
+head_node(const dht::DHTMetaRoutingTable &, sp::Milliseconds timeout);
 } // namespace routing
 
 // ========================================
@@ -171,7 +177,13 @@ void
 retire(const dht::DHT &, const dht::Search &) noexcept;
 
 } // namespace search
+
+namespace spbt {
+void
+publish(Timestamp t, const dht::Infohash &ih);
+}
 } // namespace logger
+
 // ===============================================================================
 
 #endif

@@ -156,18 +156,20 @@ Stat::Stat() noexcept
 
 DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &ih) noexcept
     : tb{self.now}
-    , routing_table{self.random, tb, self.now, ih, self.config}
+    , routing_table{20, self.random, tb, self.now, ih, self.config}
     , bootstrap{}
+    , started{self.now}
     , now{self.now}
     , bootstrap_filter(self.scrape_bootstrap_filter) {
 }
 
 // dht::DHT
-DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
-         Timestamp &n) noexcept
+DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
+         Timestamp &n, const dht::Options &options) noexcept
+
     // self {{{
     : id()
-    , client(udp)
+    , client{_client}
     , log()
     , external_ip(self)
     , random(r)
@@ -178,8 +180,8 @@ DHT::DHT(fd &udp, fd &p_priv_fd, const Contact &self, prng::xorshift32 &r,
     , core()
     , should_exit(false)
     //}}}
-    , db{config, r, n}
-    , routing_table(r, this->tb, n, this->id, config)
+    , db{config, r, n, options}
+    , routing_table(100, r, this->tb, n, this->id, config)
     , tb(n)
     //}}}
     // recycle contact list {{{

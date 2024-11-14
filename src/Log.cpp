@@ -607,11 +607,10 @@ sample_infohashes_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 
 } // namespace transmit
 
-namespace routing {
 /*logger::routing*/
 void
-split(const dht::DHTMetaRoutingTable &ctx, const dht::RoutingTable &,
-      const dht::RoutingTable &) noexcept {
+routing::split(const dht::DHTMetaRoutingTable &ctx, const dht::RoutingTable &,
+               const dht::RoutingTable &) noexcept {
 #ifdef LOG_ROUTING_SPLIT
   auto f = stdout;
   print_time(f, ctx);
@@ -621,7 +620,8 @@ split(const dht::DHTMetaRoutingTable &ctx, const dht::RoutingTable &,
 }
 
 void
-insert(const dht::DHTMetaRoutingTable &ctx, const dht::Node &d) noexcept {
+routing::insert(const dht::DHTMetaRoutingTable &ctx,
+                const dht::Node &d) noexcept {
 #ifdef LOG_ROUTING_INSERT
   auto f = stdout;
   print_time(f, ctx);
@@ -634,8 +634,8 @@ insert(const dht::DHTMetaRoutingTable &ctx, const dht::Node &d) noexcept {
 }
 
 void
-can_not_insert(const dht::DHTMetaRoutingTable &ctx,
-               const dht::Node &d) noexcept {
+routing::can_not_insert(const dht::DHTMetaRoutingTable &ctx,
+                        const dht::Node &d) noexcept {
 #ifdef LOG_ROUTING_CAN_NOT_INSERT
   auto f = stdout;
   print_time(f, ctx);
@@ -647,13 +647,29 @@ can_not_insert(const dht::DHTMetaRoutingTable &ctx,
   (void)d;
 }
 
-} // namespace routing
-
-namespace peer_db {
-/*logger::peer_db*/
 void
-insert(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
-       const Contact &) noexcept {
+routing::head_node(const dht::DHTMetaRoutingTable &rt, sp::Milliseconds x) {
+  timeout::Timeout *timeout = rt.tb.timeout;
+  if (timeout) {
+    dht::Node *head = timeout->timeout_node;
+    if (head) {
+      char remote[30] = {0};
+      auto f = stdout;
+      print_time(f, rt.now);
+      to_string(head->contact, remote, sizeof(remote));
+      fprintf(f, "Node[%s, ", remote);
+      fprintf(f, "req_sent:");
+      print_time(f, head->req_sent);
+      fprintf(f, ", wakeup:");
+      print_time(f, (head->req_sent + x));
+      fprintf(f, "]\n");
+    }
+  }
+}
+
+void
+peer_db::insert(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
+                const Contact &) noexcept {
 #ifdef LOG_PEER_DB
   auto f = stdout;
   print_time(f, ctx);
@@ -666,8 +682,8 @@ insert(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
 }
 
 void
-update(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
-       const dht::Peer &) noexcept {
+peer_db::update(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
+                const dht::Peer &) noexcept {
 #ifdef LOG_PEER_DB
   auto f = stdout;
   print_time(f, ctx);
@@ -679,12 +695,8 @@ update(const db::DHTMetaDatabase &ctx, const dht::Infohash &h,
   (void)h;
 }
 
-} // namespace peer_db
-
-namespace search {
-
 void
-retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
+search::retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
   auto f = stdout;
   print_time(f, ctx);
   fprintf(f, "retire search[");
@@ -692,6 +704,13 @@ retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
   fprintf(f, "]\n");
 }
 
-} // namespace search
+void
+spbt::publish(Timestamp now, const dht::Infohash &ih) {
+  auto f = stdout;
+  print_time(f, now);
+  fprintf(f, "spbt publish[");
+  dht::print_hex(f, ih.id, sizeof(ih.id));
+  fprintf(f, "]\n");
+}
 
 } // namespace logger

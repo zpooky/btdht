@@ -91,7 +91,7 @@ on_topup_bootstrap(dht::DHT &) noexcept;
 template <size_t SIZE>
 static bool
 cache_dir(char (&buffer)[SIZE]) noexcept {
-  if (!xdg_cache_dir(buffer)) {
+  if (!xdg_share_dir(buffer)) {
     return false;
   }
 
@@ -238,7 +238,7 @@ init_cache(dht::DHT &ctx) noexcept {
     return true;
   };
 
-  fs::for_each_files(self->dir, self, cb);
+  fs::for_each_files(self->dir, self, cb); // TODO whats the point?
   if (self->read_min_idx == ~size_t(0)) {
     assertxs(self->read_max_idx == 0, self->read_min_idx, self->read_max_idx);
     self->read_min_idx = 0;

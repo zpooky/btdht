@@ -8,6 +8,16 @@
 
 #include <algorithm>
 
+/*
+ * TODO maintain how many:
+ * - new infohash we get
+ * - new nodes we get
+ * 
+ * TODO
+ * - rate of new infohash
+ * - rate of new nodes
+ */
+
 namespace dht {
 static void
 rand_key(prng::xorshift32 &r, dht::NodeId &id) {
@@ -76,8 +86,7 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
          i < capacity(self.active_scrapes) - 1; ++i) {
       dht::NodeId ih{};
       rand_key(self.random, ih);
-      auto *rt = emplace(self.active_scrapes, self,
-                         ih); // TODO what is the size of the routing table?
+      auto *rt = emplace(self.active_scrapes, self, ih);
       assertx(rt);
     }
   }
@@ -95,9 +104,9 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
     for (auto &f : self.scrape_hour) {
       clear(f);
     }
-    self.scrape_hour_time = self.now + sp::Hours(1);
+    self.scrape_hour_time = self.now;
   } else {
-    while ((self.scrape_hour_time + sp::Hours(1)) <= self.now) {
+    while ((self.scrape_hour_time + sp::Hours(1)) > self.now) {
       self.scrape_hour_idx =
           self.scrape_hour_idx + 1 % capacity(self.scrape_hour);
       clear(self.scrape_hour[self.scrape_hour_idx]);
@@ -209,8 +218,8 @@ scrape::seed_insert(dht::DHT &self, const sp::byte version[DHT_VERSION_LEN],
 }
 
 bool
-scrape::get_peers_close_nodes(dht::DHT &self,
-                              const sp::UinArray<dht::IdContact> &values) {
+scrape::get_peers_nodes(dht::DHT &self,
+                        const sp::UinArray<dht::IdContact> &values) {
   if (!is_empty(values) && !is_empty(self.active_scrapes)) {
     const dht::IdContact *first = values.begin();
     dht::DHTMetaScrape *best_match = nullptr;
@@ -232,6 +241,12 @@ scrape::get_peers_close_nodes(dht::DHT &self,
   }
 
   return true;
+}
+
+bool
+scrape::get_peers_peer(dht::DHT &self, const dht::Infohash &ih,
+                       const Contact &contact) {
+  return spbt_scrape_client_send(self.db.scrape_client, ih.id, contact);
 }
 
 bool

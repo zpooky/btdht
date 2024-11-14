@@ -27,7 +27,9 @@ TEST(transactionTest, test_mint_consume) {
   fd s(-1);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(s, s, Contact(0, 0), r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(Contact(0, 0), client, r, now, opt);
   fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
 
   krpc::Transaction ts[Client::tree_capacity] = {};
@@ -58,7 +60,9 @@ TEST(transactionTest, test_mint_timeout) {
   fd s(-1);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(s, s, Contact(0, 0), r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(Contact(0, 0), client, r, now, opt);
   fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
 
   krpc::Transaction ts[Client::tree_capacity] = {};
@@ -102,7 +106,9 @@ TEST(transactionTest, test_mint_timeout2) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   Timestamp before = now;
-  dht::DHT dht(s, s, Contact(0, 0), r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(Contact(0, 0), client, r, now, opt);
   fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
 
   global_count = 0;
@@ -152,7 +158,9 @@ TEST(transactionTest, test_eager_tx_timeout) {
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
   Timestamp before = now;
-  dht::DHT dht(s, s, Contact(0, 0), r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(Contact(0, 0), client, r, now, opt);
   fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
 
   global_count = 0;
@@ -183,7 +191,9 @@ TEST(transactionTest, test_valid) {
   fd s(-1);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(s, s, Contact(0, 0), r, now);
+  dht::Client client{s, s};
+  dht::Options opt;
+  dht::DHT dht(Contact(0, 0), client, r, now, opt);
 
 Lrestart:
   if (test_it++ < 100) {

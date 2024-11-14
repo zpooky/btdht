@@ -393,9 +393,11 @@ on_interrupt(void *closure, uint32_t events) {
 
 void
 setup_epoll(dht::DHT &self, dht::ModulesAwake &awake, dht::Options &options,
-            fd &udp_fd, fd &signal_fd, fd &priv_fd) noexcept {
+            fd &udp_fd, fd &signal_fd, fd &priv_fd, fd &publish_fd) noexcept {
   auto dp_cb = new dht_protocol_callback{awake, self, options, udp_fd};
   auto pp_cb = new priv_protocol_ACCEPT_callback{awake, self, options, priv_fd};
+  auto publish_cb =
+      new dht::publish_ACCEPT_callback{self.db.scrape_client, publish_fd};
   auto i_cb = new interrupt_callback{self, options, signal_fd};
   ::epoll_event ev{};
 
@@ -410,6 +412,13 @@ setup_epoll(dht::DHT &self, dht::ModulesAwake &awake, dht::Options &options,
   ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
   ev.data.ptr = &pp_cb->core_cb;
   if (::epoll_ctl(self.core.epoll_fd, EPOLL_CTL_ADD, int(priv_fd), &ev) < 0) {
+    die("epoll_ctl: listen private local");
+  }
+
+  ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+  ev.data.ptr = &publish_cb->core_cb;
+  if (::epoll_ctl(self.core.epoll_fd, EPOLL_CTL_ADD, int(publish_fd), &ev) <
+      0) {
     die("epoll_ctl: listen private local");
   }
 
@@ -451,10 +460,6 @@ main(int argc, char **argv) {
           sizeof(dht::DHT) / 1024, sizeof(dht::DHT) / 1024 * 1024);
   pid_t pid = getpid();
   fprintf(stderr, "pid: %lu\n", (unsigned long)pid);
-  dht::Options options;
-  if (!dht::parse(options, argc, argv)) {
-    return 1;
-  }
   std::srand((unsigned int)time(nullptr));
 
   fd signal_fd = setup_signal();
@@ -462,23 +467,16 @@ main(int argc, char **argv) {
     return 2;
   }
 
+  dht::Options options; // TODO large stack
+  if (!dht::parse(options, argc, argv)) {
+    return 1;
+  }
+
   fd udp_fd = udp::bind_v4(options.port, udp::Mode::NONBLOCKING);
   if (!udp_fd) {
     fprintf(stderr, "failed to bind: %u\n", options.port);
     return 3;
   }
-
-  if (strlen(options.local_socket) == 0) {
-    if (!xdg_runtime_dir(options.local_socket)) {
-      return 3;
-    }
-    mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
-    if (!fs::mkdirs(options.local_socket, mode)) {
-      return 3;
-    }
-    ::strcat(options.local_socket, "/spdht.socket");
-  }
-  unlink(options.local_socket);
 
   umask(077);
 
@@ -491,15 +489,26 @@ main(int argc, char **argv) {
     return 3;
   }
 
+  sp::fd publish_fd =
+      udp::bind_unix_seq(options.publish_socket, udp::Mode::NONBLOCKING);
+  printf("%s (%d)\n", options.publish_socket, int(publish_fd));
+  if (!bool(publish_fd)) {
+    fprintf(stderr, "failed to bind: publish %s\n", options.publish_socket);
+    return 3;
+  }
+
   Contact local_ip;
   if (!net::local(udp_fd, local_ip)) {
     return 3;
   }
 
+  dht::Client client{udp_fd, priv_fd};
+
   auto r = prng::seed<prng::xorshift32>();
   fprintf(stderr, "sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
   Timestamp now = sp::now();
-  auto mdht = std::make_unique<dht::DHT>(udp_fd, priv_fd, local_ip, r, now);
+
+  auto mdht = std::make_unique<dht::DHT>(local_ip, client, r, now, options);
   if (!dht::init(*mdht, options)) {
     die("failed to init dht");
     return 4;
@@ -525,7 +534,8 @@ main(int argc, char **argv) {
   }
 
   dht::ModulesAwake modulesAwake;
-  setup_epoll(*mdht, modulesAwake, options, udp_fd, signal_fd, priv_fd);
+  setup_epoll(*mdht, modulesAwake, options, udp_fd, signal_fd, priv_fd,
+              publish_fd);
 
   dht::Modules modules{modulesAwake};
   if (!dht_upnp::setup(modules)) {
@@ -543,6 +553,7 @@ main(int argc, char **argv) {
       else
         return acum;
     };
+    shuffle(mdht->random, modulesAwake.on_awake);
     next = reduce(modulesAwake.on_awake, next, cb);
     assertx(next > mdht->now);
 

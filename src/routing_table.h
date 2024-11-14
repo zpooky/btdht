@@ -54,7 +54,7 @@ struct RoutingTable {
   ssize_t depth;
   RoutingTable *in_tree;
   Bucket bucket;
-  RoutingTable *next;
+  RoutingTable *parallel;
 
   RoutingTable(ssize_t) noexcept;
 
@@ -115,8 +115,9 @@ struct DHTMetaRoutingTable {
       retire_good;
   void *cache{nullptr};
 
-  DHTMetaRoutingTable(prng::xorshift32 &, timeout::TimeoutBox &tb, Timestamp &,
-                      const dht::NodeId &, const dht::Config &);
+  DHTMetaRoutingTable(std::size_t capacity, prng::xorshift32 &,
+                      timeout::TimeoutBox &tb, Timestamp &, const dht::NodeId &,
+                      const dht::Config &);
   ~DHTMetaRoutingTable();
 };
 
@@ -257,7 +258,7 @@ for_all(const RoutingTable *it, F f) noexcept {
       if (!f(current)) {
         return false;
       }
-      it_width = it_width->next;
+      it_width = it_width->parallel;
     } // while
 
     it = it->in_tree;

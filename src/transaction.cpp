@@ -513,8 +513,9 @@ next_timeout(const dht::DHT &self) noexcept {
 //=====================================
 namespace dht {
 /*dht::Client*/
-Client::Client(fd &fd) noexcept
-    : udp(fd)
+Client::Client(fd &udp_fd, fd &_priv_fd) noexcept
+    : udp(udp_fd)
+    , priv_fd(_priv_fd)
     , timeout_head(nullptr)
     , buffer{}
     , tree{buffer}

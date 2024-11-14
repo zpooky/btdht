@@ -31,7 +31,9 @@ TEST(TimeoutTest, test) {
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{sock, sock};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   ASSERT_EQ(std::size_t(0), is_cycle(dht));
 
   dht::Node n1;
@@ -82,7 +84,9 @@ TEST(TimeoutTest, test2) {
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{sock, sock};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
   dht.now = sp::Timestamp(0);
   ASSERT_EQ(timeout::take_node(*dht.tb.timeout, sp::Milliseconds(1)), nullptr);
 
@@ -140,7 +144,9 @@ TEST(TimeoutTest, test3) {
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{sock, sock};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   ASSERT_EQ(dht.tb.timeout->timeout_node, nullptr);
   dht::Node node0;
@@ -189,7 +195,9 @@ TEST(TimeoutTest, test4) {
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{sock, sock};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   ASSERT_EQ(dht.tb.timeout->timeout_node, nullptr);
   dht::Node node0;
@@ -238,7 +246,9 @@ TEST(TimeoutTest, test5) {
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{sock, sock};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   ASSERT_EQ(dht.tb.timeout->timeout_node, nullptr);
   dht::Node node0;
@@ -287,13 +297,15 @@ TEST(TimeoutTest, test_arr) {
   Contact c(0, 0);
   prng::xorshift32 r(1);
   Timestamp now = sp::now();
-  dht::DHT dht(sock, sock, c, r, now);
+  dht::Client client{sock, sock};
+  dht::Options opt;
+  dht::DHT dht(c, client, r, now, opt);
 
   sp::UinStaticArray<dht::Node, 1024> a;
   while (!is_full(a)) {
     dht::Node in;
     auto c = insert(a, in);
-  Lit : {
+  Lit: {
     ASSERT_FALSE(timeout::debug_find_node(*dht.tb.timeout, c));
     auto type = uniform_dist(dht.random, 0, 3);
     if (type == 0) {

@@ -490,7 +490,7 @@ from_hex(NodeId &id, const char (&b)[N]) noexcept {
 
 //=====================================
 bool
-xdg_cache_dir(char (&directory)[PATH_MAX]) noexcept;
+xdg_share_dir(char (&directory)[PATH_MAX]) noexcept;
 
 bool
 xdg_runtime_dir(char (&directory)[PATH_MAX]) noexcept;

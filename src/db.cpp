@@ -45,8 +45,8 @@ operator>(const dht::Infohash &f, const KeyValue &s) noexcept {
 namespace db {
 //=====================================
 DHTMetaDatabase::DHTMetaDatabase(dht::Config &cfg, prng::xorshift32 &rnd,
-                                 Timestamp &n)
-    : scrape_client{}
+                                 Timestamp &n, const dht::Options &opt)
+    : scrape_client{n, opt.scrape_socket_path, opt.db_path}
     , lookup_table()
     , key{}
     , activity{0}

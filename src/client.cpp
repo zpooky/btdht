@@ -140,7 +140,7 @@ found(dht::DHT &dht, sp::Buffer &out, const dht::Infohash &search,
       krpc::priv::event::found(out, search, contacts) ? Res::OK : Res::ERR;
   if (result == Res::OK) {
     sp::flip(out);
-    result = net::sock_write(dht.priv_fd, out) ? Res::OK : Res::ERR;
+    result = net::sock_write(dht.client.priv_fd, out) ? Res::OK : Res::ERR;
   }
 
   return result;

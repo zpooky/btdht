@@ -4,6 +4,7 @@
 // #include "shared.h"
 #include "spbt_scrape_client.h"
 #include "util.h"
+#include "Options.h"
 
 #include <collection/Array.h>
 #include <list/SkipList.h>
@@ -56,7 +57,8 @@ struct DHTMetaDatabase {
   prng::xorshift32 &random;
   Timestamp &now;
 
-  DHTMetaDatabase(dht::Config &, prng::xorshift32 &, Timestamp &);
+  DHTMetaDatabase(dht::Config &, prng::xorshift32 &, Timestamp &,
+                  const dht::Options &);
 
   ~DHTMetaDatabase() {
   }

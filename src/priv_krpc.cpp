@@ -207,6 +207,16 @@ response::dump(sp::Buffer &buf, const Transaction &t,
       return true;
     });
 
+    if (!bencode::e::value(b, "spbt")) {
+      return false;
+    }
+    res = bencode::e::dict(b, [&dht](auto &b2) {
+        if (!bencode::e::pair(b2, "stored", dht.db.scrape_client.cache.unique_inserts)) {
+          return false;
+        }
+      return true;
+    });
+
     if (!res) {
       return false;
     }

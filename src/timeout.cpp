@@ -316,8 +316,7 @@ insert_new(Timeout &dht, dht::Node *ret) noexcept {
 //=====================================
 template <typename T>
 static T *
-internal_take(const Timestamp &now, sp::Milliseconds timeout,
-              T *&head) noexcept {
+internal_take(const Timestamp &now, sp::Milliseconds timeout, T *&head) noexcept {
   auto is_expired = [&now, timeout](auto &node) { //
     return (node.req_sent + timeout) < now;
   };

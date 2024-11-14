@@ -11,6 +11,11 @@
 
 #include <sqlite3.h>
 
+#include <hash/djb2.h>
+#include <hash/fnv.h>
+
+#include "Log.h"
+
 extern "C" {
 struct dht_scrape_msg {
   unsigned int ipv4;
@@ -18,31 +23,21 @@ struct dht_scrape_msg {
   unsigned char info_hash[20];
   unsigned char magic[4];
 };
+
+#define PUBLISH_HAVE 1
+
+struct dht_publish_msg {
+  unsigned char info_hash[20];
+  int flag;
+  unsigned char magic[4];
+};
 }
 
 #define SHA_HASH_SIZE 20
 
-static uint64_t
-__db_count_torrents(sqlite3 *db) {
-  sqlite3_stmt *stmt = NULL;
-  const char *dml = "SELECT COUNT(*) FROM torrent";
-  uint64_t result = 0;
-  int r;
-
-  if ((r = sqlite3_prepare(db, dml, -1, /*OUT*/ &stmt, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "%s: sqlite3_prepare (%d)\n", __func__, r);
-    goto Lout;
-  }
-
-  while (sqlite3_step(stmt) == SQLITE_ROW) {
-    result = sqlite3_column_int64(stmt, 0);
-  }
-
-Lout:
-  if (stmt) {
-    sqlite3_finalize(stmt);
-  }
-  return result;
+static bool
+__db_cache_insert(dht::DHTMeta_spbt_scrape_client &self, dht::Infohash ih) {
+  return insert(self.cache, ih);
 }
 
 static bool
@@ -50,9 +45,6 @@ __db_seed_cache(dht::DHTMeta_spbt_scrape_client &self, sqlite3 *db) {
   bool res = false;
   const char *dml = "SELECT info_hash FROM torrent";
   sqlite3_stmt *stmt = NULL;
-  uint64_t n_info_hashes;
-
-  n_info_hashes = std::max(__db_count_torrents(db) * 2, uint64_t(100000000));
 
   {
     int r;
@@ -64,9 +56,15 @@ __db_seed_cache(dht::DHTMeta_spbt_scrape_client &self, sqlite3 *db) {
 
   while (sqlite3_step(stmt) == SQLITE_ROW) {
     const void *info_hash = sqlite3_column_blob(stmt, 0);
-    size_t info_hash_len =
+    int info_hash_len =
         std::min(sqlite3_column_bytes(stmt, 0), int(SHA_HASH_SIZE));
-    assertx(info_hash_len == SHA_HASH_SIZE);
+    if (info_hash_len == SHA_HASH_SIZE) {
+      dht::Infohash ih;
+      memcpy(ih.id, info_hash, SHA_HASH_SIZE);
+      __db_cache_insert(self, ih);
+    } else {
+      assertx(false);
+    }
   }
 
   res = true;
@@ -77,31 +75,41 @@ Lout:
   return res;
 }
 
-static bool
-__sp_bt_DB_has_maybe_false_positive(dht::DHTMeta_spbt_scrape_client &self,
-                                    const uint8_t info_hash[SHA_HASH_SIZE]) {
-  if (self.cache) {
-  }
-  return true;
+static std::size_t
+djb_infohash(const dht::Infohash &ih) noexcept {
+  return djb2::encode32(ih.id, sizeof(ih.id));
 }
 
-dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client()
-    : unix_socket_file{socket(AF_UNIX, SOCK_DGRAM, 0)}
-    , cache{nullptr}
-    , dir_fd{} {
-  {
-    char scrape_socket_path[PATH_MAX]{};
-    xdg_runtime_dir(scrape_socket_path);
-    sp::fd tmp(open(scrape_socket_path, O_PATH));
+static std::size_t
+fnv_infohash(const dht::Infohash &ih) noexcept {
+  return fnv_1a::encode32(ih.id, sizeof(ih.id));
+}
+
+dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client(
+    Timestamp &now, const char *scrape_socket_path, const char *db_path)
+    : hashers{}
+    , cache{hashers}
+    , unix_socket_file{socket(AF_UNIX, SOCK_DGRAM, 0)}
+    , dir_fd{}
+    , now{now} {
+
+  assertx_n(insert(hashers, djb_infohash));
+  assertx_n(insert(hashers, fnv_infohash));
+
+  if (strlen(scrape_socket_path) > 0) {
+    char scrape_socket_path2[PATH_MAX]{};
+
+    strcpy(scrape_socket_path2, scrape_socket_path);
+    sp::fd tmp(open(scrape_socket_path2, O_PATH));
     swap(tmp, dir_fd);
-    strcat(scrape_socket_path, "/spbt_scrape.socket");
+    strcat(scrape_socket_path2, "/spbt_scrape.socket");
     name.sun_family = AF_UNIX;
-    strcpy(name.sun_path, scrape_socket_path);
+    strcpy(name.sun_path, scrape_socket_path2);
+    fprintf(stderr, "scrape_socket_path[%.*s]\n", (int)PATH_MAX,
+            scrape_socket_path2);
   }
 
-  {
-    char db_path[PATH_MAX]{};
-    // TODO db_path
+  if (strlen(db_path) > 0) {
     sqlite3 *db = nullptr;
     int flags = SQLITE_OPEN_READONLY;
     int r;
@@ -116,7 +124,7 @@ dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client()
   }
 }
 
-int
+bool
 dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
                              const Key &infohash, const Contact &contact) {
 
@@ -145,5 +153,51 @@ dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
 
 bool
 dht::spbt_has_infohash(DHTMeta_spbt_scrape_client &self, const Infohash &ih) {
-  return __sp_bt_DB_has_maybe_false_positive(self, ih.id);
+  return test(self.cache, ih);
+}
+
+static int
+on_publish_ACCEPT_callback(void *closure, uint32_t events) {
+
+  int ret;
+  auto self = (dht::publish_ACCEPT_callback *)closure;
+  struct iovec iovecs {};
+  struct mmsghdr msgh {};
+  dht_publish_msg msg{};
+  iovecs.iov_base = &msg;
+  iovecs.iov_len = sizeof(msg);
+  msgh.msg_hdr.msg_iov = &iovecs;
+  msgh.msg_hdr.msg_iovlen = 1;
+
+  int flags = 0;
+  if ((ret = recvmmsg(int(self->publish_fd), &msgh, 1, flags, nullptr)) < 0) {
+    perror("recvmmsg()");
+    return 0;
+  }
+
+  if (msgh.msg_len == sizeof(msg)) {
+    const unsigned char magic[4] = {205, 7, 44, 216};
+    if (memcmp(msg.magic, magic, sizeof(magic)) == 0) {
+      dht::Infohash ih;
+      memcpy(ih.id, msg.info_hash, sizeof(msg.info_hash));
+      if (__db_cache_insert(self->self, ih)) {
+        logger::spbt::publish(self->self.now, ih);
+      }
+    } else {
+      assertx(false);
+    }
+  } else {
+    assertx(false);
+  }
+
+  return 0;
+}
+
+dht::publish_ACCEPT_callback::publish_ACCEPT_callback(
+    DHTMeta_spbt_scrape_client &_self, fd &_fd)
+    : core_cb{}
+    , self{_self}
+    , publish_fd{_fd} {
+  core_cb.closure = this;
+  core_cb.callback = on_publish_ACCEPT_callback;
 }

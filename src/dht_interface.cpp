@@ -705,7 +705,7 @@ search_handle_response(
     /* Sender returns matching values for search query */
     for_each(values, [&](const Contact &c) {
       search_insert_result(search, c);
-      spbt_scrape_client_send(dht.db.scrape_client, search.search.id, c);
+      scrape::get_peers_peer(dht, search.search, c);
     });
   });
 
@@ -731,11 +731,11 @@ scrape_handle_response(
 
   message(ctx, sender, [&](auto &) {
     /* Sender returns the its closest nodes for search */
-    scrape::get_peers_close_nodes(dht, nodes);
+    scrape::get_peers_nodes(dht, nodes);
 
     /* Sender returns matching values for search query */
-    for_each(values, [&](const Contact &c) {
-      spbt_scrape_client_send(dht.db.scrape_client, ih.id, c);
+    for_each(values, [&](const Contact &c) { //
+      scrape::get_peers_peer(dht, ih, c);
     });
   });
 

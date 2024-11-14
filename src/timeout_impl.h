@@ -2,6 +2,7 @@
 #define SP_MAINLINE_DHT_TIMEOUT_IMPL_H
 #include "dht.h"
 #include "shared.h"
+#include "Log.h"
 
 namespace timeout {
 template <typename F>
@@ -15,6 +16,7 @@ for_all_node(dht::DHTMetaRoutingTable &routing_table, sp::Milliseconds timeout,
 Lstart: {
   dht::Node *const node =
       timeout::take_node(*routing_table.tb.timeout, timeout);
+  logger::routing::head_node(routing_table, timeout);
   if (node) {
     if (node == start) {
       assertx(!timeout::debug_find_node(*routing_table.tb.timeout, node));
