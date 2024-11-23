@@ -44,8 +44,6 @@ while 1:
       enqueue(result, (ih, peers))
 ```
 
-
-
 -------------------------------------------------------------------------------
 TODO
 - save routing table to disk
@@ -63,6 +61,11 @@ TODO no linear scans of RoutingTableNode
 
 TODO timeout queue verify the timestamp/date thing
 TODO spare routing_Table
+  - multiple closest
+  - insert
+TODO routing_table heap node compare (heap entry needs to be updated when new nodes are added/removed)
+TODO spbt db.stored is 0
+TOOD do not store options
 
 TODO
   4:spbt

@@ -160,7 +160,7 @@ error(dht::MessageContext &ctx) noexcept {
 
   auto query_len = std::strlen(ctx.query);
 
-  if (query_len < 127) {
+  if (query_len < 127 && strncmp("vote", ctx.query, query_len) != 0) {
     if (ascii::is_printable(ctx.query, query_len)) {
       char path[256] = {'\0'};
       sprintf(path, "./unknown_%s.txt", ctx.query);

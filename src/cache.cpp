@@ -368,7 +368,7 @@ deinit_cache(dht::DHT &ctx) noexcept {
   if (ctx.routing_table.cache) {
     auto self = (Cache *)ctx.routing_table.cache;
     /*drain*/
-    auto cb = [](void *ctx2, const dht::DHTMetaRoutingTable &,
+    auto cb = [](void *ctx2, const dht::DHTMetaRoutingTable &, const auto &,
                  const dht::Node &current) {
       auto s = (Cache *)((dht::DHT *)ctx2)->routing_table.cache;
       cache_write_contact(*s, current.contact);

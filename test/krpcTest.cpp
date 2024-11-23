@@ -37,7 +37,7 @@ TEST(krpcTest, test_ping_static) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   {
     sp::Buffer buf{b};
@@ -48,12 +48,12 @@ TEST(krpcTest, test_ping_static) {
 
     krpc::PingRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_ping_request(mctx, req);
     }));
 
@@ -74,12 +74,12 @@ TEST(krpcTest, test_ping_static) {
 
     krpc::PingResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_ping_response(mctx, res);
     }));
 
@@ -107,7 +107,7 @@ TEST(krpcTest, test_ping) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   {
     sp::Buffer buff{b};
@@ -115,14 +115,14 @@ TEST(krpcTest, test_ping) {
     sp::flip(buff);
 
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
     krpc::PingRequest req;
 
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf{b2};
-      dht::MessageContext mctx(dht, pctx, buf, remote);
+      dht::MessageContext mctx(*dht, pctx, buf, remote);
       return krpc::parse_ping_request(mctx, req);
     }));
     ASSERT_TRUE(req.sender == id);
@@ -137,12 +137,12 @@ TEST(krpcTest, test_ping) {
     sp::flip(buff);
 
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf{b2};
-      dht::MessageContext mctx(dht, pctx, buf, remote);
+      dht::MessageContext mctx(*dht, pctx, buf, remote);
       return krpc::parse_ping_response(mctx, res);
     }));
     ASSERT_TRUE(res.sender == id);
@@ -163,7 +163,7 @@ TEST(krpcTest, test_find_node_static) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   {
     sp::Buffer buf{b};
@@ -175,12 +175,12 @@ TEST(krpcTest, test_find_node_static) {
 
     krpc::FindNodeRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_find_node_request(mctx, req);
     }));
 
@@ -206,12 +206,12 @@ TEST(krpcTest, test_find_node_static) {
 
     krpc::FindNodeResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_find_node_response(mctx, res);
     }));
 
@@ -265,7 +265,7 @@ TEST(krpcTest, test_find_node) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   { //
     sp::Buffer buff{b};
@@ -274,12 +274,12 @@ TEST(krpcTest, test_find_node) {
 
     krpc::FindNodeRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf{b2};
-      dht::MessageContext mctx(dht, pctx, buf, remote);
+      dht::MessageContext mctx(*dht, pctx, buf, remote);
       return krpc::parse_find_node_request(mctx, req);
     }));
 
@@ -314,13 +314,13 @@ TEST(krpcTest, test_find_node) {
     // print("find_node_resp:", buff.raw + buff.pos, buff.length);
 
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
     krpc::FindNodeResponse res;
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf{b2};
-      dht::MessageContext mctx(dht, pctx, buf, remote);
+      dht::MessageContext mctx(*dht, pctx, buf, remote);
       return krpc::parse_find_node_response(mctx, res);
     }));
     ASSERT_TRUE(res.id == id.id);
@@ -350,7 +350,7 @@ TEST(krpcTest, test_get_peers_static) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   {
     sp::Buffer buf{b};
@@ -362,12 +362,12 @@ TEST(krpcTest, test_get_peers_static) {
 
     krpc::GetPeersRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_get_peers_request(mctx, req);
     }));
 
@@ -395,12 +395,12 @@ TEST(krpcTest, test_get_peers_static) {
 
     krpc::GetPeersResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_get_peers_response(mctx, res);
     }));
 
@@ -456,12 +456,12 @@ TEST(krpcTest, test_get_peers_static) {
 
     krpc::GetPeersResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_get_peers_response(mctx, res);
     }));
 
@@ -509,7 +509,7 @@ TEST(krpcTest, test_get_peers) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   krpc::Transaction t;
   transaction(t);
@@ -525,12 +525,12 @@ TEST(krpcTest, test_get_peers) {
 
     krpc::GetPeersRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_get_peers_request(mctx, req);
     }));
 
@@ -573,14 +573,14 @@ TEST(krpcTest, test_get_peers) {
     // bencode_print(p);
     // printf("asd\n\n\n\n\n");
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
 
     krpc::GetPeersResponse res;
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf{b2};
-      dht::MessageContext mctx(dht, pctx, buf, remote);
+      dht::MessageContext mctx(*dht, pctx, buf, remote);
       return krpc::parse_get_peers_response(mctx, res);
     }));
     ASSERT_TRUE(res.id == id.id);
@@ -613,14 +613,14 @@ TEST(krpcTest, test_get_peers) {
     ASSERT_TRUE(krpc::response::get_peers_peers(buff, t, id, token, peer));
     sp::flip(buff);
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
 
     krpc::GetPeersResponse res;
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf{b2};
-      dht::MessageContext mctx(dht, pctx, buf, remote);
+      dht::MessageContext mctx(*dht, pctx, buf, remote);
       return krpc::parse_get_peers_response(mctx, res);
     }));
     ASSERT_TRUE(res.id == id.id);
@@ -645,7 +645,7 @@ TEST(krpcTest, test_anounce_peer_static) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   {
     sp::Buffer buf{b};
@@ -658,12 +658,12 @@ TEST(krpcTest, test_anounce_peer_static) {
 
     krpc::AnnouncePeerRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_announce_peer_request(mctx, req);
     }));
 
@@ -691,12 +691,12 @@ TEST(krpcTest, test_anounce_peer_static) {
 
     krpc::AnnouncePeerResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_announce_peer_response(mctx, res);
     }));
 
@@ -724,7 +724,7 @@ TEST(krpcTest, test_anounce_peer) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   {
     dht::Infohash infohash;
@@ -742,12 +742,12 @@ TEST(krpcTest, test_anounce_peer) {
 
     krpc::AnnouncePeerRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
     test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) {
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_announce_peer_request(mctx, req);
     });
 
@@ -770,12 +770,12 @@ TEST(krpcTest, test_anounce_peer) {
 
     krpc::AnnouncePeerResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_announce_peer_response(mctx, res);
     }));
     ASSERT_TRUE(res.id == id);
@@ -798,7 +798,7 @@ TEST(krpcTest, test_sample_infohashes_static) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
 #if 1
   {
@@ -813,7 +813,7 @@ TEST(krpcTest, test_sample_infohashes_static) {
 
     krpc::SampleInfohashesRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, in);
+    krpc::ParseContext ctx(dom, *dht, in);
 #if 0
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) {
       //
@@ -827,7 +827,7 @@ TEST(krpcTest, test_sample_infohashes_static) {
     // TODO we only have to message part
     sp::byte b2[256] = {0};
     sp::Buffer buf2{b2};
-    dht::MessageContext mctx(dht, ctx, buf2, Contact{});
+    dht::MessageContext mctx(*dht, ctx, buf2, Contact{});
     ASSERT_TRUE(parse_sample_infohashes_request(mctx, req));
 #endif
 
@@ -890,14 +890,14 @@ TEST(krpcTest, test_sample_infohashes_static) {
 
     krpc::SampleInfohashesResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, in);
+    krpc::ParseContext ctx(dom, *dht, in);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
       //
       fprintf(stderr, "%s:k\n", __func__);
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_sample_infohashes_response(mctx, res);
     }));
 
@@ -951,13 +951,13 @@ TEST(krpcTest, test_sample_infohashes_static) {
 
     krpc::SampleInfohashesResponse res;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, in);
+    krpc::ParseContext ctx(dom, *dht, in);
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) { //
       // fprintf(stderr, "%s:k\n", __func__);
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_sample_infohashes_response(mctx, res);
     }));
 
@@ -996,7 +996,7 @@ TEST(krpcTest, test_sample_infohashes) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
 
   krpc::Transaction t;
   transaction(t);
@@ -1012,12 +1012,12 @@ TEST(krpcTest, test_sample_infohashes) {
 
     krpc::SampleInfohashesRequest req;
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buf);
+    krpc::ParseContext ctx(dom, *dht, buf);
     ASSERT_TRUE(test_request(ctx, [&dht, &req](krpc::ParseContext &pctx) { //
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
-      dht::MessageContext mctx(dht, pctx, buf2, remote);
+      dht::MessageContext mctx(*dht, pctx, buf2, remote);
       return parse_sample_infohashes_request(mctx, req);
     }));
 
@@ -1067,14 +1067,14 @@ TEST(krpcTest, test_sample_infohashes) {
     // bencode_print(p);
     // printf("asd\n\n\n\n\n");
     dht::Domain dom = dht::Domain::Domain_public;
-    krpc::ParseContext ctx(dom, dht, buff);
+    krpc::ParseContext ctx(dom, *dht, buff);
 
     krpc::SampleInfohashesResponse res;
     ASSERT_TRUE(test_response(ctx, [&dht, &res](krpc::ParseContext &pctx) {
       Contact remote;
       sp::byte b2[256] = {0};
       sp::Buffer buf{b2};
-      dht::MessageContext mctx(dht, pctx, buf, remote);
+      dht::MessageContext mctx(*dht, pctx, buf, remote);
       return krpc::parse_sample_infohashes_response(mctx, res);
     }));
     ASSERT_TRUE(res.id == id.id);
@@ -2514,7 +2514,7 @@ TEST(krpcTest, print_find_node_debug) {
   Timestamp now = sp::now();
   dht::Client client{s,s};
   dht::Options opt;
-  dht::DHT dht(listen,client, r, now,opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
   // const char hex[] =
   //     "64313a656c693230336531383a496e76616c696420606964272076616"
   //     "c756565313a74343a6569d4a3313a76343a6c740d60313a79313a6565";
@@ -2905,7 +2905,7 @@ TEST(krpcTest, debug) {
   Timestamp now = sp::now();
   dht::Client client{s,s};
   dht::Options opt;
-  dht::DHT dht(listen,client, r, now,opt);
+  auto dht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
   // const char hex[] =
   // "64313a7264323a696432303a17323a78dac46ada7f7b6d886fb28da"
   //                    "0cd4ae253323a6970"

@@ -29,28 +29,28 @@ TEST(transactionTest, test_mint_consume) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(Contact(0, 0), client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(Contact(0, 0), client, r, now, opt);
   fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
 
   krpc::Transaction ts[Client::tree_capacity] = {};
 
   for (size_t i = 0; i < Client::tree_capacity; ++i) {
     tx::TxContext h;
-    ASSERT_TRUE(tx::has_free_transaction(dht));
-    ASSERT_TRUE(tx::mint_transaction(dht, ts[i], h));
+    ASSERT_TRUE(tx::has_free_transaction(*dht));
+    ASSERT_TRUE(tx::mint_transaction(*dht, ts[i], h));
   }
-  ASSERT_FALSE(tx::has_free_transaction(dht));
+  ASSERT_FALSE(tx::has_free_transaction(*dht));
   {
     krpc::Transaction dummy;
     tx::TxContext h;
-    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+    ASSERT_FALSE(tx::mint_transaction(*dht, dummy, h));
   }
   shuffle_tx(r, ts);
   for (size_t i = 0; i < Client::tree_capacity; ++i) {
     tx::TxContext h;
-    ASSERT_TRUE(tx::consume_transaction(dht, ts[i], h));
-    ASSERT_FALSE(tx::consume_transaction(dht, ts[i], h));
-    ASSERT_TRUE(tx::has_free_transaction(dht));
+    ASSERT_TRUE(tx::consume_transaction(*dht, ts[i], h));
+    ASSERT_FALSE(tx::consume_transaction(*dht, ts[i], h));
+    ASSERT_TRUE(tx::has_free_transaction(*dht));
   }
 }
 
@@ -62,7 +62,7 @@ TEST(transactionTest, test_mint_timeout) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(Contact(0, 0), client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(Contact(0, 0), client, r, now, opt);
   fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
 
   krpc::Transaction ts[Client::tree_capacity] = {};
@@ -73,14 +73,14 @@ TEST(transactionTest, test_mint_timeout) {
     global_count++;
   };
   for (size_t i = 0; i < Client::tree_capacity; ++i) {
-    ASSERT_TRUE(tx::has_free_transaction(dht));
-    ASSERT_TRUE(tx::mint_transaction(dht, ts[i], h));
+    ASSERT_TRUE(tx::has_free_transaction(*dht));
+    ASSERT_TRUE(tx::mint_transaction(*dht, ts[i], h));
   }
   ASSERT_EQ(0, global_count);
   {
     krpc::Transaction dummy;
-    ASSERT_FALSE(tx::has_free_transaction(dht));
-    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+    ASSERT_FALSE(tx::has_free_transaction(*dht));
+    ASSERT_FALSE(tx::mint_transaction(*dht, dummy, h));
   }
   ASSERT_EQ(0, global_count);
 
@@ -88,15 +88,15 @@ TEST(transactionTest, test_mint_timeout) {
   now = now + config.transaction_timeout;
   size_t i = 0;
   for (; i < Client::tree_capacity; ++i) {
-    ASSERT_TRUE(tx::has_free_transaction(dht));
+    ASSERT_TRUE(tx::has_free_transaction(*dht));
     ASSERT_EQ(i, global_count);
-    ASSERT_TRUE(tx::mint_transaction(dht, ts[i], h));
+    ASSERT_TRUE(tx::mint_transaction(*dht, ts[i], h));
   }
   ASSERT_EQ(i, global_count);
   {
     krpc::Transaction dummy;
-    ASSERT_FALSE(tx::has_free_transaction(dht));
-    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+    ASSERT_FALSE(tx::has_free_transaction(*dht));
+    ASSERT_FALSE(tx::mint_transaction(*dht, dummy, h));
   }
   ASSERT_EQ(i, global_count);
 }
@@ -108,7 +108,8 @@ TEST(transactionTest, test_mint_timeout2) {
   Timestamp before = now;
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(Contact(0, 0), client, r, now, opt);
+
+  auto dht = std::make_unique<dht::DHT>(Contact(0, 0), client, r, now, opt);
   fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
 
   global_count = 0;
@@ -119,15 +120,15 @@ TEST(transactionTest, test_mint_timeout2) {
   };
   for (size_t i = 0; i < Client::tree_capacity; ++i) {
     krpc::Transaction dummy;
-    ASSERT_TRUE(tx::has_free_transaction(dht));
-    ASSERT_TRUE(tx::mint_transaction(dht, dummy, h));
-    dht.now = dht.now + sp::Seconds(1);
+    ASSERT_TRUE(tx::has_free_transaction(*dht));
+    ASSERT_TRUE(tx::mint_transaction(*dht, dummy, h));
+    dht->now = dht->now + sp::Seconds(1);
   }
   ASSERT_EQ(0, global_count);
   {
     krpc::Transaction dummy;
-    ASSERT_FALSE(tx::has_free_transaction(dht));
-    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+    ASSERT_FALSE(tx::has_free_transaction(*dht));
+    ASSERT_FALSE(tx::mint_transaction(*dht, dummy, h));
   }
 
   Config config;
@@ -136,17 +137,17 @@ TEST(transactionTest, test_mint_timeout2) {
   for (; i < Client::tree_capacity; ++i) {
     ASSERT_EQ(i, global_count);
 
-    ASSERT_FALSE(tx::has_free_transaction(dht));
-    dht.now = before + config.transaction_timeout + sp::Seconds(i);
-    ASSERT_TRUE(tx::has_free_transaction(dht));
+    ASSERT_FALSE(tx::has_free_transaction(*dht));
+    dht->now = before + config.transaction_timeout + sp::Seconds(i);
+    ASSERT_TRUE(tx::has_free_transaction(*dht));
     {
       krpc::Transaction dummy;
-      ASSERT_TRUE(tx::mint_transaction(dht, dummy, h));
+      ASSERT_TRUE(tx::mint_transaction(*dht, dummy, h));
     }
-    ASSERT_FALSE(tx::has_free_transaction(dht));
+    ASSERT_FALSE(tx::has_free_transaction(*dht));
     {
       krpc::Transaction dummy;
-      ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+      ASSERT_FALSE(tx::mint_transaction(*dht, dummy, h));
     }
   } // for
 
@@ -160,7 +161,7 @@ TEST(transactionTest, test_eager_tx_timeout) {
   Timestamp before = now;
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(Contact(0, 0), client, r, now, opt);
+  auto dht = std::make_unique<dht::DHT>(Contact(0, 0), client, r, now, opt);
   fprintf(stderr, "%s:sizeof(%zuKB)\n", __func__, sizeof(dht::DHT) / 1024);
 
   global_count = 0;
@@ -171,19 +172,19 @@ TEST(transactionTest, test_eager_tx_timeout) {
   };
   for (size_t i = 0; i < Client::tree_capacity; ++i) {
     krpc::Transaction dummy;
-    ASSERT_TRUE(tx::has_free_transaction(dht));
-    ASSERT_TRUE(tx::mint_transaction(dht, dummy, h));
-    dht.now = dht.now + sp::Seconds(1);
+    ASSERT_TRUE(tx::has_free_transaction(*dht));
+    ASSERT_TRUE(tx::mint_transaction(*dht, dummy, h));
+    dht->now = dht->now + sp::Seconds(1);
   }
   ASSERT_EQ(0, global_count);
   {
     krpc::Transaction dummy;
-    ASSERT_FALSE(tx::has_free_transaction(dht));
-    ASSERT_FALSE(tx::mint_transaction(dht, dummy, h));
+    ASSERT_FALSE(tx::has_free_transaction(*dht));
+    ASSERT_FALSE(tx::mint_transaction(*dht, dummy, h));
   }
-  ASSERT_FALSE(tx::has_free_transaction(dht));
-  tx::eager_tx_timeout(dht);
-  ASSERT_FALSE(tx::has_free_transaction(dht));
+  ASSERT_FALSE(tx::has_free_transaction(*dht));
+  tx::eager_tx_timeout(*dht);
+  ASSERT_FALSE(tx::has_free_transaction(*dht));
 }
 
 TEST(transactionTest, test_valid) {
@@ -193,7 +194,8 @@ TEST(transactionTest, test_valid) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(Contact(0, 0), client, r, now, opt);
+
+  auto dht = std::make_unique<dht::DHT>(Contact(0, 0), client, r, now, opt);
 
 Lrestart:
   if (test_it++ < 100) {
@@ -204,35 +206,35 @@ Lrestart:
     for (std::size_t i = 0; i < IT; ++i) {
       for (std::size_t k = 0; k < i; ++k) {
         // printf("k: %zu\n", k);
-        ASSERT_TRUE(tx::is_valid(dht, ts[k]));
+        ASSERT_TRUE(tx::is_valid(*dht, ts[k]));
       }
       tx::TxContext h;
-      ASSERT_TRUE(tx::mint_transaction(dht, ts[i], h));
+      ASSERT_TRUE(tx::mint_transaction(*dht, ts[i], h));
       // printf("mint_transaction: %c%c\n", ts[i].id[0], ts[i].id[1]);
-      ASSERT_TRUE(tx::is_valid(dht, ts[i]));
+      ASSERT_TRUE(tx::is_valid(*dht, ts[i]));
     } // for
 
     {
       krpc::Transaction tx;
       tx::TxContext h;
-      ASSERT_FALSE(tx::mint_transaction(dht, tx, h));
+      ASSERT_FALSE(tx::mint_transaction(*dht, tx, h));
     }
     test_unique(ts);
 
     shuffle_tx(r, ts);
     for (std::size_t i = 0; i < IT; ++i) {
       for (std::size_t k = 0; k < i; ++k) {
-        ASSERT_FALSE(tx::is_valid(dht, ts[k]));
+        ASSERT_FALSE(tx::is_valid(*dht, ts[k]));
       }
       for (std::size_t k = i; k < IT; ++k) {
-        ASSERT_TRUE(tx::is_valid(dht, ts[k]));
+        ASSERT_TRUE(tx::is_valid(*dht, ts[k]));
       }
 
       tx::TxContext h;
       // printf("i: %zu\n", i);
-      ASSERT_TRUE(tx::is_valid(dht, ts[i]));
-      ASSERT_TRUE(tx::consume_transaction(dht, ts[i], h));
-      ASSERT_FALSE(tx::is_valid(dht, ts[i]));
+      ASSERT_TRUE(tx::is_valid(*dht, ts[i]));
+      ASSERT_TRUE(tx::consume_transaction(*dht, ts[i], h));
+      ASSERT_FALSE(tx::is_valid(*dht, ts[i]));
     }
     goto Lrestart;
   }

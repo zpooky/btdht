@@ -97,15 +97,15 @@ RoutingTableLess::operator()(const RoutingTable *f,
 // ========================================
 DHTMetaRoutingTable::DHTMetaRoutingTable(std::size_t cap, prng::xorshift32 &r,
                                          timeout::TimeoutBox &_tb, Timestamp &n,
-                                         const dht::NodeId &i,
-                                         const dht::Config &c)
+                                         const dht::NodeId &_id,
+                                         const dht::Config &_conf)
     : root(nullptr)
     , rt_reuse(cap)
     , random{r}
     , tb{_tb}
-    , id{i}
+    , id{_id}
     , now{n}
-    , config(c)
+    , config(_conf)
     , total_nodes(0)
     , bad_nodes(0) {
 }
@@ -143,33 +143,33 @@ DHTMetaRoutingTable::~DHTMetaRoutingTable() {
 void
 debug_for_each(const DHTMetaRoutingTable &self, void *closure,
                void (*f)(void *, const DHTMetaRoutingTable &,
-                         const Node &)) noexcept {
-  const RoutingTable *it = self.root;
-  while (it) {
+                         const RoutingTable &, const Node &)) noexcept {
+  for (const RoutingTable *it = self.root; it; it = it->in_tree) {
 
-    const RoutingTable *it_next = it;
-    while (it_next) {
+    for (const RoutingTable *it_para = it; it_para;
+         it_para = it_para->parallel) {
+      assertx(it_para->depth >= 0);
+      assertx(it->depth == it_para->depth);
 
-      assertx(debug_bucket_count(it_next->bucket) == it_next->bucket.length);
+      assertx(debug_bucket_count(it_para->bucket) == it_para->bucket.length);
       for (std::size_t i = 0; i < Bucket::K; ++i) {
-        const Node &node = it_next->bucket.contacts[i];
+        const Node &node = it_para->bucket.contacts[i];
+
         if (is_valid(node)) {
-          f(closure, self, node);
+          assertx(rank(self.id, node.id) == (size_t)it_para->depth);
+          f(closure, self, *it_para, node);
         }
       } // for
-
-      it_next = it_next->parallel;
-    } // while
-
-    it = it->in_tree;
-  } // while
+    }
+  }
 }
 
 static std::size_t
 debug_count_good(const DHTMetaRoutingTable &self) {
   std::size_t result = 0;
 
-  auto xx = [](void *res, const DHTMetaRoutingTable &self, const Node &node) {
+  auto xx = [](void *res, const DHTMetaRoutingTable &self, const RoutingTable &,
+               const Node &node) {
     if (is_valid(node) && is_good(self, node)) {
       std::size_t *r = (std::size_t *)res;
       (*r)++;
@@ -254,7 +254,7 @@ debug_find(const DHTMetaRoutingTable &self, RoutingTable *parallel) {
   return false;
 }
 
-static void
+void
 debug_print(const char *ctx, const DHTMetaRoutingTable &self) noexcept {
   // #if 0
   if (ctx) {
@@ -281,19 +281,20 @@ debug_correct_level(const DHTMetaRoutingTable &self) noexcept {
   std::size_t table_cnt = 0;
   std::size_t node_cnt = 0;
   if (it) {
-    auto depth = it->depth;
     while (it) {
-      auto it_next = it;
+      const auto depth = it->depth;
+      auto it_paralell = it;
       std::size_t n = 0;
       std::size_t lvl_nodes = 0;
 
-      while (it_next) {
-        assertxs(it_next->depth == depth, it_next->depth, depth,
+      while (it_paralell) {
+        assertxs(it_paralell->depth == depth, it_paralell->depth, depth,
                  length(self.rt_reuse), capacity(self.rt_reuse), n);
-        assertx(debug_bucket_count(it_next->bucket) == it_next->bucket.length);
+        assertx(debug_bucket_count(it_paralell->bucket) ==
+                it_paralell->bucket.length);
 
         for (std::size_t i = 0; i < Bucket::K; ++i) {
-          auto &contact = it_next->bucket.contacts[i];
+          auto &contact = it_paralell->bucket.contacts[i];
           if (is_valid(contact)) {
             ++lvl_nodes;
             if (!prefix_compare(self.id, contact.id.id, depth)) {
@@ -308,20 +309,22 @@ debug_correct_level(const DHTMetaRoutingTable &self) noexcept {
           }
         } // for
 
-        // TODO unique set of nodeid
+        // XXX unique set of nodeid
 
         ++table_cnt;
-        it_next = it_next->parallel;
-        if (it_next) {
-          assertx(!it_next->in_tree);
+        it_paralell = it_paralell->parallel;
+        if (it_paralell) {
+          assertx(!it_paralell->in_tree);
         }
         ++n;
-      } // while
+      } // while parallel
       // printf(" lvl[%zu]: %zu\n", depth, lvl_nodes);
       node_cnt += lvl_nodes;
 
+      if (it->in_tree) {
+        assertx(it->depth < it->in_tree->depth);
+      }
       it = it->in_tree;
-      ++depth;
     } // while
   }
 
@@ -363,35 +366,46 @@ static RoutingTable *
 find_closest(DHTMetaRoutingTable &self, const NodeId &search,
              /*OUT*/ bool &in_tree, /*OUT*/ std::size_t &bidx) noexcept {
   in_tree = true;
-  RoutingTable *root = self.root;
+  RoutingTable *it = self.root;
+  RoutingTable *best = it;
   bidx = 0;
-  if (root) {
-    assertx(root->depth >= 0);
-    bidx = (std::size_t)root->depth;
+  if (it) {
+    assertx(it->depth >= 0);
+    // TODO: we ignore prefix
+    bidx = (std::size_t)it->depth;
   }
 
-  while (root) {
-    assertx(debug_routing_level_iscorrect(self, root));
+  while (it) {
+    assertx(it->depth >= 0);
+    assertx(debug_routing_level_iscorrect(self, it));
+    for (; bidx < (std::size_t)it->depth; ++bidx) {
+      bool high = bit(search, bidx);
+      bool ref_high = bit(self.id, bidx);
+      if (ref_high != high) {
+        return best;
+      }
+    }
     bool high = bit(search, bidx);
-    bool self_high = bit(self.id, bidx);
+    bool ref_high = bit(self.id, bidx);
     // in_tree is true if search so far share the same prefix with self.id
-    in_tree &= (self_high == high);
+    in_tree &= (ref_high == high);
 
     if (in_tree) {
-      if (root->in_tree) {
+      if (it->in_tree) {
+        best = it;
         /* More precise match */
-        root = root->in_tree;
+        it = it->in_tree;
       } else {
-        return root;
+        return it;
       }
     } else {
-      return root;
+      return it;
     }
 
     ++bidx;
   }
 
-  return root;
+  return it;
 }
 
 static void
@@ -589,6 +603,7 @@ enqueue_level(RoutingTable *leaf, RoutingTable *parallel) noexcept {
   }
 #endif
   assertx(!parallel->parallel);
+  assertx(leaf->depth == parallel->depth);
   parallel->parallel = leaf->parallel;
   leaf->parallel = parallel;
 }
@@ -598,18 +613,18 @@ enum class AllocType { REC, PLAIN };
 static RoutingTable *
 alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth,
                    AllocType aType) noexcept {
-  RoutingTable **head = peek_head(self.rt_reuse);
-  if (head) {
-    auto h = *head;
-    assertx(h);
+  RoutingTable **phead = peek_head(self.rt_reuse);
+  if (phead) {
+    auto head = *phead;
+    assertx(head);
 
-    if (h->depth < 0) {
-      h->~RoutingTable();
-      new (h) RoutingTable((ssize_t)depth);
-      auto res = update_key(self.rt_reuse, head);
+    if (head->depth < 0) {
+      head->~RoutingTable();
+      new (head) RoutingTable((ssize_t)depth);
+      auto res = update_key(self.rt_reuse, phead);
       assertxs(res, depth);
-      assertxs(*res == h, depth);
-      return h;
+      assertxs(*res == head, depth);
+      return head;
     }
 
     if (!is_full(self.rt_reuse)) {
@@ -617,9 +632,9 @@ alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth,
     }
 
     // TODO fix cmp
-    if (std::size_t(h->depth) < depth) {
+    if (std::size_t(head->depth) < depth) {
       // TODO only do this when we are in high prio: (modify alloc prototype)
-      if (aType == AllocType::REC && std::size_t(h->depth + 1) == depth) {
+      if (aType == AllocType::REC && std::size_t(head->depth + 1) == depth) {
         auto result = new RoutingTable(depth);
         if (result) {
           auto res = insert(self.rt_reuse, result);
@@ -635,26 +650,26 @@ alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth,
         return result;
       }
 
-      if (!dequeue_root(self, h)) {
+      if (!dequeue_root(self, head)) {
         // TODO fails
-        assertxs(false, h->depth, h->in_tree, length(self.rt_reuse),
+        assertxs(false, head->depth, head->in_tree, length(self.rt_reuse),
                  capacity(self.rt_reuse));
         return nullptr;
       }
-      // XXX migrate of possible good contacts in $h to empty/bad linked
+      // XXX migrate of possible good contacts in $head to empty/bad linked
       //     RoutingTable contacts. timeout contact
 
-      const auto h_depth = h->depth;
+      const auto h_depth = head->depth;
 
-      h->~RoutingTable();
-      new (h) RoutingTable((ssize_t)depth);
+      head->~RoutingTable();
+      new (head) RoutingTable((ssize_t)depth);
 
-      auto res = update_key(self.rt_reuse, head);
+      auto res = update_key(self.rt_reuse, phead);
       assertxs(res, h_depth, depth);
-      assertxs(*res == h, h_depth, depth);
-      // TODO assertxs(res != head, h_depth, depth);??
+      assertxs(*res == head, h_depth, depth);
+      // TODO assertxs(res != phead, h_depth, depth);??
 
-      return h;
+      return head;
     }
   }
 
@@ -712,11 +727,25 @@ static Node *
 routing_table_level_insert(DHTMetaRoutingTable &self, RoutingTable &table,
                            const Node &c, bool eager,
                            /*OUT*/ bool &replaced) noexcept {
-
+  assertx(table.depth >= 0);
+  assertx(rank(c.id, self.id) == (size_t)table.depth);
   for (RoutingTable *it = &table; it; it = it->parallel) {
     Node *result = bucket_insert(self, it->bucket, c, eager, replaced);
     if (result) {
       return result;
+    }
+  }
+
+  {
+    assertx(table.depth >= 0);
+    auto tmp = alloc_RoutingTable(self, (size_t)table.depth, AllocType::PLAIN);
+    if (tmp) {
+      tmp->parallel = table.parallel;
+      table.parallel = tmp;
+      Node *result = bucket_insert(self, tmp->bucket, c, eager, replaced);
+      if (result) {
+        return result;
+      }
     }
   }
 
@@ -1108,6 +1137,59 @@ compact_RoutingTable(dht::DHTMetaRoutingTable &self) {
 }
 #endif
 
+static RoutingTable *
+make_routing_table(DHTMetaRoutingTable &self, std::size_t r) noexcept {
+  if (!self.root) {
+    self.root = alloc_RoutingTable(self, r, AllocType::REC);
+    return self.root;
+  }
+
+  assertx(self.root->depth >= 0);
+  if ((size_t)self.root->depth == r) {
+    return self.root;
+  }
+
+  if ((size_t)self.root->depth > r) {
+    auto tmp = alloc_RoutingTable(self, r, AllocType::REC);
+    if (tmp) {
+      tmp->in_tree = self.root;
+      self.root = tmp;
+    }
+    return tmp;
+  }
+
+  auto it = self.root;
+  while (it) {
+    assertx(it->depth >= 0);
+
+    auto in_tree = it->in_tree;
+    if (in_tree) {
+      assertx(in_tree->depth >= 0);
+      if (r < (size_t)in_tree->depth) {
+        auto tmp = alloc_RoutingTable(self, r, AllocType::REC);
+        if (tmp) {
+          tmp->in_tree = it->in_tree;
+          it->in_tree = tmp;
+          assertxs((size_t)it->depth < r, it->depth, r, in_tree->depth);
+          assertxs(r < (size_t)tmp->in_tree->depth, it->depth, r,
+                   tmp->in_tree->depth);
+        }
+        return tmp;
+      } else if ((size_t)in_tree->depth == r) {
+        return in_tree;
+      }
+    } else {
+      assertx((size_t)it->depth < r);
+      it->in_tree = alloc_RoutingTable(self, r, AllocType::REC);
+      return it->in_tree;
+    }
+    it = it->in_tree;
+  } // while
+
+  assertx(false);
+  return nullptr;
+}
+
 Node *
 insert(DHTMetaRoutingTable &self, const Node &contact) noexcept {
   if (!is_valid(contact.id)) {
@@ -1118,31 +1200,39 @@ insert(DHTMetaRoutingTable &self, const Node &contact) noexcept {
     return nullptr;
   }
 
-  {
-    std::size_t i = 0;
-    if (self.root) {
-      i = self.root->depth;
-    }
-    const auto r = rank(self.id, contact.id);
-    if (r < i) {
-      return nullptr;
-    }
+  const auto r = rank(self.id, contact.id);
+  auto tmp = make_routing_table(self, r);
+  if (tmp) {
+    Node *const existing = routing_table_level_find_node(*tmp, contact.id.id);
 
-    auto priv = self.root;
-    for (; i < r; ++i) {
-      if (!priv) {
-        return nullptr;
+    if (!existing) {
+      bool replaced = false;
+      std::size_t xx = 0;
+      // TODO handle full bucket
+      Node *inserted = routing_table_level_insert(self, *tmp, contact, false,
+                                                  /*OUT*/ replaced);
+      if (inserted) {
+        assertxs(prefix_compare(self.id, inserted->id.id, tmp->depth), xx,
+                 tmp->depth);
+        if (self.tb.timeout) {
+          timeout::insert_new(*self.tb.timeout, inserted);
+        }
+
+        logger::routing::insert(self, *inserted);
+        if (!replaced) {
+          ++self.total_nodes;
+        }
+        assertx(debug_correct_level(self));
+        assertx((ssize_t)rank(self.id, inserted->id) >= self.root->depth);
       }
-      assertx(priv->depth == i);
-      if (!priv->in_tree) {
-        priv->in_tree = alloc_RoutingTable(self, i + 1, AllocType::REC);
-      }
-      priv = priv->in_tree;
+      return inserted;
     }
+    return existing;
   }
 
   assertx(debug_assert_all(self));
-#if 1
+  return nullptr;
+#if 0
   bool will_ins = false;
 
 Lstart:
@@ -1154,6 +1244,7 @@ Lstart:
 
   RoutingTable *const leaf =
       find_closest(self, contact.id, /*OUT*/ inTree, /*OUT*/ xx);
+  assertx(leaf == tmp);
   if (leaf) {
     assertx(self.root);
     auto sp = rank(self.id, contact.id);
@@ -1201,6 +1292,7 @@ Lstart:
       }
       // XXX calc can_split when inserting into bucket
       if (can_split(*leaf, leaf->depth)) {
+        assertx(false); // eager insert, so we should not get here
         // printf("split[depth:%zd]\n", leaf->depth);
         // printf("split[%zu]\n", leaf->depth);
         assertx(!leaf->in_tree);

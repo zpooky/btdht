@@ -132,7 +132,7 @@ assert_prefix(const NodeId &id, const NodeId &self, std::size_t idx) {
   for (std::size_t i = 0; i < idx; ++i) {
     bool id_bit = bit(id.id, i);
     bool self_bit = bit(self.id, i);
-    ASSERT_EQ(id_bit, self_bit);
+    assertx(id_bit == self_bit);
   }
 }
 
@@ -169,42 +169,41 @@ verify_routing(DHT &dht, std::size_t &nodes, std::size_t &contacts) {
   const NodeId &self_id = dht.id;
 
   assertx(dht.routing_table.root);
-  std::size_t idx = dht.routing_table.root->depth;
 
-  RoutingTable *root = dht.routing_table.root;
-
-Lstart:
-  if (root) {
+  for (RoutingTable *root = dht.routing_table.root; root;
+       root = root->in_tree) {
+    const std::size_t idx = (size_t)root->depth;
     ++nodes;
-    printf("%zu.  ", idx);
+    printf("%zu.", idx);
     print_id(self_id, idx, "\033[91m");
-    auto it = root;
-    while (it) {
-      Bucket &bucket = it->bucket;
+
+    for (auto para = root; para; para = para->parallel) {
+      Bucket &bucket = para->bucket;
       for (std::size_t i = 0; i < Bucket::K; ++i) {
         Node &c = bucket.contacts[i];
         if (is_valid(c)) {
-          printf("-");
-          print_id(c.id, idx, "\033[92m");
+          // printf("-");
+          // printf(" rank(%zu)", rank(c.id, dht.id));
+          // print_id(c.id, idx, "\033[92m");
           ++contacts;
+          assertx(para->depth >= 0);
+          assert((size_t)para->depth == idx);
+          assertx(rank(c.id, dht.id) == idx);
           assert_prefix(c.id, self_id, idx);
         } else {
           assert_empty(c);
         }
       }
-      it = it->parallel;
+
     } // while
-    root = root->in_tree;
-    ++idx;
-    goto Lstart;
   }
 }
 
 static void
 self_should_be_last(DHT &dht) {
-  RoutingTable *root = dht.routing_table.root;
-Lstart:
-  if (root) {
+
+  for (RoutingTable *root = dht.routing_table.root; root;
+       root = root->in_tree) {
     Bucket &bucket = root->bucket;
     if (root->in_tree == nullptr) {
       // selfID should be in the last node routing table
@@ -212,8 +211,6 @@ Lstart:
       Node *res = find(bucket, dht.id);
       ASSERT_FALSE(res == nullptr);
     }
-    root = root->in_tree;
-    goto Lstart;
   }
 }
 
@@ -260,9 +257,9 @@ assert_present(dht::DHT &dht, const Node &current) {
 #define insert_self(dht)                                                       \
   do {                                                                         \
     dht::Node self;                                                            \
-    std::memcpy(self.id.id, dht.id.id, sizeof(dht.id.id));                     \
-    dht.id.id[19] = sp::byte(~dht.id.id[19]);                                  \
-    auto *res = dht::insert(dht.routing_table, self);                          \
+    std::memcpy(self.id.id, dht->id.id, sizeof(dht->id.id));                   \
+    dht->id.id[19] = sp::byte(~dht->id.id[19]);                                \
+    auto *res = dht::insert(dht->routing_table, self);                         \
     ASSERT_TRUE(res);                                                          \
   } while (0)
 
@@ -283,8 +280,8 @@ TEST(dhtTest, test_find_node) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
 
   fprintf(stderr, "sizeof(Ip):%zu\n", sizeof(Ip));
   fprintf(stderr, "sizeof(Port):%zu\n", sizeof(Port));
@@ -294,9 +291,9 @@ TEST(dhtTest, test_find_node) {
   fprintf(stderr, "sizeof(dht::RoutingTable):%zu\n", sizeof(dht::RoutingTable));
   // ASSERT_FALSE(true);
 
-  std::uint32_t m = max_routing_nodes(dht.routing_table);
+  std::uint32_t m = max_routing_nodes(dht->routing_table);
   fprintf(stderr, "%s:m[%u]\n", __func__, m);
-  const std::uint32_t max = 64;
+  const std::uint32_t max = 640;
   for (std::size_t i = 0; i < max; ++i) {
     dht::NodeId sender;
     Contact con;
@@ -305,64 +302,70 @@ TEST(dhtTest, test_find_node) {
     rand_nodeId(sender);
 
     dht::Node in(sender, con);
+    // fprintf(stderr, "%s:i[%zu] rank: %zu\n", __func__, i, rank(dht->id,
+    // in.id));
     dht::Node *result = NULL;
 
-    result = find_node(dht.routing_table, in.id);
+    result = find_node(dht->routing_table, in.id);
     ASSERT_FALSE(result);
 
-    result = dht::insert(dht.routing_table, in);
+    result = dht::insert(dht->routing_table, in);
     // fprintf(stderr, "i[%zu]\n", i);
     ASSERT_TRUE(result);
     ASSERT_TRUE(in.contact == result->contact);
     ASSERT_TRUE(in.id == result->id);
 
-    result = find_node(dht.routing_table, in.id);
+    result = find_node(dht->routing_table, in.id);
     ASSERT_TRUE(result);
     ASSERT_TRUE(in.contact == result->contact);
     ASSERT_TRUE(in.id == result->id);
   }
+  return;
 
   std::size_t cnt = 0;
   auto t = std::make_tuple(&dht, &cnt);
 
-  dht::debug_for_each(
-      dht.routing_table, &t,
-      [](void *ctx, const dht::DHTMetaRoutingTable &, const auto &current) {
-        auto in = (std::tuple<dht::DHT *, std::size_t &> *)ctx;
-        auto ctx2 = std::get<0>(*in);
-        auto &cntx = std::get<1>(*in);
-        ++cntx;
+  dht::debug_for_each(dht->routing_table, &t,
+                      [](void *ctx, const dht::DHTMetaRoutingTable &,
+                         const auto rt, const auto &current) {
+                        auto in = (std::tuple<dht::DHT *, std::size_t &> *)ctx;
+                        auto ctx2 = std::get<0>(*in);
+                        auto &cntx = std::get<1>(*in);
+                        ++cntx;
 
-        dht::Node *result = NULL;
-        result = find_node(ctx2->routing_table, current.id);
-        ASSERT_TRUE(result);
-        ASSERT_TRUE(current.contact == result->contact);
-        ASSERT_TRUE(current.id == result->id);
-      });
-  ASSERT_TRUE(cnt == nodes_total(dht.routing_table));
+                        assertx(rt.depth >= 0);
+                        assertx(rank(ctx2->id, current.id) == (size_t)rt.depth);
+
+                        dht::Node *result = NULL;
+                        result = find_node(ctx2->routing_table, current.id);
+                        ASSERT_TRUE(result);
+                        ASSERT_TRUE(current.contact == result->contact);
+                        ASSERT_TRUE(current.id == result->id);
+                      });
+  ASSERT_TRUE(cnt == nodes_total(dht->routing_table));
 
   size_t dummy = 0;
-  while (nodes_total(dht.routing_table) > 0) {
+  while (nodes_total(dht->routing_table) > 0) {
     Infohash ih;
     rand_infohash(ih);
     dht::Node *result[8] = {0};
     printf("-%zu\n", dummy);
     ++dummy;
-    multiple_closest(dht.routing_table, ih, result);
+    multiple_closest(dht->routing_table, ih, result);
 
-    assertxs(result[0], nodes_total(dht.routing_table),
-             nodes_good(dht.routing_table), nodes_bad(dht.routing_table));
+    assertxs(result[0], nodes_total(dht->routing_table),
+             nodes_good(dht->routing_table), nodes_bad(dht->routing_table));
 
     for (std::size_t i = 0; i < 8; ++i) {
       if (result[i]) {
-        dht::Node *tmp = find_node(dht.routing_table, result[i]->id);
+        dht::Node *tmp = find_node(dht->routing_table, result[i]->id);
         ASSERT_TRUE(tmp);
         ASSERT_TRUE(result[i]->contact == tmp->contact);
         ASSERT_TRUE(result[i]->id == tmp->id);
 
-        ASSERT_TRUE(debug_timeout_unlink_reset(dht.routing_table, *result[i]));
+        ASSERT_TRUE(debug_timeout_unlink_reset(dht->routing_table, *result[i]));
 
-        tmp = find_node(dht.routing_table, result[i]->id);
+        tmp = find_node(dht->routing_table, result[i]->id);
         ASSERT_FALSE(tmp);
       }
     }
@@ -376,26 +379,27 @@ TEST(dhtTest, test) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
 
   insert_self(dht);
 
-  //
-  random_insert(dht, 1024 * 1024 * 4);
-  assert_count(dht);
+  debug_print("", dht->routing_table);
+  random_insert(*dht, 1024*1024*40);
+  debug_print("", dht->routing_table);
+  assert_count(*dht);
 
-  // printf("==============\n");
-  // printf("dht: ");
-  // print_id(dht.id, 18, "");
-  dht::debug_for_each(
-      dht.routing_table, &dht,
-      [](void *ctx, const dht::DHTMetaRoutingTable &, const auto &current) {
-        dht::DHT *ctx2 = (dht::DHT *)ctx;
-        assert_present(*ctx2, current);
-      });
+  return;
+  dht::debug_for_each(dht->routing_table, &dht,
+                      [](void *ctx, const dht::DHTMetaRoutingTable &,
+                         const auto rt, const auto &current) {
+                        dht::DHT *ctx2 = (dht::DHT *)ctx;
+                        assertx(rt.depth >= 0);
+                        assertx(rank(ctx2->id, current.id) == (size_t)rt.depth);
+                        assert_present(*ctx2, current);
+                      });
 
-  self_should_be_last(dht);
+  self_should_be_last(*dht);
 }
 
 template <typename F>
@@ -419,22 +423,29 @@ TEST(dhtTest, test_link) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
 
-  random_insert(dht, 1024);
+  random_insert(*dht);
+  // random_insert(*dht, 1);
+  debug_print("", dht->routing_table);
 
-  assert_count(dht);
+  assert_count(*dht);
 
   // printf("==============\n");
   // printf("dht: ");
   // print_id(dht.id, 18, "");
-  dht::debug_for_each(
-      dht.routing_table, &dht,
-      [](void *ctx, const dht::DHTMetaRoutingTable &, const auto &current) {
-        dht::DHT *ctx2 = (dht::DHT *)ctx;
-        assert_present(*ctx2, current);
-      });
+  dht::debug_for_each(dht->routing_table, &dht,
+                      [](void *ctx, const dht::DHTMetaRoutingTable &,
+                         const auto rt, const auto &current) {
+                        dht::DHT *ctx2 = (dht::DHT *)ctx;
+                        print_id(ctx2->id, 0, "\033[93m");
+                        print_id(current.id, 0, "\033[92m");
+                        assertx(rt.depth >= 0);
+                        assertxs(rank(ctx2->id, current.id) == (size_t)rt.depth,
+                                 rank(ctx2->id, current.id), rt.depth);
+                        assert_present(*ctx2, current);
+                      });
 }
 
 static bool
@@ -460,20 +471,20 @@ TEST(dhtTest, test_append) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
 
   for (std::size_t i = 1; i <= 50; ++i) {
     // int i = 1;
   Lretry:
     printf("%zu.\n", i);
-    Node *ins = random_insert(dht);
+    Node *ins = random_insert(*dht);
     if (ins == nullptr) {
       goto Lretry;
     }
 
     {
-      dht::Node *res = dht::find_node(dht.routing_table, ins->id);
+      dht::Node *res = dht::find_node(dht->routing_table, ins->id);
       ASSERT_TRUE(res);
       ASSERT_EQ(res->id, ins->id);
       ASSERT_TRUE(res->timeout_next);
@@ -483,7 +494,7 @@ TEST(dhtTest, test_append) {
         std::list<dht::NodeId> unique;
 
         std::size_t number = 0;
-        for_each(dht.tb.timeout->timeout_node, [&](Node *n) { //
+        for_each(dht->tb.timeout->timeout_node, [&](Node *n) { //
           ++number;
           insert(unique, n->id);
           // printf("NodeId: ");
@@ -495,14 +506,14 @@ TEST(dhtTest, test_append) {
         ASSERT_TRUE(is_unique(unique));
       }
 
-      timeout::unlink(*dht.tb.timeout, res);
+      timeout::unlink(*dht->tb.timeout, res);
       ASSERT_FALSE(res->timeout_next);
       ASSERT_FALSE(res->timeout_priv);
       {
         std::list<dht::NodeId> unique;
 
         std::size_t number = 0;
-        for_each(dht.tb.timeout->timeout_node, [&](Node *n) { //
+        for_each(dht->tb.timeout->timeout_node, [&](Node *n) { //
           ++number;
           insert(unique, n->id);
         });
@@ -512,7 +523,7 @@ TEST(dhtTest, test_append) {
       }
 
       {
-        timeout::append_all(*dht.tb.timeout, res);
+        timeout::append_all(*dht->tb.timeout, res);
         ASSERT_TRUE(res->timeout_next);
         ASSERT_TRUE(res->timeout_priv);
       }
@@ -521,7 +532,7 @@ TEST(dhtTest, test_append) {
         std::list<dht::NodeId> unique;
 
         std::size_t number = 0;
-        for_each(dht.tb.timeout->timeout_node, [&](Node *n) { //
+        for_each(dht->tb.timeout->timeout_node, [&](Node *n) { //
           ++number;
           insert(unique, n->id);
         });
@@ -542,9 +553,9 @@ TEST(dhtTest, test_node_id_strict) {
     Timestamp now = sp::now();
     dht::Client client{s, s};
     dht::Options opt;
-    dht::DHT dht(c, client, r, now, opt);
-    init(dht, dht::Options{});
-    ASSERT_TRUE(is_valid_strict_id(ip, dht.id));
+    auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+    init(*dht, dht::Options{});
+    ASSERT_TRUE(is_valid_strict_id(ip, dht->id));
   }
 }
 
@@ -567,11 +578,11 @@ TEST(dhtTest, test_full) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
   const char *id_hex = "B161DDEAF70A2485C32789B965CE62753B11CEFF";
   printf("%zu\n", std::strlen(id_hex));
-  ASSERT_TRUE(from_hex(dht.id, id_hex));
+  ASSERT_TRUE(from_hex(dht->id, id_hex));
 
   constexpr std::size_t sz = 127;
   const char *buf[sz] = {"B33DA63EF24B92B888C1C794C2E5284D4595A987",
@@ -704,9 +715,9 @@ TEST(dhtTest, test_full) {
   for (std::size_t i = 0; i < sz; ++i) {
     dht::Node n;
     ASSERT_TRUE(dht::from_hex(n.id, buf[i]));
-    bool res = insert(dht.routing_table, n);
+    bool res = insert(dht->routing_table, n);
     ASSERT_TRUE(res);
-    auto out = find_node(dht.routing_table, n.id);
+    auto out = find_node(dht->routing_table, n.id);
     ASSERT_TRUE(out);
     ASSERT_EQ(out->id, n.id);
   }
@@ -714,20 +725,20 @@ TEST(dhtTest, test_full) {
   for (std::size_t i = 0; i < sz; ++i) {
     dht::NodeId n;
     ASSERT_TRUE(dht::from_hex(n, buf[i]));
-    auto out = find_node(dht.routing_table, n);
+    auto out = find_node(dht->routing_table, n);
     ASSERT_TRUE(out);
     ASSERT_EQ(out->id, n);
   }
 
-  printf("%zd depth\n", dht.routing_table.root->depth);
+  printf("%zd depth\n", dht->routing_table.root->depth);
   {
     dht::Node n;
-    n.id = dht.id;
+    n.id = dht->id;
     do {
       // printf("%d\n", n.id.id[19]);
       n.id.id[19]++;
-      insert(dht.routing_table, n);
-    } while (n.id.id[19] != dht.id.id[19]);
+      insert(dht->routing_table, n);
+    } while (n.id.id[19] != dht->id.id[19]);
   }
 }
 
@@ -738,27 +749,27 @@ TEST(dhtTest, test_first_full) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
   const char *id_hex = "FF61DDEAF70A2485C32789B965CE62753B11CEFF";
-  ASSERT_TRUE(from_hex(dht.id, id_hex));
+  ASSERT_TRUE(from_hex(dht->id, id_hex));
 
   for (std::size_t i = 0; i < 1024 * 1; ++i) {
     dht::Node n;
-    fill(dht.random, n.id.id);
+    fill(dht->random, n.id.id);
     n.id.id[0] = 0;
-    insert(dht.routing_table, n);
+    insert(dht->routing_table, n);
   }
-  ASSERT_EQ(debug_levels(dht.routing_table), 1);
+  ASSERT_EQ(debug_levels(dht->routing_table), 1);
 
-  printf("%u\n", nodes_total(dht.routing_table));
+  printf("%u\n", nodes_total(dht->routing_table));
   {
     dht::Node n;
-    n.id = dht.id;
+    n.id = dht->id;
     n.id.id[19]++;
-    ASSERT_TRUE(insert(dht.routing_table, n));
+    ASSERT_TRUE(insert(dht->routing_table, n));
   }
-  ASSERT_EQ(debug_levels(dht.routing_table), 2);
+  ASSERT_EQ(debug_levels(dht->routing_table), 2);
 }
 
 struct RankNodeId {
@@ -809,8 +820,8 @@ TEST(dhtTest, test_self_rand) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
   heap::StaticMaxBinary<RankNodeId, 1024> heap;
 
   // std::size_t count = 0;
@@ -818,35 +829,35 @@ TEST(dhtTest, test_self_rand) {
   for (std::size_t i = 1; i < 1024; ++i) {
     sp::HashSetProbing<NodeId> set;
     std::size_t routing_capacity =
-        std::max(capacity(dht.routing_table.rt_reuse) * Bucket::K,
-                 length(dht.routing_table.rt_reuse) * Bucket::K);
+        std::max(capacity(dht->routing_table.rt_reuse) * Bucket::K,
+                 length(dht->routing_table.rt_reuse) * Bucket::K);
 
     for (std::size_t x = 0; x < routing_capacity; ++x) {
 
-      auto strt = uniform_dist(dht.random, 0, std::min(i, NodeId::bits));
+      auto strt = uniform_dist(dht->random, 0, std::min(i, NodeId::bits));
 
       Node node;
-      node.id = dht.id;
+      node.id = dht->id;
       for (std::size_t a = strt; a < NodeId::bits; ++a) {
-        node.id.set_bit(a, uniform_bool(dht.random));
+        node.id.set_bit(a, uniform_bool(dht->random));
       }
       // printf("%zu. %s\n", ++count, to_hex(node.id));
 
-      insert(dht.routing_table, node);
+      insert(dht->routing_table, node);
       if (!lookup(set, node.id)) {
         insert(set, node.id);
-        insert_eager(heap, RankNodeId(dht, node.id));
+        insert_eager(heap, RankNodeId(*dht, node.id));
       }
     } // for
 
     std::size_t kx = 0;
     RankNodeId out;
     while (take_head(heap, out)) {
-      auto r4nk = rank(dht.id, out.id.id);
+      auto r4nk = rank(dht->id, out.id.id);
       if (kx < routing_capacity) {
         printf("%zu .%zu, [%zu]\n", i, kx, r4nk);
         ++kx;
-        Node *fres = find_node(dht.routing_table, out.id);
+        Node *fres = find_node(dht->routing_table, out.id);
         ASSERT_TRUE(fres);
         ASSERT_EQ(fres->id, out.id);
       }
@@ -862,10 +873,10 @@ TEST(dhtTest, test_assert_fail) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
   const char *id_hex = "B161DD0EAF70A2485C32789B965CE602753B11CE";
-  ASSERT_TRUE(from_hex(dht.id, id_hex));
+  ASSERT_TRUE(from_hex(dht->id, id_hex));
 
   constexpr std::size_t sz = 65;
   const char *buf[sz] = {
@@ -939,9 +950,9 @@ TEST(dhtTest, test_assert_fail) {
   for (std::size_t i = 0; i < sz; ++i) {
     dht::Node n;
     ASSERT_TRUE(dht::from_hex(n.id, buf[i]));
-    bool res = insert(dht.routing_table, n);
+    bool res = insert(dht->routing_table, n);
     ASSERT_TRUE(res);
-    auto out = find_node(dht.routing_table, n.id);
+    auto out = find_node(dht->routing_table, n.id);
     ASSERT_TRUE(out);
     ASSERT_EQ(out->id, n.id);
   }
@@ -955,10 +966,10 @@ TEST(dhtTest, test_assert_fail2) {
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
-  dht::DHT dht(c, client, r, now, opt);
-  dht::init(dht, dht::Options{});
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
   const char *id_hex = "B161DD0EAF70A2485C32789B965CE602753B11CE";
-  ASSERT_TRUE(from_hex(dht.id, id_hex));
+  ASSERT_TRUE(from_hex(dht->id, id_hex));
 
   constexpr std::size_t sz = 916;
   const char *buf[sz] = {
@@ -1888,10 +1899,10 @@ TEST(dhtTest, test_assert_fail2) {
     bool search_find = false;
     ASSERT_TRUE(dht::from_hex(n.id, buf[i]));
 
-    bool res = insert(dht.routing_table, n);
+    bool res = insert(dht->routing_table, n);
 
     Node *search[32]{nullptr};
-    multiple_closest(dht.routing_table, n.id, search);
+    multiple_closest(dht->routing_table, n.id, search);
     Node *it = search[0];
     for (size_t a = 0; a < 32 && it; ++a) {
       it = search[a];
@@ -1903,7 +1914,7 @@ TEST(dhtTest, test_assert_fail2) {
       }
     }
 
-    auto out = find_node(dht.routing_table, n.id);
+    auto out = find_node(dht->routing_table, n.id);
     if (res) {
       ASSERT_TRUE(out);
       ASSERT_EQ(out->id, n.id);

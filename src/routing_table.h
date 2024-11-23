@@ -103,7 +103,7 @@ struct DHTMetaRoutingTable {
 
   prng::xorshift32 &random;
   timeout::TimeoutBox &tb;
-  const dht::NodeId id;
+  const dht::NodeId &id;
   const Timestamp &now;
   const dht::Config &config;
 
@@ -124,10 +124,13 @@ struct DHTMetaRoutingTable {
 void
 debug_for_each(const DHTMetaRoutingTable &, void *,
                void (*)(void *, const DHTMetaRoutingTable &,
-                        const Node &)) noexcept;
+                        const RoutingTable &, const Node &)) noexcept;
 
 std::size_t
 debug_levels(const DHTMetaRoutingTable &) noexcept;
+
+void
+debug_print(const char *ctx, const DHTMetaRoutingTable &self) noexcept;
 
 bool
 debug_assert_all(const DHTMetaRoutingTable &);
