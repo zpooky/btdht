@@ -144,9 +144,9 @@ Lretry:
   }
   flip(b);
 
-  printf("response: \n");
-  dht::print_hex(stdout, b.raw, b.length);
-  printf("\n");
+  // printf("response: \n");
+  // dht::print_hex(stdout, b.raw, b.length);
+  // printf("\n");
   bencode_print(b);
   return true;
 }

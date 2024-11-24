@@ -54,23 +54,28 @@ TODO
 -------------------------------------------------------------------------------
 TODO
 RoutingTableNode[length, Array[...]]
-- if peer is remove from a RoutingTableNode the last peer in the
+- no linear scans of RoutingTableNode
+- if peer is remove from a RoutingTable Node the last peer in thn
   RoutingTableNode gets its place
-
-TODO no linear scans of RoutingTableNode
 
 TODO timeout queue verify the timestamp/date thing
 TODO spare routing_Table
   - multiple closest
-  - insert
 TODO routing_table heap node compare (heap entry needs to be updated when new nodes are added/removed)
-TODO spbt db.stored is 0
-TOOD do not store options
+TOOD do not store options in struct so that we can reduce memory
 
-TODO
-  4:spbt
-  d
-   6:stored
-   i0e
+- only store one bit (support scrape in Node in routing_table (bitmap)) instead of version
+```
+struct {
+  bool:1 support_scrape;
+  bool:1 is_strict_node_id;
+  bool:1 is_bad;
+} properties;
+```
+- scrape main routing_table as well
+
+- db populate based on 1M latest
+  - size of bloomfilter ...
+  - query planner
 
 -------------------------------------------------------------------------------

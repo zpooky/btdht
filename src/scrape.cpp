@@ -27,7 +27,7 @@ rand_key(prng::xorshift32 &r, dht::NodeId &id) {
 }
 
 static bool
-has_sent_last_24h(DHT &self, const Ip &ip) {
+has_sent_sample_infohash_last_24h(DHT &self, const Ip &ip) {
   for (auto &bf : self.scrape_hour) {
     if (test(bf, ip)) {
       return true;
@@ -125,9 +125,15 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
            tx::has_free_transaction(self) && result) {
       size_t last_idx = self.scrape_get_peers_ih.length - 1;
       auto &last = self.scrape_get_peers_ih[last_idx];
+      auto needle = std::get<0>(last);
+      if (spbt_has_infohash(self.db.scrape_client, needle)) {
+        remove(self.scrape_get_peers_ih, last_idx);
+        continue;
+      }
+      auto dest = std::get<1>(last);
       ScrapeContext *closure = new ScrapeContext(std::get<0>(last));
-      result = client::get_peers(self, buf, std::get<1>(last),
-                                 std::get<0>(last), closure) == client::Res::OK;
+      result = client::get_peers(self, buf, dest, needle, closure) ==
+               client::Res::OK;
       if (result) {
         remove(self.scrape_get_peers_ih, last_idx);
       } else {
@@ -141,22 +147,29 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
     Config &cfg = self.config;
     size_t scrape_idx = random(self.random) % length(self.active_scrapes);
     DHTMetaScrape &scrape = self.active_scrapes[scrape_idx];
-    const dht::NodeId &needle = scrape.routing_table.id;
+    const dht::NodeId &needle = scrape.id;
 
     auto f = [&](auto &, Node &remote) {
       auto result = client::Res::OK;
       const Contact &c = remote.contact;
 
       if (support_sample_infohashes(remote.version) &&
-          !has_sent_last_24h(self, c.ip) &&
-          shared_prefix(needle, remote.id) >= 10) {
+          !has_sent_sample_infohash_last_24h(self, c.ip)
+          // && shared_prefix(needle, remote.id) >= 10
+      ) {
         if (is_full(self.scrape_get_peers_ih)) {
           return false;
         }
         result = client::sample_infohashes(self, buf, c, needle.id, nullptr);
+        if (result == client::Res::OK) {
+          scrape.stat.sent_sample_infohash++;
+        }
       } else {
-        result = client::find_node(self, buf, c, needle, nullptr);
+        if (!is_full(scrape.bootstrap)) {
+          result = client::find_node(self, buf, c, needle, nullptr);
+        }
       }
+
       if (result == client::Res::OK) {
         remote.req_sent = self.now;
       }
@@ -166,7 +179,6 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
     timeout::for_all_node(scrape.routing_table, cfg.refresh_interval, f);
   }
 
-  // TODO
   if (tx::has_free_transaction(self)) {
     dht::KContact cur;
     size_t scrape_idx = random(self.random) % length(self.active_scrapes);
@@ -217,7 +229,7 @@ scrape::seed_insert(dht::DHT &self, const sp::byte version[DHT_VERSION_LEN],
                     const Contact &contact, const dht::NodeId &id) {
   for_each(self.active_scrapes, [&](auto &scrape) {
     // TODO 4 is arbitrary
-    if (dht::shared_prefix(id, scrape.routing_table.id) >=
+    if (dht::shared_prefix(id, scrape.id) >=
         std::max(size_t(4), self.active_scrapes.capacity)) {
 
       dht::Node node(id, contact);
@@ -241,7 +253,7 @@ scrape::get_peers_nodes(dht::DHT &self,
     std::size_t max_rank = 0;
 
     for (auto &scrape : self.active_scrapes) {
-      std::size_t r = rank(first->id, scrape.routing_table.id);
+      std::size_t r = rank(first->id, scrape.id);
       if (r > max_rank) {
         max_rank = r;
         best_match = &scrape;
@@ -282,4 +294,21 @@ scrape::sample_infohashes(
     }
   }
   return true;
+}
+
+void
+scrape::publish(dht::DHT &self, const dht::Infohash &ih) {
+  dht::DHTMetaScrape *best_match = nullptr;
+  std::size_t max_rank = 0;
+  for (auto &scrape : self.active_scrapes) {
+    std::size_t r = rank(scrape.id, ih.id);
+    if (r > max_rank) {
+      max_rank = r;
+      best_match = &scrape;
+    }
+  }
+
+  if (best_match) {
+    ++best_match->stat.publish;
+  }
 }

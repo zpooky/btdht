@@ -254,6 +254,12 @@ struct DHTMetaScrape {
   const Timestamp started;
   Timestamp &now;
   DHTMetaBootstrap<SCRAPE_FILTER> &bootstrap_filter;
+
+  struct {
+    uint32_t publish;
+    uint32_t sent_sample_infohash;
+  } stat;
+
   DHTMetaScrape(dht::DHT &, const dht::NodeId &) noexcept;
   virtual ~DHTMetaScrape() {
   }
@@ -303,8 +309,8 @@ struct DHT {
 
   DHTMetaSearch searches;
   // struct {
-  sp::UinStaticArray<DHTMetaScrape, 8> active_scrapes;
-  sp::UinStaticArray<sp::BloomFilter<Ip, 8 * 1024 * 1024>, 7>
+  sp::UinStaticArray<DHTMetaScrape, 16> active_scrapes;
+  sp::UinStaticArray<sp::BloomFilter<Ip, 64 * 1024>, 7>
       scrape_hour; // (8 * 1024 * 1024 * sizeof(uint64_t) = 64MB) * 7 = 448MB
   // TODO calculate bloomfitler fpp
   std::size_t scrape_hour_idx;

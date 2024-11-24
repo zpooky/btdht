@@ -14,30 +14,28 @@
 #include <hash/djb2.h>
 #include <hash/fnv.h>
 
+#include "dht.h"
+#include "scrape.h"
+
 #include "Log.h"
+
+#define SHA_HASH_SIZE 20
 
 extern "C" {
 struct dht_scrape_msg {
   unsigned int ipv4;
   unsigned short port;
-  unsigned char info_hash[20];
+  unsigned char info_hash[SHA_HASH_SIZE];
   unsigned char magic[4];
 };
 
 #define PUBLISH_HAVE 1
 
 struct dht_publish_msg {
-  unsigned char info_hash[20];
+  unsigned char info_hash[SHA_HASH_SIZE];
   int flag;
   unsigned char magic[4];
 };
-}
-
-#define SHA_HASH_SIZE 20
-
-static bool
-__db_cache_insert(dht::DHTMeta_spbt_scrape_client &self, dht::Infohash ih) {
-  return insert(self.cache, ih.id);
 }
 
 static bool
@@ -61,7 +59,7 @@ __db_seed_cache(dht::DHTMeta_spbt_scrape_client &self, sqlite3 *db) {
       if (info_hash_len == SHA_HASH_SIZE) {
         dht::Infohash ih;
         memcpy(ih.id, info_hash, SHA_HASH_SIZE);
-        __db_cache_insert(self, ih);
+        insert(self.cache, ih.id);
       } else {
         assertx(false);
       }
@@ -179,6 +177,7 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
 
   ssize_t ret;
   auto self = (dht::publish_ACCEPT_callback *)closure;
+  auto *dht = (dht::DHT *)self->dht;
   dht_publish_msg msg{};
   int flags = 0;
 #if 0
@@ -212,8 +211,10 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
     if (memcmp(msg.magic, magic, sizeof(magic)) == 0) {
       dht::Infohash ih;
       memcpy(ih.id, msg.info_hash, sizeof(msg.info_hash));
-      if (__db_cache_insert(self->self, ih)) {
-        logger::spbt::publish(self->self.now, ih);
+
+      if (insert(dht->db.scrape_client.cache, ih.id)) {
+        scrape::publish(*dht, ih);
+        logger::spbt::publish(dht->now, ih);
       }
     } else {
       assertx(false);
@@ -225,10 +226,9 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
   return 0;
 }
 
-dht::publish_ACCEPT_callback::publish_ACCEPT_callback(
-    DHTMeta_spbt_scrape_client &_self, fd &_fd)
-    : core_cb{}
-    , self{_self}
+dht::publish_ACCEPT_callback::publish_ACCEPT_callback(void *_dht, fd &_fd)
+    : dht{_dht}
+    , core_cb{}
     , publish_fd{_fd} {
   core_cb.closure = this;
   core_cb.callback = on_publish_ACCEPT_callback;

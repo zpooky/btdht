@@ -3,6 +3,7 @@
 #include "cache.h"
 #include "encode_bencode.h"
 #include "krpc_shared.h"
+#include "util.h"
 #include <tree/bst_extra.h>
 #include <udp.h>
 #include <unistd.h>
@@ -128,6 +129,10 @@ response::dump(sp::Buffer &buf, const Transaction &t,
       if (!bencode::e::pair(b2, "active_scrapes", length(dht.active_scrapes))) {
         return false;
       }
+      if (!bencode::e::pair(b2, "active_scrapes_cap",
+                            capacity(dht.active_scrapes))) {
+        return false;
+      }
       std::size_t i = 0;
       for (const auto &scrape : dht.active_scrapes) {
         char key[64] = {0};
@@ -143,10 +148,15 @@ response::dump(sp::Buffer &buf, const Transaction &t,
         if (!bencode::e::pair(b2, key, length(scrape.bootstrap))) {
           return false;
         }
+        sprintf(key, "publish%zu", i);
+        if (!bencode::e::pair(b2, key, scrape.stat.publish)) {
+          return false;
+        }
         ++i;
       }
-      if (!bencode::e::pair(b2, "bootstrap_unique_inserts",
-                            dht.scrape_bootstrap_filter.bootstrap_filter.unique_inserts)) {
+      if (!bencode::e::pair(
+              b2, "bootstrap_unique_inserts",
+              dht.scrape_bootstrap_filter.bootstrap_filter.unique_inserts)) {
         return false;
       }
       i = 0;
@@ -180,30 +190,34 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     }
 
     res = bencode::e::dict(b, [&dht](auto &b2) {
-      binary::rec::inorder(dht.db.lookup_table,
-                           [&b2](dht::KeyValue &e) -> bool {
-                             return bencode::e::dict(b2, [&e](auto &b3) {
-                               char buffer[64]{0};
-                               assertx_n(to_string(e.id, buffer));
+      binary::rec::inorder(
+          dht.db.lookup_table, [&b2, &dht](dht::KeyValue &e) -> bool {
+            return bencode::e::dict(b2, [&e, &dht](auto &b3) {
+              char buffer[64]{0};
+              assertx_n(to_string(e.id, buffer));
 
-                               if (!bencode::e::pair(b3, "infohash", buffer)) {
-                                 return false;
-                               }
+              if (!bencode::e::pair(b3, "infohash", buffer)) {
+                return false;
+              }
+              if (!bencode::e::pair(b3, "rank",
+                                    dht::rank(dht.id.id, e.id.id))) {
+                return false;
+              }
 
-                               std::uint64_t l(sp::n::length(e.peers));
-                               if (!bencode::e::pair(b3, "entries", l)) {
-                                 return false;
-                               }
+              std::uint64_t l(sp::n::length(e.peers));
+              if (!bencode::e::pair(b3, "entries", l)) {
+                return false;
+              }
 
-                               if (e.name) {
-                                 if (!bencode::e::pair(b3, "name", e.name)) {
-                                   return false;
-                                 }
-                               }
+              if (e.name) {
+                if (!bencode::e::pair(b3, "name", e.name)) {
+                  return false;
+                }
+              }
 
-                               return true;
-                             });
-                           });
+              return true;
+            });
+          });
       return true;
     });
 
@@ -211,9 +225,10 @@ response::dump(sp::Buffer &buf, const Transaction &t,
       return false;
     }
     res = bencode::e::dict(b, [&dht](auto &b2) {
-        if (!bencode::e::pair(b2, "stored", dht.db.scrape_client.cache.unique_inserts)) {
-          return false;
-        }
+      if (!bencode::e::pair(b2, "stored",
+                            dht.db.scrape_client.cache.unique_inserts)) {
+        return false;
+      }
       return true;
     });
 

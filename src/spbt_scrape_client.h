@@ -1,10 +1,11 @@
 #ifndef SP_MAINLINE_DHT_SPBT_SCRAPE_CLIENT_H
 #define SP_MAINLINE_DHT_SPBT_SCRAPE_CLIENT_H
 
-#include "util.h"
 #include <core.h>
 #include <io/fd.h>
 #include <sys/un.h>
+
+#include "util.h"
 
 #include <util/Bloomfilter.h>
 
@@ -25,13 +26,14 @@ struct DHTMeta_spbt_scrape_client {
 };
 
 struct publish_ACCEPT_callback {
+  void *dht;
   sp::core_callback core_cb;
-  DHTMeta_spbt_scrape_client &self;
   fd &publish_fd;
-  publish_ACCEPT_callback(DHTMeta_spbt_scrape_client &, fd &_fd);
+  publish_ACCEPT_callback(void *dht, fd &_fd);
 };
 
-bool spbt_scrape_client_is_started(dht::DHTMeta_spbt_scrape_client &self);
+bool
+spbt_scrape_client_is_started(dht::DHTMeta_spbt_scrape_client &self);
 
 bool
 spbt_scrape_client_send(DHTMeta_spbt_scrape_client &, const Key &,

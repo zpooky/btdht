@@ -24,6 +24,8 @@ get_peers_peer(dht::DHT &self, const dht::Infohash &ih, const Contact &);
 bool
 sample_infohashes(dht::DHT &self, const Contact &con, uint32_t hours,
                   const sp::UinStaticArray<dht::Infohash, 128> &samples);
+
+void publish(dht::DHT &self,const dht::Infohash &ih);
 } // namespace scrape
 
 #endif

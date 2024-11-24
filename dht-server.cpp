@@ -398,7 +398,7 @@ setup_epoll(dht::DHT &self, dht::ModulesAwake &awake, dht::Options &options,
   auto dp_cb = new dht_protocol_callback{awake, self, options, udp_fd};
   auto pp_cb = new priv_protocol_ACCEPT_callback{awake, self, options, priv_fd};
   auto publish_cb =
-      new dht::publish_ACCEPT_callback{self.db.scrape_client, publish_fd};
+      new dht::publish_ACCEPT_callback{&self, publish_fd};
   auto i_cb = new interrupt_callback{self, options, signal_fd};
   ::epoll_event ev{};
 
