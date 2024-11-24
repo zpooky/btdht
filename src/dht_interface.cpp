@@ -307,21 +307,18 @@ __bootstrap_insert(dht::DHT &self, const dht::NodeId &id,
   std::size_t max_rank = 4;
   dht::DHTMetaScrape *max = nullptr;
   for (auto &scrape : self.active_scrapes) {
-    auto tmp = rank(scrape.routing_table.id, id);
-    if (tmp >= max_rank) {
+    auto scrape_rank = rank(scrape.routing_table.id, id);
+    if (scrape_rank >= max_rank) {
       // XXX check boostrap heap if full and if last element is less than tmp
-      max_rank = tmp;
+      max_rank = scrape_rank;
       max = &scrape;
     }
   }
   if (max) {
-    auto tmp = rank(self.routing_table.id, id);
-    if (max_rank > tmp) {
-      bootstrap_insert(*max, dht::IdContact(id, remote));
-      return;
-    }
+    bootstrap_insert(*max, dht::IdContact(id, remote));
+  } else {
+    bootstrap_insert(self, dht::IdContact(id, remote));
   }
-  bootstrap_insert(self, dht::IdContact(id, remote));
 }
 
 template <typename F>
@@ -925,8 +922,10 @@ handle_response(dht::MessageContext &ctx,
 
   for (const std::tuple<dht::NodeId, Contact> &e : res.nodes) {
     const Contact &c = std::get<1>(e);
-    const auto &nodeId = std::get<0>(e);
-    __bootstrap_insert(self, nodeId, c);
+    if (c.ip.type == IpType::IPV4 && c.ip.ipv4 && c.port) {
+      const auto &nodeId = std::get<0>(e);
+      __bootstrap_insert(self, nodeId, c);
+    }
   }
 
   uint32_t hours = (uint32_t)std::ceil((double)res.interval / 60. / 60.);

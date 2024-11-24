@@ -29,6 +29,7 @@
 #include <core.h>
 #include <dht_interface.h>
 #include <private_interface.h>
+#include <scrape.h>
 #include <upnp_service.h>
 
 // TODO in private_interface on socket close automatically close connected
@@ -490,7 +491,7 @@ main(int argc, char **argv) {
   }
 
   sp::fd publish_fd =
-      udp::bind_unix_seq(options.publish_socket, udp::Mode::NONBLOCKING);
+      udp::bind_unix(options.publish_socket, udp::Mode::NONBLOCKING);
   printf("%s (%d)\n", options.publish_socket, int(publish_fd));
   if (!bool(publish_fd)) {
     fprintf(stderr, "failed to bind: publish %s\n", options.publish_socket);
@@ -540,6 +541,9 @@ main(int argc, char **argv) {
   dht::Modules modules{modulesAwake};
   if (!dht_upnp::setup(modules)) {
     die("dht_upnp::setup(modules)");
+  }
+  if (!interface_setup::setup(modules, true)) {
+    die("interface_setup::setup(modules)");
   }
 
   auto on_awake = [&mdht, &modulesAwake](sp::Buffer &out) -> sp::Milliseconds {

@@ -37,7 +37,7 @@ struct dht_publish_msg {
 
 static bool
 __db_cache_insert(dht::DHTMeta_spbt_scrape_client &self, dht::Infohash ih) {
-  return insert(self.cache, ih);
+  return insert(self.cache, ih.id);
 }
 
 static bool
@@ -52,19 +52,22 @@ __db_seed_cache(dht::DHTMeta_spbt_scrape_client &self, sqlite3 *db) {
       fprintf(stderr, "%s: sqlite3_prepare (%d)\n", __func__, r);
       goto Lout;
     }
-  }
 
-  while (sqlite3_step(stmt) == SQLITE_ROW) {
-    const void *info_hash = sqlite3_column_blob(stmt, 0);
-    int info_hash_len =
-        std::min(sqlite3_column_bytes(stmt, 0), int(SHA_HASH_SIZE));
-    if (info_hash_len == SHA_HASH_SIZE) {
-      dht::Infohash ih;
-      memcpy(ih.id, info_hash, SHA_HASH_SIZE);
-      __db_cache_insert(self, ih);
-    } else {
-      assertx(false);
+    while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
+      const int column = 0;
+      int info_hash_len =
+          std::min(sqlite3_column_bytes(stmt, column), int(SHA_HASH_SIZE));
+      const void *info_hash = sqlite3_column_blob(stmt, column);
+      if (info_hash_len == SHA_HASH_SIZE) {
+        dht::Infohash ih;
+        memcpy(ih.id, info_hash, SHA_HASH_SIZE);
+        __db_cache_insert(self, ih);
+      } else {
+        assertx(false);
+      }
     }
+    // fprintf(stderr, "%s: sqlite3_step (%d) %s\n", __func__, r,
+    //         sqlite3_errmsg(db));
   }
 
   res = true;
@@ -76,13 +79,13 @@ Lout:
 }
 
 static std::size_t
-djb_infohash(const dht::Infohash &ih) noexcept {
-  return djb2::encode32(ih.id, sizeof(ih.id));
+djb_infohash(const dht::Key &ih) noexcept {
+  return djb2::encode32(ih, sizeof(ih));
 }
 
 static std::size_t
-fnv_infohash(const dht::Infohash &ih) noexcept {
-  return fnv_1a::encode32(ih.id, sizeof(ih.id));
+fnv_infohash(const dht::Key &ih) noexcept {
+  return fnv_1a::encode32(ih, sizeof(ih));
 }
 
 dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client(
@@ -125,11 +128,21 @@ dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client(
 }
 
 bool
+dht::spbt_scrape_client_is_started(dht::DHTMeta_spbt_scrape_client &self) {
+  return bool(self.dir_fd) &&
+         ::faccessat(int(self.dir_fd), "spbt_scrape.socket", W_OK,
+                     AT_EACCESS) == F_OK;
+}
+
+bool
 dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
                              const Key &infohash, const Contact &contact) {
 
-  if (bool(self.dir_fd) && ::faccessat(int(self.dir_fd), "spbt_scrape.socket",
-                                       W_OK, AT_EACCESS) == F_OK) {
+  if (spbt_has_infohash(self, infohash)) {
+    return true;
+  }
+
+  if (spbt_scrape_client_is_started(self)) {
     dht_scrape_msg msg{};
     msg.magic[0] = 32;
     msg.magic[1] = 47;
@@ -153,29 +166,48 @@ dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
 
 bool
 dht::spbt_has_infohash(DHTMeta_spbt_scrape_client &self, const Infohash &ih) {
+  return test(self.cache, ih.id);
+}
+
+bool
+dht::spbt_has_infohash(DHTMeta_spbt_scrape_client &self, const Key &ih) {
   return test(self.cache, ih);
 }
 
 static int
 on_publish_ACCEPT_callback(void *closure, uint32_t events) {
 
-  int ret;
+  ssize_t ret;
   auto self = (dht::publish_ACCEPT_callback *)closure;
-  struct iovec iovecs {};
-  struct mmsghdr msgh {};
   dht_publish_msg msg{};
-  iovecs.iov_base = &msg;
-  iovecs.iov_len = sizeof(msg);
-  msgh.msg_hdr.msg_iov = &iovecs;
-  msgh.msg_hdr.msg_iovlen = 1;
-
   int flags = 0;
-  if ((ret = recvmmsg(int(self->publish_fd), &msgh, 1, flags, nullptr)) < 0) {
-    perror("recvmmsg()");
+#if 0
+  struct msghdr msgh {};
+
+  {
+    struct sockaddr_in addr {};
+
+    struct iovec iovecs {};
+    iovecs.iov_base = &msg;
+    iovecs.iov_len = sizeof(msg);
+    msgh.msg_name = &addr;
+    msgh.msg_namelen = sizeof(addr);
+    msgh.msg_iov = &iovecs;
+    msgh.msg_iovlen = 1;
+
+    if ((ret = recvmsg(int(self->publish_fd), &msgh, flags)) < 0) {
+      perror("recvmsg()");
+      return 0;
+    }
+  }
+#else
+  if ((ret = recv(int(self->publish_fd), &msg, sizeof(msg), flags)) < 0) {
+    perror("recvmsg()");
     return 0;
   }
+#endif
 
-  if (msgh.msg_len == sizeof(msg)) {
+  if (ret == sizeof(msg)) {
     const unsigned char magic[4] = {205, 7, 44, 216};
     if (memcmp(msg.magic, magic, sizeof(magic)) == 0) {
       dht::Infohash ih;

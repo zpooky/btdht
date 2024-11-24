@@ -154,9 +154,11 @@ Stat::Stat() noexcept
     , unknown_tx() {
 }
 
-DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &ih) noexcept
-    : tb{self.now}
-    , routing_table{20, self.random, tb, self.now, ih, self.config}
+DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &_ih) noexcept
+
+    : id{_ih}
+    , tb{self.now}
+    , routing_table{20, self.random, tb, self.now, id, self.config}
     , bootstrap{}
     , started{self.now}
     , now{self.now}
@@ -210,6 +212,7 @@ DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
   for (size_t i = 0; i < capacity(scrape_hour); ++i) {
     assertx_n(emplace(scrape_hour, ip_hashers));
   }
+  assertx(is_full(scrape_hour));
 
   assertx_n(insert(ip_hashers, djb_ip));
   assertx_n(insert(ip_hashers, fnv_ip));

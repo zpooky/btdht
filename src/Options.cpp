@@ -145,7 +145,7 @@ parse(Options &self, int argc, char **argv) noexcept {
     if (!xdg_share_dir(self.db_path)) {
       return false;
     }
-    ::strcat(self.db_path, "spbt/torrent.db");
+    ::strcat(self.db_path, "/spbt/torrent.db");
   }
 
   if (strlen(self.scrape_socket_path) == 0) {

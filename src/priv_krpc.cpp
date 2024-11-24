@@ -140,7 +140,7 @@ response::dump(sp::Buffer &buf, const Transaction &t,
           return false;
         }
         sprintf(key, "candidates%zu", i);
-        if (!bencode::e::pair(b2, key, length(dht.bootstrap))) {
+        if (!bencode::e::pair(b2, key, length(scrape.bootstrap))) {
           return false;
         }
         ++i;

@@ -12,7 +12,7 @@
  * TODO maintain how many:
  * - new infohash we get
  * - new nodes we get
- * 
+ *
  * TODO
  * - rate of new infohash
  * - rate of new nodes
@@ -81,6 +81,11 @@ support_sample_infohashes(const sp::byte version[DHT_VERSION_LEN]) noexcept {
 
 static Timestamp
 on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
+
+  if (!spbt_scrape_client_is_started(self.db.scrape_client)) {
+    return self.now + sp::Seconds(60); // XXX
+  }
+
   if (!is_full(self.active_scrapes)) {
     for (size_t i = length(self.active_scrapes);
          i < capacity(self.active_scrapes) - 1; ++i) {
@@ -106,9 +111,9 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
     }
     self.scrape_hour_time = self.now;
   } else {
-    while ((self.scrape_hour_time + sp::Hours(1)) > self.now) {
+    while ((self.scrape_hour_time + sp::Hours(1)) <= self.now) {
       self.scrape_hour_idx =
-          self.scrape_hour_idx + 1 % capacity(self.scrape_hour);
+          (self.scrape_hour_idx + 1) % capacity(self.scrape_hour);
       clear(self.scrape_hour[self.scrape_hour_idx]);
       self.scrape_hour_time = self.scrape_hour_time + sp::Hours(1);
     }
@@ -161,16 +166,27 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
     timeout::for_all_node(scrape.routing_table, cfg.refresh_interval, f);
   }
 
+  // TODO
+  if (tx::has_free_transaction(self)) {
+    dht::KContact cur;
+    size_t scrape_idx = random(self.random) % length(self.active_scrapes);
+    DHTMetaScrape &scrape = self.active_scrapes[scrape_idx];
+    while (tx::has_free_transaction(self) && take_head(scrape.bootstrap, cur)) {
+      auto result =
+          client::find_node(self, buf, cur.contact, scrape.id, nullptr);
+      if (result != client::Res::OK) {
+        // inc_active_searches();
+        break;
+      }
+    } // while
+  }
+
   // # v2
   // TODO DHTMetaScrape when to try a new infohash
   // - circular queu with the first of the queue is the highest shared id
   // - random select scrape:
   //   - run sample_infohashes if has_sent_last_24h(): otherwise if
   //   Node::req_sent < XX send find_node?
-  //
-  // TODO have another socket file for bt3 to write what it infohash it has got
-  // Note: scrape routing_Table should be less than the main routing_table so
-  // lowest shared get removed
 
   // TODO timeout is needed for scrape as well
   // - use the same system as for original routing_table
@@ -208,9 +224,8 @@ scrape::seed_insert(dht::DHT &self, const sp::byte version[DHT_VERSION_LEN],
       if (version) {
         memcpy(node.version, version, sizeof(node.version));
       }
-      dht::insert(
-          scrape.routing_table,
-          node); // TODO add with a timeout so that we don't spam the same node
+      // XXX add with a timeout so that we don't spam the same node
+      dht::insert(scrape.routing_table, node);
     }
   });
 

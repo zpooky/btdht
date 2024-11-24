@@ -971,17 +971,18 @@ multiple_closest_nodes(DHTMetaRoutingTable &self, const Key &search,
   RoutingTable *root = self.root;
   std::size_t idx = 0;
   if (root) {
-    idx = root->depth;
+    assertx(root->depth >= 0);
+    idx = (size_t)root->depth;
   }
   const std::size_t max = rank(self.id, search);
 Lstart:
   if (root) {
     assertx(root->depth >= 0);
-    assertx(idx == (std::size_t)root->depth);
+    idx = (std::size_t)root->depth;
     sp::push_back(best, root);
     debug_bucket_is_valid(root);
 
-    if (idx++ < max) {
+    if (idx < max) {
       root = root->in_tree;
       goto Lstart;
     }

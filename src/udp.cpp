@@ -10,6 +10,7 @@
 #include <sys/errno.h>  //errno
 #include <sys/socket.h> //socket
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h> //close
@@ -77,6 +78,7 @@ bind_v4(Mode m) noexcept {
 
 static fd
 do_bind_unix(const char *file, Mode m, int type) noexcept {
+  mode_t before;
   if (m == Mode::NONBLOCKING) {
     type |= SOCK_NONBLOCK;
   }
@@ -86,11 +88,16 @@ do_bind_unix(const char *file, Mode m, int type) noexcept {
     return udp;
   }
 
+  unlink(file);
+
+  before = ::umask(077);
   ::sockaddr_un name{};
   name.sun_family = AF_UNIX;
   strncpy(name.sun_path, file, strlen(file));
 
-  if (::bind(int(udp), (struct sockaddr *)&name, sizeof(name)) < 0) {
+  int ret = ::bind(int(udp), (struct sockaddr *)&name, sizeof(name));
+  ::umask(before);
+  if (ret < 0) {
     fprintf(stderr, "%s: 2: %s\n", __func__, strerror(errno));
     return fd{-1};
   }
