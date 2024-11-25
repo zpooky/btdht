@@ -97,7 +97,7 @@ get_peers(dht::DHT &dht, sp::Buffer &buf, const Contact &dest,
 
   Res result = send(dht, dest, buf, serialize, get_peers, closure);
   if (result == Res::OK) {
-    logger::transmit::get_peers(dht, dest, result); // TODO log tx
+    logger::transmit::get_peers(dht, dest, search, result); // TODO log tx
   }
   return result;
 }
@@ -117,8 +117,7 @@ sample_infohashes(dht::DHT &self, sp::Buffer &buf, const Contact &dest,
 
   Res result = send(self, dest, buf, serialize, s_ih, closure);
   if (result == Res::OK) {
-    // TODO logger::transmit::sample_infohashes(self, dest, result); // TODO log
-    // tx
+    logger::transmit::sample_infohashes(self, dest, target, result);
   }
   return result;
 }

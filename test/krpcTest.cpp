@@ -821,14 +821,14 @@ TEST(krpcTest, test_sample_infohashes_static) {
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
       dht::MessageContext mctx(dht, pctx, buf2, remote);
-      return parse_sample_infohashes_request(mctx, req);
+      return parse_sample_infohashes_request(mctx.in, req);
     }));
 #else
     // TODO we only have to message part
     sp::byte b2[256] = {0};
     sp::Buffer buf2{b2};
     dht::MessageContext mctx(*dht, ctx, buf2, Contact{});
-    ASSERT_TRUE(parse_sample_infohashes_request(mctx, req));
+    ASSERT_TRUE(parse_sample_infohashes_request(mctx.in, req));
 #endif
 
     dht::NodeId sender{};
@@ -898,7 +898,7 @@ TEST(krpcTest, test_sample_infohashes_static) {
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
       dht::MessageContext mctx(*dht, pctx, buf2, remote);
-      return parse_sample_infohashes_response(mctx, res);
+      return parse_sample_infohashes_response(mctx.in, res);
     }));
 
     dht::NodeId id{};
@@ -958,7 +958,7 @@ TEST(krpcTest, test_sample_infohashes_static) {
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
       dht::MessageContext mctx(*dht, pctx, buf2, remote);
-      return parse_sample_infohashes_response(mctx, res);
+      return parse_sample_infohashes_response(mctx.in, res);
     }));
 
     dht::NodeId id{};
@@ -1018,7 +1018,7 @@ TEST(krpcTest, test_sample_infohashes) {
       sp::byte b2[256] = {0};
       sp::Buffer buf2{b2};
       dht::MessageContext mctx(*dht, pctx, buf2, remote);
-      return parse_sample_infohashes_request(mctx, req);
+      return parse_sample_infohashes_request(mctx.in, req);
     }));
 
     ASSERT_TRUE(req.sender == id);
@@ -1075,7 +1075,7 @@ TEST(krpcTest, test_sample_infohashes) {
       sp::byte b2[256] = {0};
       sp::Buffer buf{b2};
       dht::MessageContext mctx(*dht, pctx, buf, remote);
-      return krpc::parse_sample_infohashes_response(mctx, res);
+      return krpc::parse_sample_infohashes_response(mctx.in, res);
     }));
     ASSERT_TRUE(res.id == id.id);
     ASSERT_TRUE(res.num == 1337);

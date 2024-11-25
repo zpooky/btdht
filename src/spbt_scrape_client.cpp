@@ -32,8 +32,8 @@ struct dht_scrape_msg {
 #define PUBLISH_HAVE 1
 
 struct dht_publish_msg {
-  unsigned char info_hash[SHA_HASH_SIZE];
   int flag;
+  unsigned char info_hash[SHA_HASH_SIZE];
   unsigned char magic[4];
 };
 }
@@ -153,7 +153,7 @@ dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
 
     if (sendto(int(self.unix_socket_file), &msg, sizeof(msg), 0,
                (sockaddr *)&self.name, sizeof(self.name)) < 0) {
-      fprintf(stderr, "%s: sendto %s (%s)", __func__, self.name.sun_path,
+      fprintf(stderr, "%s: sendto %s (%s)\n", __func__, self.name.sun_path,
               strerror(errno));
       // assertx(false);
     }

@@ -12,6 +12,7 @@
 // #define LOG_REQ_PING
 // #define LOG_REQ_FIND_NODE
 #define LOG_REQ_GET_PEERS
+#define LOG_REQ_SAMPLE_INFOHASHES
 
 // #define LOG_ROUTING_SPLIT
 // #define LOG_ROUTING_INSERT
@@ -503,7 +504,8 @@ find_node(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
 }
 
 void
-get_peers(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
+get_peers(dht::DHT &ctx, const Contact &contact, const dht::Infohash &search,
+          client::Res result) noexcept {
   dht::Stat &s = ctx.statistics;
   ++s.sent.request.get_peers;
 
@@ -516,8 +518,39 @@ get_peers(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   // auto &tx = ctx.transaction;
   // dht::print_hex(tx.id, tx.length);
 
-  fprintf(f, "transmit get_peers[%s],res[%s],count[%zu]\n", remote,
-          to_string(result), s.sent.request.get_peers);
+  fprintf(f, "transmit get_peers[%s, ", remote);
+  dht::print_hex(f, search.id, sizeof(search.id));
+  fprintf(f, "],res[%s],count[%zu]\n", to_string(result),
+          s.sent.request.get_peers);
+#else
+  (void)contact;
+  (void)search;
+  (void)result;
+#endif
+}
+
+void
+sample_infohashes(dht::DHT &ctx, const Contact &contact, const dht::Key &id,
+                  client::Res result) noexcept {
+  dht::Stat &s = ctx.statistics;
+  ++s.sent.request.sample_infohashes;
+#ifdef LOG_REQ_SAMPLE_INFOHASHES
+  auto f = stdout;
+  print_time(f, ctx);
+  char remote[30] = {0};
+  to_string(contact, remote, sizeof(remote));
+
+  // auto &tx = ctx.transaction;
+  // dht::print_hex(tx.id, tx.length);
+
+  fprintf(f, "transmit sample_infohashes[%s, ", remote);
+  dht::print_hex(f, id, sizeof(id));
+  fprintf(f, "],res[%s],count[%zu]\n", to_string(result),
+          s.sent.request.sample_infohashes);
+#else
+  (void)contact;
+  (void)id;
+  (void)result;
 #endif
 }
 

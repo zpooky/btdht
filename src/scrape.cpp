@@ -131,7 +131,7 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
         continue;
       }
       auto dest = std::get<1>(last);
-      ScrapeContext *closure = new ScrapeContext(std::get<0>(last));
+      ScrapeContext *closure = new ScrapeContext(needle);
       result = client::get_peers(self, buf, dest, needle, closure) ==
                client::Res::OK;
       if (result) {
@@ -248,6 +248,8 @@ bool
 scrape::get_peers_nodes(dht::DHT &self,
                         const sp::UinArray<dht::IdContact> &values) {
   if (!is_empty(values) && !is_empty(self.active_scrapes)) {
+#if 0
+    // add all  based on first nodeid to the best scrape
     const dht::IdContact *first = values.begin();
     dht::DHTMetaScrape *best_match = nullptr;
     std::size_t max_rank = 0;
@@ -265,6 +267,22 @@ scrape::get_peers_nodes(dht::DHT &self,
         bootstrap_insert(*best_match, value);
       }
     }
+#else
+    for (const auto &value : values) {
+      dht::DHTMetaScrape *best_match = nullptr;
+      std::size_t max_rank = 0;
+
+      for (auto &scrape : self.active_scrapes) {
+        std::size_t r = rank(value.id, scrape.id);
+        if (r >= max_rank) {
+          max_rank = r;
+          best_match = &scrape;
+        }
+      }
+
+      bootstrap_insert(*best_match, value);
+    }
+#endif
   }
 
   return true;

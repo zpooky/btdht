@@ -67,14 +67,13 @@ struct GetPeersResponse {
   // "token" :"<opaque write token>"
   dht::Token token;
 
-
   // peers for the queried infohash
   //  - "compact" peer information
   // "values" : ["<peer 1 info string>", "<peer 2 info string>"]
   sp::UinStaticArray<Contact, 256> values;
-   // If the queried node has no peers for the infohash
-  // - "nodes" is returned containing nodes from its routing table which is closest to the queried infohash
-  // "nodes" : "<compact node info>"
+  // If the queried node has no peers for the infohash
+  // - "nodes" is returned containing nodes from its routing table which is
+  // closest to the queried infohash "nodes" : "<compact node info>"
   sp::UinStaticArray<dht::IdContact, 256> nodes;
 };
 
@@ -131,12 +130,10 @@ struct SampleInfohashesResponse {
 };
 
 bool
-parse_sample_infohashes_request(dht::MessageContext &ctx,
-                                SampleInfohashesRequest &out);
+parse_sample_infohashes_request(sp::Buffer &in, SampleInfohashesRequest &out);
 
 bool
-parse_sample_infohashes_response(dht::MessageContext &ctx,
-                                 SampleInfohashesResponse &out);
+parse_sample_infohashes_response(sp::Buffer &in, SampleInfohashesResponse &out);
 
 // ========================================
 

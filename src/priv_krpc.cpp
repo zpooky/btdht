@@ -133,6 +133,17 @@ response::dump(sp::Buffer &buf, const Transaction &t,
                             capacity(dht.active_scrapes))) {
         return false;
       }
+
+      if (!bencode::e::pair(b2, "scrape_hour_current_idx",
+                            dht.scrape_hour_idx)) {
+        return false;
+      }
+
+      if (!bencode::e::pair(b2, "scrape_get_peers_ih",
+                            length(dht.scrape_get_peers_ih))) {
+        return false;
+      }
+
       std::size_t i = 0;
       for (const auto &scrape : dht.active_scrapes) {
         char key[64] = {0};
@@ -148,8 +159,12 @@ response::dump(sp::Buffer &buf, const Transaction &t,
         if (!bencode::e::pair(b2, key, length(scrape.bootstrap))) {
           return false;
         }
-        sprintf(key, "publish%zu", i);
+        sprintf(key, "stat.publish%zu", i);
         if (!bencode::e::pair(b2, key, scrape.stat.publish)) {
+          return false;
+        }
+        sprintf(key, "stat.sample_ih%zu", i);
+        if (!bencode::e::pair(b2, key, scrape.stat.sent_sample_infohash)) {
           return false;
         }
         ++i;
@@ -167,16 +182,6 @@ response::dump(sp::Buffer &buf, const Transaction &t,
           return false;
         }
         ++i;
-      }
-
-      if (!bencode::e::pair(b2, "scrape_hour_current_idx",
-                            dht.scrape_hour_idx)) {
-        return false;
-      }
-
-      if (!bencode::e::pair(b2, "scrape_get_peers_ih",
-                            length(dht.scrape_get_peers_ih))) {
-        return false;
       }
 
       return true;
@@ -629,56 +634,68 @@ pair(sp::Buffer &buf, const char *key,
 static bool
 pair(sp::Buffer &buf, const char *key, const dht::StatTrafic &t) noexcept {
   // used by statistics
-  if (!bencode::e::value(buf, key)) {
+  // if (!bencode::e::value(buf, key)) {
+  //   return false;
+  // }
+  // return bencode::e::dict(buf, [&t](sp::Buffer &b) {
+  char skey[64] = {0};
+  sprintf(skey, "%s-ping", key);
+  if (!bencode::e::pair(buf, skey, t.ping)) {
     return false;
   }
-  return bencode::e::dict(buf, [&t](sp::Buffer &b) {
-    if (!bencode::e::pair(b, "ping", t.ping)) {
-      return false;
-    }
-    if (!bencode::e::pair(b, "find_node", t.find_node)) {
-      return false;
-    }
-    if (!bencode::e::pair(b, "get_peers", t.get_peers)) {
-      return false;
-    }
-    if (!bencode::e::pair(b, "announce_peer", t.announce_peer)) {
-      return false;
-    }
-    if (!bencode::e::pair(b, "error", t.error)) {
-      return false;
-    }
+  sprintf(skey, "%s-find_node", key);
+  if (!bencode::e::pair(buf, skey, t.find_node)) {
+    return false;
+  }
+  sprintf(skey, "%s-get_peers", key);
+  if (!bencode::e::pair(buf, skey, t.get_peers)) {
+    return false;
+  }
+  sprintf(skey, "%s-announce_peer", key);
+  if (!bencode::e::pair(buf, skey, t.announce_peer)) {
+    return false;
+  }
+  sprintf(skey, "%s-error", key);
+  if (!bencode::e::pair(buf, skey, t.error)) {
+    return false;
+  }
 
-    return true;
-  });
+  return true;
+  // });
 }
 
 static bool
 pair(sp::Buffer &buf, const char *key, const dht::StatDirection &d) noexcept {
   // used by statistics
-  if (!bencode::e::value(buf, key)) {
+  // if (!bencode::e::value(buf, key)) {
+  //   return false;
+  // }
+  //
+  // return bencode::e::dict(buf, [&d](sp::Buffer &b) {
+
+  char skey[64] = {0};
+  sprintf(skey, "%s-request", key);
+  if (!pair(buf, skey, d.request)) {
     return false;
   }
 
-  return bencode::e::dict(buf, [&d](sp::Buffer &b) {
-    if (!pair(b, "request", d.request)) {
-      return false;
-    }
+  sprintf(skey, "%s-response_timeout", key);
+  if (!pair(buf, skey, d.response_timeout)) {
+    return false;
+  }
 
-    if (!pair(b, "response_timeout", d.response_timeout)) {
-      return false;
-    }
+  sprintf(skey, "%s-response", key);
+  if (!pair(buf, skey, d.response)) {
+    return false;
+  }
 
-    if (!pair(b, "response", d.response)) {
-      return false;
-    }
+  sprintf(skey, "%s-parse_error", key);
+  if (!bencode::e::pair(buf, skey, d.parse_error)) {
+    return false;
+  }
 
-    if (!bencode::e::pair(b, "parse_error", d.parse_error)) {
-      return false;
-    }
-    // TODO
-    return true;
-  });
+  return true;
+  // });
 }
 
 bool

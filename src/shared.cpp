@@ -137,6 +137,7 @@ StatTrafic::StatTrafic() noexcept
     , find_node(0)
     , get_peers(0)
     , announce_peer(0)
+    , sample_infohashes(0)
     , error(0) {
 }
 

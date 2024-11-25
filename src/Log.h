@@ -109,7 +109,12 @@ void
 find_node(dht::DHT &, const Contact &, client::Res) noexcept;
 
 void
-get_peers(dht::DHT &, const Contact &, client::Res) noexcept;
+get_peers(dht::DHT &, const Contact &, const dht::Infohash &search,
+          client::Res) noexcept;
+
+void
+sample_infohashes(dht::DHT &, const Contact &, const dht::Key &,
+                  client::Res) noexcept;
 
 // ====================
 namespace error {

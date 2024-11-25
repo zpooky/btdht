@@ -937,7 +937,7 @@ handle_response(dht::MessageContext &ctx,
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
   krpc::SampleInfohashesResponse res;
-  if (krpc::parse_sample_infohashes_response(ctx, res)) {
+  if (krpc::parse_sample_infohashes_response(ctx.in, res)) {
     return handle_response(ctx, res);
   }
   return false;
@@ -946,7 +946,7 @@ on_response(dht::MessageContext &ctx, void *) noexcept {
 static bool
 on_request(dht::MessageContext &ctx) noexcept {
   krpc::SampleInfohashesRequest req;
-  if (krpc::parse_sample_infohashes_request(ctx, req)) {
+  if (krpc::parse_sample_infohashes_request(ctx.in, req)) {
     return handle_request(ctx, req.sender, req.target);
   }
   return false;

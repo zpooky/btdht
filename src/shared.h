@@ -247,7 +247,7 @@ DHTMetaBootstrap<sz>::DHTMetaBootstrap(Config &conf,
 
 #define SCRAPE_FILTER 8 * 1024 * 1024
 struct DHTMetaScrape {
-  const dht::NodeId id;
+  dht::NodeId id;
   timeout::TimeoutBox tb;
   dht::DHTMetaRoutingTable routing_table;
   heap::StaticMaxBinary<KContact, 128> bootstrap;

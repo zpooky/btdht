@@ -556,10 +556,10 @@ krpc::parse_announce_peer_response(dht::MessageContext &ctx,
 
 // ========================================
 bool
-krpc::parse_sample_infohashes_request(dht::MessageContext &ctx,
+krpc::parse_sample_infohashes_request(sp::Buffer &in,
                                       krpc::SampleInfohashesRequest &out) {
 
-  return bencode::d::dict(ctx.in, [&out](auto &p) { //
+  return bencode::d::dict(in, [&out](auto &p) { //
     bool b_id = false;
     bool b_target = false;
     bool b_want = false;
@@ -603,16 +603,15 @@ krpc::parse_sample_infohashes_request(dht::MessageContext &ctx,
       return true;
     }
 
-    // logger::receive::parse::error(ctx.dht, p, "'ping' request missing 'id'");
     return false;
   });
 }
 
 bool
-krpc::parse_sample_infohashes_response(dht::MessageContext &ctx,
+krpc::parse_sample_infohashes_response(sp::Buffer &in,
                                        krpc::SampleInfohashesResponse &out) {
 
-  return bencode::d::dict(ctx.in, [&](sp::Buffer &p) {
+  return bencode::d::dict(in, [&](sp::Buffer &p) {
     bool b_id = false;
     bool b_interval = false;
     bool b_nodes = false;

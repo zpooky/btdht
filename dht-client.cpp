@@ -7,6 +7,7 @@
 #include <getopt.h>
 #include <krpc.h>
 #include <krpc_parse.h>
+#include <memory>
 #include <priv_krpc.h>
 #include <prng/URandom.h>
 #include <prng/util.h>
@@ -130,7 +131,7 @@ parse_id(DHTClient &client, dht::NodeId &id) {
 }
 
 static bool
-generic_receive(fd &u, sp::Buffer &b) noexcept {
+generic_receive(fd &u, sp::Buffer &b, bool print_hex = false) noexcept {
 Lretry:
   reset(b);
 
@@ -144,9 +145,11 @@ Lretry:
   }
   flip(b);
 
-  // printf("response: \n");
-  // dht::print_hex(stdout, b.raw, b.length);
-  // printf("\n");
+  if (print_hex) {
+    printf("response: \n");
+    dht::print_hex(stdout, b.raw, b.length);
+    printf("\n");
+  }
   bencode_print(b);
   return true;
 }
@@ -418,7 +421,7 @@ sample_infohashes_receive(fd &u, sp::Buffer &b) noexcept {
   Timestamp now = sp::now();
   dht::Client client{udp, priv};
   dht::Options opt;
-  dht::DHT dht(listen, client, r, now, opt);
+  auto mdht = std::make_unique<dht::DHT>(listen, client, r, now, opt);
   Contact remote;
 
 Lretry:
@@ -433,18 +436,14 @@ Lretry:
   flip(b);
 
   dht::Domain dom = dht::Domain::Domain_private;
-  krpc::ParseContext pctx(dom, dht, b);
+  krpc::ParseContext pctx(dom, *mdht, b);
 
   // dht::print_hex(b.raw, b.length);
   // printf("\n");
   krpc::SampleInfohashesResponse response;
-  bool krpc_res = krpc::d::krpc(
-      pctx, [&dht, &remote, &response](krpc::ParseContext &pctx2) { //
-        sp::byte b2[256] = {0};
-        sp::Buffer buf2{b2};
-        dht::MessageContext mctx(dht, pctx2, buf2, remote);
-        return krpc::parse_sample_infohashes_response(mctx, response);
-      });
+  bool krpc_res = krpc::d::krpc(pctx, [&response](krpc::ParseContext &p) { //
+    return krpc::parse_sample_infohashes_response(p.decoder, response);
+  });
 
   if (!krpc_res) {
     fprintf(stderr, "parse error\n");
@@ -455,24 +454,31 @@ Lretry:
   dht::print_hex(stdout, response.id);
   printf("interval: %u\n", response.interval);
   printf("num: %u\n", response.num);
-  printf("infohash:\n");
+  printf("samples:\n");
   for_each(response.samples, [](auto &ih) {
     printf("\t");
     dht::print_hex(stdout, ih);
   });
+  printf("nodes:\n");
+  for (auto &node : response.nodes) {
+    auto id = std::get<0>(node);
+    auto contact = std::get<1>(node);
+    printf("\t%s:", to_string(contact));
+    dht::print_hex(stdout, id);
+  }
+
   return true;
 }
 
 static bool
-send_sample_infohashes(DHTClient &client) noexcept {
+send_sample_infohashes(DHTClient &client, const dht::Key &target) noexcept {
   reset(client.out);
   krpc::Transaction tx;
   make_tx(client.rand, tx);
 
   bool n4 = true;
   bool n6 = false;
-  krpc::request::sample_infohashes(client.out, tx, client.self, client.self.id,
-                                   n4, n6);
+  krpc::request::sample_infohashes(client.out, tx, client.self, target, n4, n6);
   flip(client.out);
   std::size_t pos = client.out.pos;
   bencode_print(client.out);
@@ -484,19 +490,23 @@ send_sample_infohashes(DHTClient &client) noexcept {
 int
 handle_sample_infohashes(DHTClient &client) {
 
-  if (!send_sample_infohashes(client)) {
+  printf("target: ");
+  dht::print_hex(stdout, client.self);
+  if (!send_sample_infohashes(client, client.self.id)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
   }
-
-#if 0
+  printf("--------------------\n");
+#if 1
   if (!sample_infohashes_receive(client.udp, client.in)) {
     return EXIT_FAILURE;
   }
-#endif
-  if (!generic_receive(client.udp, client.in)) {
+#else
+
+  if (!generic_receive(client.udp, client.in, true)) {
     return EXIT_FAILURE;
   }
+#endif
 
   return 0;
 }
