@@ -1,8 +1,8 @@
 #ifndef SP_MAINLINE_DHT_TIMEOUT_IMPL_H
 #define SP_MAINLINE_DHT_TIMEOUT_IMPL_H
+#include "Log.h"
 #include "dht.h"
 #include "shared.h"
-#include "Log.h"
 
 namespace timeout {
 template <typename F>
@@ -39,10 +39,10 @@ Lstart: {
     assertx(!node->timeout_next);
     assertx(!node->timeout_priv);
 
-    if (node->good) {
+    if (node->properties.is_good) {
       if (self) {
         if (dht::should_mark_bad(*self, *node)) { // TODO ??
-          node->good = false;
+          node->properties.is_good = false;
           routing_table.bad_nodes++;
         }
       }

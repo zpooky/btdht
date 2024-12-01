@@ -856,10 +856,9 @@ Node::Node() noexcept
     //}}}
     //{{{
     , outstanding(0)
-    , valid_id(NodeIdValid::NOT_YET)
-    , good(true)
-    //}}}
-    , read_only{false} {
+    , properties{0} //}}}
+{
+  properties.is_good = true;
 }
 
 Node::Node(const NodeId &nid, const Contact &p) noexcept
@@ -876,10 +875,9 @@ Node::Node(const NodeId &nid, const Contact &p) noexcept
     //}}}
     //{{{
     , outstanding(0)
-    , valid_id(NodeIdValid::NOT_YET)
-    , good(true)
-    //}}}
-    , read_only{false} {
+    , properties{0} //}}}
+{
+  properties.is_good = true;
 }
 
 /*Node*/
@@ -898,10 +896,9 @@ Node::Node(const NodeId &nid, const Contact &p, const Timestamp &act) noexcept
     //}}}
     //{{{
     , outstanding(0)
-    , valid_id(NodeIdValid::NOT_YET)
-    , good(true)
-    //}}}
-    , read_only{false} {
+    , properties{0} //}}}
+{
+  properties.is_good = true;
 }
 
 Node::Node(const IdContact &node, Timestamp now) noexcept
@@ -1036,6 +1033,50 @@ ScrapeContext::ScrapeContext(const dht::Infohash &ih)
 }
 
 //=====================================
+bool
+support_sample_infohashes(const sp::byte version[DHT_VERSION_LEN]) noexcept {
+  if (!version) {
+    return false;
+  }
+  if (std::memcmp(version, (const sp::byte *)"LT", 2) == 0) {
+    /* # yes
+     * 0x0207
+     * 0x0206
+     * 0x012F
+     * 0x012E
+     * 0x012B
+     * 0x0102
+     * # not
+     * 0x0102
+     * 0x0101
+     * 0x0100
+     * 0x0010
+     * 0x000f
+     */
+    return true;
+  }
+  if (std::memcmp(version, (const sp::byte *)"ml", 2) == 0) {
+    // 4:hex[6D6C0109]: 4(ml__)
+    // 4:hex[6D6C010B]: 4(ml__)
+    return true;
+  }
+  if (std::memcmp(version, (const sp::byte *)"sp", 2) == 0) {
+    return true;
+  }
+#if 0
+  if (std::memcmp(version, (const sp::byte *)"\0\0", 2) == 0) {
+    return false;
+  }
+  if (std::memcmp(version, (const sp::byte *)"lt", 2) == 0) {
+    return false;
+  }
+  if (std::memcmp(version, (const sp::byte *)"UT", 2) == 0) {
+    return false;
+  }
+#endif
+
+  return false;
+}
 } // namespace dht
 
 //=====================================

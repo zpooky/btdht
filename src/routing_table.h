@@ -110,10 +110,10 @@ struct DHTMetaRoutingTable {
   std::uint32_t total_nodes;
   std::uint32_t bad_nodes;
 
-  sp::UinArray<
-      std::tuple<void (*)(void *ctx, const Contact &) noexcept, void *>>
+  sp::UinStaticArray<
+      std::tuple<void (*)(void *ctx, const Node &) noexcept, void *>, 4>
       retire_good;
-  void *cache{nullptr};
+  void *cache;
 
   DHTMetaRoutingTable(std::size_t capacity, prng::xorshift32 &,
                       timeout::TimeoutBox &tb, Timestamp &, const dht::NodeId &,

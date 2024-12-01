@@ -64,18 +64,55 @@ TODO spare routing_Table
 TODO routing_table heap node compare (heap entry needs to be updated when new nodes are added/removed)
 TOOD do not store options in struct so that we can reduce memory
 
-- only store one bit (support scrape in Node in routing_table (bitmap)) instead of version
-```
-struct {
-  bool:1 support_scrape;
-  bool:1 is_strict_node_id;
-  bool:1 is_bad;
-} properties;
-```
 - scrape main routing_table as well
 
 - db populate based on 1M latest
   - size of bloomfilter ...
   - query planner
+
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+standard test
+
+-------------------------------------------------------------------------------
+statistics on version which returns response from sample_infohash
+
+---------------------------------------------------------------------
+retire good vector
+- routing_table_will_accept(node)
+- dht::insert(best_match->routing_table, node);
+
+-------------------------------------------------------------------------------
+assertion failed: (b.length >= b.pos)
+../external/sputil/src/buffer/BytesView.cpp: 100
+
+Stack trace (most recent call last):
+#0    unsigned long backward::details::unwind<backward::StackTraceImpl<backward::system_tag::linux_tag>::callback>(backward::StackTraceImpl<backward::system_tag::linux_tag>::callback, unsigned long) backward.hpp:851
+#1    backward::StackTraceImpl<backward::system_tag::linux_tag>::load_here(unsigned long, void*, void*) backward.hpp:869
+#2    sp::impl::print_backtrace(_IO_FILE*) assert.cpp:124
+#3    sp::impl::assert_func(char const*, int, char const*, char const*) assert.cpp:161
+#4    sp::remaining_read(sp::IBytesView<unsigned char> const&) BytesView.cpp:100
+#5    bool bencode::d::list_contact<sp::UinStaticArray<Contact, 256ul> >(sp::IBytesView<unsigned char>&, sp::UinStaticArray<Contact, 256ul>&) bencode_offset.cpp:307
+#6    bencode::d::peers(sp::IBytesView<unsigned char>&, char const*, sp::UinStaticArray<Contact, 256ul>&) bencode_offset.cpp:390
+#7    auto krpc::parse_get_peers_response(dht::MessageContext&, krpc::GetPeersResponse&)::{lambda(auto:1&)#1}::operator()<sp::IBytesView<unsigned char> >(sp::IBytesView<unsigned char>&) const krpc_parse.cpp:448
+#8    bool bencode::d::dict<krpc::parse_get_peers_response(dht::MessageContext&, krpc::GetPeersResponse&)::{lambda(auto:1&)#1}>(sp::IBytesView<unsigned char>&, krpc::parse_get_peers_response(dht::MessageContext&, krpc::GetPeersResponse&)::{lambda(auto:1&)#1}) bencode.h:115
+#9    krpc::parse_get_peers_response(dht::MessageContext&, krpc::GetPeersResponse&) krpc_parse.cpp:399
+#10   get_peers::on_response(dht::MessageContext&, void*) dht_interface.cpp:768
+#11   tx::TxContext::handle(dht::MessageContext&) shared.cpp:58
+#12   parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}::operator()(krpc::ParseContext&) const dht-server.cpp:155
+#13   auto krpc::d::krpc<parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}>(krpc::ParseContext&, parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1})::{lambda(auto:1&)#1}::operator()<sp::IBytesView<unsigned char> >(sp::IBytesView<unsigned char>&) const krpc.h:259
+#14   bool bencode::d::dict<krpc::d::krpc<parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}>(krpc::ParseContext&, parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1})::{lambda(auto:1&)#1}>(sp::IBytesView<unsigned char>&, krpc::d::krpc<parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}>(krpc::ParseContext&, parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1})::{lambda(auto:1&)#1}) bencode.h:115
+#15   bool krpc::d::krpc<parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}>(krpc::ParseContext&, parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}) krpc.h:104
+#16   parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&) dht-server.cpp:183
+#17   on_dht_protocol_handle(void*, unsigned int) dht-server.cpp:209
+#18   sp::tick(epoll_event&) core.cpp:34
+#19   sp::core_tick(sp::core&, sp::Milliseconds) core.cpp:66
+#20   int main_loop<main::{lambda(sp::IBytesView<unsigned char>&)#1}>(dht::DHT&, main::{lambda(sp::IBytesView<unsigned char>&)#1}) dht-server.cpp:446
+#21   main dht-server.cpp:588
+#22   __libc_init_first
+#23   __libc_start_main
+#24   _start
+#25
 
 -------------------------------------------------------------------------------

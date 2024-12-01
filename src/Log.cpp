@@ -738,12 +738,12 @@ search::retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
 }
 
 void
-spbt::publish(Timestamp now, const dht::Infohash &ih) {
+spbt::publish(Timestamp now, const dht::Infohash &ih, bool present) {
   auto f = stdout;
   print_time(f, now);
   fprintf(f, "spbt publish[");
   dht::print_hex(f, ih.id, sizeof(ih.id));
-  fprintf(f, "]\n");
+  fprintf(f, "] (present: %s)\n", present ? "TRUE" : "FALSE");
 }
 
 } // namespace logger

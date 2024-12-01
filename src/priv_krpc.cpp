@@ -129,42 +129,50 @@ response::dump(sp::Buffer &buf, const Transaction &t,
       if (!bencode::e::pair(b2, "active_scrapes", length(dht.active_scrapes))) {
         return false;
       }
-      if (!bencode::e::pair(b2, "active_scrapes_cap",
-                            capacity(dht.active_scrapes))) {
+
+      if (!bencode::e::pair(b2, "active_sample_infohashes_requests",
+                            dht.scrape_active_sample_infhohash)) {
         return false;
       }
 
-      if (!bencode::e::pair(b2, "scrape_hour_current_idx",
-                            dht.scrape_hour_idx)) {
-        return false;
-      }
-
-      if (!bencode::e::pair(b2, "scrape_get_peers_ih",
+      if (!bencode::e::pair(b2, "queue_get_peers_ih",
                             length(dht.scrape_get_peers_ih))) {
         return false;
       }
 
       std::size_t i = 0;
-      for (const auto &scrape : dht.active_scrapes) {
+      for (const auto scrape : dht.active_scrapes) {
         char key[64] = {0};
         sprintf(key, "info_hash%zu", i);
-        if (!bencode::e::pair(b2, key, scrape.routing_table.id.id)) {
+        if (!bencode::e::pair(b2, key, scrape->routing_table.id.id)) {
           return false;
         }
         sprintf(key, "routing_table_nodes%zu", i);
-        if (!bencode::e::pair(b2, key, scrape.routing_table.total_nodes)) {
+        if (!bencode::e::pair(b2, key, scrape->routing_table.total_nodes)) {
           return false;
         }
         sprintf(key, "candidates%zu", i);
-        if (!bencode::e::pair(b2, key, length(scrape.bootstrap))) {
+        if (!bencode::e::pair(b2, key, length(scrape->bootstrap))) {
           return false;
         }
         sprintf(key, "stat.publish%zu", i);
-        if (!bencode::e::pair(b2, key, scrape.stat.publish)) {
+        if (!bencode::e::pair(b2, key, scrape->stat.publish)) {
           return false;
         }
         sprintf(key, "stat.sample_ih%zu", i);
-        if (!bencode::e::pair(b2, key, scrape.stat.sent_sample_infohash)) {
+        if (!bencode::e::pair(b2, key, scrape->stat.sent_sample_infohash)) {
+          return false;
+        }
+        sprintf(key, "stat.response-get_peers%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->stat.get_peer_responses)) {
+          return false;
+        }
+        sprintf(key, "stat.response-new-get_peers%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->stat.new_get_peer)) {
+          return false;
+        }
+        sprintf(key, "approx-upcoming_sample_ih%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->upcoming_sample_infohashes)) {
           return false;
         }
         ++i;
@@ -174,6 +182,12 @@ response::dump(sp::Buffer &buf, const Transaction &t,
               dht.scrape_bootstrap_filter.bootstrap_filter.unique_inserts)) {
         return false;
       }
+
+      if (!bencode::e::pair(b2, "scrape_hour_current_idx",
+                            dht.scrape_hour_idx)) {
+        return false;
+      }
+
       i = 0;
       for (const auto &sh : dht.scrape_hour) {
         char key[64] = {0};
@@ -302,7 +316,7 @@ value(sp::Buffer &buf, const dht::Node &node) noexcept {
       return false;
     }
 
-    if (!bencode::e::pair(b, "good", node.good)) {
+    if (!bencode::e::pair(b, "good", node.properties.is_good)) {
       return false;
     }
 
@@ -653,6 +667,10 @@ pair(sp::Buffer &buf, const char *key, const dht::StatTrafic &t) noexcept {
   }
   sprintf(skey, "%s-announce_peer", key);
   if (!bencode::e::pair(buf, skey, t.announce_peer)) {
+    return false;
+  }
+  sprintf(skey, "%s-sample_infohashes", key);
+  if (!bencode::e::pair(buf, skey, t.sample_infohashes)) {
     return false;
   }
   sprintf(skey, "%s-error", key);

@@ -457,7 +457,7 @@ krpc::parse_get_peers_response(dht::MessageContext &ctx,
       goto Lstart;
     }
 
-    if (b_id && b_t && (b_n || b_v)) {
+    if (b_id && /*b_t &&*/ (b_n || b_v)) {
       return true;
     }
 

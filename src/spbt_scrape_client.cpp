@@ -118,6 +118,7 @@ dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client(
     if ((r = sqlite3_open_v2(db_path, &db, flags, NULL)) != SQLITE_OK) {
       fprintf(stderr, "ERROR: opening database '%s': %s (%d)\n", db_path,
               sqlite3_errmsg(db), r);
+      assertx(false);
     } else {
       __db_seed_cache(*this, db);
       sqlite3_close_v2(db);
@@ -135,12 +136,13 @@ dht::spbt_scrape_client_is_started(dht::DHTMeta_spbt_scrape_client &self) {
 bool
 dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
                              const Key &infohash, const Contact &contact) {
+  bool tmp = spbt_scrape_client_is_started(self);
+  auto f = stderr;
+  fprintf(f, "%s:[%s]", __func__, tmp ? "TRUE" : "FALSE");
+  dht::print_hex(f, infohash, sizeof(infohash));
+  fprintf(f, "\n");
 
-  if (spbt_has_infohash(self, infohash)) {
-    return true;
-  }
-
-  if (spbt_scrape_client_is_started(self)) {
+  if (tmp) {
     dht_scrape_msg msg{};
     msg.magic[0] = 32;
     msg.magic[1] = 47;
@@ -174,7 +176,6 @@ dht::spbt_has_infohash(DHTMeta_spbt_scrape_client &self, const Key &ih) {
 
 static int
 on_publish_ACCEPT_callback(void *closure, uint32_t events) {
-
   ssize_t ret;
   auto self = (dht::publish_ACCEPT_callback *)closure;
   auto *dht = (dht::DHT *)self->dht;
@@ -201,7 +202,7 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
   }
 #else
   if ((ret = recv(int(self->publish_fd), &msg, sizeof(msg), flags)) < 0) {
-    perror("recvmsg()");
+    fprintf(stderr, "%s: recv: %s (%d)\n", __func__, strerror(errno), errno);
     return 0;
   }
 #endif
@@ -209,13 +210,18 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
   if (ret == sizeof(msg)) {
     const unsigned char magic[4] = {205, 7, 44, 216};
     if (memcmp(msg.magic, magic, sizeof(magic)) == 0) {
+      dht::Infohash tmp_ih;
       dht::Infohash ih;
       memcpy(ih.id, msg.info_hash, sizeof(msg.info_hash));
+      assertx(memcmp(ih.id, tmp_ih.id, sizeof(tmp_ih.id)) != 0);
 
-      if (insert(dht->db.scrape_client.cache, ih.id)) {
+      bool present = test(dht->db.scrape_client.cache, ih.id);
+      logger::spbt::publish(dht->now, ih, present);
+      bool before = insert(dht->db.scrape_client.cache, ih.id);
+      if(!before){
         scrape::publish(*dht, ih);
-        logger::spbt::publish(dht->now, ih);
       }
+      assertx(present == before);
     } else {
       assertx(false);
     }

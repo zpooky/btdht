@@ -43,6 +43,7 @@ to_ipv4(const char *, Ipv4 &) noexcept;
 //=====================================
 struct Ipv6 {
   sp::byte raw[16];
+  //TODO uint16_t raw[8];
 
   bool
   operator==(const Ipv6 &) const noexcept;
@@ -438,13 +439,20 @@ struct Node {
 
   //{{{
   std::uint8_t outstanding;
-
+#if 0
   NodeIdValid valid_id; // TODO Bitmask flag
   bool good;            // TODO Bitmask flag
   bool read_only;       // TODO Bitmask flag
   // }}}
 
   sp::byte version[DHT_VERSION_LEN];
+#endif
+  struct {
+    bool valid_id : 1;
+    bool is_good : 1;
+    bool is_readonly : 1;
+    bool support_sample_infohashes : 1;
+  } properties;
 
   Node() noexcept;
   Node(const NodeId &, const Contact &) noexcept;
@@ -652,7 +660,8 @@ struct ScrapeContext : get_peers_context {
 };
 
 //=====================================
-
+bool
+support_sample_infohashes(const sp::byte version[DHT_VERSION_LEN]) noexcept;
 } // namespace dht
 
 #endif

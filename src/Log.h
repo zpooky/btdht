@@ -185,7 +185,7 @@ retire(const dht::DHT &, const dht::Search &) noexcept;
 
 namespace spbt {
 void
-publish(Timestamp t, const dht::Infohash &ih);
+publish(Timestamp t, const dht::Infohash &ih, bool presetn);
 }
 } // namespace logger
 

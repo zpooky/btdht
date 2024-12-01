@@ -266,7 +266,7 @@ value_contact(sp::Buffer &b, Contact &result) noexcept {
   }
 
   assertxs(str, len);
-
+  // ipv4
   sp::Buffer bx((unsigned char *)str, len);
   bx.length = len;
   if (!bencode::d::raw_ip_or_ip_port(bx, result)) {
@@ -305,7 +305,10 @@ list_contact(sp::Buffer &d, ListType &result) noexcept {
       break;
     }
 
-    insert(result, n);
+    // TODO ipv6
+    if (!(n.ip.ipv4 == 0 || n.port == 0)) {
+      insert(result, n);
+    }
     // if (!insert(l, n)) {
     //   d.pos = pos;
     //   // too many result

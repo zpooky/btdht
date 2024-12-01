@@ -6,18 +6,20 @@
 
 namespace dht {
 //==========================================
-
-void
+KContact *
 bootstrap_insert(DHT &, const IdContact &) noexcept;
 
-void
-bootstrap_insert(DHT &, const Contact &) noexcept;
+KContact *
+bootstrap_insert(DHT &self, const Contact &contact) noexcept;
 
-void
+KContact *
 bootstrap_insert(DHTMetaScrape &self, const IdContact &) noexcept;
 
-void
+KContact *
 bootstrap_insert(DHTMetaScrape &self, const Contact &) noexcept;
+
+KContact *
+bootstrap_insert(DHTMetaScrape &self, const KContact &contact) noexcept;
 
 //==========================================
 void

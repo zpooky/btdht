@@ -82,7 +82,7 @@ struct Cache {
 
 //========================
 static void
-on_retire_good(void *, const Contact &in) noexcept;
+on_retire_good(void *, const dht::Node &in) noexcept;
 
 static void
 on_topup_bootstrap(dht::DHT &) noexcept;
@@ -405,12 +405,12 @@ take_next_read_cache(Cache &self, char (&file)[SIZE]) noexcept {
 }
 
 static void
-on_retire_good(void *tmp, const Contact &in) noexcept {
+on_retire_good(void *tmp, const dht::Node &in) noexcept {
   Cache *self = (Cache *)tmp;
   if (self) {
-    if (!test(self->seen, in)) {
-      insert(self->seen, in);
-      cache_write_contact(*self, in);
+    if (!test(self->seen, in.contact)) {
+      insert(self->seen, in.contact);
+      cache_write_contact(*self, in.contact);
     }
   }
 }

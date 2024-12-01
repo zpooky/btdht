@@ -552,7 +552,7 @@ pair(sp::Buffer &p, const char *key, dht::Token &token) noexcept {
 
 bool
 raw_ip_or_ip_port(sp::Buffer &b, Contact &result) noexcept {
-  if (remaining_read(b) >= (sizeof(Ipv4) + sizeof(Port))) {
+  if (remaining_read(b) == (sizeof(Ipv4) + sizeof(Port))) {
     Ipv4 ip = 0;
     Port port = 0;
 
@@ -566,7 +566,7 @@ raw_ip_or_ip_port(sp::Buffer &b, Contact &result) noexcept {
 
     result = Contact(ip, port);
     return true;
-  } else if (remaining_read(b) >= sizeof(Ipv4)) {
+  } else if (remaining_read(b) == sizeof(Ipv4)) {
     Ipv4 ip = 0;
 
     std::memcpy(&ip, b.raw + b.pos, sizeof(ip));
@@ -575,10 +575,29 @@ raw_ip_or_ip_port(sp::Buffer &b, Contact &result) noexcept {
 
     result = Contact(ip, Port(0));
     return true;
-  } else {
-    // printf("%zu->\n", remaining_read(b));
+  } else if (remaining_read(b) == sizeof(Ipv6)) {
+    Ipv6 ip = {0};
     // TODO ipv6
-    // assertx(false);
+    b.pos += sizeof(ip);
+#ifdef IP_IPV6
+    result = Contact(ip, Port(0));
+#else
+    result = Contact(0, 0);
+#endif
+    return true;
+  } else if (remaining_read(b) == (sizeof(Ipv6) + sizeof(Port))) {
+    Ipv6 ip = {0};
+    Port port = 0;
+    // TODO ipv6
+    b.pos += sizeof(ip);
+    b.pos += sizeof(port);
+#ifdef IP_IPV6
+    result = Contact(ip, port);
+#else
+    result = Contact(0, 0);
+#endif
+    return true;
+  } else {
     return false;
   }
 

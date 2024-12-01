@@ -87,7 +87,7 @@ assert_empty(const Node &contact) {
   ASSERT_EQ(contact.req_sent, Timestamp(0));
 
   ASSERT_EQ(contact.outstanding, std::uint8_t(0));
-  ASSERT_EQ(contact.good, true);
+  ASSERT_EQ(contact.properties.is_good, true);
 }
 
 #if 0

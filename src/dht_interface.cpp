@@ -250,10 +250,9 @@ on_awake_find_nodes(DHT &self, sp::Buffer &out) noexcept {
 }
 
 static dht::Node *
-dht_insert(DHT &self, sp::byte version[DHT_VERSION_LEN],
-           const Node &contact) noexcept {
+dht_insert(DHT &self, const Node &contact) noexcept {
   dht::Node *result = dht::insert(self.routing_table, contact);
-  scrape::seed_insert(self, version, contact.contact, contact.id);
+  scrape::seed_insert(self, contact);
 
   return result;
 }
@@ -266,11 +265,12 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &senderId) noexcept {
   Node *result = find_node(self.routing_table, senderId);
   if (result) {
     if (pctx.remote_version[0] != '\0') {
-      memcpy(result->version, pctx.remote_version, sizeof(result->version));
+      result->properties.support_sample_infohashes =
+          dht::support_sample_infohashes(pctx.remote_version);
     }
-    result->read_only = ctx.read_only;
-    if (!result->good) {
-      result->good = true;
+    result->properties.is_readonly = ctx.read_only;
+    if (!result->properties.is_good) {
+      result->properties.is_good = true;
       result->outstanding = 0;
       assertx(self.routing_table.bad_nodes > 0);
       self.routing_table.bad_nodes--;
@@ -278,9 +278,9 @@ dht_activity(dht::MessageContext &ctx, const dht::NodeId &senderId) noexcept {
   } else {
     if (!ctx.read_only) {
       Node contact(senderId, ctx.remote, self.now);
-      static_assert(sizeof(contact.version) == sizeof(pctx.remote_version));
-      memcpy(contact.version, pctx.remote_version, sizeof(contact.version));
-      result = dht_insert(self, ctx.pctx.remote_version, contact);
+      contact.properties.support_sample_infohashes =
+          dht::support_sample_infohashes(pctx.remote_version);
+      result = dht_insert(self, contact);
     }
   }
 
@@ -306,12 +306,13 @@ __bootstrap_insert(dht::DHT &self, const dht::NodeId &id,
                    const Contact &remote) noexcept {
   std::size_t max_rank = 4;
   dht::DHTMetaScrape *max = nullptr;
-  for (auto &scrape : self.active_scrapes) {
-    auto scrape_rank = rank(scrape.routing_table.id, id);
+  for (auto scrape : self.active_scrapes) {
+    assertx(scrape);
+    auto scrape_rank = rank(scrape->routing_table.id, id);
     if (scrape_rank >= max_rank) {
       // XXX check boostrap heap if full and if last element is less than tmp
       max_rank = scrape_rank;
-      max = &scrape;
+      max = scrape;
     }
   }
   if (max) {
@@ -702,8 +703,9 @@ search_handle_response(
     /* Sender returns matching values for search query */
     for_each(values, [&](const Contact &c) {
       search_insert_result(search, c);
-      scrape::get_peers_peer(dht, search.search, c);
+      //
     });
+    scrape::on_get_peers_peer(dht, search.search, values);
   });
 
   return true;
@@ -728,12 +730,10 @@ scrape_handle_response(
 
   message(ctx, sender, [&](auto &) {
     /* Sender returns the its closest nodes for search */
-    scrape::get_peers_nodes(dht, nodes);
+    scrape::on_get_peers_nodes(dht, nodes);
 
     /* Sender returns matching values for search query */
-    for_each(values, [&](const Contact &c) { //
-      scrape::get_peers_peer(dht, ih, c);
-    });
+    scrape::on_get_peers_peer(dht, ih, values);
   });
 
   return true;
@@ -929,14 +929,19 @@ handle_response(dht::MessageContext &ctx,
   }
 
   uint32_t hours = (uint32_t)std::ceil((double)res.interval / 60. / 60.);
-  scrape::sample_infohashes(self, ctx.remote, hours, res.samples);
+  scrape::on_sample_infohashes(self, ctx.remote, hours, res.samples);
 
   return true;
 }
 
 static bool
 on_response(dht::MessageContext &ctx, void *) noexcept {
+  dht::DHT &self = ctx.dht;
   krpc::SampleInfohashesResponse res;
+
+  assertx(self.scrape_active_sample_infhohash > 0);
+  self.scrape_active_sample_infhohash--;
+
   if (krpc::parse_sample_infohashes_response(ctx.in, res)) {
     return handle_response(ctx, res);
   }
@@ -953,21 +958,25 @@ on_request(dht::MessageContext &ctx) noexcept {
 }
 
 static void
-on_timeout(dht::DHT &dht, const krpc::Transaction &tx, const Timestamp &sent,
+on_timeout(dht::DHT &self, const krpc::Transaction &tx, const Timestamp &sent,
            void *arg) noexcept {
-  logger::transmit::error::sample_infohashes_response_timeout(dht, tx, sent);
+  logger::transmit::error::sample_infohashes_response_timeout(self, tx, sent);
+
+  assertx(self.scrape_active_sample_infhohash > 0);
+  self.scrape_active_sample_infhohash--;
+
   assertx(arg == nullptr);
 }
+} // namespace sample_infohashes
 
 bool
-setup(dht::Module &m) noexcept {
+sample_infohashes::setup(dht::Module &m) noexcept {
   m.query = "sample_infohashes";
   m.request = on_request;
   m.response = on_response;
   m.response_timeout = on_timeout;
   return true;
 }
-} // namespace sample_infohashes
 
 //===========================================================
 // error

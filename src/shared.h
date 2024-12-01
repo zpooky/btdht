@@ -247,6 +247,7 @@ DHTMetaBootstrap<sz>::DHTMetaBootstrap(Config &conf,
 
 #define SCRAPE_FILTER 8 * 1024 * 1024
 struct DHTMetaScrape {
+  dht::DHT &dht;
   dht::NodeId id;
   timeout::TimeoutBox tb;
   dht::DHTMetaRoutingTable routing_table;
@@ -255,9 +256,25 @@ struct DHTMetaScrape {
   Timestamp &now;
   DHTMetaBootstrap<SCRAPE_FILTER> &bootstrap_filter;
 
+  // approximartion
+  uint32_t upcoming_sample_infohashes;
+
+  struct DHTMetaScrape_box {
+    uint32_t publish;
+    Timestamp last_checked;
+    uint32_t diff;
+    DHTMetaScrape_box(const Timestamp &n)
+        : publish(0)
+        , last_checked(n)
+        , diff(0) {
+    }
+  } box;
+
   struct {
     uint32_t publish;
     uint32_t sent_sample_infohash;
+    uint32_t get_peer_responses;
+    uint32_t new_get_peer;
   } stat;
 
   DHTMetaScrape(dht::DHT &, const dht::NodeId &) noexcept;
@@ -309,7 +326,7 @@ struct DHT {
 
   DHTMetaSearch searches;
   // struct {
-  sp::UinStaticArray<DHTMetaScrape, 16> active_scrapes;
+  sp::UinStaticArray<DHTMetaScrape *, 64> active_scrapes;
   sp::UinStaticArray<sp::BloomFilter<Ip, 64 * 1024>, 7>
       scrape_hour; // (8 * 1024 * 1024 * sizeof(uint64_t) = 64MB) * 7 = 448MB
   // TODO calculate bloomfitler fpp
@@ -318,6 +335,8 @@ struct DHT {
   sp::UinStaticArray<std::tuple<dht::Infohash, Contact>, 128>
       scrape_get_peers_ih;
   DHTMetaBootstrap<SCRAPE_FILTER> scrape_bootstrap_filter;
+  std::uint32_t scrape_active_sample_infhohash;
+  sp::UinStaticArray<Node, 32> scrape_retire_good;
   // } scrape;
 
   // upnp {{{

@@ -8,6 +8,8 @@
 #include <hash/djb2.h>
 #include <hash/fnv.h>
 
+#include "scrape.h"
+
 //=====================================
 namespace krpc {
 // krpc::ParseContext
@@ -157,13 +159,16 @@ Stat::Stat() noexcept
 
 DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &_ih) noexcept
 
-    : id{_ih}
+    : dht{self}
+    , id{_ih}
     , tb{self.now}
-    , routing_table{20, self.random, tb, self.now, id, self.config}
+    , routing_table{30, self.random, tb, self.now, id, self.config}
     , bootstrap{}
     , started{self.now}
     , now{self.now}
-    , bootstrap_filter(self.scrape_bootstrap_filter) {
+    , bootstrap_filter(self.scrape_bootstrap_filter)
+    , upcoming_sample_infohashes(0)
+    , box(self.now) { //
 }
 
 // dht::DHT
@@ -207,6 +212,8 @@ DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
     , scrape_hour_idx(0)
     , scrape_hour_time(n)
     , scrape_bootstrap_filter(config, ip_hashers, now)
+    , scrape_active_sample_infhohash(0)
+    , scrape_retire_good()
     // }}}
     , upnp_sent{0} {
 
@@ -222,6 +229,8 @@ DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
     fill(r, &this->db.key[i].key, sizeof(this->db.key[i].key));
     this->db.key[i].created = now;
   }
+
+  emplace(routing_table.retire_good, scrape::main_on_retire_good, (void *)this);
 }
 
 DHT::~DHT() {

@@ -18,43 +18,50 @@ maybe_bootstrap_reset(DHTMetaBootstrap<sz> &self) noexcept {
 }
 
 template <std::size_t sz>
-static void
+static KContact *
 __bootstrap_insert(DHTMetaBootstrap<sz> &self,
                    heap::MaxBinary<KContact> &contacts,
                    const KContact &remote) noexcept {
+  KContact *result = nullptr;
   assertx(remote.contact.port != 0);
 
   maybe_bootstrap_reset(self);
 
   if (!test(self.bootstrap_filter, remote.contact.ip)) {
-    if (insert_eager(contacts, remote)) {
+    if ((result = insert_eager(contacts, remote))) {
       insert(self.bootstrap_filter, remote.contact.ip);
     }
   }
+  return result;
 }
 
-void
+KContact *
 bootstrap_insert(DHT &self, const IdContact &contact) noexcept {
-  __bootstrap_insert(self.bootstrap_meta, self.bootstrap,
-                     dht::KContact(contact, self.id));
+  return __bootstrap_insert(self.bootstrap_meta, self.bootstrap,
+                            dht::KContact(contact, self.id));
 }
 
-void
+KContact *
 bootstrap_insert(DHT &self, const Contact &contact) noexcept {
-  __bootstrap_insert(self.bootstrap_meta, self.bootstrap,
-                     dht::KContact(0, contact));
+  return __bootstrap_insert(self.bootstrap_meta, self.bootstrap,
+                            dht::KContact(0, contact));
 }
 
-void
+KContact *
 bootstrap_insert(DHTMetaScrape &self, const IdContact &contact) noexcept {
-  __bootstrap_insert(self.bootstrap_filter, self.bootstrap,
-                     dht::KContact(contact, self.routing_table.id));
+  return __bootstrap_insert(self.bootstrap_filter, self.bootstrap,
+                            dht::KContact(contact, self.routing_table.id));
 }
 
-void
+KContact *
 bootstrap_insert(DHTMetaScrape &self, const Contact &contact) noexcept {
-  __bootstrap_insert(self.bootstrap_filter, self.bootstrap,
-                     dht::KContact(0, contact));
+  return __bootstrap_insert(self.bootstrap_filter, self.bootstrap,
+                            dht::KContact(0, contact));
+}
+
+KContact *
+bootstrap_insert(DHTMetaScrape &self, const KContact &contact) noexcept {
+  return __bootstrap_insert(self.bootstrap_filter, self.bootstrap, contact);
 }
 
 //==========================================

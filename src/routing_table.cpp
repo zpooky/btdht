@@ -107,7 +107,9 @@ DHTMetaRoutingTable::DHTMetaRoutingTable(std::size_t cap, prng::xorshift32 &r,
     , now{n}
     , config(_conf)
     , total_nodes(0)
-    , bad_nodes(0) {
+    , bad_nodes(0)
+    , retire_good()
+    , cache{nullptr} {
 }
 
 DHTMetaRoutingTable::~DHTMetaRoutingTable() {
@@ -437,10 +439,10 @@ dealloc_RoutingTable(DHTMetaRoutingTable &self, RoutingTable *recycle) {
 
 static void
 reset(DHTMetaRoutingTable &self, Node &contact) noexcept {
-  if (!contact.good) {
+  if (!contact.properties.is_good) {
     assertx(self.bad_nodes > 0);
     self.bad_nodes--;
-    contact.good = true;
+    contact.properties.is_good = true;
   }
 
   assertxs(self.total_nodes > 0, self.total_nodes);
@@ -459,10 +461,10 @@ timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
       timeout::unlink(*self.tb.timeout, &contact);
     }
 
-    if (contact.good) {
+    if (contact.properties.is_good) {
       for_each(self.retire_good, [&contact](auto t) { //
         auto retire_good = std::get<0>(t);
-        retire_good(std::get<1>(t), contact.contact);
+        retire_good(std::get<1>(t), contact);
       });
     }
 
@@ -613,6 +615,19 @@ enum class AllocType { REC, PLAIN };
 static RoutingTable *
 alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth,
                    AllocType aType) noexcept {
+
+  if (!is_full(self.rt_reuse)) {
+    assertx(length(self.rt_reuse) < capacity(self.rt_reuse));
+    auto result = new RoutingTable((ssize_t)depth);
+    if (result) {
+      auto r = insert(self.rt_reuse, result);
+      assertx(r);
+      assertx(*r == result);
+    }
+
+    return result;
+  }
+
   RoutingTable **phead = peek_head(self.rt_reuse);
   if (phead) {
     auto head = *phead;
@@ -627,62 +642,26 @@ alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth,
       return head;
     }
 
-    if (!is_full(self.rt_reuse)) {
-      goto Lbah;
-    }
-
-    // TODO fix cmp
     if (std::size_t(head->depth) < depth) {
-      // TODO only do this when we are in high prio: (modify alloc prototype)
-      if (aType == AllocType::REC && std::size_t(head->depth + 1) == depth) {
-        auto result = new RoutingTable(depth);
-        if (result) {
-          auto res = insert(self.rt_reuse, result);
-          assertx(res);
-          assertx(*res == result);
-          /*
-           * if (!push(self.root_extra, result)) {
-           *   delete result;
-           *   result = nullptr;
-           * }
-           */
-        }
-        return result;
-      }
-
       if (!dequeue_root(self, head)) {
         // TODO fails
         assertxs(false, head->depth, head->in_tree, length(self.rt_reuse),
                  capacity(self.rt_reuse));
         return nullptr;
       }
+      assertx(head);
+      assertx(head->bucket.length == 0);
       // XXX migrate of possible good contacts in $head to empty/bad linked
       //     RoutingTable contacts. timeout contact
-
-      const auto h_depth = head->depth;
 
       head->~RoutingTable();
       new (head) RoutingTable((ssize_t)depth);
 
       auto res = update_key(self.rt_reuse, phead);
-      assertxs(res, h_depth, depth);
-      assertxs(*res == head, h_depth, depth);
-      // TODO assertxs(res != phead, h_depth, depth);??
+      assertx(res);
 
       return head;
     }
-  }
-
-Lbah:
-  if (!is_full(self.rt_reuse)) {
-    auto result = new RoutingTable((ssize_t)depth);
-    if (result) {
-      auto r = insert(self.rt_reuse, result);
-      assertx(r);
-      assertx(*r == result);
-    }
-
-    return result;
   }
 
   return nullptr;
@@ -709,7 +688,7 @@ bucket_insert(DHTMetaRoutingTable &self, Bucket &bucket, const Node &c,
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
       assertx(is_valid(contact));
-      if (!is_good(self, contact) || contact.read_only) {
+      if (!is_good(self, contact) || contact.properties.is_readonly) {
         timeout_unlink_reset(self, contact);
 
         contact = c;
