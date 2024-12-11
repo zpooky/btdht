@@ -65,10 +65,15 @@ TxContext::TxContext(TxHandle h, TxCancelHandle ch, void *c) noexcept
     , int_timeout(ch)
     , closure(c)
     , latency(0) {
+  assertx(h);
+  assertx(ch);
 }
 
 TxContext::TxContext() noexcept
-    : TxContext(nullptr, nullptr, nullptr) {
+    : int_handle(nullptr)
+    , int_timeout(nullptr)
+    , closure(nullptr)
+    , latency(0) {
 }
 
 void
@@ -80,7 +85,7 @@ reset(TxContext &ctx) noexcept {
 
 /*dht::Tx*/
 Tx::Tx() noexcept
-    : context{nullptr, nullptr, nullptr}
+    : context{}
     , timeout_next(nullptr)
     , timeout_priv(nullptr)
     , sent(0)
@@ -151,7 +156,7 @@ StatDirection::StatDirection() noexcept
 }
 
 Stat::Stat() noexcept
-    : sent()
+    : transmit()
     , received()
     , known_tx()
     , unknown_tx() {

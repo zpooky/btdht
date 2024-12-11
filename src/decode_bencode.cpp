@@ -12,7 +12,7 @@ read_numeric(Buffer &b, T &out, char end) noexcept {
 
   char str[32] = {0};
   std::size_t it = 0;
-Lloop : {
+Lloop: {
   unsigned char cur = 0;
   if (pop_front(b, cur) == 1) {
     if (cur != end) {
@@ -27,7 +27,6 @@ Lloop : {
       return false;
     }
   } else {
-    assertx(false);
     return false;
   }
 }

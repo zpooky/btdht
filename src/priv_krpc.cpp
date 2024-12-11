@@ -683,7 +683,8 @@ pair(sp::Buffer &buf, const char *key, const dht::StatTrafic &t) noexcept {
 }
 
 static bool
-pair(sp::Buffer &buf, const char *key, const dht::StatDirection &d) noexcept {
+pair(sp::Buffer &buf, const char *key, const dht::StatDirection &d,
+     bool sent) noexcept {
   // used by statistics
   // if (!bencode::e::value(buf, key)) {
   //   return false;
@@ -697,9 +698,11 @@ pair(sp::Buffer &buf, const char *key, const dht::StatDirection &d) noexcept {
     return false;
   }
 
-  sprintf(skey, "%s-response_timeout", key);
-  if (!pair(buf, skey, d.response_timeout)) {
-    return false;
+  if (!sent) {
+    sprintf(skey, "%s-response_timeout", key);
+    if (!pair(buf, skey, d.response_timeout)) {
+      return false;
+    }
   }
 
   sprintf(skey, "%s-response", key);
@@ -720,10 +723,10 @@ bool
 response::statistics(sp::Buffer &buf, const Transaction &t,
                      const dht::Stat &stat) noexcept {
   return resp(buf, t, [&stat](auto &b) { //
-    if (!pair(b, "sent", stat.sent)) {
+    if (!pair(b, "transmit", stat.transmit, true)) {
       return false;
     }
-    if (!pair(b, "received", stat.received)) {
+    if (!pair(b, "received", stat.received, false)) {
       return false;
     }
     if (!bencode::e::pair(b, "known_tx", stat.known_tx)) {

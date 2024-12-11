@@ -467,7 +467,7 @@ to_string(client::Res result) noexcept {
 void
 ping(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.request.ping;
+  ++s.transmit.request.ping;
 
 #ifdef LOG_REQ_PING
   auto f = stdout;
@@ -485,7 +485,7 @@ ping(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
 void
 find_node(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.request.find_node;
+  ++s.transmit.request.find_node;
 
 #ifdef LOG_REQ_FIND_NODE
   auto f = stdout;
@@ -497,7 +497,7 @@ find_node(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   // dht::print_hex(tx.id, tx.length);
 
   fprintf(f, "transmit find_node[%s],res[%s],count[%zu]\n", remote,
-          to_string(result), s.sent.request.find_node);
+          to_string(result), s.transmit.request.find_node);
 #endif
   (void)contact;
   (void)result;
@@ -507,7 +507,7 @@ void
 get_peers(dht::DHT &ctx, const Contact &contact, const dht::Infohash &search,
           client::Res result) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.request.get_peers;
+  ++s.transmit.request.get_peers;
 
 #ifdef LOG_REQ_GET_PEERS
   auto f = stdout;
@@ -521,7 +521,7 @@ get_peers(dht::DHT &ctx, const Contact &contact, const dht::Infohash &search,
   fprintf(f, "transmit get_peers[%s, ", remote);
   dht::print_hex(f, search.id, sizeof(search.id));
   fprintf(f, "],res[%s],count[%zu]\n", to_string(result),
-          s.sent.request.get_peers);
+          s.transmit.request.get_peers);
 #else
   (void)contact;
   (void)search;
@@ -533,7 +533,7 @@ void
 sample_infohashes(dht::DHT &ctx, const Contact &contact, const dht::Key &id,
                   client::Res result) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.request.sample_infohashes;
+  ++s.transmit.request.sample_infohashes;
 #ifdef LOG_REQ_SAMPLE_INFOHASHES
   auto f = stdout;
   print_time(f, ctx);
@@ -546,7 +546,7 @@ sample_infohashes(dht::DHT &ctx, const Contact &contact, const dht::Key &id,
   fprintf(f, "transmit sample_infohashes[%s, ", remote);
   dht::print_hex(f, id, sizeof(id));
   fprintf(f, "],res[%s],count[%zu]\n", to_string(result),
-          s.sent.request.sample_infohashes);
+          s.transmit.request.sample_infohashes);
 #else
   (void)contact;
   (void)id;
@@ -554,10 +554,9 @@ sample_infohashes(dht::DHT &ctx, const Contact &contact, const dht::Key &id,
 #endif
 }
 
-namespace error {
 /* logger::transmit::error */
 void
-mint_transaction(const dht::DHT &ctx) noexcept {
+error::mint_transaction(const dht::DHT &ctx) noexcept {
 #ifdef LOG_ERROR_MINT_TX
   auto f = stdout;
   print_time(f, ctx);
@@ -568,7 +567,7 @@ mint_transaction(const dht::DHT &ctx) noexcept {
 }
 
 void
-udp(const dht::DHT &ctx) noexcept {
+error::udp(const dht::DHT &ctx) noexcept {
   auto f = stdout;
   print_time(f, ctx);
   fprintf(f, "\033[91mtransmit error udp\033[0m\n");
@@ -577,10 +576,10 @@ udp(const dht::DHT &ctx) noexcept {
 static std::size_t tout = 0;
 
 void
-ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
-                      const Timestamp &sent) noexcept {
+error::ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
+                             const Timestamp &sent) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.response_timeout.ping;
+  ++s.transmit.response_timeout.ping;
 
   auto f = stdout;
   print_time(f, ctx);
@@ -592,10 +591,10 @@ ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 }
 
 void
-find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
-                           const Timestamp &sent) noexcept {
+error::find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
+                                  const Timestamp &sent) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.response_timeout.find_node;
+  ++s.transmit.response_timeout.find_node;
 
   auto f = stdout;
   print_time(f, ctx);
@@ -607,10 +606,10 @@ find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 }
 
 void
-get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
-                           const Timestamp &sent) noexcept {
+error::get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
+                                  const Timestamp &sent) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.response_timeout.get_peers;
+  ++s.transmit.response_timeout.get_peers;
 
   auto f = stdout;
   print_time(f, ctx);
@@ -622,10 +621,11 @@ get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
 }
 
 void
-sample_infohashes_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
-                                   const Timestamp &sent) noexcept {
+error::sample_infohashes_response_timeout(dht::DHT &ctx,
+                                          const krpc::Transaction &tx,
+                                          const Timestamp &sent) noexcept {
   dht::Stat &s = ctx.statistics;
-  ++s.sent.response_timeout.sample_infohashes;
+  ++s.transmit.response_timeout.sample_infohashes;
 
   auto f = stdout;
   print_time(f, ctx);
@@ -635,8 +635,6 @@ sample_infohashes_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   print_time(f, sent);
   fprintf(f, "#[%zu]\n", tout++);
 }
-
-} // namespace error
 
 } // namespace transmit
 

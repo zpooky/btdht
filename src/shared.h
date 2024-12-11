@@ -148,7 +148,7 @@ operator>(const Tx &, const Tx &) noexcept;
 namespace dht {
 // dht::Client
 struct Client {
-  static constexpr std::size_t tree_capacity = 128;
+  static constexpr std::size_t tree_capacity = 256;
   fd &udp;
   fd &priv_fd;
   tx::Tx *timeout_head;
@@ -200,8 +200,7 @@ struct StatTrafic {
 
 struct StatDirection {
   StatTrafic request;
-  // TODO should only be used in /sent/
-  StatTrafic response_timeout;
+  StatTrafic response_timeout; // TODO should only be used in /sent/
   StatTrafic response;
   // TODO use StatTrafic for this
   std::size_t parse_error;
@@ -212,7 +211,7 @@ struct StatDirection {
 };
 
 struct Stat {
-  StatDirection sent;
+  StatDirection transmit;
   StatDirection received;
 
   std::uint64_t db_unique_insert;

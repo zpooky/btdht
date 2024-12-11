@@ -401,7 +401,9 @@ krpc::parse_get_peers_response(dht::MessageContext &ctx,
     bool b_t = false;
     bool b_n = false;
     bool b_v = false;
+    bool b_p = false;
     // bool b_ip = false;
+    std::uint64_t port_param = 0; // TODO this is external port at rotuer
 
   Lstart:
     const std::size_t pos = p.pos;
@@ -417,6 +419,13 @@ krpc::parse_get_peers_response(dht::MessageContext &ctx,
       goto Lstart;
     } else {
       assertx(pos == p.pos);
+    }
+
+    if (!b_p && bencode::d::pair(p, "p", port_param)) {
+      b_p = true;
+      goto Lstart;
+    } else {
+      assertx(p.pos == pos);
     }
 
     // XXX
@@ -618,6 +627,7 @@ krpc::parse_sample_infohashes_response(sp::Buffer &in,
     bool b_num = false;
     bool b_samples = false;
     bool b_p = false;
+    bool b_ip = false;
 
   Lstart:
     if (!b_id && bencode::d::pair(p, "id", out.id.id)) {
@@ -645,6 +655,16 @@ krpc::parse_sample_infohashes_response(sp::Buffer &in,
     if (!b_p && bencode::d::pair(p, "p", out.p)) {
       b_p = true;
       goto Lstart;
+    }
+    {
+      Contact ip;
+      if (!b_ip && bencode::d::pair(p, "ip", ip)) {
+        // TODO
+        // ctx.pctx.ip_vote = ip;
+        // assertx(bool(ctx.pctx.ip_vote));
+        b_ip = true;
+        goto Lstart;
+      }
     }
 
     if (!b_samples && bencode::d::value(p, "samples")) {

@@ -1145,14 +1145,33 @@ make_routing_table(DHTMetaRoutingTable &self, std::size_t r) noexcept {
     auto in_tree = it->in_tree;
     if (in_tree) {
       assertx(in_tree->depth >= 0);
+      assertx(it->depth < in_tree->depth);
       if (r < (size_t)in_tree->depth) {
         auto tmp = alloc_RoutingTable(self, r, AllocType::REC);
         if (tmp) {
-          tmp->in_tree = it->in_tree;
-          it->in_tree = tmp;
-          assertxs((size_t)it->depth < r, it->depth, r, in_tree->depth);
-          assertxs(r < (size_t)tmp->in_tree->depth, it->depth, r,
-                   tmp->in_tree->depth);
+          assertx(tmp != in_tree);
+          if (tmp != it) {
+            it->in_tree = tmp;
+            tmp->in_tree = in_tree;
+            assertx(it->in_tree == tmp);
+            assertx(it->in_tree->in_tree == in_tree);
+            assertxs((size_t)it->depth < r, it->depth, r, in_tree->depth);
+            assertxs(r < (size_t)in_tree->depth, it->depth, r,
+                     tmp->in_tree->depth);
+          } else {
+            // $it is selected for alloc_RoutingTable()
+            assertx(self.root);
+            if (self.root != in_tree) {
+              assertx(self.root->depth >= 0);
+              assertx(self.root->depth == tmp->depth);
+              tmp->parallel = self.root->parallel;
+              self.root->parallel = tmp;
+            } else {
+              assertx(self.root->depth > tmp->depth);
+              tmp->in_tree = self.root;
+              self.root = tmp;
+            }
+          }
         }
         return tmp;
       } else if ((size_t)in_tree->depth == r) {

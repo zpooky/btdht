@@ -673,7 +673,7 @@ handle_get_peers_request(dht::MessageContext &ctx, const dht::NodeId &id,
   });
 
   return true;
-} // namespace get_peers
+}
 
 template <typename ResultType, typename ContactType>
 static bool
@@ -709,7 +709,7 @@ search_handle_response(
   });
 
   return true;
-} // namespace get_peers
+}
 
 template <typename ResultType, typename ContactType>
 static bool
@@ -737,7 +737,7 @@ scrape_handle_response(
   });
 
   return true;
-} // namespace get_peers
+}
 
 static void
 on_timeout(dht::DHT &dht, const krpc::Transaction &tx, const Timestamp &sent,
@@ -753,7 +753,7 @@ on_timeout(dht::DHT &dht, const krpc::Transaction &tx, const Timestamp &sent,
   } else {
     assertx(false);
   }
-} // get_peers::on_timeout
+}
 
 static bool
 on_response(dht::MessageContext &ctx, void *tmp) noexcept {

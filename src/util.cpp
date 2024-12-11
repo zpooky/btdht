@@ -847,12 +847,14 @@ Node::Node() noexcept
     : timeout_next(nullptr)
     , timeout_priv(nullptr)
     //}}}
-    //{{{
-    , id()
-    , contact()
-    //}}}
+    // activity {{{
     , remote_activity(0)
-    , req_sent(0)
+    , req_sent(0) // TODO??
+    //}}}
+    //{{{
+    , contact()
+    , id()
+    //}}}
     //}}}
     //{{{
     , outstanding(0)
@@ -866,12 +868,14 @@ Node::Node(const NodeId &nid, const Contact &p) noexcept
     : timeout_next(nullptr)
     , timeout_priv(nullptr)
     //}}}
-    //{{{
-    , id(nid)
-    , contact(p)
-    //}}}
+    // activity {{{
     , remote_activity(0)
-    , req_sent(0)
+    , req_sent(0) // TODO??
+    //}}}
+    //{{{
+    , contact(p)
+    , id(nid)
+    //}}}
     //}}}
     //{{{
     , outstanding(0)
@@ -886,13 +890,13 @@ Node::Node(const NodeId &nid, const Contact &p, const Timestamp &act) noexcept
     : timeout_next(nullptr)
     , timeout_priv(nullptr)
     //}}}
-    //{{{
-    , id(nid)
-    , contact(p)
-    //}}}
     // activity {{{
     , remote_activity(act)
     , req_sent(act) // TODO??
+    //}}}
+    //{{{
+    , contact(p)
+    , id(nid)
     //}}}
     //{{{
     , outstanding(0)
@@ -1004,7 +1008,7 @@ Config::Config() noexcept
     , transaction_timeout(1)
     //
     , bootstrap_generation_max(16)
-    , percentage_seek(40)
+    , percentage_seek(50)
     //
     , bucket_find_node_spam(1)
     , max_bucket_not_find_node(5)
