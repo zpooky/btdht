@@ -159,7 +159,8 @@ Stat::Stat() noexcept
     : transmit()
     , received()
     , known_tx()
-    , unknown_tx() {
+    , unknown_tx()
+    , scrape_swapped_ih() {
 }
 
 DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &_ih) noexcept

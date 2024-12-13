@@ -19,6 +19,7 @@
 #include <tcp.h>
 #include <udp.h>
 #include <upnp.h>
+#include <upnp_miniupnp.h>
 
 struct DHTClient {
   int argc;
@@ -804,7 +805,6 @@ handle_upnp(int, char **) noexcept {
     return 5;
   }
   assertx(false); // TODO
-#if 0
   upnp::upnp in{sp::Seconds(sp::Minutes(5))};
   in.protocol = "udp";
   in.local = 42605;
@@ -821,6 +821,27 @@ handle_upnp(int, char **) noexcept {
   }
   flip(buf);
   printf("'%.*s': %zu\n", (int)buf.length, buf.raw, buf.length);
+#else
+
+  struct sp_upnp_port_mapping *self = sp_upnp_new();
+  struct sockaddr_in local {};
+  uint32_t leaseDuration = 60;
+  const char *proto = "TCP";
+  Contact tmp;
+  char buf[64]{};
+  assertx(self);
+  assertx(to_contact("192.168.0.3:1337", tmp));
+  assertx(to_sockaddr(tmp, local));
+  uint16_t external_port = 0;
+  assertx(sp_upnp_create_port_mapping(self, local, &external_port, proto,
+                                      &leaseDuration, "sp-test") == 0);
+  sp_upnp_delete_port_mapping(self, (uint16_t)external_port, proto);
+  to_string(sp_upnp_local_ip(self), buf, sizeof(buf));
+  printf("local: %s\n", buf);
+  to_string(sp_upnp_external_ip(self), buf, sizeof(buf));
+  printf("external: %s\n", buf);
+
+  sp_upnp_free(&self);
 #endif
 
   return 0;

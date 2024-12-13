@@ -14,8 +14,8 @@ struct upnp {
   explicit upnp(sp::Seconds) noexcept;
 };
 
-bool
-http_add_port(fd &, const upnp &) noexcept;
+// bool
+// http_add_port(fd &, const upnp &) noexcept;
 } // namespace upnp
 
 #endif

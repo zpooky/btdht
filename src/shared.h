@@ -214,10 +214,12 @@ struct Stat {
   StatDirection transmit;
   StatDirection received;
 
-  std::uint64_t db_unique_insert;
+  // std::uint64_t db_unique_insert;
 
   std::uint64_t known_tx;
   std::uint64_t unknown_tx;
+
+  std::uint64_t scrape_swapped_ih;
 
   Stat() noexcept;
   virtual ~Stat() {

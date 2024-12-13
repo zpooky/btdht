@@ -117,6 +117,7 @@ swap_in_new(DHT &self, std::size_t idx) {
       }
       return true;
     });
+    self.statistics.scrape_swapped_ih++;
   }
 
   delete old;

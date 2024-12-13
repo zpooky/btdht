@@ -365,8 +365,7 @@ to_string(const Ip &ip, char *str, std::size_t length) noexcept {
       return false;
     }
 
-    sockaddr_in6 addr;
-    memset(&addr, 0, sizeof(sockaddr_in6));
+    sockaddr_in6 addr{};
     addr.sin6_family = AF_INET6;
     // addr.sin6_port = htons(c.port);
     // TODO copy over ip
@@ -379,8 +378,7 @@ to_string(const Ip &ip, char *str, std::size_t length) noexcept {
       return false;
     }
 
-    sockaddr_in addr;
-    memset(&addr, 0, sizeof(sockaddr_in));
+    sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(ip.ipv4);
 

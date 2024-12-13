@@ -735,6 +735,9 @@ response::statistics(sp::Buffer &buf, const Transaction &t,
     if (!bencode::e::pair(b, "unknown_tx", stat.unknown_tx)) {
       return false;
     }
+    if (!bencode::e::pair(b, "scrape_swapped_ih", stat.scrape_swapped_ih)) {
+      return false;
+    }
     return true;
   });
 }

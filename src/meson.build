@@ -36,5 +36,6 @@ spdht_src = files([
   'routing_table.cpp',
   'scrape.cpp',
   'spbt_scrape_client.cpp',
+  'upnp_miniupnp.cpp',
 ])
 
