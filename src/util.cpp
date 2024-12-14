@@ -45,6 +45,11 @@ Ip::Ip(Ipv4 v4)
     : ipv4(v4)
     , type(IpType::IPV4) {
 }
+Ip::Ip(in_addr v4)
+    : ipv4(htonl(v4.s_addr))
+    , type(IpType::IPV4) {
+
+}
 
 #ifdef IP_IPV6
 Ip::Ip(const Ipv6 &v6)

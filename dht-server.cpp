@@ -397,8 +397,7 @@ setup_epoll(dht::DHT &self, dht::ModulesAwake &awake, dht::Options &options,
             fd &udp_fd, fd &signal_fd, fd &priv_fd, fd &publish_fd) noexcept {
   auto dp_cb = new dht_protocol_callback{awake, self, options, udp_fd};
   auto pp_cb = new priv_protocol_ACCEPT_callback{awake, self, options, priv_fd};
-  auto publish_cb =
-      new dht::publish_ACCEPT_callback{&self, publish_fd};
+  auto publish_cb = new dht::publish_ACCEPT_callback{&self, publish_fd};
   auto i_cb = new interrupt_callback{self, options, signal_fd};
   ::epoll_event ev{};
 
@@ -505,11 +504,14 @@ main(int argc, char **argv) {
 
   dht::Client client{udp_fd, priv_fd};
 
+  sp_upnp *upnp = sp_upnp_new();
+
   auto r = prng::seed<prng::xorshift32>();
   fprintf(stderr, "sizeof(dht::DHT[%zu])\n", sizeof(dht::DHT));
   Timestamp now = sp::now();
 
-  auto mdht = std::make_unique<dht::DHT>(local_ip, client, r, now, options);
+  auto mdht =
+      std::make_unique<dht::DHT>(local_ip, client, r, now, options, upnp);
   if (!dht::init(*mdht, options)) {
     die("failed to init dht");
     return 4;
@@ -524,8 +526,31 @@ main(int argc, char **argv) {
     die("restore failed\n");
   }
 
-  fprintf(stderr, "node id: %s\n", to_hex(mdht->id));
+#if 0
+  {
+    char str[256] = {0};
+    to_string(mdht->external_ip, str, sizeof(str));
+    fprintf(stderr, "external ip(%s)\n", str);
+  }
 
+
+  // TODO wget from known
+  to_contact("188.151.233.22:11000", mdht->external_ip);
+  dht::randomize_NodeId(mdht->random, mdht->external_ip.ip, mdht->id);
+  fprintf(stderr, "node id: %s (strict: %s)\n", to_hex(mdht->id),
+          is_valid_strict_id(mdht->external_ip.ip, mdht->id) ? "true"
+                                                             : "false");
+#else
+  if (upnp) {
+    mdht->external_ip.ip = Ip(sp_upnp_external_ip(upnp));
+  }
+
+  dht::randomize_NodeId(mdht->random, mdht->external_ip.ip, mdht->id);
+#endif
+
+  fprintf(stderr, "node id: %s (strict: %s)\n", to_hex(mdht->id),
+          is_valid_strict_id(mdht->external_ip.ip, mdht->id) ? "true"
+                                                             : "false");
   {
     char str[256] = {0};
     to_string(mdht->external_ip, str, sizeof(str));
@@ -567,5 +592,13 @@ main(int argc, char **argv) {
     return sp::Milliseconds(next) - sp::Milliseconds(mdht->now);
   };
 
-  return main_loop(*mdht, on_awake);
+  int res = main_loop(*mdht, on_awake);
+
+  if (upnp) {
+    if (mdht->upnp_external_port) {
+      sp_upnp_delete_port_mapping(upnp, mdht->upnp_external_port, "UDP");
+    }
+  }
+  sp_upnp_free(&upnp);
+  return res;
 }

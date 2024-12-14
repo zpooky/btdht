@@ -30,6 +30,8 @@
 #include "timeout.h"
 #include "util.h"
 
+#include "upnp_miniupnp.h"
+
 //=====================================
 namespace dht {
 struct MessageContext;
@@ -341,7 +343,9 @@ struct DHT {
   // } scrape;
 
   // upnp {{{
-  Timestamp upnp_sent;
+  Timestamp upnp_expiry;
+  sp_upnp *upnp;
+  uint16_t upnp_external_port;
   // }}}
 
   //  {{{
@@ -349,7 +353,7 @@ struct DHT {
   // }}}
 
   DHT(const Contact &self, Client &client, prng::xorshift32 &, Timestamp &now,
-      const dht::Options &options) noexcept;
+      const dht::Options &options, sp_upnp *upnp = nullptr) noexcept;
 
   DHT(const DHT &) = delete;
   DHT(const DHT &&) = delete;

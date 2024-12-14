@@ -789,6 +789,7 @@ bind_priv_exe(const char *exe, const char *command, int argc, char **argv,
 
 static int
 handle_upnp(int, char **) noexcept {
+#if 0
   Contact gateway;
   // http://192.168.1.1:48353/ctl/IPConn
   if (!to_contact("192.168.1.1:48353", gateway)) {
@@ -823,7 +824,7 @@ handle_upnp(int, char **) noexcept {
   printf("'%.*s': %zu\n", (int)buf.length, buf.raw, buf.length);
 #else
 
-  struct sp_upnp_port_mapping *self = sp_upnp_new();
+  struct sp_upnp *self = sp_upnp_new();
   struct sockaddr_in local {};
   uint32_t leaseDuration = 60;
   const char *proto = "TCP";

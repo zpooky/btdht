@@ -80,6 +80,7 @@ struct Ip {
   IpType type;
 
   explicit Ip(Ipv4);
+  explicit Ip(in_addr);
 #ifdef IP_IPV6
   explicit Ip(const Ipv6 &);
 #endif

@@ -179,7 +179,7 @@ DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &_ih) noexcept
 
 // dht::DHT
 DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
-         Timestamp &n, const dht::Options &options) noexcept
+         Timestamp &n, const dht::Options &options, sp_upnp *_upnp) noexcept
 
     // self {{{
     : id()
@@ -221,7 +221,8 @@ DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
     , scrape_active_sample_infhohash(0)
     , scrape_retire_good()
     // }}}
-    , upnp_sent{0} {
+    , upnp_expiry{n}
+    , upnp{_upnp}, upnp_external_port{0}{
 
   for (size_t i = 0; i < capacity(scrape_hour); ++i) {
     assertx_n(emplace(scrape_hour, ip_hashers));
