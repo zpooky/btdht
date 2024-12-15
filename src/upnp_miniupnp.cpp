@@ -44,8 +44,8 @@ sp_upnp_new(void) {
                            ttl, &error);
   if (upnp_devs) {
     int r;
-    char lanaddr[64] = "\0"; /* my ip address on the LAN */
-    char wanaddr[64] = "\0"; /* up address of the IGD on the WAN */
+    char lanaddr[64] = "\0";      /* my ip address on the LAN */
+    char wanaddr[64] = "0.0.0.0"; /* up address of the IGD on the WAN */
 
     /*
      * #define UPNP_NO_IGD (0)
@@ -80,14 +80,23 @@ sp_upnp_new(void) {
     r = UPNP_GetValidIGD(upnp_devs, &self->upnp_urls, &self->upnp_data, lanaddr,
                          sizeof(lanaddr), wanaddr, sizeof(wanaddr));
 #else
-    r = UPNP_GetValidIGD(upnp_devs, &self->upnp_urls, &uself->pnp_data,
-                         aLanAddr, sizeof(aLanAddr));
+    r = UPNP_GetValidIGD(upnp_devs, &self->upnp_urls, &self->pnp_data, lanaddr,
+                         sizeof(lanaddr));
 #endif
     if (r == 1 || r == 2) {
       if (!inet_pton(AF_INET, lanaddr, &self->my)) {
         fprintf(stderr, "lan[%s]: %s (%d)\n", lanaddr, strerror(errno), error);
         goto Lerr;
       }
+#if (MINIUPNPC_API_VERSION >= 18)
+#else
+      r = UPNP_GetExternalIPAddress(self->upnp_urls.controlURL,
+                                    self->upnp_data.first.servicetype, wanaddr);
+      if (r != UPNPCOMMAND_SUCCESS) {
+        fprintf(stderr, "GetExternalIPAddress: %s (%d)\n", strerror(errno),
+                error);
+      }
+#endif
       if (!inet_pton(AF_INET, wanaddr, &self->wan)) {
         fprintf(stderr, "wan[%s]: %s (%d)\n", wanaddr, strerror(errno), error);
         goto Lerr;
@@ -104,17 +113,6 @@ Lerr:
   sp_upnp_free(&self);
   return NULL;
 }
-
-#if 0
-  char externalIPAddress[40];
-  r = UPNP_GetExternalIPAddress(urls->controlURL, data->first.servicetype,
-                                externalIPAddress);
-  if (r != UPNPCOMMAND_SUCCESS)
-    printf("GetExternalIPAddress failed.\n");
-  else
-    printf("ExternalIPAddress = %s\n", externalIPAddress);
-
-#endif
 
 int
 sp_upnp_create_port_mapping(struct sp_upnp *self, //
