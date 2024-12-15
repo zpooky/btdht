@@ -80,7 +80,7 @@ sp_upnp_new(void) {
     r = UPNP_GetValidIGD(upnp_devs, &self->upnp_urls, &self->upnp_data, lanaddr,
                          sizeof(lanaddr), wanaddr, sizeof(wanaddr));
 #else
-    r = UPNP_GetValidIGD(upnp_devs, &self->upnp_urls, &self->pnp_data, lanaddr,
+    r = UPNP_GetValidIGD(upnp_devs, &self->upnp_urls, &self->upnp_data, lanaddr,
                          sizeof(lanaddr));
 #endif
     if (r == 1 || r == 2) {
