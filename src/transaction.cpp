@@ -263,7 +263,8 @@ consume_transaction(dht::DHT &dht, const krpc::Transaction &needle,
 
     if (tx) {
       // Note: compare prefix in tree, here compare both prefix and suffix
-      if (tx->operator==(needle)) {
+      if (tx->operator==(needle) && is_sent(*tx)) {
+        assertx(is_sent(*tx));
         assertx(self.active > 0);
         --self.active;
 
@@ -393,6 +394,7 @@ mint_transaction(DHT &dht, krpc::Transaction &out, TxContext &ctx) noexcept {
       tx->context = ctx;
       assertx(dht.now > sp::Timestamp(0));
       tx->sent = dht.now;
+      assertx(tx->sent != sp::Timestamp(0));
 
       unlink(self, tx);
       add_back(self, tx);

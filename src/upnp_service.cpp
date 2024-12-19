@@ -180,7 +180,7 @@ for_if_send(dht::DHT &self, const sp::Seconds &lease) noexcept {
     sock_local.sin_family = AF_INET;
 
     assertx(lease.value < UINT32_MAX);
-    uint32_t ilease = (uint32_t)lease.value;
+    uint32_t ilease = ((uint32_t)lease.value) + 5 * 60;
     int res = sp_upnp_create_port_mapping(self.upnp, sock_local,
                                           &self.upnp_external_port, "UDP",
                                           &ilease, "spdht");

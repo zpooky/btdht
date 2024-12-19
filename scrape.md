@@ -84,35 +84,76 @@ retire good vector
 - dht::insert(best_match->routing_table, node);
 
 -------------------------------------------------------------------------------
-assertion failed: (b.length >= b.pos)
-../external/sputil/src/buffer/BytesView.cpp: 100
+find_node resp str[[len:7]hex[6E6F6465730076](nodes_v),[len:208] hex[9986C328B638DC64A1E0F04CC3294306BD06904025AA46F258E59986CA892320658F92FF1D2A7A9ABB1D6968772DC9FD82878C2D9986D0C8B79B754CD31EBA0CCD38ECFE7E8063675B785C7A558B9986D17B3E63574069B337749517901DBF6B5B8E051D163A556099876A2C538EFDBC058B09CB815C0AB543DC77E07DE7194F3F47998417782FEA4229FE17033555B6FB4D1C96FC0601B01F32FD4F9985BF84887205CE9DA073D5CD7FCD240B83C4733AB048755E0C99806C80B96AEC8A4F56C19756355B18A46225A3BBF97C2295C7](___(_8_d___L_)C____@%_F_X_____# e____*z___ihw-_____-______uL_____8__~_cg[x\zU____{>cW@i_7t_____k[____:U`__j,S________\__C_w_}__O?G___x/_B)___5U__M_______2_O_____r____s____$___s:_Hu^___l__j__OV__V5[__b%___|"__)]
+
+-------------------------------------------------------------------------------
+2024-12-09 17:30:07|parse error|Invalid krpc 2|
+d
+ 1:r
+ d
+  2:id
+  20:hex[BF34AEC24E86FBA66E9564A4FF34D7AD74C3F861]: 20(_4__N___n_d__4__t__a)
+ e
+ 1:t
+ 4:hex[6A625019]: 4(jbP_)
+ 1:v
+ 4:TK00
+ 1:y
+ 1:r
+ 2:ip
+ 6:hex[BC97E9162AF8]: 6(____*_)
+ 5:nodes
+ l
+  26:hex[6BE44E3E49E0F5E3BFA1C2D67C62D000969FBC1FBCE6E7BABA82]: 26(k_N>I_______|b____________)
+  26:hex[69619813EFD0BC7B242C02E28585BE95FCB2C11992D44F306927]: 26(ia_____{$,____________O0i')
+  26:hex[6924A099245E0D1C06B747DEB3124DC843BB8B0C6DB65E96680F]: 26(i$__$^____G___M_C___m_^_h_)
+  26:hex[57BF488DC9C34426D306A8F71EF25F8BB3A5B7BC5D67776DFCFE]: 26(W_H___D&____________]gwm__)
+  26:hex[276FB00E38FA148DD645065795A8C34FD98A1CF3598E0838DA94]: 26('o__8____E_W___O____Y__8__)
+  26:hex[231661D6AE529049F1F1BBE9EBB3A6DB3C870CE159D40B877EA4]: 26(#_a__R_I________<___Y___~_)
+  26:hex[1AD22FFE3A3A513AA6DBFBCF684CC55E35BF24BD563D1A5D86C4]: 26(__/_::Q:____hL_^5_$_V=_]__)
+  26:hex[18DF2849F1F1BBE9EBB3A6DB3C870C3E99245E52BCE696CDEABF]: 26(__(I________<__>_$^R______)
+ e
+e
+
+-------------------------------------------------------------------------------
+dump does not work
+
+-------------------------------------------------------------------------------
+binary insert
+
+-------------------------------------------------------------------------------
+assertion failed: (self.root->depth == tmp->depth)
+../src/routing_table.cpp: 1166
 
 Stack trace (most recent call last):
 #0    unsigned long backward::details::unwind<backward::StackTraceImpl<backward::system_tag::linux_tag>::callback>(backward::StackTraceImpl<backward::system_tag::linux_tag>::callback, unsigned long) backward.hpp:851
 #1    backward::StackTraceImpl<backward::system_tag::linux_tag>::load_here(unsigned long, void*, void*) backward.hpp:869
 #2    sp::impl::print_backtrace(_IO_FILE*) assert.cpp:124
 #3    sp::impl::assert_func(char const*, int, char const*, char const*) assert.cpp:161
-#4    sp::remaining_read(sp::IBytesView<unsigned char> const&) BytesView.cpp:100
-#5    bool bencode::d::list_contact<sp::UinStaticArray<Contact, 256ul> >(sp::IBytesView<unsigned char>&, sp::UinStaticArray<Contact, 256ul>&) bencode_offset.cpp:307
-#6    bencode::d::peers(sp::IBytesView<unsigned char>&, char const*, sp::UinStaticArray<Contact, 256ul>&) bencode_offset.cpp:390
-#7    auto krpc::parse_get_peers_response(dht::MessageContext&, krpc::GetPeersResponse&)::{lambda(auto:1&)#1}::operator()<sp::IBytesView<unsigned char> >(sp::IBytesView<unsigned char>&) const krpc_parse.cpp:448
-#8    bool bencode::d::dict<krpc::parse_get_peers_response(dht::MessageContext&, krpc::GetPeersResponse&)::{lambda(auto:1&)#1}>(sp::IBytesView<unsigned char>&, krpc::parse_get_peers_response(dht::MessageContext&, krpc::GetPeersResponse&)::{lambda(auto:1&)#1}) bencode.h:115
-#9    krpc::parse_get_peers_response(dht::MessageContext&, krpc::GetPeersResponse&) krpc_parse.cpp:399
-#10   get_peers::on_response(dht::MessageContext&, void*) dht_interface.cpp:768
-#11   tx::TxContext::handle(dht::MessageContext&) shared.cpp:58
-#12   parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}::operator()(krpc::ParseContext&) const dht-server.cpp:155
-#13   auto krpc::d::krpc<parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}>(krpc::ParseContext&, parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1})::{lambda(auto:1&)#1}::operator()<sp::IBytesView<unsigned char> >(sp::IBytesView<unsigned char>&) const krpc.h:259
-#14   bool bencode::d::dict<krpc::d::krpc<parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}>(krpc::ParseContext&, parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1})::{lambda(auto:1&)#1}>(sp::IBytesView<unsigned char>&, krpc::d::krpc<parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}>(krpc::ParseContext&, parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1})::{lambda(auto:1&)#1}) bencode.h:115
-#15   bool krpc::d::krpc<parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}>(krpc::ParseContext&, parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&)::{lambda(krpc::ParseContext&)#1}) krpc.h:104
-#16   parse(dht::Domain, dht::DHT&, dht::Modules&, Contact const&, sp::IBytesView<unsigned char>&, sp::IBytesView<unsigned char>&) dht-server.cpp:183
-#17   on_dht_protocol_handle(void*, unsigned int) dht-server.cpp:209
-#18   sp::tick(epoll_event&) core.cpp:34
-#19   sp::core_tick(sp::core&, sp::Milliseconds) core.cpp:66
-#20   int main_loop<main::{lambda(sp::IBytesView<unsigned char>&)#1}>(dht::DHT&, main::{lambda(sp::IBytesView<unsigned char>&)#1}) dht-server.cpp:446
-#21   main dht-server.cpp:588
-#22   __libc_init_first
-#23   __libc_start_main
-#24   _start
-#25
+#4    dht::make_routing_table(dht::DHTMetaRoutingTable&, unsigned long) routing_table.cpp:1166
+#5    dht::insert(dht::DHTMetaRoutingTable&, dht::Node const&) routing_table.cpp:1203
+#6    dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1}::operator()(dht::Node const&) const scrape.cpp:114
+#7    bool dht::for_all<dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1}>(dht::Bucket const&, dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1}) routing_table.h:224
+#8    dht::for_all_node<dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1}>(dht::RoutingTable const*, dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1})::{lambda(dht::RoutingTable const&)#1}::operator()(dht::RoutingTable const&) const routing_table.h:278
+#9    bool dht::for_all<dht::for_all_node<dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1}>(dht::RoutingTable const*, dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1})::{lambda(dht::RoutingTable const&)#1}>(dht::RoutingTable const*, dht::for_all_node<dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1}>(dht::RoutingTable const*, dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1})::{lambda(dht::RoutingTable const&)#1}) routing_table.h:261
+#10   bool dht::for_all_node<dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1}>(dht::RoutingTable const*, dht::swap_in_new(dht::DHT&, unsigned long)::{lambda(dht::Node const&)#1}) routing_table.h:276
+#11   dht::swap_in_new(dht::DHT&, unsigned long) scrape.cpp:106
+#12   dht::on_awake_scrape(dht::DHT&, sp::IBytesView<unsigned char>&) scrape.cpp:220
+#13   auto main::{lambda(sp::IBytesView<unsigned char>&)#1}::operator()(sp::IBytesView<unsigned char>&) const::{lambda(auto:1, auto:2)#1}::operator()<sp::Timestamp, sp::Timestamp (*)(dht::DHT&, sp::IBytesView<unsigned char>&) noexcept>(sp::Timestamp, sp::Timestamp (*)(dht::DHT&, sp::IBytesView<unsigned char>&) noexcept) const dht-server.cpp:580
+#14   sp::Timestamp& sp::reduce<sp::Timestamp (*)(dht::DHT&, sp::IBytesView<unsigned char>&) noexcept, sp::Timestamp, main::{lambda(sp::IBytesView<unsigned char>&)#1}::operator()(sp::IBytesView<unsigned char>&) const::{lambda(auto:1, auto:2)#1}>(sp::Array<sp::Timestamp (*)(dht::DHT&, sp::IBytesView<unsigned char>&) noexcept> const&, sp::Timestamp&, main::{lambda(sp::IBytesView<unsigned char>&)#1}::operator()(sp::IBytesView<unsigned char>&) const::{lambda(auto:1, auto:2)#1}) Array.h:2103
+#15   main::{lambda(sp::IBytesView<unsigned char>&)#1}::operator()(sp::IBytesView<unsigned char>&) const dht-server.cpp:588
+#16   int main_loop<main::{lambda(sp::IBytesView<unsigned char>&)#1}>(dht::DHT&, main::{lambda(sp::IBytesView<unsigned char>&)#1}) dht-server.cpp:449
+#17   main dht-server.cpp:600
+#18   __libc_init_first
+#19   __libc_start_main
+#20   _start
+#21
 
--------------------------------------------------------------------------------
+>>> p self.root->depth
+$3 = 5
+>>> p tmp->depth
+$4 = 6
+>>> p in_tree->depth
+$5 = 7
+
+-----------------------------------------------------------------------------------------
