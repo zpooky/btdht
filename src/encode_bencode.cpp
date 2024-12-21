@@ -11,10 +11,12 @@ write_raw_numeric(Buffer &buffer, const char *format, T in) noexcept {
   char b[64] = {0};
   int res = std::snprintf(b, sizeof(b), format, in);
   if (res < 0) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!write(buffer, b, (std::size_t)res)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
@@ -27,14 +29,17 @@ encode_integer(Buffer &buffer, const char *format, T in) noexcept {
   static_assert(std::is_integral<T>::value, "");
 
   if (!write(buffer, 'i')) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!write_raw_numeric(buffer, format, in)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
   if (!write(buffer, 'e')) {
+    fprintf(stderr, "%s:2\n", __func__);
     return false;
   }
 
@@ -91,14 +96,17 @@ encode_raw(Buffer &buffer, const T *str, std::size_t length) noexcept {
       std::is_same<T, char>::value || std::is_same<T, sp::byte>::value, "");
 
   if (!write_raw_numeric(buffer, "%zu", length)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!write(buffer, ':')) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
   if (!write(buffer, str, length)) {
+    fprintf(stderr, "%s:2\n", __func__);
     return false;
   }
 
@@ -132,15 +140,18 @@ bencode::e<Buffer>::value_compact(Buffer &buffer, const dht::Infohash *v,
   const std::size_t raw_length = length * sizeof(v->id);
 
   if (!write_raw_numeric(buffer, "%zu", raw_length)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!write(buffer, ':')) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
   for (std::size_t a = 0; a < length; ++a) {
     if (!write(buffer, v[a].id, sizeof(v[a].id))) {
+      fprintf(stderr, "%s:2\n", __func__);
       return false;
     }
   }
@@ -160,27 +171,32 @@ bencode::e<Buffer>::value_id_contact_compact(Buffer &b, const dht::Node **list,
   });
 
   if (!write_raw_numeric(b, "%zu", raw_size)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!write(b, ':')) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
   std::size_t dummy_written = 0;
   bool result = for_all(list, length, [&b, &dummy_written](const auto &value) {
     if (!write(b, value.id.id, sizeof(value.id.id))) {
+      fprintf(stderr, "%s:2\n", __func__);
       return false;
     }
     dummy_written += sizeof(value.id.id);
 
     Ipv4 ip = htonl(value.contact.ip.ipv4);
     if (!write(b, &ip, sizeof(ip))) {
+      fprintf(stderr, "%s:3\n", __func__);
       return false;
     }
     dummy_written += sizeof(ip);
     Port port = htons(value.contact.port);
     if (!write(b, &port, sizeof(port))) {
+      fprintf(stderr, "%s:4\n", __func__);
       return false;
     }
     dummy_written += sizeof(port);
@@ -203,24 +219,29 @@ bencode::e<Buffer>::value_id_contact_compact(
   });
 
   if (!write_raw_numeric(b, "%zu", raw_size)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!write(b, ':')) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
   return for_all(list, [&b](const auto &value) {
     if (!write(b, value.id.id, sizeof(value.id.id))) {
+      fprintf(stderr, "%s:2\n", __func__);
       return false;
     }
 
     Ipv4 ip = htonl(value.contact.ip.ipv4);
     if (!write(b, &ip, sizeof(ip))) {
+      fprintf(stderr, "%s:3\n", __func__);
       return false;
     }
     Port port = htons(value.contact.port);
     if (!write(b, &port, sizeof(port))) {
+      fprintf(stderr, "%s:3\n", __func__);
       return false;
     }
 
@@ -239,20 +260,25 @@ bencode::e<Buffer>::value_compact(Buffer &b,
   });
 
   if (!write_raw_numeric(b, "%zu", raw_size)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!write(b, ':')) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
+  fprintf(stderr, "%s:2\n", __func__);
   return for_all(list, [&b](const auto &value) {
     Ipv4 ip = htonl(value.ip.ipv4);
     if (!write(b, &ip, sizeof(ip))) {
+      fprintf(stderr, "%s:2\n", __func__);
       return false;
     }
     Port port = htons(value.port);
     if (!write(b, &port, sizeof(port))) {
+      fprintf(stderr, "%s:3\n", __func__);
       return false;
     }
 
@@ -265,6 +291,7 @@ bool
 bencode::e<Buffer>::value_string_list_contact(
     Buffer &b, const sp::list<Contact> &values) noexcept {
   if (!write(b, 'l')) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
@@ -276,6 +303,7 @@ bencode::e<Buffer>::value_string_list_contact(
     memcpy(entry + sizeof(ip), &port, sizeof(port));
 
     if (!bencode::e<Buffer>::value(b, entry)) {
+      fprintf(stderr, "%s:1\n", __func__);
       return false;
     }
 
@@ -283,10 +311,12 @@ bencode::e<Buffer>::value_string_list_contact(
   });
 
   if (!res) {
+    fprintf(stderr, "%s:2\n", __func__);
     return false;
   }
 
   if (!write(b, 'e')) {
+    fprintf(stderr, "%s:3\n", __func__);
     return false;
   }
 
@@ -298,6 +328,7 @@ bool
 bencode::e<Buffer>::value_string_list_contact(
     Buffer &b, const sp::UinArray<Contact> &values) noexcept {
   if (!write(b, 'l')) {
+    fprintf(stderr, "%s:0\n", __func__);
     assertx(false);
     return false;
   }
@@ -310,12 +341,14 @@ bencode::e<Buffer>::value_string_list_contact(
     memcpy(entry + sizeof(ip), &port, sizeof(port));
 
     if (!bencode::e<Buffer>::value(b, entry, sizeof(entry))) {
+      fprintf(stderr, "%s:1\n", __func__);
       assertx(false);
       return false;
     }
   }
 
   if (!write(b, 'e')) {
+    fprintf(stderr, "%s:2\n", __func__);
     assertx(false);
     return false;
   }
@@ -334,20 +367,24 @@ bencode::e<Buffer>::value_compact(Buffer &b,
   });
 
   if (!write_raw_numeric(b, "%zu", raw_size)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!write(b, ':')) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
   return for_all(list, [&b](const auto &value) {
     Ipv4 ip = htonl(value.ip.ipv4);
     if (!write(b, &ip, sizeof(ip))) {
+      fprintf(stderr, "%s:2\n", __func__);
       return false;
     }
     Port port = htons(value.port);
     if (!write(b, &port, sizeof(port))) {
+      fprintf(stderr, "%s:3\n", __func__);
       return false;
     }
 
@@ -361,16 +398,19 @@ bool
 bencode::e<Buffer>::list(Buffer &b,
                          const sp::UinArray<std::string> &values) noexcept {
   if (!write(b, 'l')) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   for (const std::string &v : values) {
     if (!bencode::e<Buffer>::value(b, v.c_str())) {
+      fprintf(stderr, "%s:1\n", __func__);
       return false;
     }
   }
 
   if (!write(b, 'e')) {
+    fprintf(stderr, "%s:2\n", __func__);
     return false;
   }
 
@@ -382,10 +422,12 @@ bool
 bencode::e<Buffer>::pair(Buffer &b, const char *key,
                          const sp::UinArray<std::string> &value) noexcept {
   if (!bencode::e<Buffer>::value(b, key)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!bencode::e<Buffer>::list(b, value)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
@@ -398,10 +440,12 @@ static bool
 generic_encodePair(Buffer &buffer, const char *key, V val) {
 
   if (!bencode::e<Buffer>::value(buffer, key)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!bencode::e<Buffer>::value(buffer, val)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
@@ -470,6 +514,7 @@ bencode::e<Buffer>::pair(Buffer &buf, const char *key, const byte *value,
                          std::size_t l) noexcept {
 
   if (!bencode::e<Buffer>::value(buf, key)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
@@ -483,10 +528,12 @@ bencode::e<Buffer>::pair_compact(Buffer &b, const char *key,
                                  const dht::Infohash *v,
                                  std::size_t l) noexcept {
   if (!bencode::e<Buffer>::value(b, key)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!bencode::e<Buffer>::value_compact(b, v, l)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
@@ -499,10 +546,12 @@ bencode::e<Buffer>::pair_id_contact_compact(Buffer &b, const char *key,
                                             const dht::Node **list,
                                             std::size_t length) noexcept {
   if (!bencode::e<Buffer>::value(b, key)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!bencode::e<Buffer>::value_id_contact_compact(b, list, length)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
@@ -514,10 +563,12 @@ bool
 bencode::e<Buffer>::pair_id_contact_compact(
     Buffer &b, const char *key, const sp::list<dht::Node> &list) noexcept {
   if (!bencode::e<Buffer>::value(b, key)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!bencode::e<Buffer>::value_id_contact_compact(b, list)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
@@ -562,11 +613,13 @@ bencode::e<Buffer>::pair_string_list_contact(
     Buffer &b, const char *key, const sp::UinArray<Contact> &list) noexcept {
 
   if (!bencode::e<Buffer>::value(b, key)) {
+    fprintf(stderr, "%s:0\n", __func__);
     assertx(false);
     return false;
   }
 
   if (!bencode::e<Buffer>::value_string_list_contact(b, list)) {
+    fprintf(stderr, "%s:1\n", __func__);
     assertx(false);
     return false;
   }
@@ -579,10 +632,12 @@ bool
 bencode::e<Buffer>::pair_string_list_contact(
     Buffer &b, const char *key, const sp::list<Contact> &list) noexcept {
   if (!bencode::e<Buffer>::value(b, key)) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!bencode::e<Buffer>::value_string_list_contact(b, list)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
@@ -595,14 +650,17 @@ bool
 bencode::e<Buffer>::list(Buffer &buf, void *closure,
                          bool (*f)(Buffer &, void *)) noexcept {
   if (!write(buf, 'l')) {
+    fprintf(stderr, "%s:0\n", __func__);
     return false;
   }
 
   if (!f(buf, closure)) {
+    fprintf(stderr, "%s:1\n", __func__);
     return false;
   }
 
   if (!write(buf, 'e')) {
+    fprintf(stderr, "%s:2\n", __func__);
     return false;
   }
 
