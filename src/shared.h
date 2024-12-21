@@ -329,8 +329,9 @@ struct DHT {
 
   DHTMetaSearch searches;
   // struct {
-  sp::UinStaticArray<DHTMetaScrape *, 64> active_scrapes;
-  sp::UinStaticArray<sp::BloomFilter<Ip, 64 * 1024>, 7>
+  constexpr size_t ACTIVE_SCRAPES = 128;
+  sp::UinStaticArray<DHTMetaScrape *, 128> active_scrapes;
+  sp::UinStaticArray<sp::BloomFilter<Ip, 128 * 1024>, 7>
       scrape_hour; // (8 * 1024 * 1024 * sizeof(uint64_t) = 64MB) * 7 = 448MB
   // TODO calculate bloomfitler fpp
   std::size_t scrape_hour_idx;
