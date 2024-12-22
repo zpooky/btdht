@@ -248,7 +248,7 @@ DHTMetaBootstrap<sz>::DHTMetaBootstrap(Config &conf,
     , now{n} {
 }
 
-#define SCRAPE_FILTER 8 * 1024 * 1024
+#define SCRAPE_FILTER 64 * 1024 * 1024
 struct DHTMetaScrape {
   dht::DHT &dht;
   dht::NodeId id;
@@ -331,7 +331,7 @@ struct DHT {
   // struct {
   static constexpr size_t ACTIVE_SCRAPES = 128;
   sp::UinStaticArray<DHTMetaScrape *, ACTIVE_SCRAPES> active_scrapes;
-  sp::UinStaticArray<sp::BloomFilter<Ip, ACTIVE_SCRAPES * 32 * 1024>, 7>
+  sp::UinStaticArray<sp::BloomFilter<Ip, ACTIVE_SCRAPES * 64 * 1024>, 7>
       scrape_hour; // (8 * 1024 * 1024 * sizeof(uint64_t) = 64MB) * 7 = 448MB
   // TODO calculate bloomfitler fpp
   std::size_t scrape_hour_idx;
