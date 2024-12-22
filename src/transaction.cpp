@@ -232,8 +232,9 @@ reset(Tx &tx) noexcept {
   reset(tx.context);
   tx.sent = Timestamp(0);
 
-  tx.suffix[0] = '\0';
-  tx.suffix[1] = '\0';
+  for (size_t i = 0; i < sizeof(tx.suffix); ++i) {
+    tx.suffix[i] = '\0';
+  }
 }
 
 static void

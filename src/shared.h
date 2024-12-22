@@ -116,7 +116,7 @@ struct Tx {
   Timestamp sent;
 
   sp::byte prefix[2];
-  sp::byte suffix[2];
+  sp::byte suffix[4];
 
   Tx() noexcept;
 
@@ -150,7 +150,7 @@ operator>(const Tx &, const Tx &) noexcept;
 namespace dht {
 // dht::Client
 struct Client {
-  static constexpr std::size_t tree_capacity = 256;
+  static constexpr std::size_t tree_capacity = 512;
   fd &udp;
   fd &priv_fd;
   tx::Tx *timeout_head;
@@ -329,9 +329,9 @@ struct DHT {
 
   DHTMetaSearch searches;
   // struct {
-  constexpr size_t ACTIVE_SCRAPES = 128;
-  sp::UinStaticArray<DHTMetaScrape *, 128> active_scrapes;
-  sp::UinStaticArray<sp::BloomFilter<Ip, 128 * 1024>, 7>
+  static constexpr size_t ACTIVE_SCRAPES = 128;
+  sp::UinStaticArray<DHTMetaScrape *, ACTIVE_SCRAPES> active_scrapes;
+  sp::UinStaticArray<sp::BloomFilter<Ip, ACTIVE_SCRAPES * 32 * 1024>, 7>
       scrape_hour; // (8 * 1024 * 1024 * sizeof(uint64_t) = 64MB) * 7 = 448MB
   // TODO calculate bloomfitler fpp
   std::size_t scrape_hour_idx;

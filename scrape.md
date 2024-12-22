@@ -45,34 +45,6 @@ while 1:
 ```
 
 -------------------------------------------------------------------------------
-TODO
-- save routing table to disk
-- restore routing table from disk
-- if we regenerate new self node id we reinsert to the routing table otherwise
-  we just restore it as is from disk
-
--------------------------------------------------------------------------------
-TODO
-RoutingTableNode[length, Array[...]]
-- no linear scans of RoutingTableNode
-- if peer is remove from a RoutingTable Node the last peer in thn
-  RoutingTableNode gets its place
-
-TODO timeout queue verify the timestamp/date thing
-TODO spare routing_Table
-  - multiple closest
-TODO routing_table heap node compare (heap entry needs to be updated when new nodes are added/removed)
-TOOD do not store options in struct so that we can reduce memory
-
-- scrape main routing_table as well
-
-- db populate based on 1M latest
-  - size of bloomfilter ...
-  - query planner
-
--------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------
 standard test
 
 -------------------------------------------------------------------------------
@@ -157,3 +129,37 @@ $4 = 6
 $5 = 7
 
 -----------------------------------------------------------------------------------------
+
+2024-12-21 21:24:55|receive response ping      (94.240.216.232:57256) <686EF20E> [UT]
+2024-12-21 21:24:55|receive response ping      (172.97.137.169:25600) <6267E4FF> [UT]
+
+assertion failed: (debug_count_good(self) == result)
+../src/routing_table.cpp: 1371
+
+
+-------------------------------------------------------------------------------
+TODO
+RoutingTableNode[length, Array[...]]
+- no linear scans of RoutingTableNode
+- if peer is remove from a RoutingTable Node the last peer in thn
+  RoutingTableNode gets its place
+
+  - multiple closest
+TODO routing_table heap node compare (heap entry needs to be updated when new nodes are added/removed)
+
+- scrape main routing_table as well
+
+- db populate based on 2M latest
+  - size of bloomfilter ...
+  - query planner
+
+
+-------------------------------------------------------------------------------
+TODO dump
+- bad file descriptor
+
+-------------------------------------------------------------------------------
+bootstrap bloomfilter eagerly insert only when rank is >= x
+- test at each dequeue
+- insert at each dequeue
+

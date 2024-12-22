@@ -279,7 +279,7 @@ struct priv_protocol_callback {
 
 static int
 on_priv_protocol_ACCEPT_callback(void *closure, uint32_t events) {
-  struct ucred ucred {};
+  struct ucred ucred{};
   socklen_t len = sizeof(struct ucred);
 
   auto self = (priv_protocol_ACCEPT_callback *)closure;
@@ -292,7 +292,8 @@ on_priv_protocol_ACCEPT_callback(void *closure, uint32_t events) {
   }
   auto client = new priv_protocol_callback{self->modules, self->dht,
                                            self->options, std::move(client_fd)};
-  if (getsockopt(int{client_fd}, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == 0) {
+  if (getsockopt(int{client->client_fd}, SOL_SOCKET, SO_PEERCRED, &ucred,
+                 &len) == 0) {
     printf("pid:%u, uid:%u, gid:%u\n", (unsigned)ucred.pid, ucred.uid,
            ucred.gid);
   } else {
@@ -337,19 +338,30 @@ on_priv_protocol_callback(void *closure, uint32_t events) {
           dht::Domain dom = dht::Domain::Domain_private;
           if (!parse(dom, self->dht, self->modules, from, inBuffer,
                      outBuffer)) {
-            return 0;
+            fprintf(stderr, "%s:parse error\n", __func__);
+            events = EPOLLERR;
+            goto Lout;
           }
 
           flip(outBuffer);
+          fprintf(stderr, "%s: outBuffer.length:%zu\n", __func__,
+                  outBuffer.length);
           if (outBuffer.length > 0) {
-            net::sock_write(self->client_fd, outBuffer);
+            if (!net::sock_write(self->client_fd, outBuffer)) {
+              fprintf(stderr, "%s: fd:%d sock_write failed: %s (%d)\n",
+                      __func__, int(self->client_fd), strerror(errno), errno);
+            }
           }
         } else {
           res = 1;
         }
+      } else {
+        fprintf(stderr, "%s: fd:%d sock_read failed: %s (%d)\n", __func__,
+                int(self->client_fd), strerror(errno), errno);
       }
     } // while
   }
+Lout:
   if (events & EPOLLERR || events & EPOLLHUP || events & EPOLLRDHUP) {
     delete self;
   }
