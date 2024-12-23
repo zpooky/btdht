@@ -51,7 +51,7 @@ int
 core_tick(core &self, Milliseconds timeout) {
   int n_events;
   constexpr std::size_t max_events = 64;
-  ::epoll_event events[max_events];
+  ::epoll_event events[max_events]{};
 
   n_events = ::epoll_wait(int(self.epoll_fd), events, max_events, int(timeout));
   if (n_events < 0) {
