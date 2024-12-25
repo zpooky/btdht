@@ -257,7 +257,8 @@ struct priv_protocol_callback {
   dht::DHT &dht;
   dht::Options &options;
   fd client_fd;
-  static constexpr std::size_t size = 16 * 1024;
+  static constexpr std::size_t in_size = 8 * 1024;
+  static constexpr std::size_t out_size = 8 * 1024;
   // TODO share these buffers better
   std::unique_ptr<sp::byte[]> in;
   std::unique_ptr<sp::byte[]> out;
@@ -269,8 +270,8 @@ struct priv_protocol_callback {
       , dht{_dht}
       , options{_options}
       , client_fd{std::move(_fd)}
-      , in{std::make_unique<sp::byte[]>(size)}
-      , out{std::make_unique<sp::byte[]>(size)} {
+      , in{std::make_unique<sp::byte[]>(in_size)}
+      , out{std::make_unique<sp::byte[]>(out_size)} {
 
     core_cb.closure = this;
     core_cb.callback = on_priv_protocol_callback;
@@ -322,8 +323,8 @@ on_priv_protocol_callback(void *closure, uint32_t events) {
     int res = 0;
 
     while (res == 0) {
-      sp::Buffer inBuffer(self->in.get(), self->size);
-      sp::Buffer outBuffer(self->out.get(), self->size);
+      sp::Buffer inBuffer(self->in.get(), self->in_size);
+      sp::Buffer outBuffer(self->out.get(), self->out_size);
       Contact from;
       if (!net::remote(self->client_fd, from)) {
         // assertx(false);

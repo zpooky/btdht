@@ -4,7 +4,6 @@ project('spdht', 'cpp',
 
 spdht_compile_options = [
   '-std=c++17',
-  '-enable-frame-pointers',
   '-Wall',
   '-Wextra',
   '-Wpedantic',

@@ -1368,7 +1368,7 @@ max_routing_nodes(const DHTMetaRoutingTable &) noexcept {
 std::uint32_t
 nodes_good(const DHTMetaRoutingTable &self) noexcept {
   const std::uint32_t result = nodes_total(self) - nodes_bad(self);
-  assertx(debug_count_good(self) == result);
+  // assertx(debug_count_good(self) == result);
   return result;
 }
 

@@ -156,10 +156,10 @@ TODO routing_table heap node compare (heap entry needs to be updated when new no
 
 -------------------------------------------------------------------------------
 TODO dump
-- bad file descriptor
 
 -------------------------------------------------------------------------------
 bootstrap bloomfilter eagerly insert only when rank is >= x
 - test at each dequeue
 - insert at each dequeue
 
+---------------------------------------------------------------------
