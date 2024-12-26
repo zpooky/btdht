@@ -220,9 +220,11 @@ DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
     , scrape_bootstrap_filter(config, ip_hashers, now)
     , scrape_active_sample_infhohash(0)
     , scrape_retire_good()
+    , scrape_backoff(false)
     // }}}
     , upnp_expiry{n}
-    , upnp{_upnp}, upnp_external_port{0}{
+    , upnp{_upnp}
+    , upnp_external_port{0} {
 
   for (size_t i = 0; i < capacity(scrape_hour); ++i) {
     assertx_n(emplace(scrape_hour, ip_hashers));

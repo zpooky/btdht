@@ -163,3 +163,6 @@ bootstrap bloomfilter eagerly insert only when rank is >= x
 - insert at each dequeue
 
 ---------------------------------------------------------------------
+sighup issue
+
+---------------------------------------------------------------------

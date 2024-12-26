@@ -125,7 +125,10 @@ swap_in_new(DHT &self, std::size_t idx) {
 
 static Timestamp
 on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
-  // TODO is it some way of checking this, and atomic unlink
+  if (self.scrape_backoff) {
+    return self.now + sp::Seconds(60); // XXX
+  }
+  // TODO is it some way of checking this, and atomic unlink?
   if (!spbt_scrape_client_is_started(self.db.scrape_client)) {
     return self.now + sp::Seconds(60); // XXX
   }

@@ -341,6 +341,7 @@ struct DHT {
   DHTMetaBootstrap<SCRAPE_FILTER> scrape_bootstrap_filter;
   std::uint32_t scrape_active_sample_infhohash;
   sp::UinStaticArray<Node, 32> scrape_retire_good;
+  bool scrape_backoff;
   // } scrape;
 
   // upnp {{{

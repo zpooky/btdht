@@ -31,10 +31,29 @@ struct dht_scrape_msg {
 
 #define PUBLISH_HAVE 1
 
-struct dht_publish_msg {
+struct bt_to_dht_publish_msg {
   int flag;
   unsigned char info_hash[SHA_HASH_SIZE];
   unsigned char magic[4];
+};
+
+struct bt_to_dht_backoff_msg {
+  int backoff;
+  unsigned char magic[4];
+};
+
+enum bt_to_dht_msg_kind {
+  BT_TO_DHT_MSG_UNKNOWN = 0,
+  BT_TO_DHT_MSG_PUBLISH = 1,
+  BT_TO_DHT_MSG_BACKOFF = 2,
+};
+
+struct bt_to_dht_msg {
+  enum bt_to_dht_msg_kind kind;
+  union {
+    struct bt_to_dht_publish_msg publish;
+    struct bt_to_dht_backoff_msg backoff;
+  };
 };
 }
 
@@ -179,7 +198,7 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
   ssize_t ret;
   auto self = (dht::publish_ACCEPT_callback *)closure;
   auto *dht = (dht::DHT *)self->dht;
-  dht_publish_msg msg{};
+  bt_to_dht_msg msg{};
   int flags = 0;
 #if 0
   struct msghdr msgh {};
@@ -202,29 +221,52 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
   }
 #else
   if ((ret = recv(int(self->publish_fd), &msg, sizeof(msg), flags)) < 0) {
-    fprintf(stderr, "%s: recv: %s (%d)\n", __func__, strerror(errno), errno);
+    fprintf(stderr, "%s: recv: len(%zd) %s (%d)\n", __func__, ret,
+            strerror(errno), errno);
     return 0;
   }
 #endif
 
   if (ret == sizeof(msg)) {
-    const unsigned char magic[4] = {205, 7, 44, 216};
-    if (memcmp(msg.magic, magic, sizeof(magic)) == 0) {
-      dht::Infohash tmp_ih;
-      dht::Infohash ih;
-      memcpy(ih.id, msg.info_hash, sizeof(msg.info_hash));
-      assertx(memcmp(ih.id, tmp_ih.id, sizeof(tmp_ih.id)) != 0);
+    switch (msg.kind) {
+    case BT_TO_DHT_MSG_PUBLISH: {
+      bt_to_dht_publish_msg *publish = &msg.publish;
+      const unsigned char magic[4] = {205, 7, 44, 216};
+      if (memcmp(publish->magic, magic, sizeof(magic)) == 0) {
+        dht::Infohash tmp_ih;
+        dht::Infohash ih;
+        memcpy(ih.id, publish->info_hash, sizeof(publish->info_hash));
+        assertx(memcmp(ih.id, tmp_ih.id, sizeof(tmp_ih.id)) != 0);
 
-      bool present = test(dht->db.scrape_client.cache, ih.id);
-      logger::spbt::publish(dht->now, ih, present);
-      bool before = insert(dht->db.scrape_client.cache, ih.id);
-      if(!before){
-        scrape::publish(*dht, ih);
+        bool present = test(dht->db.scrape_client.cache, ih.id);
+        logger::spbt::publish(dht->now, ih, present);
+        bool before = insert(dht->db.scrape_client.cache, ih.id);
+        if (!before) {
+          scrape::publish(*dht, ih);
+        }
+        assertx(present == before);
+      } else {
+        assertx(false);
       }
-      assertx(present == before);
-    } else {
+    } break;
+    case BT_TO_DHT_MSG_BACKOFF: {
+      bt_to_dht_backoff_msg *backoff = &msg.backoff;
+      const unsigned char magic[4] = {215, 193, 107, 66};
+      if (memcmp(backoff->magic, magic, sizeof(magic)) == 0) {
+        if (backoff->backoff) {
+          dht->scrape_backoff = true;
+        } else {
+          dht->scrape_backoff = false;
+        }
+        fprintf(stdout, "%s:backoff[%s]\n", __func__,
+                dht->scrape_backoff ? "TRUE" : "FALSE");
+      } else {
+        assertx(false);
+      }
+    } break;
+    default:
       assertx(false);
-    }
+    };
   } else {
     assertx(false);
   }
