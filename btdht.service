@@ -1,0 +1,10 @@
+[Unit]
+Description=BT DHT
+After=network.target
+
+[Service]
+ExecStart=%h/source/btdht/dht-server -b 11000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

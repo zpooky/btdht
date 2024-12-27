@@ -365,8 +365,9 @@ debug_routing_level_iscorrect(DHTMetaRoutingTable &self, RoutingTable *root) {
 }
 
 static RoutingTable *
-find_closest(DHTMetaRoutingTable &self, const NodeId &search,
-             /*OUT*/ bool &in_tree, /*OUT*/ std::size_t &bidx) noexcept {
+find_closest_routing_table(DHTMetaRoutingTable &self, const NodeId &search,
+                           /*OUT*/ bool &in_tree,
+                           /*OUT*/ std::size_t &bidx) noexcept {
   in_tree = true;
   RoutingTable *it = self.root;
   RoutingTable *best = it;
@@ -455,7 +456,7 @@ reset(DHTMetaRoutingTable &self, Node &contact) noexcept {
 }
 
 static bool
-timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
+timeout_unlink_reset_node(DHTMetaRoutingTable &self, Node &contact) {
   if (is_valid(contact)) {
     if (self.tb.timeout) {
       timeout::unlink(*self.tb.timeout, &contact);
@@ -481,7 +482,8 @@ debug_timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
   bool inTree = false;
   std::size_t idx = 0;
 
-  RoutingTable *root = find_closest(self, contact.id, inTree, idx);
+  RoutingTable *root =
+      find_closest_routing_table(self, contact.id, inTree, idx);
   assertx(is_valid(contact));
 
   for (RoutingTable *it = root; it; it = it->parallel) {
@@ -490,7 +492,7 @@ debug_timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
       Node &tmp = it->bucket.contacts[i];
 
       if (tmp.id == contact.id) {
-        timeout_unlink_reset(self, contact);
+        timeout_unlink_reset_node(self, contact);
         assertx(!is_valid(contact));
         --it->bucket.length;
         return true;
@@ -578,7 +580,7 @@ Lout:
     auto &contact = bucket.contacts[i];
     auto tot = nodes_total(self);
 
-    if (timeout_unlink_reset(self, contact)) {
+    if (timeout_unlink_reset_node(self, contact)) {
       bucket.length--;
       assertxs(nodes_total(self) == tot - 1, nodes_total(self), tot - 1);
     }
@@ -689,7 +691,7 @@ bucket_insert(DHTMetaRoutingTable &self, Bucket &bucket, const Node &c,
       Node &contact = bucket.contacts[i];
       assertx(is_valid(contact));
       if (!is_good(self, contact) || contact.properties.is_readonly) {
-        timeout_unlink_reset(self, contact);
+        timeout_unlink_reset_node(self, contact);
 
         contact = c;
         assertx(is_valid(contact));
@@ -1052,7 +1054,7 @@ find_node(DHTMetaRoutingTable &self, const NodeId &search) noexcept {
   bool inTree = false;
   std::size_t idx = 0;
 
-  RoutingTable *leaf = find_closest(self, search, inTree, idx);
+  RoutingTable *leaf = find_closest_routing_table(self, search, inTree, idx);
   if (leaf) {
     return routing_table_level_find_node(*leaf, search.id);
   }
@@ -1065,7 +1067,7 @@ bucket_for(DHTMetaRoutingTable &dht, const NodeId &id) noexcept {
   bool inTree = false;
   std::size_t idx = 0;
 
-  RoutingTable *leaf = find_closest(dht, id, inTree, idx);
+  RoutingTable *leaf = find_closest_routing_table(dht, id, inTree, idx);
   return leaf ? &leaf->bucket : nullptr;
 }
 
@@ -1242,7 +1244,7 @@ Lstart:
   std::size_t xx = 0;
 
   RoutingTable *const leaf =
-      find_closest(self, contact.id, /*OUT*/ inTree, /*OUT*/ xx);
+      find_closest_routing_table(self, contact.id, /*OUT*/ inTree, /*OUT*/ xx);
   assertx(leaf == tmp);
   if (leaf) {
     assertx(self.root);
