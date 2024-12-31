@@ -299,7 +299,9 @@ struct DHT {
   std::size_t ip_cnt;
   Config config;
   sp::core core;
+
   bool should_exit;
+  bool systemd;
   //}}}
 
   db::DHTMetaDatabase db;

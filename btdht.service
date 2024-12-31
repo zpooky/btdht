@@ -3,5 +3,5 @@ Description=BT DHT
 After=network.target
 
 [Service]
-ExecStart=%h/sources/btdht/dht-server -b 11000
+ExecStart=%h/sources/btdht/dht-server -b 11000 --systemd
 Restart=always

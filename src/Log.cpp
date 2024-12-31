@@ -52,7 +52,7 @@ print_raw(FILE *_f, const sp::byte *val, std::size_t len) noexcept {
 
 /*logger*/
 static void
-print_time(FILE *f, const Timestamp &now) noexcept {
+__print_time(FILE *f, const Timestamp &now) noexcept {
   char buff[32] = {0};
 
   sp::Seconds sec(sp::Milliseconds(now), sp::RoundMode::UP);
@@ -64,22 +64,25 @@ print_time(FILE *f, const Timestamp &now) noexcept {
 
 static void
 print_time(FILE *f, const dht::DHT &dht) noexcept {
-  return print_time(f, dht.now);
+  if (!dht.systemd) {
+    __print_time(f, dht.now);
+  }
 }
 
 static void
 print_time(FILE *f, const dht::MessageContext &ctx) noexcept {
-  return print_time(f, ctx.dht);
+  print_time(f, ctx.dht);
 }
 
-static void
-print_time(FILE *f, const dht::DHTMetaRoutingTable &ctx) noexcept {
-  return print_time(f, ctx.now);
-}
+// static void
+// print_time(FILE *f, const dht::DHTMetaRoutingTable &ctx) noexcept {
+//   __print_time(f, ctx.now);
+// }
 
 static void
 print_time(FILE *f, const db::DHTMetaDatabase &ctx) noexcept {
-  return print_time(f, ctx.now);
+  //TODO add if (!dht.systemd) {
+  __print_time(f, ctx.now);
 }
 
 namespace receive {
@@ -364,7 +367,7 @@ error(dht::DHT &ctx, const sp::Buffer &buffer, const char *msg) noexcept {
   ++s.received.parse_error;
 
   auto f = stderr;
-  print_time(f, ctx.now);
+  print_time(f, ctx);
   fprintf(f, "parse error|%s|\n", msg);
   // dht::print_hex(copy.raw + copy.pos, copy.length);
   bencode_print_out(f);
@@ -401,7 +404,7 @@ timeout(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
   print_time(f, ctx);
   Timestamp awake(timeout - ctx.now);
   fprintf(f, "awake next timeout[%" PRIu64 "ms] ", std::uint64_t(awake));
-  print_time(f, timeout);
+  __print_time(f, timeout);
   fprintf(f, "\n");
 #else
   (void)ctx;
@@ -417,7 +420,7 @@ contact_ping(const dht::DHT &ctx, const Timestamp &timeout) noexcept {
   Timestamp awake(timeout - ctx.now);
   fprintf(f, "awake contact_ping vote timeout[%" PRIu64 "ms] next date:",
           std::uint64_t(awake));
-  print_time(f, timeout);
+  __print_time(f, timeout);
   printf("\n");
 }
 
@@ -586,7 +589,7 @@ error::ping_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   fprintf(f, "\033[91mping response timeout\033[0m tx[");
   dht::print_hex(f, tx);
   fprintf(f, "] sent: ");
-  print_time(f, sent);
+  __print_time(f, sent);
   fprintf(f, "#[%zu]\n", tout++);
 }
 
@@ -601,7 +604,7 @@ error::find_node_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   fprintf(f, "\033[91mfind_node response timeout\033[0m tx[");
   dht::print_hex(f, tx);
   fprintf(f, "] sent: ");
-  print_time(f, sent);
+  __print_time(f, sent);
   fprintf(f, "#[%zu]\n", tout++);
 }
 
@@ -616,7 +619,7 @@ error::get_peers_response_timeout(dht::DHT &ctx, const krpc::Transaction &tx,
   fprintf(f, "\033[91mget_peers response timeout\033[0m tx[");
   dht::print_hex(f, tx);
   fprintf(f, "] sent: ");
-  print_time(f, sent);
+  __print_time(f, sent);
   fprintf(f, "#[%zu]\n", tout++);
 }
 
@@ -632,7 +635,7 @@ error::sample_infohashes_response_timeout(dht::DHT &ctx,
   fprintf(f, "\033[91msample_infohashes response timeout\033[0m tx[");
   dht::print_hex(f, tx);
   fprintf(f, "] sent: ");
-  print_time(f, sent);
+  __print_time(f, sent);
   fprintf(f, "#[%zu]\n", tout++);
 }
 
@@ -686,13 +689,13 @@ routing::head_node(const dht::DHTMetaRoutingTable &rt, sp::Milliseconds x) {
     if (head) {
       char remote[30] = {0};
       auto f = stdout;
-      print_time(f, rt.now);
+      __print_time(f, rt.now);
       to_string(head->contact, remote, sizeof(remote));
       fprintf(f, "Node[%s, ", remote);
       fprintf(f, "req_sent:");
-      print_time(f, head->req_sent);
+      __print_time(f, head->req_sent);
       fprintf(f, ", wakeup:");
-      print_time(f, (head->req_sent + x));
+      __print_time(f, (head->req_sent + x));
       fprintf(f, "]\n");
     }
   }
@@ -736,9 +739,9 @@ search::retire(const dht::DHT &ctx, const dht::Search &current) noexcept {
 }
 
 void
-spbt::publish(Timestamp now, const dht::Infohash &ih, bool present) {
+spbt::publish(const dht::DHT &ctx, const dht::Infohash &ih, bool present) {
   auto f = stdout;
-  print_time(f, now);
+  print_time(f, ctx);
   fprintf(f, "spbt publish[");
   dht::print_hex(f, ih.id, sizeof(ih.id));
   fprintf(f, "] (present: %s)\n", present ? "TRUE" : "FALSE");

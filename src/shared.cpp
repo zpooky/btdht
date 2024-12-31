@@ -193,6 +193,7 @@ DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
     , config()
     , core()
     , should_exit(false)
+    , systemd(options.systemd)
     //}}}
     , db{config, r, n, options}
     , routing_table(100, r, this->tb, n, this->id, config)

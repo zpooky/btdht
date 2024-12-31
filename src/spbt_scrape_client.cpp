@@ -239,7 +239,7 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
         assertx(memcmp(ih.id, tmp_ih.id, sizeof(tmp_ih.id)) != 0);
 
         bool present = test(dht->db.scrape_client.cache, ih.id);
-        logger::spbt::publish(dht->now, ih, present);
+        logger::spbt::publish(*dht, ih, present);
         bool before = insert(dht->db.scrape_client.cache, ih.id);
         if (!before) {
           scrape::publish(*dht, ih);
