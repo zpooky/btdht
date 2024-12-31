@@ -125,11 +125,36 @@ swap_in_new(DHT &self, std::size_t idx) {
 
 static Timestamp
 on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
-  if (self.scrape_backoff) {
-    return self.now + sp::Seconds(60); // XXX
-  }
   // TODO is it some way of checking this, and atomic unlink?
   if (!spbt_scrape_client_is_started(self.db.scrape_client)) {
+    return self.now + sp::Seconds(60); // XXX
+  }
+
+  {
+    bool result = true;
+    while (!is_empty(self.scrape_get_peers_ih) &&
+           tx::has_free_transaction(self) && result) {
+      size_t last_idx = self.scrape_get_peers_ih.length - 1;
+      auto &last = self.scrape_get_peers_ih[last_idx];
+      auto needle = std::get<0>(last);
+      if (spbt_has_infohash(self.db.scrape_client, needle)) {
+        remove(self.scrape_get_peers_ih, last_idx);
+        continue;
+      }
+      auto dest = std::get<1>(last);
+      ScrapeContext *closure = new ScrapeContext(needle);
+      result = client::get_peers(self, buf, dest, needle, closure) ==
+               client::Res::OK;
+      if (result) {
+        remove(self.scrape_get_peers_ih, last_idx);
+      } else {
+        delete closure;
+      }
+      // node.req_sent = dht.now;
+    }
+  }
+
+  if (self.scrape_backoff) {
     return self.now + sp::Seconds(60); // XXX
   }
 
@@ -168,30 +193,6 @@ on_awake_scrape(DHT &self, sp::Buffer &buf) noexcept {
           (self.scrape_hour_idx + 1) % capacity(self.scrape_hour);
       clear(self.scrape_hour[self.scrape_hour_idx]);
       self.scrape_hour_time = self.scrape_hour_time + sp::Hours(1);
-    }
-  }
-
-  {
-    bool result = true;
-    while (!is_empty(self.scrape_get_peers_ih) &&
-           tx::has_free_transaction(self) && result) {
-      size_t last_idx = self.scrape_get_peers_ih.length - 1;
-      auto &last = self.scrape_get_peers_ih[last_idx];
-      auto needle = std::get<0>(last);
-      if (spbt_has_infohash(self.db.scrape_client, needle)) {
-        remove(self.scrape_get_peers_ih, last_idx);
-        continue;
-      }
-      auto dest = std::get<1>(last);
-      ScrapeContext *closure = new ScrapeContext(needle);
-      result = client::get_peers(self, buf, dest, needle, closure) ==
-               client::Res::OK;
-      if (result) {
-        remove(self.scrape_get_peers_ih, last_idx);
-      } else {
-        delete closure;
-      }
-      // node.req_sent = dht.now;
     }
   }
 
