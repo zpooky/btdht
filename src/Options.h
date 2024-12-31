@@ -13,6 +13,7 @@ struct Options {
   char publish_socket[PATH_MAX];
   char db_path[PATH_MAX];
   char scrape_socket_path[PATH_MAX];
+  bool systemd;
 
   Options();
 };

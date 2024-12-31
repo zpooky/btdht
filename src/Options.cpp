@@ -15,7 +15,8 @@ Options::Options()
     , dump_file{0}
     , local_socket{0}
     , publish_socket{0}
-    , db_path{0} {
+    , db_path{0}
+    , systemd{false} {
   memcpy(dump_file, default_dump_path, strlen(default_dump_path));
 }
 
@@ -37,6 +38,7 @@ parse(Options &self, int argc, char **argv) noexcept {
           // {"create", required_argument, nullptr, 'c'},
           {"local", required_argument, nullptr, 'l'},
           {"help", no_argument, nullptr, 'h'},
+          {"systemd", no_argument, nullptr, 's'},
           //  The last element of the array has to be filled with zeros
           {nullptr, 0, nullptr, 0} //
       };
@@ -96,6 +98,11 @@ parse(Options &self, int argc, char **argv) noexcept {
 
     case 'l':
       printf("option -l with value `%s'\n", optarg);
+      break;
+
+    case 's':
+      printf("option -s\n");
+      self.systemd = true;
       break;
 
     case 'h':
