@@ -15,6 +15,22 @@ setup(dht::Module &) noexcept;
 } // namespace dump
 
 //===========================================================
+// dump_scrape
+//===========================================================
+namespace dump_scrape {
+static void
+setup(dht::Module &) noexcept;
+}
+
+//===========================================================
+// dump_db
+//===========================================================
+namespace dump_db {
+static void
+setup(dht::Module &) noexcept;
+}
+
+//===========================================================
 // statistics
 //===========================================================
 namespace statistics {
@@ -134,6 +150,8 @@ bool
 setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
   dump::setup(modules.modules[i++]);
+  dump_scrape::setup(modules.modules[i++]);
+  dump_db::setup(modules.modules[i++]);
   statistics::setup(modules.modules[i++]);
   search::setup(modules.modules[i++]);
   search_stop::setup(modules.modules[i++]);
@@ -227,15 +245,54 @@ on_request(dht::MessageContext &ctx) noexcept {
   dht::DHT &dht = ctx.dht;
   return krpc::priv::response::dump(ctx.out, ctx.transaction, dht);
 }
+} // namespace dump
 
 void
-setup(dht::Module &mod) noexcept {
+dump::setup(dht::Module &mod) noexcept {
   mod.query = "sp_dump";
   mod.request = on_request;
   mod.response = nullptr;
 }
-} // namespace dump
 
+//===========================================================
+// dump_scrape
+//===========================================================
+namespace dump_scrape {
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  // logger::receive::req::dump_scrape(ctx);
+
+  dht::DHT &dht = ctx.dht;
+  return krpc::priv::response::dump_scrape(ctx.out, ctx.transaction, dht);
+}
+} // namespace dump_scrape
+
+static void
+dump_scrape::setup(dht::Module &mod) noexcept {
+  mod.query = "sp_dump_scrape";
+  mod.request = on_request;
+  mod.response = nullptr;
+}
+
+//===========================================================
+// dump_db
+//===========================================================
+namespace dump_db {
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  // logger::receive::req::dump_db(ctx);
+
+  dht::DHT &dht = ctx.dht;
+  return krpc::priv::response::dump_db(ctx.out, ctx.transaction, dht);
+}
+} // namespace dump_db
+
+static void
+dump_db::setup(dht::Module &mod) noexcept {
+  mod.query = "sp_dump_db";
+  mod.request = on_request;
+  mod.response = nullptr;
+}
 //===========================================================
 // statistics
 //===========================================================
@@ -341,6 +398,7 @@ setup(dht::Module &mod) noexcept {
   mod.request = on_request;
   mod.response = nullptr;
 }
+} // namespace search_stop
 
 //===========================================================
 // Announce
@@ -385,4 +443,3 @@ setup(dht::Module &mod) noexcept {
 } // namespace announce_this
 
 //===========================================================
-} // namespace search_stop

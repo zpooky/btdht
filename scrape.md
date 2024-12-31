@@ -166,3 +166,7 @@ bootstrap bloomfilter eagerly insert only when rank is >= x
 sighup issue
 
 ---------------------------------------------------------------------
+Log.cpp check if running inside systemd then don't print date stuff
+
+---------------------------------------------------------------------
+even after backoff clear the getpeers queueue

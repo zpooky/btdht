@@ -13,6 +13,12 @@ bool
 dump(sp::Buffer &b, const krpc::Transaction &) noexcept;
 
 bool
+dump_scrape(sp::Buffer &b, const krpc::Transaction &) noexcept;
+
+bool
+dump_db(sp::Buffer &b, const krpc::Transaction &) noexcept;
+
+bool
 statistics(sp::Buffer &b, const krpc::Transaction &t) noexcept;
 
 bool
@@ -28,6 +34,13 @@ stop_search(sp::Buffer &b, const krpc::Transaction &,
 namespace response {
 bool
 dump(sp::Buffer &b, const krpc::Transaction &t, const dht::DHT &) noexcept;
+
+bool
+dump_scrape(sp::Buffer &b, const krpc::Transaction &t,
+            const dht::DHT &) noexcept;
+
+bool
+dump_db(sp::Buffer &b, const krpc::Transaction &t, const dht::DHT &) noexcept;
 
 bool
 statistics(sp::Buffer &b, const krpc::Transaction &t,

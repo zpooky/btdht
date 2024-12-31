@@ -194,6 +194,30 @@ send_dump(DHTClient &client) noexcept {
   return net::sock_write(client.udp, client.out);
 }
 
+static bool
+send_dump_scrape(DHTClient &client) noexcept {
+  reset(client.out);
+  krpc::Transaction tx;
+  make_tx(client.rand, tx);
+
+  krpc::priv::request::dump_scrape(client.out, tx);
+  flip(client.out);
+
+  return net::sock_write(client.udp, client.out);
+}
+
+static bool
+send_dump_db(DHTClient &client) noexcept {
+  reset(client.out);
+  krpc::Transaction tx;
+  make_tx(client.rand, tx);
+
+  krpc::priv::request::dump_db(client.out, tx);
+  flip(client.out);
+
+  return net::sock_write(client.udp, client.out);
+}
+
 //====================================================
 static bool
 send_search(DHTClient &client, const dht::Infohash &search) noexcept {
@@ -323,8 +347,7 @@ handle_find_node(DHTClient &client) {
     static struct option loptions[] = {
         //
         {"self", required_argument, 0, 's'},
-        {0, 0, 0, 0}
-        //
+        {0, 0, 0, 0} //
     };
 
     opt = getopt_long(client.argc, client.argv, "s:h", loptions, &option_index);
@@ -370,8 +393,7 @@ handle_get_peers(DHTClient &client) {
     static struct option loptions[] = {
         //
         {"self", required_argument, 0, 's'},
-        {0, 0, 0, 0}
-        //
+        {0, 0, 0, 0} //
     };
 
     opt = getopt_long(client.argc, client.argv, "s:h", loptions, &option_index);
@@ -595,8 +617,7 @@ handle_search(DHTClient &client) {
     static struct option loptions[] = {
         //
         {"self", required_argument, 0, 's'},
-        {0, 0, 0, 0}
-        //
+        {0, 0, 0, 0} //
     };
 
     opt = getopt_long(client.argc, client.argv, "s:h", loptions, &option_index);
@@ -693,6 +714,33 @@ handle_search(DHTClient &client) {
 int
 handle_dump(DHTClient &client) {
   if (!send_dump(client)) {
+    fprintf(stderr, "failed to send\n");
+    return EXIT_FAILURE;
+  }
+
+  if (generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
+
+  return 0;
+}
+
+static int
+handle_dump_scrape(DHTClient &client) {
+  if (!send_dump_scrape(client)) {
+    fprintf(stderr, "failed to send\n");
+    return EXIT_FAILURE;
+  }
+
+  if (generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
+
+  return 0;
+}
+
+static int handle_dump_db(DHTClient &client) {
+  if (!send_dump_db(client)) {
     fprintf(stderr, "failed to send\n");
     return EXIT_FAILURE;
   }
@@ -825,7 +873,7 @@ handle_upnp(int, char **) noexcept {
 #else
 
   struct sp_upnp *self = sp_upnp_new();
-  struct sockaddr_in local {};
+  struct sockaddr_in local{};
   uint32_t leaseDuration = 60;
   const char *proto = "TCP";
   Contact tmp;
@@ -879,6 +927,10 @@ parse_command(int argc, char **argv) {
       return bind_priv_exe(exe, subcommand, subc, subv, handle_search);
     } else if (std::strcmp(subcommand, "dump") == 0) {
       return bind_priv_exe(exe, subcommand, subc, subv, handle_dump);
+    } else if (std::strcmp(subcommand, "dump_scrape") == 0) {
+      return bind_priv_exe(exe, subcommand, subc, subv, handle_dump_scrape);
+    } else if (std::strcmp(subcommand, "dump_db") == 0) {
+      return bind_priv_exe(exe, subcommand, subc, subv, handle_dump_db);
     } else if (std::strcmp(subcommand, "upnp") == 0) {
       return handle_upnp(subc, subv);
     } else {

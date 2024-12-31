@@ -21,6 +21,22 @@ request::dump(sp::Buffer &b, const krpc::Transaction &t) noexcept {
 
 //=====================================
 bool
+request::dump_scrape(sp::Buffer &b, const krpc::Transaction &t) noexcept {
+  return req(b, t, "sp_dump_scrape", [](sp::Buffer &) { //
+    return true;
+  });
+} // request::scrape()
+
+//=====================================
+bool
+request::dump_db(sp::Buffer &b, const krpc::Transaction &t) noexcept {
+  return req(b, t, "sp_dump_db", [](sp::Buffer &) { //
+    return true;
+  });
+} // request::db()
+
+//=====================================
+bool
 request::statistics(sp::Buffer &b, const krpc::Transaction &t) noexcept {
   return req(b, t, "sp_statistics", [](sp::Buffer &) { //
     return true;
@@ -61,45 +77,45 @@ response::dump(sp::Buffer &buf, const Transaction &t,
                const dht::DHT &dht) noexcept {
   return resp(buf, t, [&dht](auto &b) {
     if (!bencode::e::pair(b, "id", dht.id.id, sizeof(dht.id.id))) {
-      fprintf(stderr, "%s: 1\n", __func__);
+      fprintf(stdout, "%s: 1\n", __func__);
       return false;
     }
 
     uint64_t pid = (uint64_t)getpid();
     if (!bencode::e::pair(b, "pid", pid)) {
-      fprintf(stderr, "%s: 2\n", __func__);
+      fprintf(stdout, "%s: 2\n", __func__);
       return false;
     }
     Contact bind;
     net::local(dht.client.udp, bind);
     if (!bencode::e::pair(b, "bind_port", bind.port)) {
-      fprintf(stderr, "%s: 3\n", __func__);
+      fprintf(stdout, "%s: 3\n", __func__);
       return false;
     }
 
     if (!bencode::e::value(b, "cache")) {
-      fprintf(stderr, "%s: 4\n", __func__);
+      fprintf(stdout, "%s: 4\n", __func__);
       return false;
     }
 
     bool res = bencode::e::dict(b, [&dht](auto &b2) {
       if (!bencode::e::pair(b2, "min_read_idx", sp::cache_read_min_idx(dht))) {
-        fprintf(stderr, "%s: 4\n", __func__);
+        fprintf(stdout, "%s: 4\n", __func__);
         return false;
       }
 
       if (!bencode::e::pair(b2, "max_read_idx", sp::cache_read_max_idx(dht))) {
-        fprintf(stderr, "%s: 5\n", __func__);
+        fprintf(stdout, "%s: 5\n", __func__);
         return false;
       }
 
       if (!bencode::e::pair(b2, "contacts", sp::cache_contacts(dht))) {
-        fprintf(stderr, "%s: 6\n", __func__);
+        fprintf(stdout, "%s: 6\n", __func__);
         return false;
       }
 
       if (!bencode::e::pair(b2, "write_idx", sp::cache_write_idx(dht))) {
-        fprintf(stderr, "%s: 7\n", __func__);
+        fprintf(stdout, "%s: 7\n", __func__);
         return false;
       }
 
@@ -110,7 +126,7 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     }
 
     if (!bencode::e::value(b, "bootstrap")) {
-      fprintf(stderr, "%s: 8\n", __func__);
+      fprintf(stdout, "%s: 8\n", __func__);
       return false;
     }
 
@@ -118,11 +134,11 @@ response::dump(sp::Buffer &buf, const Transaction &t,
       if (!bencode::e::pair(
               b2, "unique_inserts",
               dht.bootstrap_meta.bootstrap_filter.unique_inserts)) {
-        fprintf(stderr, "%s: 9\n", __func__);
+        fprintf(stdout, "%s: 9\n", __func__);
         return false;
       }
       if (!bencode::e::pair(b2, "candidates", length(dht.bootstrap))) {
-        fprintf(stderr, "%s: 10\n", __func__);
+        fprintf(stdout, "%s: 10\n", __func__);
         return false;
       }
 
@@ -131,153 +147,6 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     if (!res) {
       return false;
     }
-
-    if (!bencode::e::value(b, "scrape")) {
-      fprintf(stderr, "%s: 11\n", __func__);
-      return false;
-    }
-
-    res = bencode::e::dict(b, [&dht](auto &b2) {
-      if (!bencode::e::pair(b2, "active_scrapes", length(dht.active_scrapes))) {
-        fprintf(stderr, "%s: 12\n", __func__);
-        return false;
-      }
-
-      if (!bencode::e::pair(b2, "active_sample_infohashes_requests",
-                            dht.scrape_active_sample_infhohash)) {
-        fprintf(stderr, "%s: 13\n", __func__);
-        return false;
-      }
-
-      if (!bencode::e::pair(b2, "queue_get_peers_ih",
-                            length(dht.scrape_get_peers_ih))) {
-        fprintf(stderr, "%s: 14\n", __func__);
-        return false;
-      }
-
-      std::size_t i = 0;
-      for (const auto scrape : dht.active_scrapes) {
-        char key[64] = {0};
-        sprintf(key, "info_hash%zu", i);
-        if (!bencode::e::pair(b2, key, scrape->routing_table.id.id)) {
-          fprintf(stderr, "%s: 15 (%zu) rw(%zu)\n", __func__, i,
-                  remaining_write(b2));
-          return false;
-        }
-        sprintf(key, "routing_table_nodes%zu", i);
-        if (!bencode::e::pair(b2, key, scrape->routing_table.total_nodes)) {
-          fprintf(stderr, "%s: 16 (%zu) rw(%zu)\n", __func__, i,
-                  remaining_write(b2));
-          return false;
-        }
-        sprintf(key, "candidates%zu", i);
-        if (!bencode::e::pair(b2, key, length(scrape->bootstrap))) {
-          fprintf(stderr, "%s: 17 (%zu) rw(%zu)\n", __func__, i,
-                  remaining_write(b2));
-          return false;
-        }
-        sprintf(key, "stat.publish%zu", i);
-        if (!bencode::e::pair(b2, key, scrape->stat.publish)) {
-          fprintf(stderr, "%s: 18 (%zu) rw(%zu)\n", __func__, i,
-                  remaining_write(b2));
-          return false;
-        }
-        sprintf(key, "stat.sample_ih%zu", i);
-        if (!bencode::e::pair(b2, key, scrape->stat.sent_sample_infohash)) {
-          fprintf(stderr, "%s: 19 (%zu) rw(%zu)\n", __func__, i,
-                  remaining_write(b2));
-          return false;
-        }
-        sprintf(key, "stat.response-get_peers%zu", i);
-        if (!bencode::e::pair(b2, key, scrape->stat.get_peer_responses)) {
-          fprintf(stderr, "%s: 20 (%zu) rw(%zu)\n", __func__, i,
-                  remaining_write(b2));
-          return false;
-        }
-        sprintf(key, "stat.response-new-get_peers%zu", i);
-        if (!bencode::e::pair(b2, key, scrape->stat.new_get_peer)) {
-          fprintf(stderr, "%s: 21 (%zu) rw(%zu)\n", __func__, i,
-                  remaining_write(b2));
-          return false;
-        }
-        sprintf(key, "approx-upcoming_sample_ih%zu", i);
-        if (!bencode::e::pair(b2, key, scrape->upcoming_sample_infohashes)) {
-          fprintf(stderr, "%s: 21 (%zu) rw(%zu)\n", __func__, i,
-                  remaining_write(b2));
-          return false;
-        }
-        ++i;
-      }
-      if (!bencode::e::pair(
-              b2, "bootstrap_unique_inserts",
-              dht.scrape_bootstrap_filter.bootstrap_filter.unique_inserts)) {
-        fprintf(stderr, "%s: 22\n", __func__);
-        return false;
-      }
-
-      if (!bencode::e::pair(b2, "scrape_hour_current_idx",
-                            dht.scrape_hour_idx)) {
-        fprintf(stderr, "%s: 23\n", __func__);
-        return false;
-      }
-
-      i = 0;
-      for (const auto &sh : dht.scrape_hour) {
-        char key[64] = {0};
-        sprintf(key, "scrape_hour%zu", i);
-        if (!bencode::e::pair(b2, key, sh.unique_inserts)) {
-          fprintf(stderr, "%s: 24\n", __func__);
-          return false;
-        }
-        ++i;
-      }
-
-      return true;
-    });
-    if (!res) {
-      return false;
-    }
-
-    if (!bencode::e::value(b, "db")) {
-      fprintf(stderr, "%s: 25\n", __func__);
-      return false;
-    }
-
-    res = bencode::e::dict(b, [&dht](auto &b2) {
-      binary::rec::inorder(
-          dht.db.lookup_table, [&b2, &dht](dht::KeyValue &e) -> bool {
-            return bencode::e::dict(b2, [&e, &dht](auto &b3) {
-              char buffer[64]{0};
-              assertx_n(to_string(e.id, buffer));
-
-              if (!bencode::e::pair(b3, "infohash", buffer)) {
-                fprintf(stderr, "%s: 26\n", __func__);
-                return false;
-              }
-              if (!bencode::e::pair(b3, "rank",
-                                    dht::rank(dht.id.id, e.id.id))) {
-                fprintf(stderr, "%s: 27\n", __func__);
-                return false;
-              }
-
-              std::uint64_t l(sp::n::length(e.peers));
-              if (!bencode::e::pair(b3, "entries", l)) {
-                fprintf(stderr, "%s: 28\n", __func__);
-                return false;
-              }
-
-              if (e.name) {
-                if (!bencode::e::pair(b3, "name", e.name)) {
-                  fprintf(stderr, "%s: 29\n", __func__);
-                  return false;
-                }
-              }
-
-              return true;
-            });
-          });
-      return true;
-    });
 
     if (!bencode::e::value(b, "spbt")) {
       return false;
@@ -285,7 +154,7 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     res = bencode::e::dict(b, [&dht](auto &b2) {
       if (!bencode::e::pair(b2, "stored",
                             dht.db.scrape_client.cache.unique_inserts)) {
-        fprintf(stderr, "%s: 28\n", __func__);
+        fprintf(stdout, "%s: 28\n", __func__);
         return false;
       }
       return true;
@@ -296,7 +165,7 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     }
 
     if (!bencode::e::value(b, "ip_election")) {
-      fprintf(stderr, "%s: 29\n", __func__);
+      fprintf(stdout, "%s: 29\n", __func__);
       return false;
     }
 
@@ -314,31 +183,193 @@ response::dump(sp::Buffer &buf, const Transaction &t,
     });
 
     if (!res) {
-      fprintf(stderr, "%s: 29\n", __func__);
+      fprintf(stdout, "%s: 29\n", __func__);
       return false;
     }
 
     if (!bencode::e::pair(b, "root", dht.routing_table.root)) {
-      fprintf(stderr, "%s: 30\n", __func__);
+      fprintf(stdout, "%s: 30\n", __func__);
       return false;
     }
     std::uint64_t la(dht.last_activity);
     if (!bencode::e::pair(b, "last_activity", la)) {
-      fprintf(stderr, "%s: 31\n", __func__);
+      fprintf(stdout, "%s: 31\n", __func__);
       return false;
     }
     if (!bencode::e::pair(b, "routing_table_nodes",
                           dht.routing_table.total_nodes)) {
-      fprintf(stderr, "%s: 32\n", __func__);
+      fprintf(stdout, "%s: 32\n", __func__);
       return false;
     }
     if (!bencode::e::pair(b, "bad_nodes", dht.routing_table.bad_nodes)) {
-      fprintf(stderr, "%s: 33\n", __func__);
+      fprintf(stdout, "%s: 33\n", __func__);
       return false;
     }
     return true;
   });
 } // response::dump()
+
+bool
+response::dump_scrape(sp::Buffer &buf, const Transaction &t,
+                 const dht::DHT &dht) noexcept {
+  return resp(buf, t, [&dht](auto &b) {
+    bool res = true;
+    if (!bencode::e::value(b, "scrape")) {
+      fprintf(stdout, "%s: 11\n", __func__);
+      return false;
+    }
+
+    res = bencode::e::dict(b, [&dht](auto &b2) {
+      if (!bencode::e::pair(b2, "active_scrapes", length(dht.active_scrapes))) {
+        fprintf(stdout, "%s: 12\n", __func__);
+        return false;
+      }
+
+      if (!bencode::e::pair(b2, "active_sample_infohashes_requests",
+                            dht.scrape_active_sample_infhohash)) {
+        fprintf(stdout, "%s: 13\n", __func__);
+        return false;
+      }
+
+      if (!bencode::e::pair(b2, "queue_get_peers_ih",
+                            length(dht.scrape_get_peers_ih))) {
+        fprintf(stdout, "%s: 14\n", __func__);
+        return false;
+      }
+
+      std::size_t i = 0;
+      for (const auto scrape : dht.active_scrapes) {
+        char key[64] = {0};
+        sprintf(key, "info_hash%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->routing_table.id.id)) {
+          fprintf(stdout, "%s: 15 (%zu) rw(%zu)\n", __func__, i,
+                  remaining_write(b2));
+          return false;
+        }
+        sprintf(key, "routing_table_nodes%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->routing_table.total_nodes)) {
+          fprintf(stdout, "%s: 16 (%zu) rw(%zu)\n", __func__, i,
+                  remaining_write(b2));
+          return false;
+        }
+        sprintf(key, "candidates%zu", i);
+        if (!bencode::e::pair(b2, key, length(scrape->bootstrap))) {
+          fprintf(stdout, "%s: 17 (%zu) rw(%zu)\n", __func__, i,
+                  remaining_write(b2));
+          return false;
+        }
+        sprintf(key, "stat.publish%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->stat.publish)) {
+          fprintf(stdout, "%s: 18 (%zu) rw(%zu)\n", __func__, i,
+                  remaining_write(b2));
+          return false;
+        }
+        sprintf(key, "stat.sample_ih%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->stat.sent_sample_infohash)) {
+          fprintf(stdout, "%s: 19 (%zu) rw(%zu)\n", __func__, i,
+                  remaining_write(b2));
+          return false;
+        }
+        sprintf(key, "stat.response-get_peers%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->stat.get_peer_responses)) {
+          fprintf(stdout, "%s: 20 (%zu) rw(%zu)\n", __func__, i,
+                  remaining_write(b2));
+          return false;
+        }
+        sprintf(key, "stat.response-new-get_peers%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->stat.new_get_peer)) {
+          fprintf(stdout, "%s: 21 (%zu) rw(%zu)\n", __func__, i,
+                  remaining_write(b2));
+          return false;
+        }
+        sprintf(key, "approx-upcoming_sample_ih%zu", i);
+        if (!bencode::e::pair(b2, key, scrape->upcoming_sample_infohashes)) {
+          fprintf(stdout, "%s: 21 (%zu) rw(%zu)\n", __func__, i,
+                  remaining_write(b2));
+          return false;
+        }
+        ++i;
+      }
+      if (!bencode::e::pair(
+              b2, "bootstrap_unique_inserts",
+              dht.scrape_bootstrap_filter.bootstrap_filter.unique_inserts)) {
+        fprintf(stdout, "%s: 22\n", __func__);
+        return false;
+      }
+
+      if (!bencode::e::pair(b2, "scrape_hour_current_idx",
+                            dht.scrape_hour_idx)) {
+        fprintf(stdout, "%s: 23\n", __func__);
+        return false;
+      }
+
+      i = 0;
+      for (const auto &sh : dht.scrape_hour) {
+        char key[64] = {0};
+        sprintf(key, "scrape_hour%zu", i);
+        if (!bencode::e::pair(b2, key, sh.unique_inserts)) {
+          fprintf(stdout, "%s: 24\n", __func__);
+          return false;
+        }
+        ++i;
+      }
+
+      return true;
+    });
+    return res;
+  });
+}
+
+bool
+response::dump_db(sp::Buffer &buf, const Transaction &t,
+             const dht::DHT &dht) noexcept {
+  return resp(buf, t, [&dht](auto &b) {
+    bool res = true;
+    if (!bencode::e::value(b, "db")) {
+      fprintf(stdout, "%s: 25\n", __func__);
+      return false;
+    }
+
+    res = bencode::e::dict(b, [&dht](auto &b2) {
+      binary::rec::inorder(dht.db.lookup_table,
+                           [&b2, &dht](dht::KeyValue &e) -> bool {
+                             return bencode::e::dict(b2, [&e, &dht](auto &b3) {
+                               char buffer[64]{0};
+                               assertx_n(to_string(e.id, buffer));
+
+                               if (!bencode::e::pair(b3, "infohash", buffer)) {
+                                 fprintf(stdout, "%s: 26\n", __func__);
+                                 return false;
+                               }
+#if 0
+              if (!bencode::e::pair(b3, "rank",
+                                    dht::rank(dht.id.id, e.id.id))) {
+                fprintf(stdout, "%s: 27\n", __func__);
+                return false;
+              }
+#endif
+
+                               std::uint64_t l(sp::n::length(e.peers));
+                               if (!bencode::e::pair(b3, "entries", l)) {
+                                 fprintf(stdout, "%s: 28\n", __func__);
+                                 return false;
+                               }
+
+                               if (e.name) {
+                                 if (!bencode::e::pair(b3, "name", e.name)) {
+                                   fprintf(stdout, "%s: 29\n", __func__);
+                                   return false;
+                                 }
+                               }
+
+                               return true;
+                             });
+                           });
+      return true;
+    });
+    return res;
+  });
+}
 
 //=====================================
 static bool
