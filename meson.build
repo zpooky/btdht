@@ -1,26 +1,7 @@
 project('spdht', 'cpp',
         version: '1.0.0',
-        license: 'GPL')
-
-spdht_compile_options = [
-  '-std=c++17',
-  '-Wall',
-  '-Wextra',
-  '-Wpedantic',
-  '-Wpointer-arith',
-  '-Wconversion',
-  '-Wshadow'
-]
-
-spdht_compile_options += [
-  '-ggdb',
-  '-O0'
-]
-
-spdht_link_options = [
-  '-fsanitize=address',
-  '-fno-omit-frame-pointer'
-]
+        license: 'GPL',
+        default_options : ['warning_level=3', 'cpp_std=c++20', 'debug=true'])
 
 subdir('external')
 
@@ -47,7 +28,6 @@ subdir('src')
 spdht_lib = static_library('spdht',
               spdht_src,
               include_directories: spdht_includes,
-              cpp_args: spdht_compile_options,
               dependencies: spdht_deps
               )
 
@@ -62,15 +42,11 @@ subdir('test')
 
 executable('dht-client',
           'dht-client.cpp',
-          link_args: spdht_link_options,
-          cpp_args: spdht_compile_options,
           dependencies: spdht_deps
           )
 
 executable('dht-server',
           'dht-server.cpp',
-          link_args: spdht_link_options,
-          cpp_args: spdht_compile_options,
           dependencies: spdht_deps
           )
 
