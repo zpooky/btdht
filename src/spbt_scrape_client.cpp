@@ -19,13 +19,14 @@
 
 #include "Log.h"
 
-#define SHA_HASH_SIZE 20
+#define INFO_HASH_v1 20
 
 extern "C" {
 struct dht_scrape_msg {
   unsigned int ipv4;
   unsigned short port;
-  unsigned char info_hash[SHA_HASH_SIZE];
+  unsigned char info_hash[64];
+  unsigned int l_info_hash;
   unsigned char magic[4];
 };
 
@@ -33,7 +34,8 @@ struct dht_scrape_msg {
 
 struct bt_to_dht_publish_msg {
   int flag;
-  unsigned char info_hash[SHA_HASH_SIZE];
+  unsigned char info_hash[64];
+  unsigned int l_info_hash;
   unsigned char magic[4];
 };
 
@@ -73,11 +75,11 @@ __db_seed_cache(dht::DHTMeta_spbt_scrape_client &self, sqlite3 *db) {
     while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
       const int column = 0;
       int info_hash_len =
-          std::min(sqlite3_column_bytes(stmt, column), int(SHA_HASH_SIZE));
+          std::min(sqlite3_column_bytes(stmt, column), INFO_HASH_v1);
       const void *info_hash = sqlite3_column_blob(stmt, column);
-      if (info_hash_len == SHA_HASH_SIZE) {
+      if (info_hash_len == INFO_HASH_v1) {
         dht::Infohash ih;
-        memcpy(ih.id, info_hash, SHA_HASH_SIZE);
+        memcpy(ih.id, info_hash, INFO_HASH_v1);
         insert(self.cache, ih.id);
       } else {
         assertx(false);
@@ -168,6 +170,7 @@ dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
     msg.magic[2] = 203;
     msg.magic[3] = 56;
     memcpy(msg.info_hash, infohash, sizeof(msg.info_hash));
+    msg.l_info_hash = sizeof(infohash);
     assertx(contact.ip.type == IpType::IPV4);
     msg.ipv4 = contact.ip.ipv4;
     msg.port = contact.port;
@@ -235,9 +238,11 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
       if (memcmp(publish->magic, magic, sizeof(magic)) == 0) {
         dht::Infohash tmp_ih;
         dht::Infohash ih;
-        memcpy(ih.id, publish->info_hash, sizeof(publish->info_hash));
+        memcpy(ih.id, publish->info_hash,
+               std::min(publish->l_info_hash, unsigned(sizeof(ih.id))));
         assertx(memcmp(ih.id, tmp_ih.id, sizeof(tmp_ih.id)) != 0);
 
+        static_assert(sizeof(ih.id) == INFO_HASH_v1);
         bool present = test(dht->db.scrape_client.cache, ih.id);
         logger::spbt::publish(*dht, ih, present);
         bool before = insert(dht->db.scrape_client.cache, ih.id);
