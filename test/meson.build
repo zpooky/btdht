@@ -20,8 +20,6 @@ if gtest_dep.found()
   spdht_test = executable('thetest',
                         spdht_test_src,
                         include_directories: spdht_includes,
-                        link_args: spdht_link_options,
-                        cpp_args: spdht_compile_options,
                         dependencies: spdht_test_deps
                        )
 
