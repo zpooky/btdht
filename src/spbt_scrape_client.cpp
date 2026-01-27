@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -13,6 +14,7 @@
 
 #include <hash/djb2.h>
 #include <hash/fnv.h>
+#include <io/file.h>
 
 #include "dht.h"
 #include "scrape.h"
@@ -61,39 +63,91 @@ struct bt_to_dht_msg {
 
 static bool
 __db_seed_cache(dht::DHTMeta_spbt_scrape_client &self, sqlite3 *db) {
+  char cached_bloomfilter[PATH_MAX] = {0};
   bool res = false;
-  const char *dml = "SELECT info_hash FROM torrent";
-  sqlite3_stmt *stmt = NULL;
 
-  {
-    int r;
-    if ((r = sqlite3_prepare(db, dml, -1, /*OUT*/ &stmt, NULL)) != SQLITE_OK) {
-      fprintf(stderr, "%s: sqlite3_prepare (%d)\n", __func__, r);
-      goto Lout;
-    }
+  fprintf(stderr, "%s: START\n", __func__);
+  if (xdg_share_dir(cached_bloomfilter)) {
+    ::strcat(cached_bloomfilter, "/spdht/scrape_bloomfilter.raw");
 
-    while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
-      const int column = 0;
-      int info_hash_len =
-          std::min(sqlite3_column_bytes(stmt, column), INFO_HASH_v1);
-      const void *info_hash = sqlite3_column_blob(stmt, column);
-      if (info_hash_len == INFO_HASH_v1) {
-        dht::Infohash ih;
-        memcpy(ih.id, info_hash, INFO_HASH_v1);
-        insert(self.cache, ih.id);
+    fprintf(stderr, "%s:cached_bloomfilter[%.*s]\n", __func__, (int)PATH_MAX,
+            cached_bloomfilter);
+    fd raw_fd = fs::open_read(cached_bloomfilter);
+    if (bool(raw_fd)) {
+      struct stat st {};
+      if (fstat(int(raw_fd), &st) == 0) {
+        if (st.st_size == sizeof(self.cache.bitset.raw)) {
+          size_t readed;
+          if ((readed = fs::read(raw_fd, self.cache.bitset.raw,
+                                 sizeof(self.cache.bitset.raw))) ==
+              (size_t)st.st_size) {
+            res = true;
+          } else {
+            fprintf(stderr, "%s:0\n", __func__);
+            assertxs(false, readed, sizeof(self.cache.bitset.raw), st.st_size);
+          }
+        } else {
+          fprintf(stderr, "%s:1\n", __func__);
+          assertxs(false, sizeof(self.cache.bitset.raw), st.st_size);
+        }
       } else {
-        assertx(false);
+        fprintf(stderr, "%s:2\n", __func__);
       }
+    } else {
+      fprintf(stderr, "%s:3\n", __func__);
     }
-    // fprintf(stderr, "%s: sqlite3_step (%d) %s\n", __func__, r,
-    //         sqlite3_errmsg(db));
+    unlink(cached_bloomfilter);
+  } else {
+    fprintf(stderr, "%s:4\n", __func__);
   }
 
-  res = true;
-Lout:
-  if (stmt) {
-    sqlite3_finalize(stmt);
+  if (!res) {
+    const char *dml = "SELECT info_hash FROM torrent";
+    sqlite3_stmt *stmt = NULL;
+
+    fprintf(stderr, "%s: db START\n", __func__);
+    int r;
+    if ((r = sqlite3_prepare(db, dml, -1, /*OUT*/ &stmt, NULL)) == SQLITE_OK) {
+      uint32_t failed_length = 0;
+
+      while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
+        const int column = 0;
+        int l_ih = std::min(sqlite3_column_bytes(stmt, column), INFO_HASH_v1);
+        const void *info_hash = sqlite3_column_blob(stmt, column);
+
+        if (l_ih == INFO_HASH_v1) {
+          dht::Infohash ih;
+          memcpy(ih.id, info_hash, l_ih);
+          if (!insert(self.cache, ih.id)) {
+            ++self.cache_length;
+          } else {
+            ++failed_length;
+          }
+
+          if ((self.cache_length % 300000) == 0) {
+            fprintf(stdout, "%s: self.cache_length: %u\n", __func__,
+                    self.cache_length);
+          }
+        } else {
+          fprintf(stderr, "%s:5\n", __func__);
+          assertx(false);
+        }
+      } // while
+
+      fprintf(stdout, "theoretical_max_capacity: %zu, length: %u, failed: %u\n",
+              theoretical_max_capacity(self.cache), self.cache_length,
+              failed_length);
+      res = true;
+    } else {
+      fprintf(stderr, "%s: sqlite3_prepare (%d)\n", __func__, r);
+    }
+    if (stmt) {
+      sqlite3_finalize(stmt);
+    }
+    fprintf(stderr, "%s: db END\n", __func__);
   }
+
+  fprintf(stderr, "%s: END (%d)\n", __func__, res);
   return res;
 }
 
@@ -111,6 +165,7 @@ dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client(
     Timestamp &now, const char *scrape_socket_path, const char *db_path)
     : hashers{}
     , cache{hashers}
+    , cache_length{0}
     , unix_socket_file{socket(AF_UNIX, SOCK_DGRAM, 0)}
     , dir_fd{}
     , now{now} {
@@ -127,9 +182,9 @@ dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client(
     strcat(scrape_socket_path2, "/spbt_scrape.socket");
     name.sun_family = AF_UNIX;
     strcpy(name.sun_path, scrape_socket_path2);
-    fprintf(stderr, "scrape_socket_path[%.*s]\n", (int)PATH_MAX,
-            scrape_socket_path2);
   }
+  fprintf(stderr, "%s: scrape_socket_path2[%s]\n", __func__, name.sun_path);
+  fprintf(stderr, "%s: db_path[%s]\n", __func__, db_path);
 
   if (strlen(db_path) > 0) {
     sqlite3 *db = nullptr;
@@ -145,6 +200,27 @@ dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client(
       sqlite3_close_v2(db);
     }
   }
+  fprintf(stderr, "%s: END\n", __func__);
+}
+
+dht::DHTMeta_spbt_scrape_client::~DHTMeta_spbt_scrape_client() {
+  char tmp_cached_bloomfilter[PATH_MAX] = {0};
+  char cached_bloomfilter[PATH_MAX] = {0};
+  if (xdg_share_dir(cached_bloomfilter)) {
+    ::strcat(cached_bloomfilter, "/spdht/scrape_bloomfilter.raw");
+    ::strcpy(tmp_cached_bloomfilter, cached_bloomfilter);
+    ::strcat(tmp_cached_bloomfilter, ".tmp");
+    fd raw_fd = fs::open_trunc(tmp_cached_bloomfilter);
+    if (bool(raw_fd)) {
+      std::size_t writed = fs::write(raw_fd, this->cache.bitset.raw,
+                                     sizeof(this->cache.bitset.raw));
+      if (writed != sizeof(this->cache.bitset.raw)) {
+        unlink(tmp_cached_bloomfilter);
+        assertxs(false, writed, sizeof(this->cache.bitset.raw));
+      }
+    }
+  }
+  ::rename(tmp_cached_bloomfilter, cached_bloomfilter);
 }
 
 bool
@@ -169,7 +245,7 @@ dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
     msg.magic[1] = 47;
     msg.magic[2] = 203;
     msg.magic[3] = 56;
-    memcpy(msg.info_hash, infohash, sizeof(msg.info_hash));
+    memcpy(msg.info_hash, infohash, sizeof(infohash));
     msg.l_info_hash = sizeof(infohash);
     assertx(contact.ip.type == IpType::IPV4);
     msg.ipv4 = contact.ip.ipv4;
@@ -238,6 +314,10 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
       if (memcmp(publish->magic, magic, sizeof(magic)) == 0) {
         dht::Infohash tmp_ih;
         dht::Infohash ih;
+        if ((publish->l_info_hash == 0) ||
+            (publish->l_info_hash > sizeof(publish->info_hash))) {
+          return -1;
+        }
         memcpy(ih.id, publish->info_hash,
                std::min(publish->l_info_hash, unsigned(sizeof(ih.id))));
         assertx(memcmp(ih.id, tmp_ih.id, sizeof(tmp_ih.id)) != 0);
@@ -247,6 +327,7 @@ on_publish_ACCEPT_callback(void *closure, uint32_t events) {
         logger::spbt::publish(*dht, ih, present);
         bool before = insert(dht->db.scrape_client.cache, ih.id);
         if (!before) {
+          ++dht->db.scrape_client.cache_length;
           scrape::publish(*dht, ih);
         }
         assertx(present == before);

@@ -175,6 +175,7 @@ DHTMetaScrape::DHTMetaScrape(dht::DHT &self, const dht::NodeId &_ih) noexcept
     , bootstrap_filter(self.scrape_bootstrap_filter)
     , upcoming_sample_infohashes(0)
     , box(self.now) { //
+
 }
 
 // dht::DHT

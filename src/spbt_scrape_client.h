@@ -21,8 +21,7 @@ struct DHTMeta_spbt_scrape_client {
 
   DHTMeta_spbt_scrape_client(Timestamp &now, const char *scrape_socket_path,
                              const char *db_path);
-  ~DHTMeta_spbt_scrape_client() {
-  }
+  virtual ~DHTMeta_spbt_scrape_client();
 };
 
 struct publish_ACCEPT_callback {

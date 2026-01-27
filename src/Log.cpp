@@ -479,7 +479,7 @@ ping(dht::DHT &ctx, const Contact &contact, client::Res result) noexcept {
   to_string(contact, remote, sizeof(remote));
 
   fprintf(f, "transmit ping[%s],res[%s],count[%zu]\n", remote,
-          to_string(result), s.sent.request.ping);
+          to_string(result), s.transmit.request.ping);
 #endif
   (void)contact;
   (void)result;

@@ -16,6 +16,7 @@
 #include <memory>
 #include <shared.h>
 #include <signal.h>
+#include <stdio.h>
 #include <sys/epoll.h>    //epoll
 #include <sys/signalfd.h> //signalfd
 #include <sys/stat.h>
@@ -51,7 +52,7 @@
 //
 static void
 die(const char *s) {
-  perror(s);
+  fprintf(stderr, "%s\n", s);
   std::exit(1);
 }
 
@@ -280,7 +281,7 @@ struct priv_protocol_callback {
 
 static int
 on_priv_protocol_ACCEPT_callback(void *closure, uint32_t events) {
-  struct ucred ucred{};
+  struct ucred ucred {};
   socklen_t len = sizeof(struct ucred);
 
   auto self = (priv_protocol_ACCEPT_callback *)closure;
@@ -470,7 +471,7 @@ main_loop(dht::DHT &self, Awake on_awake) noexcept {
 int
 main(int argc, char **argv) {
   fprintf(stderr, "sizeof(DHT): %zuB %zuKB %zuMB\n", sizeof(dht::DHT),
-          sizeof(dht::DHT) / 1024, sizeof(dht::DHT) / 1024 * 1024);
+          sizeof(dht::DHT) / 1024, sizeof(dht::DHT) / (1024 * 1024));
   pid_t pid = getpid();
   fprintf(stderr, "pid: %lu\n", (unsigned long)pid);
   std::srand((unsigned int)time(nullptr));

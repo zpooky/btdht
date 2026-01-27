@@ -16,6 +16,9 @@ bool
 dump_scrape(sp::Buffer &b, const krpc::Transaction &) noexcept;
 
 bool
+debug_scrape(sp::Buffer &b, const krpc::Transaction &) noexcept;
+
+bool
 dump_db(sp::Buffer &b, const krpc::Transaction &) noexcept;
 
 bool
@@ -37,6 +40,10 @@ dump(sp::Buffer &b, const krpc::Transaction &t, const dht::DHT &) noexcept;
 
 bool
 dump_scrape(sp::Buffer &b, const krpc::Transaction &t,
+            const dht::DHT &) noexcept;
+
+bool
+debug_scrape(sp::Buffer &b, const krpc::Transaction &t,
             const dht::DHT &) noexcept;
 
 bool

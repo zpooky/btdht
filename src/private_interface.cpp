@@ -14,10 +14,12 @@ void
 setup(dht::Module &) noexcept;
 } // namespace dump
 
-//===========================================================
-// dump_scrape
-//===========================================================
 namespace dump_scrape {
+static void
+setup(dht::Module &) noexcept;
+}
+
+namespace debug_scrape {
 static void
 setup(dht::Module &) noexcept;
 }
@@ -151,6 +153,7 @@ setup(dht::Modules &modules) noexcept {
   std::size_t &i = modules.length;
   dump::setup(modules.modules[i++]);
   dump_scrape::setup(modules.modules[i++]);
+  debug_scrape::setup(modules.modules[i++]);
   dump_db::setup(modules.modules[i++]);
   statistics::setup(modules.modules[i++]);
   search::setup(modules.modules[i++]);
@@ -270,6 +273,26 @@ on_request(dht::MessageContext &ctx) noexcept {
 static void
 dump_scrape::setup(dht::Module &mod) noexcept {
   mod.query = "sp_dump_scrape";
+  mod.request = on_request;
+  mod.response = nullptr;
+}
+
+//===========================================================
+// debug_scrape
+//===========================================================
+namespace debug_scrape {
+static bool
+on_request(dht::MessageContext &ctx) noexcept {
+  // logger::receive::req::debug_scrape(ctx);
+
+  dht::DHT &dht = ctx.dht;
+  return krpc::priv::response::debug_scrape(ctx.out, ctx.transaction, dht);
+}
+} // namespace debug_scrape
+
+static void
+debug_scrape::setup(dht::Module &mod) noexcept {
+  mod.query = "sp_debug_scrape";
   mod.request = on_request;
   mod.response = nullptr;
 }

@@ -53,7 +53,8 @@ struct Cache {
   fs::DirectoryFd dir{};
 
   size_t read_min_idx{~size_t(0)};
-  size_t read_max_idx{};
+  size_t read_max_idx{0};
+
   size_t contacts{};
   size_t write_idx{};
 
@@ -394,7 +395,7 @@ take_next_read_cache(Cache &self, char (&file)[SIZE]) noexcept {
   assertx(self.dir);
   while (self.read_min_idx < self.read_max_idx) {
     cache_filename(file, self.read_max_idx);
-    self.read_min_idx--;
+    self.read_max_idx--;
 
     if (::faccessat(int(self.dir), file, R_OK, 0) == 0) {
       return true;

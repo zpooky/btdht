@@ -242,8 +242,9 @@ sp_upnp_create_port_mapping(struct sp_upnp *self, //
       return -3;
     }
     printf("InternalIP:Port = %s:%s\n", intClient, intPort);
-    printf("external %s is redirected to internal %s:%s (duration=%s)\n", proto,
-           intClient, intPort, duration_out);
+    printf(
+        "external %s (port:%s) is redirected to internal %s:%s (duration=%s)\n",
+        proto, eport_out, intClient, intPort, duration_out);
   }
 
   sp::parse_int(duration_out, duration_out + strlen(duration_out),

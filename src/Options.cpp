@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
+#include <string.h>
 #include <getopt.h>
 #include <io/file.h>
 #include <unistd.h>
@@ -33,9 +34,8 @@ parse(Options &self, int argc, char **argv) noexcept {
           // {"add", no_argument, nullptr, 'a'},
           {"bind", required_argument, nullptr, 'b'},
           {"bootstrap", required_argument, nullptr, 'o'},
-          {"db", required_argument, nullptr, 'd'},
-          // {"delete", required_argument, nullptr, 'd'},
-          // {"create", required_argument, nullptr, 'c'},
+          {"dump", required_argument, nullptr, 'd'},
+          {"db", required_argument, nullptr, 'c'},
           {"local", required_argument, nullptr, 'l'},
           {"help", no_argument, nullptr, 'h'},
           {"systemd", no_argument, nullptr, 's'},
@@ -93,7 +93,17 @@ parse(Options &self, int argc, char **argv) noexcept {
         fprintf(stderr, "To long '%s':%zu max: %zu\n", optarg, len, max);
         return 1;
       }
-      memcpy(self.dump_file, optarg, len + 1);
+      strncpy(self.dump_file, optarg, len);
+    } break;
+    case 'c': {
+      std::size_t len = std::strlen(optarg);
+      std::size_t max = sizeof(self.db_path);
+
+      if (len >= max) {
+        fprintf(stderr, "To long '%s':%zu max: %zu\n", optarg, len, max);
+        return 1;
+      }
+      strncpy(self.db_path, optarg, len);
     } break;
 
     case 'l':

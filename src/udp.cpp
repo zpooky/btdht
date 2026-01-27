@@ -328,7 +328,7 @@ send(int fd, ::sockaddr_in &dest, const Contact &debug_dest,
             sent,                    //
             int(fd), raw_len, flag,  //
             to_string(debug_dest), strerror(error));
-    assertx(false);
+    assertxs(false, sent, fd, raw_len, flag, to_string(debug_dest),error, strerror(error));
     return false;
   }
 

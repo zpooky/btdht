@@ -207,6 +207,18 @@ send_dump_scrape(DHTClient &client) noexcept {
 }
 
 static bool
+send_debug_scrape(DHTClient &client) noexcept {
+  reset(client.out);
+  krpc::Transaction tx;
+  make_tx(client.rand, tx);
+
+  krpc::priv::request::debug_scrape(client.out, tx);
+  flip(client.out);
+
+  return net::sock_write(client.udp, client.out);
+}
+
+static bool
 send_dump_db(DHTClient &client) noexcept {
   reset(client.out);
   krpc::Transaction tx;
@@ -739,6 +751,20 @@ handle_dump_scrape(DHTClient &client) {
   return 0;
 }
 
+static int
+handle_debug_scrape(DHTClient &client) {
+  if (!send_debug_scrape(client)) {
+    fprintf(stderr, "failed to send\n");
+    return EXIT_FAILURE;
+  }
+
+  if (generic_receive(client.udp, client.in)) {
+    return EXIT_FAILURE;
+  }
+
+  return 0;
+}
+
 static int handle_dump_db(DHTClient &client) {
   if (!send_dump_db(client)) {
     fprintf(stderr, "failed to send\n");
@@ -929,6 +955,8 @@ parse_command(int argc, char **argv) {
       return bind_priv_exe(exe, subcommand, subc, subv, handle_dump);
     } else if (std::strcmp(subcommand, "dump_scrape") == 0) {
       return bind_priv_exe(exe, subcommand, subc, subv, handle_dump_scrape);
+    } else if (std::strcmp(subcommand, "debug_scrape") == 0) {
+      return bind_priv_exe(exe, subcommand, subc, subv, handle_debug_scrape);
     } else if (std::strcmp(subcommand, "dump_db") == 0) {
       return bind_priv_exe(exe, subcommand, subc, subv, handle_dump_db);
     } else if (std::strcmp(subcommand, "upnp") == 0) {

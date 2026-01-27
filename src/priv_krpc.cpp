@@ -25,7 +25,15 @@ request::dump_scrape(sp::Buffer &b, const krpc::Transaction &t) noexcept {
   return req(b, t, "sp_dump_scrape", [](sp::Buffer &) { //
     return true;
   });
-} // request::scrape()
+}
+
+//=====================================
+bool
+request::debug_scrape(sp::Buffer &b, const krpc::Transaction &t) noexcept {
+  return req(b, t, "sp_debug_scrape", [](sp::Buffer &) { //
+    return true;
+  });
+}
 
 //=====================================
 bool
@@ -211,7 +219,7 @@ response::dump(sp::Buffer &buf, const Transaction &t,
 
 bool
 response::dump_scrape(sp::Buffer &buf, const Transaction &t,
-                 const dht::DHT &dht) noexcept {
+                      const dht::DHT &dht) noexcept {
   return resp(buf, t, [&dht](auto &b) {
     bool res = true;
     if (!bencode::e::value(b, "scrape")) {
@@ -321,8 +329,30 @@ response::dump_scrape(sp::Buffer &buf, const Transaction &t,
 }
 
 bool
+response::debug_scrape(sp::Buffer &buf, const Transaction &t,
+                       const dht::DHT &dht) noexcept {
+  return resp(buf, t, [&dht](auto &b) {
+    auto &db = dht.db;
+    auto &scrape_client = db.scrape_client;
+    bool res = true;
+    if (!bencode::e::pair(b, "theoretical_max_capacity_bloomfilter",
+                          theoretical_max_capacity(scrape_client.cache))) {
+      fprintf(stdout, "%s: 1\n", __func__);
+      return false;
+    }
+    if (!bencode::e::pair(b, "length_bloomfilter",
+                          scrape_client.cache_length)) {
+      fprintf(stdout, "%s: 2\n", __func__);
+      return false;
+    }
+
+    return res;
+  });
+}
+
+bool
 response::dump_db(sp::Buffer &buf, const Transaction &t,
-             const dht::DHT &dht) noexcept {
+                  const dht::DHT &dht) noexcept {
   return resp(buf, t, [&dht](auto &b) {
     bool res = true;
     if (!bencode::e::value(b, "db")) {

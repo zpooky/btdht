@@ -1,7 +1,8 @@
 [Unit]
 Description=BT DHT
 After=network.target
+WantedBy=multi-user.target
 
 [Service]
-ExecStart=%h/sources/btdht/dht-server -b 11000 --systemd
+ExecStart=%h/sources/btdht/dht-server -b 11000 --systemd --db=/fotball/dht/torrent_formatted_v2.db
 Restart=always
