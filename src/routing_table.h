@@ -53,7 +53,7 @@ struct RoutingTable;
 struct RoutingTable {
   ssize_t depth;
   RoutingTable *in_tree;
-  Bucket bucket;
+  Bucket bucket; // out_of_tree
   RoutingTable *parallel;
 
   RoutingTable(ssize_t) noexcept;
@@ -99,7 +99,9 @@ for_all_node(const RoutingTable *it, F f) noexcept;
 //=====================================
 struct DHTMetaRoutingTable {
   RoutingTable *root;
-  heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
+  // heap::Binary<RoutingTable *, RoutingTableLess> rt_reuse;
+  std::size_t length;
+  const std::size_t capacity;
 
   prng::xorshift32 &random;
   timeout::TimeoutBox &tb;
@@ -126,17 +128,31 @@ debug_for_each(const DHTMetaRoutingTable &, void *,
                void (*)(void *, const DHTMetaRoutingTable &,
                         const RoutingTable &, const Node &)) noexcept;
 
+void
+debug_for_each_rt(DHTMetaRoutingTable &self, void *closure,
+                  void (*)(void *, DHTMetaRoutingTable &,
+                           RoutingTable *)) noexcept;
+
 std::size_t
-debug_levels(const DHTMetaRoutingTable &) noexcept;
+debug_count_levels(const DHTMetaRoutingTable &) noexcept;
+
+std::size_t
+debug_count_RoutinTable_nodes(const DHTMetaRoutingTable &self) noexcept;
 
 void
 debug_print(const char *ctx, const DHTMetaRoutingTable &self) noexcept;
+
+bool
+debug_correct_level(const DHTMetaRoutingTable &self) noexcept;
 
 bool
 debug_assert_all(const DHTMetaRoutingTable &);
 
 bool
 debug_timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact);
+
+RoutingTable *
+__dequeue_root(DHTMetaRoutingTable &self) noexcept;
 
 bool
 is_good(const DHTMetaRoutingTable &dht, const Node &contact) noexcept;

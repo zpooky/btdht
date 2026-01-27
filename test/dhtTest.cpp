@@ -372,21 +372,59 @@ TEST(dhtTest, test_find_node) {
   }
 }
 
-TEST(dhtTest, test) {
+TEST(dhtTest, test_routing_table_dequeue_root) {
   fd s(-1);
   Contact c(0, 0);
-  prng::xorshift32 r(1);
+  prng::xorshift32 r(3);
   Timestamp now = sp::now();
   dht::Client client{s, s};
   dht::Options opt;
   auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
   dht::init(*dht, dht::Options{});
 
-  insert_self(dht);
+  random_insert(*dht, 10'000);
+  assertx(debug_correct_level(dht->routing_table));
+  assertx(debug_assert_all(dht->routing_table));
+  debug_print("", dht->routing_table);
+
+  sp::StaticArray<RoutingTable *, 100> tmp;
+  debug_for_each_rt(dht->routing_table, &tmp,
+                    [](void *a, DHTMetaRoutingTable &, RoutingTable *rt) {
+                      auto &tmpa = *((sp::StaticArray<RoutingTable *, 100> *)a);
+                      insert(tmpa, rt);
+                    });
+  shuffle(r, tmp);
+  printf("length: %zu\n", length(tmp));
+  for (auto _ : tmp) {
+    ASSERT_TRUE(__dequeue_root(dht->routing_table));
+    assertx(debug_correct_level(dht->routing_table));
+    assertx(debug_assert_all(dht->routing_table));
+  }
+  ASSERT_TRUE(dht->routing_table.root == nullptr);
+}
+
+TEST(dhtTest, test) {
+  fd s(-1);
+  Contact c(0, 0);
+  prng::xorshift32 r(6);
+  Timestamp now = sp::now();
+  dht::Client client{s, s};
+  dht::Options opt;
+  // DHTMetaRoutingTable rt{20, r,}
+  auto dht = std::make_unique<dht::DHT>(c, client, r, now, opt);
+  dht::init(*dht, dht::Options{});
+
+  // insert_self(dht);
 
   debug_print("", dht->routing_table);
-  random_insert(*dht, 1024*1024*40);
-  debug_print("", dht->routing_table);
+  for (size_t i = 0; i < 80 * 1024; ++i) {
+    random_insert(*dht, 20'000);
+    assertx(debug_correct_level(dht->routing_table));
+    assertx(debug_assert_all(dht->routing_table));
+    debug_print("", dht->routing_table);
+    ASSERT_EQ(debug_count_RoutinTable_nodes(dht->routing_table),
+              dht->routing_table.length);
+  }
   assert_count(*dht);
 
   return;
@@ -760,7 +798,7 @@ TEST(dhtTest, test_first_full) {
     n.id.id[0] = 0;
     insert(dht->routing_table, n);
   }
-  ASSERT_EQ(debug_levels(dht->routing_table), 1);
+  ASSERT_EQ(debug_count_levels(dht->routing_table), 1);
 
   printf("%u\n", nodes_total(dht->routing_table));
   {
@@ -769,7 +807,7 @@ TEST(dhtTest, test_first_full) {
     n.id.id[19]++;
     ASSERT_TRUE(insert(dht->routing_table, n));
   }
-  ASSERT_EQ(debug_levels(dht->routing_table), 2);
+  ASSERT_EQ(debug_count_levels(dht->routing_table), 2);
 }
 
 struct RankNodeId {
@@ -829,8 +867,8 @@ TEST(dhtTest, test_self_rand) {
   for (std::size_t i = 1; i < 1024; ++i) {
     sp::HashSetProbing<NodeId> set;
     std::size_t routing_capacity =
-        std::max(capacity(dht->routing_table.rt_reuse) * Bucket::K,
-                 length(dht->routing_table.rt_reuse) * Bucket::K);
+        std::max(dht->routing_table.capacity * Bucket::K,
+                 dht->routing_table.length * Bucket::K);
 
     for (std::size_t x = 0; x < routing_capacity; ++x) {
 

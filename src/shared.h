@@ -248,7 +248,7 @@ DHTMetaBootstrap<sz>::DHTMetaBootstrap(Config &conf,
     , now{n} {
 }
 
-#define SCRAPE_FILTER 64 * 1024 * 1024
+#define SCRAPE_FILTER_sz 64 * 1024 * 1024
 struct DHTMetaScrape {
   dht::DHT &dht;
   dht::NodeId id;
@@ -257,7 +257,7 @@ struct DHTMetaScrape {
   heap::StaticMaxBinary<KContact, 128> bootstrap;
   const Timestamp started;
   Timestamp &now;
-  DHTMetaBootstrap<SCRAPE_FILTER> &bootstrap_filter;
+  DHTMetaBootstrap<SCRAPE_FILTER_sz> &bootstrap_filter;
 
   // approximartion
   uint32_t upcoming_sample_infohashes;
@@ -329,7 +329,10 @@ struct DHT {
   heap::StaticMaxBinary<KContact, 128> bootstrap;
   // }}}
 
+  // {
   DHTMetaSearch searches;
+  // }
+
   // struct {
   static constexpr size_t ACTIVE_SCRAPES = 128;
   sp::UinStaticArray<DHTMetaScrape *, ACTIVE_SCRAPES> active_scrapes;
@@ -340,7 +343,7 @@ struct DHT {
   Timestamp scrape_hour_time;
   sp::UinStaticArray<std::tuple<dht::Infohash, Contact>, 128>
       scrape_get_peers_ih;
-  DHTMetaBootstrap<SCRAPE_FILTER> scrape_bootstrap_filter;
+  DHTMetaBootstrap<SCRAPE_FILTER_sz> scrape_bootstrap_filter;
   std::uint32_t scrape_active_sample_infhohash;
   sp::UinStaticArray<Node, 32> scrape_retire_good;
   bool scrape_backoff;

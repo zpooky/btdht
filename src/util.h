@@ -43,7 +43,7 @@ to_ipv4(const char *, Ipv4 &) noexcept;
 //=====================================
 struct Ipv6 {
   sp::byte raw[16];
-  //TODO uint16_t raw[8];
+  // TODO uint16_t raw[8];
 
   bool
   operator==(const Ipv6 &) const noexcept;
@@ -459,6 +459,7 @@ struct Node {
   Node(const NodeId &, const Contact &) noexcept;
   Node(const NodeId &, const Contact &, const Timestamp &) noexcept;
   Node(const IdContact &, Timestamp) noexcept;
+  ~Node() noexcept;
 
 #if 0
   bool

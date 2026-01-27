@@ -48,7 +48,6 @@ Ip::Ip(Ipv4 v4)
 Ip::Ip(in_addr v4)
     : ipv4(htonl(v4.s_addr))
     , type(IpType::IPV4) {
-
 }
 
 #ifdef IP_IPV6
@@ -910,6 +909,13 @@ Node::Node(const NodeId &nid, const Contact &p, const Timestamp &act) noexcept
 
 Node::Node(const IdContact &node, Timestamp now) noexcept
     : Node(node.id, node.contact, now) {
+}
+
+Node::~Node() noexcept {
+  assertx(!this->timeout_next);
+  assertx(!this->timeout_priv);
+  this->timeout_next = nullptr;
+  this->timeout_priv = nullptr;
 }
 
 #if 0
