@@ -14,6 +14,7 @@ namespace dht {
 struct DHTMeta_spbt_scrape_client {
   sp::StaticArray<sp::hasher<dht::Key>, 2> hashers;
   sp::BloomFilter<dht::Key, 1 * 1024 * 1024> cache;
+  uint32_t cache_length;
   sp::fd unix_socket_file;
   sp::fd dir_fd;
   sockaddr_un name{};
