@@ -204,8 +204,12 @@ filename_extract(const char *fname, uint32_t &idx) noexcept {
 bool
 init_cache(dht::DHT &ctx) noexcept {
   auto self = new Cache;
+  if (!self) {
+    return false;
+  }
+
   ctx.routing_table.cache = self;
-  emplace(ctx.routing_table.retire_good, on_retire_good, self);
+  insert(ctx.routing_table.retire_good, std::make_tuple(on_retire_good, self));
   ctx.topup_bootstrap = on_topup_bootstrap;
 
   char root[PATH_MAX];

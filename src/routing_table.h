@@ -113,7 +113,7 @@ struct DHTMetaRoutingTable {
   std::uint32_t bad_nodes;
 
   sp::UinStaticArray<
-      std::tuple<void (*)(void *ctx, const Node &) noexcept, void *>, 4>
+      std::tuple<void (*)(void *ctx, const Node &) noexcept, void *>, 8>
       retire_good;
   void *cache;
 
