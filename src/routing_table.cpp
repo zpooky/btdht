@@ -28,7 +28,7 @@ Bucket::~Bucket() noexcept {
 //=====================================
 /*dht::RoutingTable*/
 RoutingTable::RoutingTable(ssize_t d) noexcept
-    : depth(d) //XXX rename to rank
+    : depth(d) // XXX rename to rank
     , in_tree(nullptr)
     , bucket()
     , parallel(nullptr) {
@@ -1050,6 +1050,27 @@ compact_RoutingTable(dht::DHTMetaRoutingTable &self) {
 }
 #endif
 
+static void
+rt_insert_new(DHTMetaRoutingTable &self, RoutingTable *rt) noexcept {
+  RoutingTable *parent = nullptr;
+  for (auto it = self.root; it; it = it->in_tree) {
+    if (rt->depth < it->depth) {
+      if (parent) {
+        rt->in_tree = parent->in_tree;
+        parent->in_tree = rt;
+      } else {
+        rt->in_tree = self.root;
+        self.root = rt;
+      }
+      return;
+    } else if (it->depth == rt->depth) {
+      assertx(false);
+    }
+    parent = it;
+  }
+  assertx(false);
+}
+
 RoutingTable *
 __make_routing_table(DHTMetaRoutingTable &self, std::size_t r) noexcept {
   if (!self.root) {
@@ -1057,64 +1078,45 @@ __make_routing_table(DHTMetaRoutingTable &self, std::size_t r) noexcept {
     return self.root;
   }
 
-  assertx(self.root->depth >= 0);
-  if ((size_t)self.root->depth == r) {
-    return self.root;
-  }
-
-  if ((size_t)self.root->depth > r) {
-    auto tmp = alloc_RoutingTable(self, r);
-    if (tmp) {
-      tmp->in_tree = self.root;
-      self.root = tmp;
-    }
-    return tmp;
-  }
-
+  RoutingTable *parent = nullptr;
   for (auto it = self.root; it; it = it->in_tree) {
     assertx(it->depth >= 0);
 
-    auto in_tree = it->in_tree;
-    if (!in_tree) {
-      assertx((size_t)it->depth < r);
-      it->in_tree = alloc_RoutingTable(self, r);
-      return it->in_tree;
-    }
-
-    assertx(in_tree->depth >= 0);
-    assertx(it->depth < in_tree->depth);
-    if (r < (size_t)in_tree->depth) {
+    if (r == (size_t)it->depth) {
+      auto parallel = it->parallel;
       auto tmp = alloc_RoutingTable(self, r);
       if (!tmp) {
         return tmp;
       }
-      assertx(tmp != in_tree);
-      if (tmp != it) {
-        it->in_tree = tmp;
-        tmp->in_tree = in_tree;
-        assertx(it->in_tree == tmp);
-        assertx(it->in_tree->in_tree == in_tree);
-        assertxs((size_t)it->depth < r, it->depth, r, in_tree->depth);
-        assertxs(r < (size_t)in_tree->depth, it->depth, r, tmp->in_tree->depth);
+      tmp->parallel = parallel;
+      it->parallel = tmp;
+
+      return tmp;
+    } else if (r < (size_t)it->depth) {
+      auto tmp = alloc_RoutingTable(self, r);
+      if (!tmp) {
+        return tmp;
+      }
+      tmp->in_tree = it;
+      if (parent == tmp) {
+        // assertxs(false, r, self.root->depth,  tmp->depth, it->depth);
+        // printf("self.root->depth:%zu, tmp->depth:%zu, it->depth:%zu\n",
+        //        self.root->depth, tmp->depth, it->depth);
+        // self.root = tmp;
+        rt_insert_new(self, tmp);
+      } else if (parent) {
+        parent->in_tree = tmp;
       } else {
-        // $it is selected for alloc_RoutingTable()
-        assertx(self.root);
-        if (self.root != in_tree) {
-          assertx(self.root->depth >= 0);
-          assertxs(self.root->depth == tmp->depth, self.root->depth,//TODO fails
-                   tmp->depth, self.length, self.capacity);
-          tmp->parallel = self.root->parallel;
-          self.root->parallel = tmp;
-        } else {
-          assertxs(self.root->depth > tmp->depth, self.root->depth, tmp->depth);
-          tmp->in_tree = self.root;
-          self.root = tmp;
-        }
+        self.root = tmp;
       }
       return tmp;
-    } else if ((size_t)in_tree->depth == r) {
-      return in_tree;
+    } else {
+      if (!it->in_tree) {
+        it->in_tree = alloc_RoutingTable(self, r);
+        return it->in_tree;
+      }
     }
+    parent = it;
   } // for
 
   assertx(false);

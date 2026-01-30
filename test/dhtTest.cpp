@@ -1966,27 +1966,39 @@ TEST(dhtTest, test_assert_fail2) {
 }
 
 TEST(dhtTest, test_make_routing_table) {
-  prng::xorshift32 r(2);
+  prng::xorshift32 r(5);
   Timestamp now = sp::now();
   dht::Config conf;
   timeout::TimeoutBox tb(now);
+  const size_t capacity = 100;
 
   for (size_t i = 0; i < 1012124; ++i) {
     NodeId id;
     randomize_NodeId(r, Ip(Ipv4(0)), id);
-    DHTMetaRoutingTable routing_table(100, r, tb, now, id, conf);
+    DHTMetaRoutingTable routing_table(capacity, r, tb, now, id, conf);
     printf("#%zu\n", i);
 
-    for (size_t a = 0; a < routing_table.capacity; ++a) {
-      assertxs(debug_count_RoutinTable_nodes(routing_table) == a, debug_count_RoutinTable_nodes(routing_table), a);
+    for (size_t a = 0; a < routing_table.capacity * 10; ++a) {
+      assertxs(debug_count_RoutinTable_nodes(routing_table) ==
+                   std::min(a, capacity),
+               debug_count_RoutinTable_nodes(routing_table), a, capacity);
       auto rank = uniform_dist(r, 0, 160);
+
+      // debug_print("", routing_table);
+      // printf("- insert(%u)\n", rank);
+
       // TODO array[rank]++;
       auto rt = __make_routing_table(routing_table, rank);
-      assertx(rt);
-      assertx(rt->depth == rank);
+      if (rt) {
+        assertx(rt->depth == rank);
+      } else {
+        assertx(rank <= routing_table.root->depth);
+      }
       assertx(debug_correct_level(routing_table));
       assertx(debug_assert_all(routing_table));
-    }
+    } // for
+    assertxs(debug_count_RoutinTable_nodes(routing_table) == capacity,
+             debug_count_RoutinTable_nodes(routing_table), capacity);
   }
 }
 
