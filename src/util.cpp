@@ -1115,6 +1115,8 @@ xdg_share_dir(char (&directory)[PATH_MAX]) noexcept {
 bool
 xdg_runtime_dir(char (&directory)[PATH_MAX]) noexcept {
   // XDG_RUNTIME_DIR (/run/user/1000)
+  // geteuid(2)/getuid(2)
+
   const char *data = getenv("XDG_RUNTIME_DIR");
   if (data == NULL || strcmp(data, "") == 0) {
     strcpy(directory, "/tmp");

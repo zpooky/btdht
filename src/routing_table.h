@@ -200,6 +200,9 @@ find_node(DHTMetaRoutingTable &, const NodeId &) noexcept;
 const Bucket *
 bucket_for(DHTMetaRoutingTable &, const NodeId &) noexcept;
 
+RoutingTable *
+__make_routing_table(DHTMetaRoutingTable &self, std::size_t r) noexcept;
+
 Node *
 insert(DHTMetaRoutingTable &, const Node &) noexcept;
 
@@ -267,21 +270,16 @@ for_each(const Bucket &b, F f) noexcept {
 // ========================================
 template <typename F>
 bool
-for_all(const RoutingTable *it, F f) noexcept {
-  while (it) {
+for_all(const RoutingTable *self, F f) noexcept {
+  for (const RoutingTable *it = self; it; it = it->in_tree) {
+    for (auto it_p = it; it_p; it_p = it_p->parallel) {
+      const RoutingTable &current = *it_p;
 
-    auto it_width = it;
-    while (it_width) {
-
-      const RoutingTable &current = *it_width;
       if (!f(current)) {
         return false;
       }
-      it_width = it_width->parallel;
-    } // while
-
-    it = it->in_tree;
-  } // while
+    }
+  }
 
   return true;
 }

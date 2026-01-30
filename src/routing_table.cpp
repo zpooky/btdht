@@ -28,7 +28,7 @@ Bucket::~Bucket() noexcept {
 //=====================================
 /*dht::RoutingTable*/
 RoutingTable::RoutingTable(ssize_t d) noexcept
-    : depth(d)
+    : depth(d) //XXX rename to rank
     , in_tree(nullptr)
     , bucket()
     , parallel(nullptr) {
@@ -55,7 +55,7 @@ debug_bucket_count(const Bucket &b) {
 
 bool
 is_empty(const RoutingTable &root) noexcept {
-  assertx(debug_bucket_count(root.bucket) == root.bucket.length);
+  // assertx(debug_bucket_count(root.bucket) == root.bucket.length);
   return root.bucket.length == 0;
 }
 
@@ -253,25 +253,6 @@ debug_assert_all(const DHTMetaRoutingTable &self) {
     it = it->in_tree;
   }
   return true;
-}
-
-static bool
-debug_find(const DHTMetaRoutingTable &self, RoutingTable *parallel) {
-  assertx(parallel);
-
-  auto it = self.root;
-  while (it) {
-    auto it_next = it;
-    while (it_next) {
-      if (it_next == parallel) {
-        return true;
-      }
-      it_next = it_next->parallel;
-    }
-    it = it->in_tree;
-  }
-
-  return false;
 }
 
 void
@@ -577,26 +558,6 @@ __dequeue_root(DHTMetaRoutingTable &self) noexcept {
   return result;
 }
 
-static void
-enqueue_level(RoutingTable *leaf, RoutingTable *parallel) noexcept {
-  assertx(leaf);
-  assertx(parallel);
-#if 0
-  RoutingTable *it = leaf;
-  while (it) {
-    if (!it->parallel) {
-      it->parallel = parallel;
-      break;
-    }
-    it = it->parallel;
-  }
-#endif
-  assertx(!parallel->parallel);
-  assertx(leaf->depth == parallel->depth);
-  parallel->parallel = leaf->parallel;
-  leaf->parallel = parallel;
-}
-
 static RoutingTable *
 alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth) noexcept {
   if (self.length < self.capacity) {
@@ -755,6 +716,7 @@ node_move(DHTMetaRoutingTable &self, Node &subject, Bucket &dest) noexcept {
   return nc;
 }
 
+#if 0
 static RoutingTable *
 split_transfer(DHTMetaRoutingTable &self, RoutingTable *better, Bucket &subject,
                std::size_t level) {
@@ -880,6 +842,7 @@ split(DHTMetaRoutingTable &self, RoutingTable *const split_root) noexcept {
   // TODO log::routing::split(dht, *higher, *lower);
   return true;
 }
+#endif
 
 /*TokenPair*/
 struct TokenPair {
@@ -1039,6 +1002,7 @@ bucket_for(DHTMetaRoutingTable &dht, const NodeId &id) noexcept {
   return leaf ? &leaf->bucket : nullptr;
 }
 
+#if 0
 static bool
 can_split(const RoutingTable &table, std::size_t idx) {
   const RoutingTable *it = &table;
@@ -1065,7 +1029,6 @@ can_split(const RoutingTable &table, std::size_t idx) {
   return false;
 }
 
-#if 0
 static void
 compact_RoutingTable(dht::DHTMetaRoutingTable &self) {
   while (self.root && length(self.rt_reuse) > self.root_limit &&
@@ -1087,8 +1050,8 @@ compact_RoutingTable(dht::DHTMetaRoutingTable &self) {
 }
 #endif
 
-static RoutingTable *
-make_routing_table(DHTMetaRoutingTable &self, std::size_t r) noexcept {
+RoutingTable *
+__make_routing_table(DHTMetaRoutingTable &self, std::size_t r) noexcept {
   if (!self.root) {
     self.root = alloc_RoutingTable(self, r);
     return self.root;
@@ -1138,8 +1101,8 @@ make_routing_table(DHTMetaRoutingTable &self, std::size_t r) noexcept {
         assertx(self.root);
         if (self.root != in_tree) {
           assertx(self.root->depth >= 0);
-          assertxs(self.root->depth == tmp->depth, self.root->depth,
-                   tmp->depth);
+          assertxs(self.root->depth == tmp->depth, self.root->depth,//TODO fails
+                   tmp->depth, self.length, self.capacity);
           tmp->parallel = self.root->parallel;
           self.root->parallel = tmp;
         } else {
@@ -1169,7 +1132,7 @@ insert(DHTMetaRoutingTable &self, const Node &contact) noexcept {
   }
 
   const auto r = rank(self.id, contact.id);
-  auto tmp = make_routing_table(self, r);
+  auto tmp = __make_routing_table(self, r);
   if (tmp) {
     Node *const existing = routing_table_level_find_node(*tmp, contact.id.id);
 

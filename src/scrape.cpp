@@ -54,8 +54,13 @@ best_scrape_match(dht::DHT &self, const dht::Key &id) {
   for (auto scrape : self.active_scrapes) {
     std::size_t r = rank(scrape->id, id);
     if (r >= max_rank) {
-      max_rank = r;
-      best_match = scrape;
+      auto root = scrape->routing_table.root;
+      bool is_rt_full =
+          scrape->routing_table.length < scrape->routing_table.capacity;
+      if (!root || ((size_t)root->depth <= r || !is_rt_full)) {
+        max_rank = r;
+        best_match = scrape;
+      }
     }
   }
 

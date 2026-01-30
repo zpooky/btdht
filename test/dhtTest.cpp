@@ -1965,6 +1965,31 @@ TEST(dhtTest, test_assert_fail2) {
   printf("\n");
 }
 
+TEST(dhtTest, test_make_routing_table) {
+  prng::xorshift32 r(2);
+  Timestamp now = sp::now();
+  dht::Config conf;
+  timeout::TimeoutBox tb(now);
+
+  for (size_t i = 0; i < 1012124; ++i) {
+    NodeId id;
+    randomize_NodeId(r, Ip(Ipv4(0)), id);
+    DHTMetaRoutingTable routing_table(100, r, tb, now, id, conf);
+    printf("#%zu\n", i);
+
+    for (size_t a = 0; a < routing_table.capacity; ++a) {
+      assertxs(debug_count_RoutinTable_nodes(routing_table) == a, debug_count_RoutinTable_nodes(routing_table), a);
+      auto rank = uniform_dist(r, 0, 160);
+      // TODO array[rank]++;
+      auto rt = __make_routing_table(routing_table, rank);
+      assertx(rt);
+      assertx(rt->depth == rank);
+      assertx(debug_correct_level(routing_table));
+      assertx(debug_assert_all(routing_table));
+    }
+  }
+}
+
 // TEST(dhtTest, test2) {
 //   fd s(-1);
 //   Contact c(0, 0);
