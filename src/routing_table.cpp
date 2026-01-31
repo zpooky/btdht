@@ -355,67 +355,6 @@ debug_routing_level_iscorrect(DHTMetaRoutingTable &self, RoutingTable *root) {
   return true;
 }
 
-static RoutingTable *
-find_closest_routing_table(DHTMetaRoutingTable &self, const NodeId &search,
-                           /*OUT*/ bool &in_tree,
-                           /*OUT*/ std::size_t &bidx) noexcept {
-  in_tree = true;
-  RoutingTable *it = self.root;
-  RoutingTable *best = it;
-  bidx = 0;
-  if (it) {
-    assertx(it->depth >= 0);
-    // TODO: we ignore prefix
-    bidx = (std::size_t)it->depth;
-  }
-
-  while (it) {
-    assertx(it->depth >= 0);
-    assertx(debug_routing_level_iscorrect(self, it));
-    for (; bidx < (std::size_t)it->depth; ++bidx) {
-      bool high = bit(search, bidx);
-      bool ref_high = bit(self.id, bidx);
-      if (ref_high != high) {
-        return best;
-      }
-    }
-    bool high = bit(search, bidx);
-    bool ref_high = bit(self.id, bidx);
-    // in_tree is true if search so far share the same prefix with self.id
-    in_tree &= (ref_high == high);
-
-    if (in_tree) {
-      if (it->in_tree) {
-        best = it;
-        /* More precise match */
-        it = it->in_tree;
-      } else {
-        return it;
-      }
-    } else {
-      return it;
-    }
-
-    ++bidx;
-  }
-
-  return it;
-}
-
-static void
-dealloc_RoutingTable(DHTMetaRoutingTable &self, RoutingTable *recycle) {
-  assertx(recycle);
-  assertx(!recycle->parallel);
-  assertx(!recycle->in_tree);
-
-  auto &bucket = recycle->bucket;
-  for (std::size_t i = 0; i < Bucket::K; ++i) {
-    assertx(!is_valid(bucket.contacts[i]));
-  }
-
-  delete recycle;
-}
-
 static void
 reset(DHTMetaRoutingTable &self, Node &contact) noexcept {
   if (!contact.properties.is_good) {
@@ -455,13 +394,20 @@ timeout_unlink_reset_node(DHTMetaRoutingTable &self, Node &contact) {
   return false;
 }
 
+static RoutingTable *
+find_RoutingTable(DHTMetaRoutingTable &self, std::size_t rank) {
+  for (auto it = self.root; it; it = it->in_tree) {
+    if ((size_t)it->depth == rank) {
+      return it;
+    }
+  }
+  return nullptr;
+}
+
 bool
 debug_timeout_unlink_reset(DHTMetaRoutingTable &self, Node &contact) {
-  bool inTree = false;
-  std::size_t idx = 0;
-
-  RoutingTable *root =
-      find_closest_routing_table(self, contact.id, inTree, idx);
+  const auto r = rank(self.id, contact.id);
+  RoutingTable *root = find_RoutingTable(self, r);
   assertx(is_valid(contact));
 
   for (RoutingTable *it = root; it; it = it->parallel) {
@@ -508,11 +454,6 @@ __dequeue_root(DHTMetaRoutingTable &self) noexcept {
     }
   }
 #else
-  // RoutingTable *parent = nullptr;
-  // for (RoutingTable *it = self.root; it;it= it->in_tree) {
-  //   parent = it;
-  // }
-
   RoutingTable *priv = nullptr;
   RoutingTable *min_priv = nullptr;
   RoutingTable *result = self.root;
@@ -524,6 +465,7 @@ __dequeue_root(DHTMetaRoutingTable &self) noexcept {
     }
     priv = it;
   } // for
+
   if (!result) {
     assertx(!self.root);
     return nullptr;
@@ -559,7 +501,8 @@ __dequeue_root(DHTMetaRoutingTable &self) noexcept {
 }
 
 static RoutingTable *
-alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth) noexcept {
+alloc_RoutingTable(DHTMetaRoutingTable &self,
+                   const std::size_t depth) noexcept {
   if (self.length < self.capacity) {
     self.length++;
     auto result = new RoutingTable((ssize_t)depth);
@@ -567,7 +510,7 @@ alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth) noexcept {
   }
 
   assertx(self.root);
-  if (std::size_t(self.root->depth) < depth) {
+  if (depth > std::size_t(self.root->depth)) {
     RoutingTable *needle = __dequeue_root(self);
     if (!needle) {
       assertxs(false, self.root->depth, self.length, self.capacity);
@@ -601,92 +544,76 @@ alloc_RoutingTable(DHTMetaRoutingTable &self, std::size_t depth) noexcept {
 
 static Node *
 bucket_insert(DHTMetaRoutingTable &self, Bucket &bucket, const Node &c,
-              bool eager,
               /*OUT*/ bool &replaced) noexcept {
-  replaced = false;
   // TODO binary insert
 
   for (std::size_t i = 0; i < Bucket::K; ++i) {
     Node &contact = bucket.contacts[i];
-    if (!is_valid(contact)) {
+    if (!is_valid(contact)) { // TODO is_valid is very expensive
       contact = c;
       bucket.length++;
+
+      return &contact;
+    } else if (!is_good(self, contact) || contact.properties.is_readonly) {
+      timeout_unlink_reset_node(self, contact);
+
+      contact = c;
+      replaced = true;
 
       return &contact;
     }
   }
 
-  if (eager) {
-    for (std::size_t i = 0; i < Bucket::K; ++i) {
-      Node &contact = bucket.contacts[i];
-      assertx(is_valid(contact));
-      if (!is_good(self, contact) || contact.properties.is_readonly) {
-        timeout_unlink_reset_node(self, contact);
-
-        contact = c;
-        assertx(is_valid(contact));
-
-        return &contact;
-      }
-    }
-  }
-
   return nullptr;
 }
 
 static Node *
-routing_table_level_insert(DHTMetaRoutingTable &self, RoutingTable &table,
-                           const Node &c, bool eager,
-                           /*OUT*/ bool &replaced) noexcept {
+routing_table_level_insert_Node(DHTMetaRoutingTable &self, RoutingTable &table,
+                                const Node &c,
+                                /*OUT*/ bool &replaced) noexcept {
   assertx(table.depth >= 0);
   assertx(rank(c.id, self.id) == (size_t)table.depth);
+  replaced = false;
+
   for (RoutingTable *it = &table; it; it = it->parallel) {
-    Node *result = bucket_insert(self, it->bucket, c, eager, replaced);
+    Node *result = bucket_insert(self, it->bucket, c, replaced);
     if (result) {
       return result;
     }
   }
 
-  {
-    assertx(table.depth >= 0);
-    auto tmp = alloc_RoutingTable(self, (size_t)table.depth);
-    if (tmp) {
-      tmp->parallel = table.parallel;
-      table.parallel = tmp;
-      Node *result = bucket_insert(self, tmp->bucket, c, eager, replaced);
-      if (result) {
-        return result;
-      }
-    }
-  }
-
   return nullptr;
 }
 
 static Node *
-routing_table_level_find_node(RoutingTable &table, const Key &id) noexcept {
-  RoutingTable *it = &table;
+routing_table_level_find_node(DHTMetaRoutingTable &self, RoutingTable &table,
+                              const Key &id, bool &is_full) noexcept {
+  is_full = true;
 
-  while (it) {
+  for (RoutingTable *it = &table; it; it = it->parallel) {
     Bucket &bucket = it->bucket;
 
     // TODO binary search
     for (std::size_t i = 0; i < Bucket::K; ++i) {
       Node &contact = bucket.contacts[i];
-      if (is_valid(contact)) {
 
+      if (is_valid(contact)) {
+        if (!is_good(self, contact)) {
+          is_full = false;
+        }
         if (contact.id == id) {
           return &contact;
         }
+      } else {
+        is_full = false;
       }
-    }
-
-    it = it->parallel;
-  }
+    } // for
+  } // for
 
   return nullptr;
 }
 
+#if 0
 static bool
 node_move(DHTMetaRoutingTable &self, Node &subject, Bucket &dest) noexcept {
   assertx(is_valid(subject));
@@ -716,7 +643,6 @@ node_move(DHTMetaRoutingTable &self, Node &subject, Bucket &dest) noexcept {
   return nc;
 }
 
-#if 0
 static RoutingTable *
 split_transfer(DHTMetaRoutingTable &self, RoutingTable *better, Bucket &subject,
                std::size_t level) {
@@ -982,23 +908,20 @@ Node *
 find_node(DHTMetaRoutingTable &self, const NodeId &search) noexcept {
   assertx(debug_assert_all(self));
 
-  bool inTree = false;
-  std::size_t idx = 0;
-
-  RoutingTable *leaf = find_closest_routing_table(self, search, inTree, idx);
+  const auto r = rank(self.id, search);
+  RoutingTable *leaf = find_RoutingTable(self, r);
   if (leaf) {
-    return routing_table_level_find_node(*leaf, search.id);
+    bool is_full = true;
+    return routing_table_level_find_node(self, *leaf, search.id, is_full);
   }
 
   return nullptr;
 } // dht::find_node()
 
 const Bucket *
-bucket_for(DHTMetaRoutingTable &dht, const NodeId &id) noexcept {
-  bool inTree = false;
-  std::size_t idx = 0;
-
-  RoutingTable *leaf = find_closest_routing_table(dht, id, inTree, idx);
+bucket_for(DHTMetaRoutingTable &self, const NodeId &id) noexcept {
+  const auto r = rank(self.id, id);
+  RoutingTable *leaf = find_RoutingTable(self, r);
   return leaf ? &leaf->bucket : nullptr;
 }
 
@@ -1134,33 +1057,44 @@ insert(DHTMetaRoutingTable &self, const Node &contact) noexcept {
   }
 
   const auto r = rank(self.id, contact.id);
-  auto tmp = __make_routing_table(self, r);
-  if (tmp) {
-    Node *const existing = routing_table_level_find_node(*tmp, contact.id.id);
-
-    if (!existing) {
-      bool replaced = false;
-      std::size_t xx = 0;
-      // TODO handle full bucket
-      Node *inserted = routing_table_level_insert(self, *tmp, contact, false,
-                                                  /*OUT*/ replaced);
-      if (inserted) {
-        assertxs(prefix_compare(self.id, inserted->id.id, tmp->depth), xx,
-                 tmp->depth);
-        if (self.tb.timeout) {
-          timeout::insert_new(*self.tb.timeout, inserted);
-        }
-
-        logger::routing::insert(self, *inserted);
-        if (!replaced) {
-          ++self.total_nodes;
-        }
-        assertx(debug_correct_level(self));
-        assertx((ssize_t)rank(self.id, inserted->id) >= self.root->depth);
-      }
-      return inserted;
+  auto rt = find_RoutingTable(self, r);
+  if (rt) {
+    bool is_full = true;
+    Node *const existing = routing_table_level_find_node(
+        self, *rt, contact.id.id, /*OUT*/ is_full);
+    if (existing) {
+      // fprintf(stderr, "%s: EXISTING\n", __func__);
+      return existing;
     }
-    return existing;
+    if (is_full) {
+      rt = nullptr;
+    }
+  }
+  bool must_suceed = false;
+  if (!rt) {
+    rt = __make_routing_table(self, r);
+    must_suceed = true;
+  }
+
+  if (rt) {
+    bool replaced = false;
+    Node *res = routing_table_level_insert_Node(self, *rt, contact,
+                                                /*OUT*/ replaced);
+    if (res) {
+      // assertxs(prefix_compare(self.id, res->id.id, rt->depth), rt->depth);
+      if (self.tb.timeout) {
+        timeout::insert_new(*self.tb.timeout, res);
+      }
+
+      logger::routing::insert(self, *res);
+      if (!replaced) {
+        ++self.total_nodes;
+      }
+      // assertx((ssize_t)rank(self.id, res->id) >= self.root->depth);
+      return res;
+    } else {
+      assertx(!must_suceed);
+    }
   }
 
   return nullptr;
