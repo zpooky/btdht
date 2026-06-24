@@ -17,6 +17,18 @@ struct Options {
 
   Options();
 };
+static inline const char *
+sp_debug_Options(const struct Options *in) {
+  static char buf[4096] = {'\0'};
+  snprintf(buf, sizeof(buf),
+           "dump_file[%.*s]local_socket[%.*s]publish_socket[%.*s]db_path[%.*s]"
+           "scrape_socket_path[%.*s]systemd[%s]",
+           (int)PATH_MAX, in->dump_file, (int)PATH_MAX, in->local_socket,
+           (int)PATH_MAX, in->publish_socket, (int)PATH_MAX, in->db_path,
+           (int)PATH_MAX, in->scrape_socket_path,
+           in->systemd ? "TRUE" : "FALSE");
+  return buf;
+}
 
 bool
 parse(Options &, int, char **) noexcept;
