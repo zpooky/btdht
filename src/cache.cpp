@@ -550,7 +550,7 @@ cache_read_max_idx(const dht::DHT &ctx) noexcept {
 }
 
 size_t
-cache_contacts(const dht::DHT &ctx) noexcept {
+cache_contacts(const dht::DHT &ctx) noexcept { // TODO wremove
   auto self = (Cache *)ctx.routing_table.cache;
   return self ? self->contacts : 0;
 }

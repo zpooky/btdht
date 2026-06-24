@@ -447,6 +447,7 @@ template <typename Awake>
 static int
 main_loop(dht::DHT &self, Awake on_awake) noexcept {
   Timestamp previous(0);
+  fprintf(stderr, "main_loop:BEGIN\n");
 
   constexpr std::size_t size = 16 * 1024;
   auto out = std::make_unique<sp::byte[]>(size);
@@ -485,6 +486,7 @@ main(int argc, char **argv) {
   if (!dht::parse(options, argc, argv)) {
     return 1;
   }
+  fprintf(stderr, "%s:options[%s]\n", __func__, sp_debug_Options(&options));
 
   fd udp_fd = udp::bind_v4(options.port, udp::Mode::NONBLOCKING);
   if (!udp_fd) {
@@ -607,6 +609,7 @@ main(int argc, char **argv) {
   };
 
   int res = main_loop(*mdht, on_awake);
+  fprintf(stderr, "main_loop:%d\n", res);
 
   if (upnp) {
     if (mdht->upnp_external_port) {

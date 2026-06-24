@@ -18,48 +18,11 @@
 
 #include "dht.h"
 #include "scrape.h"
+#include "dht_bt.h"
 
 #include "Log.h"
 
 #define INFO_HASH_v1 20
-
-extern "C" {
-struct dht_scrape_msg {
-  unsigned int ipv4;
-  unsigned short port;
-  unsigned char info_hash[64];
-  unsigned int l_info_hash;
-  unsigned char magic[4];
-};
-
-#define PUBLISH_HAVE 1
-
-struct bt_to_dht_publish_msg {
-  int flag;
-  unsigned char info_hash[64];
-  unsigned int l_info_hash;
-  unsigned char magic[4];
-};
-
-struct bt_to_dht_backoff_msg {
-  int backoff;
-  unsigned char magic[4];
-};
-
-enum bt_to_dht_msg_kind {
-  BT_TO_DHT_MSG_UNKNOWN = 0,
-  BT_TO_DHT_MSG_PUBLISH = 1,
-  BT_TO_DHT_MSG_BACKOFF = 2,
-};
-
-struct bt_to_dht_msg {
-  enum bt_to_dht_msg_kind kind;
-  union {
-    struct bt_to_dht_publish_msg publish;
-    struct bt_to_dht_backoff_msg backoff;
-  };
-};
-}
 
 static bool
 __db_seed_cache(dht::DHTMeta_spbt_scrape_client &self, sqlite3 *db) {
@@ -169,9 +132,15 @@ dht::DHTMeta_spbt_scrape_client::DHTMeta_spbt_scrape_client(
     , unix_socket_file{socket(AF_UNIX, SOCK_DGRAM, 0)}
     , dir_fd{}
     , now{now} {
+  fprintf(stderr, "%s: START\n", __func__);
 
   assertx_n(insert(hashers, djb_infohash));
   assertx_n(insert(hashers, fnv_infohash));
+
+  fprintf(stdout, "%s: theoretical_max_capacity: %zu\n", __func__,
+          theoretical_max_capacity(cache));
+  fprintf(stderr, "%s: scrape_socket_path[%.*s]\n", __func__, (int)PATH_MAX,
+          scrape_socket_path);
 
   if (strlen(scrape_socket_path) > 0) {
     char scrape_socket_path2[PATH_MAX]{};

@@ -231,6 +231,7 @@ DHT::DHT(const Contact &self, Client &_client, prng::xorshift32 &r,
   for (size_t i = 0; i < capacity(scrape_hour); ++i) {
     assertx_n(emplace(scrape_hour, ip_hashers));
   }
+  fprintf(stdout, "dht scrape_hour theoretical_max_capacity: %zu * %zu\n", sp::theoretical_max_capacity(this->scrape_hour[0]), capacity(this->scrape_hour));
   assertx(is_full(scrape_hour));
 
   assertx_n(insert(ip_hashers, djb_ip));

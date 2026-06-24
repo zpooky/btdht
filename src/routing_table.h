@@ -51,11 +51,16 @@ for_each(const Bucket &b, F f) noexcept;
 struct RoutingTable;
 
 struct RoutingTable {
+  public:
   ssize_t depth;
+  // private:
   RoutingTable *in_tree;
+  public:
   Bucket bucket; // out_of_tree
+  // private:
   RoutingTable *parallel;
 
+  public:
   RoutingTable(ssize_t) noexcept;
 
   RoutingTable(const RoutingTable &) = delete;
@@ -112,6 +117,7 @@ struct DHTMetaRoutingTable {
   std::uint32_t total_nodes;
   std::uint32_t bad_nodes;
 
+public:
   sp::UinStaticArray<
       std::tuple<void (*)(void *ctx, const Node &) noexcept, void *>, 8>
       retire_good;

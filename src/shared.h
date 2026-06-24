@@ -150,7 +150,7 @@ operator>(const Tx &, const Tx &) noexcept;
 namespace dht {
 // dht::Client
 struct Client {
-  static constexpr std::size_t tree_capacity = 512;
+  static constexpr std::size_t tree_capacity = 1024;
   fd &udp;
   fd &priv_fd;
   tx::Tx *timeout_head;
@@ -246,9 +246,10 @@ DHTMetaBootstrap<sz>::DHTMetaBootstrap(Config &conf,
     , bootstrap_last_reset(0)
     , config{conf}
     , now{n} {
+   fprintf(stdout, "dht meta bootstrap theoretical_max_capacity: %zu\n", theoretical_max_capacity(this->bootstrap_filter));
 }
 
-#define SCRAPE_FILTER_sz 64 * 1024 * 1024
+#define SCRAPE_FILTER_sz 128 * 1024 * 1024
 struct DHTMetaScrape {
   dht::DHT &dht;
   dht::NodeId id;
@@ -341,11 +342,11 @@ struct DHT {
   // TODO calculate bloomfitler fpp
   std::size_t scrape_hour_idx;
   Timestamp scrape_hour_time;
-  sp::UinStaticArray<std::tuple<dht::Infohash, Contact>, 128>
+  sp::UinStaticArray<std::tuple<dht::Infohash, Contact>, 256>
       scrape_get_peers_ih;
   DHTMetaBootstrap<SCRAPE_FILTER_sz> scrape_bootstrap_filter;
   std::uint32_t scrape_active_sample_infhohash;
-  sp::UinStaticArray<Node, 32> scrape_retire_good;
+  sp::UinStaticArray<Node, 64> scrape_retire_good;
   bool scrape_backoff;
   // } scrape;
 
