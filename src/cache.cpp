@@ -229,28 +229,20 @@ init_cache(dht::DHT &ctx) noexcept {
 
   auto cb = [](fs::DirectoryFd &parent, const char *fname, void *arg) {
     uint32_t idx = 0;
-    if (filename_extract(fname, /*OUT*/ idx)) {
+    if (sscanf(fname, "cache%u_ipv4.db", &idx) == 1) {
       auto s = (Cache *)arg;
       s->read_min_idx = std::min(s->read_min_idx, (size_t)idx);
       s->read_max_idx = std::max(s->read_max_idx, (size_t)idx);
-
-      cache_for_each(parent, fname, [&](const Contact &good) { //
-        insert(s->seen, good);
-        s->contacts++;
-      });
     }
 
     return true;
   };
 
-  fs::for_each_files(self->dir, self, cb); // TODO whats the point?
+  fs::for_each_files(self->dir, self, cb);
   if (self->read_min_idx == ~size_t(0)) {
     assertxs(self->read_max_idx == 0, self->read_min_idx, self->read_max_idx);
     self->read_min_idx = 0;
   }
-  // if (self->read_max_idx > 0) {
-  //   self->cur_idx = self->read_max_idx + 1;
-  // }
   self->write_idx = self->read_max_idx + 1;
 
   printf("self->read_min_idx: %zu\n", self->read_min_idx);
@@ -499,9 +491,6 @@ on_topup_bootstrap(dht::DHT &ctx) noexcept {
     size_t bi = 0;
     size_t cw = 0;
     cache_for_each(self.dir, fname, [&](const Contact &cur) {
-      assertxs(self.contacts > 0, self.contacts);
-      --self.contacts;
-
       if (!is_full(ctx.bootstrap)) {
         ++bi;
         bootstrap_insert(ctx, cur);
@@ -547,12 +536,6 @@ size_t
 cache_read_max_idx(const dht::DHT &ctx) noexcept {
   auto self = (Cache *)ctx.routing_table.cache;
   return self ? self->read_max_idx : 0;
-}
-
-size_t
-cache_contacts(const dht::DHT &ctx) noexcept { // TODO wremove
-  auto self = (Cache *)ctx.routing_table.cache;
-  return self ? self->contacts : 0;
 }
 
 size_t

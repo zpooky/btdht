@@ -246,7 +246,8 @@ DHTMetaBootstrap<sz>::DHTMetaBootstrap(Config &conf,
     , bootstrap_last_reset(0)
     , config{conf}
     , now{n} {
-   fprintf(stdout, "dht meta bootstrap theoretical_max_capacity: %zu\n", theoretical_max_capacity(this->bootstrap_filter));
+  fprintf(stdout, "dht meta bootstrap theoretical_max_capacity: %zu\n",
+          theoretical_max_capacity(this->bootstrap_filter));
 }
 
 #define SCRAPE_FILTER_sz 128 * 1024 * 1024
@@ -326,7 +327,7 @@ struct DHT {
 
   // bootstrap {{{
   sp::StaticArray<sp::hasher<Ip>, 2> ip_hashers;
-  DHTMetaBootstrap<128 * 1024> bootstrap_meta;
+  DHTMetaBootstrap<256 * 1024> bootstrap_meta;
   heap::StaticMaxBinary<KContact, 128> bootstrap;
   // }}}
 
@@ -335,10 +336,10 @@ struct DHT {
   // }
 
   // struct {
-  static constexpr size_t ACTIVE_SCRAPES = 128;
+  static constexpr size_t ACTIVE_SCRAPES = 256;
   sp::UinStaticArray<DHTMetaScrape *, ACTIVE_SCRAPES> active_scrapes;
-  sp::UinStaticArray<sp::BloomFilter<Ip, ACTIVE_SCRAPES * 64 * 1024>, 7>
-      scrape_hour; // (8 * 1024 * 1024 * sizeof(uint64_t) = 64MB) * 7 = 448MB
+  sp::UinStaticArray<sp::BloomFilter<Ip, ACTIVE_SCRAPES * 256 * 1024>, 7>
+      scrape_hour; // x * 7 = 1.75GB
   // TODO calculate bloomfitler fpp
   std::size_t scrape_hour_idx;
   Timestamp scrape_hour_time;

@@ -117,11 +117,6 @@ response::dump(sp::Buffer &buf, const Transaction &t,
         return false;
       }
 
-      if (!bencode::e::pair(b2, "contacts", sp::cache_contacts(dht))) {
-        fprintf(stdout, "%s: 6\n", __func__);
-        return false;
-      }
-
       if (!bencode::e::pair(b2, "write_idx", sp::cache_write_idx(dht))) {
         fprintf(stdout, "%s: 7\n", __func__);
         return false;
