@@ -19,7 +19,7 @@ on_get_peers_nodes(dht::DHT &self, const sp::UinArray<dht::IdContact> &values);
 
 bool
 on_get_peers_peer(dht::DHT &self, const dht::Infohash &ih,
-                  const sp::UinArray<Contact> &contacts);
+                  const Contact &remote, const sp::UinArray<Contact> &contacts);
 
 bool
 on_sample_infohashes(dht::DHT &self, const Contact &con, uint32_t hours,
@@ -29,7 +29,7 @@ void
 publish(dht::DHT &self, const dht::Infohash &ih);
 
 void
-main_on_retire_good(void *ctx, const dht::Node &)noexcept;
+main_on_retire_good(void *ctx, const dht::Node &) noexcept;
 } // namespace scrape
 
 #endif

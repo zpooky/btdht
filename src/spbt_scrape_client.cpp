@@ -17,8 +17,8 @@
 #include <io/file.h>
 
 #include "dht.h"
-#include "scrape.h"
 #include "dht_bt.h"
+#include "scrape.h"
 
 #include "Log.h"
 
@@ -37,7 +37,7 @@ __db_seed_cache(dht::DHTMeta_spbt_scrape_client &self, sqlite3 *db) {
             cached_bloomfilter);
     fd raw_fd = fs::open_read(cached_bloomfilter);
     if (bool(raw_fd)) {
-      struct stat st {};
+      struct stat st{};
       if (fstat(int(raw_fd), &st) == 0) {
         if (st.st_size == sizeof(self.cache.bitset.raw)) {
           size_t readed;
@@ -201,7 +201,8 @@ dht::spbt_scrape_client_is_started(dht::DHTMeta_spbt_scrape_client &self) {
 
 bool
 dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
-                             const Key &infohash, const Contact &contact) {
+                             const Contact &remote, const Key &infohash,
+                             const Contact &contact) {
   bool tmp = spbt_scrape_client_is_started(self);
   auto f = stderr;
   fprintf(f, "%s:[%s]", __func__, tmp ? "TRUE" : "FALSE");
@@ -219,6 +220,9 @@ dht::spbt_scrape_client_send(dht::DHTMeta_spbt_scrape_client &self,
     assertx(contact.ip.type == IpType::IPV4);
     msg.ipv4 = contact.ip.ipv4;
     msg.port = contact.port;
+
+    msg.scrape_ipv4 = remote.ip.ipv4;
+    msg.scrape_port = remote.port;
 
     if (sendto(int(self.unix_socket_file), &msg, sizeof(msg), 0,
                (sockaddr *)&self.name, sizeof(self.name)) < 0) {

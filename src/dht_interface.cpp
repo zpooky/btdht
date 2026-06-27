@@ -705,7 +705,7 @@ search_handle_response(
       search_insert_result(search, c);
       //
     });
-    scrape::on_get_peers_peer(dht, search.search, values);
+    scrape::on_get_peers_peer(dht, search.search, ctx.remote, values);
   });
 
   return true;
@@ -733,7 +733,7 @@ scrape_handle_response(
     scrape::on_get_peers_nodes(dht, nodes);
 
     /* Sender returns matching values for search query */
-    scrape::on_get_peers_peer(dht, ih, values);
+    scrape::on_get_peers_peer(dht, ih, ctx.remote, values);
   });
 
   return true;
@@ -830,6 +830,8 @@ handle_announce_peer_request(dht::MessageContext &ctx,
       }
 
       db::insert(dht.db, infohash, peer, seed, name);
+      spbt_scrape_client_send(dht.db.scrape_client, ctx.remote, infohash.id,
+                              peer);
       krpc::response::announce_peer(ctx.out, ctx.transaction, dht.id);
     } else {
       const char *msg = "Announce_peer with wrong token";

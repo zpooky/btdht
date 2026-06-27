@@ -11,6 +11,9 @@ struct dht_scrape_msg {
   unsigned char info_hash[64];
   unsigned int l_info_hash;
   unsigned char magic[4];
+
+  unsigned int scrape_ipv4;
+  unsigned short scrape_port;
 };
 
 #define PUBLISH_HAVE 1

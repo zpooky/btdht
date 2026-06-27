@@ -397,6 +397,7 @@ scrape::on_get_peers_nodes(dht::DHT &self,
 
 bool
 scrape::on_get_peers_peer(dht::DHT &self, const dht::Infohash &ih,
+                          const Contact &remote,
                           const sp::UinArray<Contact> &contacts) {
   dht::DHTMetaScrape *best_match = best_scrape_match(self, ih.id);
   if (best_match) {
@@ -407,7 +408,7 @@ scrape::on_get_peers_peer(dht::DHT &self, const dht::Infohash &ih,
       ++best_match->stat.new_get_peer;
     }
     for (const auto &contact : contacts) {
-      spbt_scrape_client_send(self.db.scrape_client, ih.id, contact);
+      spbt_scrape_client_send(self.db.scrape_client, remote, ih.id, contact);
     }
   }
   return true;

@@ -36,8 +36,7 @@ bool
 spbt_scrape_client_is_started(dht::DHTMeta_spbt_scrape_client &self);
 
 bool
-spbt_scrape_client_send(DHTMeta_spbt_scrape_client &, const Key &,
-                        const Contact &);
+spbt_scrape_client_send(DHTMeta_spbt_scrape_client &, const Contact &remote, const Key &, const Contact &);
 
 bool
 spbt_has_infohash(DHTMeta_spbt_scrape_client &, const Infohash &ih);
