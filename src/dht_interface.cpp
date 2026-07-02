@@ -899,6 +899,8 @@ handle_request(dht::MessageContext &ctx, const dht::NodeId &sender,
     dht::DHT &self = ctx.dht;
     constexpr std::size_t capacity = 8;
 
+    // TODO this is not correct, it should instead return concatenated
+    // infohashes for which it holds `get_peers values` for!!
     dht::Node *nodes[capacity] = {nullptr};
     dht::multiple_closest(self.routing_table, target, nodes);
 
